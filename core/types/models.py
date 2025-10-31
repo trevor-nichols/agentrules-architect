@@ -22,6 +22,7 @@ class ModelConfig(NamedTuple):
     reasoning: ReasoningMode = ReasoningMode.DISABLED
     temperature: Optional[float] = None  # For temperature-based models like gpt-4.1
     tools_config: Optional[ToolConfig] = None  # Tool configuration for this model
+    text_verbosity: Optional[str] = None  # GPT-5 text verbosity control
 
 # ====================================================
 # Predefined Model Configurations
@@ -64,7 +65,8 @@ def create_researcher_config(provider: ModelProvider, model_name: str) -> ModelC
         provider=provider,
         model_name=model_name,
         reasoning=ReasoningMode.ENABLED,  # Reasoning is crucial for research
-        tools_config={"enabled": True, "tools": None}  # Ready for tools like web_search
+        tools_config={"enabled": True, "tools": None},  # Ready for tools like web_search
+        text_verbosity=None
     )
 
 # O1 configurations with different reasoning levels
@@ -164,6 +166,34 @@ GEMINI_PRO = ModelConfig(
     model_name="gemini-2.5-pro",
     reasoning=ReasoningMode.ENABLED,
     tools_config={"enabled": False, "tools": None}
+)
+
+# GPT-5 configurations
+GPT5_DEFAULT = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium"
+)
+
+GPT5_MINIMAL = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5",
+    reasoning=ReasoningMode.MINIMAL,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="low"
+)
+
+GPT5_HIGH = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5",
+    reasoning=ReasoningMode.HIGH,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="high"
 )
 
 # -----------------------------------------------------------------------------

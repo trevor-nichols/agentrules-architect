@@ -15,7 +15,7 @@ This module is used by the main analysis process to perform specialized analysis
 
 import json
 import logging
-from typing import Any, Optional  # Added Any
+from typing import Any, Mapping, Optional, Tuple
 
 from openai import OpenAI
 
@@ -70,7 +70,8 @@ class OpenAIArchitect(BaseArchitect):
         role: Optional[str] = None,
         responsibilities: Optional[list[str]] = None,
         prompt_template: Optional[str] = None,
-        tools_config: Optional[dict] = None
+        tools_config: Optional[dict] = None,
+        text_verbosity: Optional[str] = None
     ):
         """
         Initialize an OpenAI architect with a specific model.
@@ -92,6 +93,8 @@ class OpenAIArchitect(BaseArchitect):
                 effective_reasoning = ReasoningMode.HIGH
             elif model_name == "gpt-4.1":
                 effective_reasoning = ReasoningMode.TEMPERATURE
+            elif model_name.startswith("gpt-5"):
+                effective_reasoning = ReasoningMode.MEDIUM
             else:
                 effective_reasoning = ReasoningMode.DISABLED
         else:
@@ -118,6 +121,8 @@ class OpenAIArchitect(BaseArchitect):
 
         # Store the prompt template
         self.prompt_template = prompt_template or self._get_default_prompt_template()
+        self.text_verbosity = text_verbosity
+        self._use_responses_api = self._should_use_responses_api(model_name)
 
     def _get_default_prompt_template(self) -> str:
         """Get the default prompt template for the agent."""
@@ -131,6 +136,11 @@ Analyze this project context and provide a detailed report focused on your domai
 {context}
 
 Format your response as a structured report with clear sections and findings."""
+
+    @staticmethod
+    def _should_use_responses_api(model_name: str) -> bool:
+        """Determine if the Responses API should be used for the given model."""
+        return model_name.startswith("gpt-5")
 
     def format_prompt(self, context: dict) -> str:
         """
@@ -157,32 +167,28 @@ Format your response as a structured report with clear sections and findings."""
     # These methods help with common tasks needed by the public methods.
     # ====================================================
 
-    def _get_model_parameters(self, content: str, tools: Optional[list[Any]] = None) -> dict:
-        """
-        Get the appropriate model parameters based on model and reasoning mode.
+    def _prepare_request(self, content: str, tools: Optional[list[Any]] = None) -> Tuple[str, dict[str, Any]]:
+        """Prepare the API request payload and select the correct endpoint."""
+        if self._use_responses_api:
+            params: dict[str, Any] = {
+                "model": self.model_name,
+                "input": content
+            }
 
-        Args:
-            content: The prompt content to send to the model
-            tools: Optional list of tools (functions) the model can use.
-                   Format should follow OpenAI's tool definition schema.
-                   Example structure:
-                   ```
-                   [
-                       {
-                           "type": "function",
-                           "function": {
-                               "name": "...",
-                               "description": "...",
-                               "parameters": {...}
-                           }
-                       }
-                   ]
-                   ```
+            reasoning_payload = self._build_responses_reasoning_payload()
+            if reasoning_payload:
+                params["reasoning"] = reasoning_payload
 
-        Returns:
-            Dictionary of model parameters
-        """
-        # Start with base parameters
+            text_config = self._build_text_config()
+            if text_config:
+                params["text"] = text_config
+
+            if tools:
+                params["tools"] = tools
+                params["tool_choice"] = "auto"
+
+            return "responses", params
+
         params = {
             "model": self.model_name,
             "messages": [{
@@ -191,29 +197,162 @@ Format your response as a structured report with clear sections and findings."""
             }]
         }
 
-        # Add reasoning parameters based on model and mode
         if self.model_name in ["o3", "o4-mini"]:
-            # For O3 and O4-Mini models, use reasoning_effort parameter
-            if self.reasoning in [ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH]:
-                # Use the value directly from the enum
-                params["reasoning_effort"] = self.reasoning.value
-            elif self.reasoning == ReasoningMode.ENABLED:
-                # If using general ENABLED mode, default to HIGH
+            reasoning_mode = self.reasoning
+            if reasoning_mode == ReasoningMode.ENABLED:
                 params["reasoning_effort"] = "high"
+            elif reasoning_mode == ReasoningMode.MINIMAL:
+                params["reasoning_effort"] = ReasoningMode.LOW.value
+            elif reasoning_mode in [ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH]:
+                params["reasoning_effort"] = reasoning_mode.value
             else:
-                # Default to MEDIUM if not specified or using DISABLED
                 params["reasoning_effort"] = "medium"
         elif self.model_name == "gpt-4.1" or self.reasoning == ReasoningMode.TEMPERATURE:
-            # For temperature-based models like gpt-4.1
             if self.temperature is not None:
                 params["temperature"] = self.temperature
 
-        # Add tools if provided
         if tools:
             params["tools"] = tools
-            params["tool_choice"] = "auto" # Let the model decide whether to use tools
+            params["tool_choice"] = "auto"
 
-        return params
+        return "chat", params
+
+    def _build_responses_reasoning_payload(self) -> Optional[dict[str, str]]:
+        """Build reasoning payload for the Responses API if applicable."""
+        if self.reasoning in [ReasoningMode.MINIMAL, ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH]:
+            return {"effort": self.reasoning.value}
+        if self.reasoning == ReasoningMode.ENABLED:
+            return {"effort": ReasoningMode.MEDIUM.value}
+        return None
+
+    def _build_text_config(self) -> Optional[dict[str, Any]]:
+        """Construct text output configuration for Responses API."""
+        if not self.text_verbosity:
+            return None
+        return {"verbosity": self.text_verbosity}
+
+    @staticmethod
+    def _as_dict(obj: Any) -> dict[str, Any]:
+        """Best-effort conversion of OpenAI SDK objects to plain dicts."""
+        if isinstance(obj, dict):
+            return obj
+        for attr in ("model_dump", "to_dict", "dict"):
+            method = getattr(obj, attr, None)
+            if not callable(method):
+                continue
+
+            result: Any
+            try:
+                result = method()
+            except TypeError:
+                try:
+                    result = method(mode="python")  # type: ignore[arg-type]
+                except Exception:
+                    continue
+            except Exception:
+                continue
+
+            if isinstance(result, Mapping):
+                return dict(result)
+            if hasattr(result, "__dict__"):
+                return {
+                    key: value
+                    for key, value in vars(result).items()
+                    if not key.startswith("_")
+                }
+
+        if hasattr(obj, "__dict__"):
+            return {
+                key: value
+                for key, value in obj.__dict__.items()
+                if not key.startswith("_")
+            }
+        return {}
+
+    def _parse_model_response(self, response: Any, api_type: str) -> Tuple[Optional[str], Optional[list[dict[str, Any]]]]:
+        """Normalize the response payload across Chat Completions and Responses API."""
+        if api_type == "responses":
+            return self._parse_responses_output(response)
+        return self._parse_chat_output(response)
+
+    def _execute_request(self, api_type: str, params: dict[str, Any]) -> Any:
+        """Dispatch the prepared payload to the appropriate OpenAI endpoint."""
+        if api_type == "responses":
+            return openai_client.responses.create(**params)
+        return openai_client.chat.completions.create(**params)
+
+    def _parse_chat_output(self, response: Any) -> Tuple[Optional[str], Optional[list[dict[str, Any]]]]:
+        message = response.choices[0].message
+        findings = message.content or None
+        tool_calls = None
+        if message.tool_calls:
+            tool_calls = [
+                {
+                    "id": call.id,
+                    "type": call.type,
+                    "function": {
+                        "name": call.function.name,
+                        "arguments": call.function.arguments
+                    }
+                }
+                for call in message.tool_calls
+                if getattr(call, "type", None) == "function"
+            ] or None
+        return findings, tool_calls
+
+    def _parse_responses_output(self, response: Any) -> Tuple[Optional[str], Optional[list[dict[str, Any]]]]:
+        response_dict = self._as_dict(response)
+        output_items = response_dict.get("output", []) or []
+        text_segments: list[str] = []
+        tool_calls: list[dict[str, Any]] = []
+
+        for item in output_items:
+            item_dict = self._as_dict(item)
+            if item_dict.get("type") != "message":
+                continue
+            for part in item_dict.get("content", []) or []:
+                part_dict = self._as_dict(part)
+                part_type = part_dict.get("type")
+                if part_type == "output_text":
+                    text_value = part_dict.get("text")
+                    if text_value:
+                        text_segments.append(str(text_value))
+                elif part_type in {"function_call", "custom_tool_call"}:
+                    normalized = self._normalize_tool_call(part_dict)
+                    if normalized:
+                        tool_calls.append(normalized)
+
+        if not text_segments:
+            aggregated = response_dict.get("output_text") or getattr(response, "output_text", None)
+            if aggregated:
+                text_segments.append(str(aggregated))
+
+        findings = "\n".join(text_segments).strip() if text_segments else None
+        normalized_tool_calls = tool_calls or None
+        return findings, normalized_tool_calls
+
+    @staticmethod
+    def _normalize_tool_call(part_dict: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+        """Convert Responses API tool call parts into the legacy tool_call schema."""
+        part_type = part_dict.get("type")
+        call_id = part_dict.get("id") or part_dict.get("call_id")
+        if part_type == "function_call":
+            return {
+                "id": call_id,
+                "type": "function",
+                "function": {
+                    "name": part_dict.get("name"),
+                    "arguments": part_dict.get("arguments", "")
+                }
+            }
+        if part_type == "custom_tool_call":
+            return {
+                "id": call_id,
+                "type": "custom",
+                "name": part_dict.get("name"),
+                "input": part_dict.get("input")
+            }
+        return None
 
     # ====================================================
     # Analyze Method
@@ -248,51 +387,38 @@ Format your response as a structured report with clear sections and findings."""
                     from core.agent_tools.tool_manager import ToolManager
                     final_tools = ToolManager.get_provider_tools(tool_list, ModelProvider.OPENAI)
 
-            # Get model parameters, including tools
-            params = self._get_model_parameters(content, tools=final_tools)
+            # Build request payload and endpoint selection
+            api_type, params = self._prepare_request(content, tools=final_tools)
 
             # Try to get the model config name
             from core.utils.model_config_helper import get_model_config_name
             model_config_name = get_model_config_name(self)
 
             agent_name = self.name or "OpenAI Architect"
-            detail_suffix = " with tools enabled" if tools else ""
+            detail_suffix = " with tools enabled" if final_tools else ""
+            api_label = "Responses API" if api_type == "responses" else "Chat Completions API"
             logger.info(
                 f"[bold blue]{agent_name}:[/bold blue] Sending request to {self.model_name} "
-                f"(Config: {model_config_name}){detail_suffix}"
+                f"via {api_label} (Config: {model_config_name}){detail_suffix}"
             )
 
             # Call the OpenAI API
-            response = openai_client.chat.completions.create(**params)
+            response = self._execute_request(api_type, params)
 
-            logger.info(f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}")
+            logger.info(
+                f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}"
+            )
 
-            message = response.choices[0].message
+            findings, tool_calls = self._parse_model_response(response, api_type)
 
-            # Prepare results dictionary
             results = {
                 "agent": agent_name,
-                "findings": message.content, # Text response
-                "tool_calls": None
+                "findings": findings,
+                "tool_calls": tool_calls
             }
 
-            # Check if the model requested a tool call
-            if message.tool_calls:
+            if tool_calls:
                 logger.info(f"[bold blue]{agent_name}:[/bold blue] Model requested tool call(s).")
-                results["tool_calls"] = [
-                    {
-                        "id": call.id,
-                        "type": call.type,
-                        "function": {
-                            "name": call.function.name,
-                            "arguments": call.function.arguments # Arguments are a JSON string
-                        }
-                    }
-                    for call in message.tool_calls if call.type == 'function'
-                ]
-                # Clear findings if only tool calls are present
-                if not message.content:
-                    results["findings"] = None
 
             return results
         except Exception as e:
@@ -322,14 +448,12 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or the default one
             content = prompt or format_phase2_prompt(phase1_results)
 
-            # Get model parameters (no tools for this specific method)
-            params = self._get_model_parameters(content)
-
-            # Call the OpenAI API
-            response = openai_client.chat.completions.create(**params)
+            api_type, params = self._prepare_request(content)
+            response = self._execute_request(api_type, params)
+            plan, _ = self._parse_model_response(response, api_type)
 
             return {
-                "plan": response.choices[0].message.content
+                "plan": plan or "No plan generated"
             }
         except Exception as e:
             logger.error(f"Error in analysis plan creation: {str(e)}")
@@ -356,14 +480,12 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or the default one
             content = prompt or format_phase4_prompt(phase3_results)
 
-            # Get model parameters (no tools for this specific method)
-            params = self._get_model_parameters(content)
-
-            # Call the OpenAI API
-            response = openai_client.chat.completions.create(**params)
+            api_type, params = self._prepare_request(content)
+            response = self._execute_request(api_type, params)
+            analysis, _ = self._parse_model_response(response, api_type)
 
             return {
-                "analysis": response.choices[0].message.content
+                "analysis": analysis or "No synthesis generated"
             }
         except Exception as e:
             logger.error(f"Error in findings synthesis: {str(e)}")
@@ -390,14 +512,12 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or the default one
             content = prompt or format_final_analysis_prompt(consolidated_report)
 
-            # Get model parameters (no tools for this specific method)
-            params = self._get_model_parameters(content)
-
-            # Call the OpenAI API
-            response = openai_client.chat.completions.create(**params)
+            api_type, params = self._prepare_request(content)
+            response = self._execute_request(api_type, params)
+            analysis, _ = self._parse_model_response(response, api_type)
 
             return {
-                "analysis": response.choices[0].message.content
+                "analysis": analysis or "No final analysis generated"
             }
         except Exception as e:
             logger.error(f"Error in final analysis: {str(e)}")
@@ -430,15 +550,13 @@ Format your response as a structured report with clear sections and findings."""
                 f"{json.dumps(all_results, indent=2)}"
             )
 
-            # Get model parameters (no tools for this specific method)
-            params = self._get_model_parameters(content)
-
-            # Call the OpenAI API
-            response = openai_client.chat.completions.create(**params)
+            api_type, params = self._prepare_request(content)
+            response = self._execute_request(api_type, params)
+            report, _ = self._parse_model_response(response, api_type)
 
             return {
                 "phase": "Consolidation",
-                "report": response.choices[0].message.content
+                "report": report or "No report generated"
             }
         except Exception as e:
             logger.error(f"Error in consolidation: {str(e)}")

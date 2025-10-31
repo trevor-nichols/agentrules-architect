@@ -39,6 +39,7 @@ class ArchitectFactory:
             "prompt_template": prompt_template,
             "tools_config": model_config.tools_config
         }
+        text_verbosity = getattr(model_config, "text_verbosity", None)
 
         # Lazy import provider classes to avoid importing SDKs at module import time
         if provider == ModelProvider.ANTHROPIC:
@@ -46,7 +47,11 @@ class ArchitectFactory:
             return AnthropicArchitect(**common_args)
         elif provider == ModelProvider.OPENAI:
             from ..openai import OpenAIArchitect  # noqa: E402
-            return OpenAIArchitect(temperature=model_config.temperature, **common_args)
+            return OpenAIArchitect(
+                temperature=model_config.temperature,
+                text_verbosity=text_verbosity,
+                **common_args
+            )
         elif provider == ModelProvider.DEEPSEEK:
             from ..deepseek import DeepSeekArchitect  # noqa: E402
             return DeepSeekArchitect(**common_args)

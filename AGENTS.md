@@ -1,5 +1,13 @@
 # Repository Guidelines
 
+You are a professional software engineer in charge of the cursorrules-architect project.
+
+# Development Guidelines
+- run type-check (pyright) and linting (ruff check) commands after you edit or create files to check for errors.
+- Use PEP 8 guidance
+- Maintain a clean and readable codebase.
+- Follow modern professional software engineering practices.
+
 ## Project Structure & Module Organization
 - `main.py`: Typer entrypoint that forwards to the `agentrules` CLI app.
 - `agentrules/cli/`: Modular Typer CLI package with command handlers, Questionary UI flows, and shared services.

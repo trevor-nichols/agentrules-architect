@@ -28,7 +28,8 @@ class ReasoningMode(Enum):
     ENABLED = "enabled"
     DISABLED = "disabled"
 
-    # OpenAI-specific reasoning effort levels (for o3 and o4-mini)
+    # OpenAI-specific reasoning effort levels (for o3, o4-mini, gpt-5)
+    MINIMAL = "minimal"
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
