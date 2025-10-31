@@ -57,6 +57,7 @@ class OutputPreferences:
 
 @dataclass
 class ExclusionOverrides:
+    respect_gitignore: bool = True
     add_directories: list[str] = field(default_factory=list)
     remove_directories: list[str] = field(default_factory=list)
     add_files: list[str] = field(default_factory=list)
@@ -65,17 +66,15 @@ class ExclusionOverrides:
     remove_extensions: list[str] = field(default_factory=list)
 
     def is_empty(self) -> bool:
-        return not any(
-            getattr(self, field_name)
-            for field_name in (
-                "add_directories",
-                "remove_directories",
-                "add_files",
-                "remove_files",
-                "add_extensions",
-                "remove_extensions",
-            )
+        override_lists = (
+            self.add_directories,
+            self.remove_directories,
+            self.add_files,
+            self.remove_files,
+            self.add_extensions,
+            self.remove_extensions,
         )
+        return self.respect_gitignore and not any(override_lists)
 
 
 @dataclass
@@ -117,6 +116,10 @@ class CLIConfig:
         )
         exclusions_payload = payload.get("exclusions")
         exclusions = ExclusionOverrides(
+            respect_gitignore=_coerce_bool(
+                exclusions_payload.get("respect_gitignore") if isinstance(exclusions_payload, dict) else None,
+                default=True,
+            ),
             add_directories=_coerce_string_list(exclusions_payload, "directories"),
             remove_directories=_coerce_string_list(exclusions_payload, "remove_directories"),
             add_files=_coerce_string_list(exclusions_payload, "files"),
@@ -154,7 +157,7 @@ class CLIConfig:
         if outputs_payload:
             payload["outputs"] = outputs_payload
         if not self.exclusions.is_empty():
-            payload["exclusions"] = {
+            exclusions_payload: dict[str, object] = {
                 "directories": list(self.exclusions.add_directories),
                 "remove_directories": list(self.exclusions.remove_directories),
                 "files": list(self.exclusions.add_files),
@@ -162,6 +165,9 @@ class CLIConfig:
                 "extensions": list(self.exclusions.add_extensions),
                 "remove_extensions": list(self.exclusions.remove_extensions),
             }
+            if not self.exclusions.respect_gitignore:
+                exclusions_payload["respect_gitignore"] = False
+            payload["exclusions"] = exclusions_payload
         return payload
 
 
@@ -320,6 +326,20 @@ def reset_exclusions() -> CLIConfig:
     config.exclusions = ExclusionOverrides()
     save_config(config)
     return config
+
+
+def set_respect_gitignore(enabled: bool) -> CLIConfig:
+    config = load_config()
+    config.exclusions.respect_gitignore = bool(enabled)
+    save_config(config)
+    return config
+
+
+def should_respect_gitignore(default: bool = True) -> bool:
+    config = load_config()
+    if config.exclusions is None:
+        return default
+    return bool(config.exclusions.respect_gitignore)
 
 
 def _coerce_bool(value: object, default: bool = False) -> bool:

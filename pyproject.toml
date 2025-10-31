@@ -29,6 +29,7 @@ dependencies = [
   "typer>=0.12",
   "questionary>=2.0",
   "platformdirs>=4.0",
+  "pathspec>=0.12",
   "tomli; python_version < '3.11'",
   "tomli-w"
 ]

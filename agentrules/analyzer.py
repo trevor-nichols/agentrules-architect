@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from numbers import Real
 from pathlib import Path
 
+from pathspec import PathSpec
 from rich.console import Console
 
 from agentrules.cli.ui.analysis_view import AnalysisView
@@ -24,6 +25,7 @@ from agentrules.config_service import (
     get_rules_filename,
     should_generate_cursorignore,
     should_generate_phase_outputs,
+    should_respect_gitignore,
 )
 from config.agents import MODEL_CONFIG
 from core.analysis import (
@@ -37,6 +39,7 @@ from core.analysis import (
 from core.analysis.events import AnalysisEvent, AnalysisEventSink
 from core.utils.file_creation.cursorignore import create_cursorignore
 from core.utils.file_creation.phases_output import save_phase_outputs
+from core.utils.file_system.gitignore import load_gitignore_spec
 from core.utils.file_system.tree_generator import get_project_tree
 from core.utils.formatters.clean_cursorrules import clean_cursorrules
 from core.utils.model_config_helper import get_model_config_name
@@ -173,6 +176,9 @@ class ProjectAnalyzer:
             set(),
             set(),
         )
+        self.gitignore_spec: PathSpec | None = None
+        self.gitignore_path: Path | None = None
+        self.respect_gitignore: bool = True
 
         self.phase1_analyzer = Phase1Analysis()
         self.phase2_analyzer = Phase2Analysis()
@@ -218,11 +224,21 @@ class ProjectAnalyzer:
         self.exclusion_overrides = get_exclusion_overrides()
         exclude_dirs, exclude_files, exclude_exts = get_effective_exclusions()
         self.effective_exclusions = (exclude_dirs, exclude_files, exclude_exts)
+        self.respect_gitignore = should_respect_gitignore()
+        self.gitignore_spec = None
+        self.gitignore_path = None
+        if self.respect_gitignore:
+            gitignore_loaded = load_gitignore_spec(self.directory)
+            if gitignore_loaded:
+                self.gitignore_spec = gitignore_loaded.spec
+                self.gitignore_path = gitignore_loaded.path
+
         tree_with_delimiters = get_project_tree(
             self.directory,
             exclude_dirs=exclude_dirs,
             exclude_files=exclude_files,
             exclude_extensions=exclude_exts,
+            gitignore_spec=self.gitignore_spec,
         )
         tree_for_analysis = _strip_tree_delimiters(tree_with_delimiters)
 
@@ -407,12 +423,22 @@ class ProjectAnalyzer:
                 },
             }
 
+        gitignore_info = {
+            "enabled": self.respect_gitignore,
+            "used": self.respect_gitignore and self.gitignore_spec is not None,
+            "path": str(self.gitignore_path) if self.gitignore_path else None,
+        }
+        if exclusion_summary is not None:
+            exclusion_summary["gitignore"] = gitignore_info
+
         save_phase_outputs(
             self.directory,
             analysis_data,
             rules_filename,
             include_phase_files=include_phase_outputs,
             exclusion_summary=exclusion_summary,
+            gitignore_spec=self.gitignore_spec,
+            gitignore_info=gitignore_info,
         )
 
         if should_generate_cursorignore():
@@ -457,6 +483,16 @@ class ProjectAnalyzer:
                 details.append(f"removed {removed_total} default{'s' if removed_total != 1 else ''}")
             detail_text = ", ".join(details) if details else "custom overrides active"
             self.console.print(f"[dim]Exclusion overrides applied ({detail_text}).[/]")
+        if self.respect_gitignore:
+            if self.gitignore_spec is not None:
+                if self.gitignore_path:
+                    self.console.print(f"[dim]Applied .gitignore patterns from {self.gitignore_path}.[/]")
+                else:
+                    self.console.print("[dim]Applied project .gitignore patterns.[/]")
+            else:
+                self.console.print("[dim].gitignore respected but no file found in project root.[/]")
+        else:
+            self.console.print("[dim]Ignoring .gitignore patterns (disabled in settings).[/]")
 
 
 def run_analysis(directory: Path, console: Console | None = None) -> str:

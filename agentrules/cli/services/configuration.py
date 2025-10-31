@@ -22,7 +22,9 @@ from agentrules.config_service import (
     set_logging_verbosity,
     set_phase_model,
     set_provider_key,
+    set_respect_gitignore,
     set_rules_filename,
+    should_respect_gitignore,
 )
 from agentrules.config_service import (
     get_output_preferences as load_output_preferences,
@@ -139,3 +141,11 @@ def remove_custom_exclusion(kind: str, value: str) -> str | None:
 
 def reset_custom_exclusions() -> None:
     reset_exclusions()
+
+
+def save_respect_gitignore(enabled: bool) -> None:
+    set_respect_gitignore(enabled)
+
+
+def is_gitignore_respected() -> bool:
+    return should_respect_gitignore()

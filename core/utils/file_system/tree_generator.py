@@ -18,6 +18,8 @@ of project structures.
 import fnmatch  # Provides support for Unix shell-style wildcards
 from pathlib import Path  # Offers a way to interact with files and directories in a more object-oriented manner
 
+from pathspec import PathSpec
+
 from config.exclusions import (  # Importing predefined exclusion lists
     EXCLUDED_DIRS,
     EXCLUDED_EXTENSIONS,
@@ -166,7 +168,10 @@ def generate_tree(
     exclude_dirs: set[str] | None = None,
     exclude_patterns: set[str] | None = None,
     max_depth: int = 4,
-    current_depth: int = 0
+    current_depth: int = 0,
+    *,
+    gitignore_spec: PathSpec | None = None,
+    root: Path | None = None,
 ) -> list[str]:
     """
     Generate a tree structure of the specified directory path.
@@ -182,6 +187,12 @@ def generate_tree(
     Returns:
         List of strings representing the tree structure
     """
+    if isinstance(path, str):
+        path = Path(path)
+
+    if root is None:
+        root = path
+
     if exclude_dirs is None:
         exclude_dirs = DEFAULT_EXCLUDE_DIRS
     if exclude_patterns is None:
@@ -193,15 +204,25 @@ def generate_tree(
 
     tree = []
 
-    if isinstance(path, str):
-        path = Path(path)
-
     try:
         # Get all items in the directory
         items = sorted(path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
 
         # Filter out excluded items
-        items = [item for item in items if not should_exclude(item, exclude_dirs, exclude_patterns)]
+        filtered_items = []
+        for item in items:
+            if gitignore_spec is not None:
+                try:
+                    relative = item.relative_to(root).as_posix()
+                except ValueError:
+                    relative = item.as_posix()
+                if gitignore_spec.match_file(relative):
+                    continue
+            if should_exclude(item, exclude_dirs, exclude_patterns):
+                continue
+            filtered_items.append(item)
+
+        items = filtered_items
 
         # Process each item
         for index, item in enumerate(items):
@@ -222,7 +243,9 @@ def generate_tree(
                         exclude_dirs,
                         exclude_patterns,
                         max_depth,
-                        current_depth + 1
+                        current_depth + 1,
+                        gitignore_spec=gitignore_spec,
+                        root=root,
                     )
                 )
     except PermissionError:
@@ -325,6 +348,7 @@ def get_project_tree(
     exclude_dirs: set[str] | None = None,
     exclude_files: set[str] | None = None,
     exclude_extensions: set[str] | None = None,
+    gitignore_spec: PathSpec | None = None,
 ) -> list[str]:
     """
     Generate a tree structure for a project directory.
@@ -348,6 +372,8 @@ def get_project_tree(
         max_depth=max_depth,
         exclude_dirs=dirs,
         exclude_patterns=patterns,
+        gitignore_spec=gitignore_spec,
+        root=directory,
     )
 
     # Add the key

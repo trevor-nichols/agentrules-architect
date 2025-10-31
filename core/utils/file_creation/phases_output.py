@@ -19,6 +19,8 @@ import os  # Used for creating directories
 from pathlib import Path  # Used for interacting with file paths in a more object-oriented way
 from typing import Any  # Used for type hinting, which makes the code easier to understand
 
+from pathspec import PathSpec
+
 from core.utils.constants import DEFAULT_RULES_FILENAME
 
 # ====================================================
@@ -33,6 +35,8 @@ def save_phase_outputs(
     *,
     include_phase_files: bool = True,
     exclusion_summary: dict | None = None,
+    gitignore_spec: PathSpec | None = None,
+    gitignore_info: dict | None = None,
 ) -> None:
     """
     Save the outputs of each phase to separate markdown files.
@@ -137,7 +141,9 @@ def save_phase_outputs(
     tree = generate_tree(
         directory,
         exclude_dirs=custom_exclude_dirs,
-        exclude_patterns=DEFAULT_EXCLUDE_PATTERNS
+        exclude_patterns=DEFAULT_EXCLUDE_PATTERNS,
+        gitignore_spec=gitignore_spec,
+        root=directory,
     )
 
     # Add delimiters and format for inclusion in the AGENTS.md file
@@ -208,6 +214,15 @@ def save_phase_outputs(
                     f.write(_format_line("Directories", effective.get("directories", []), "•") or "")
                     f.write(_format_line("Files", effective.get("files", []), "•") or "")
                     f.write(_format_line("Extensions", effective.get("extensions", []), "•") or "")
+                f.write("\n")
+
+            if gitignore_info is not None:
+                used = gitignore_info.get("used", False)
+                f.write("\n## Gitignore Handling\n\n")
+                f.write(f"- Respect .gitignore: {'Yes' if used else 'No'}\n")
+                source_path = gitignore_info.get("path")
+                if used and source_path:
+                    f.write(f"  - Source: {source_path}\n")
                 f.write("\n")
 
             f.write("See individual phase files for detailed outputs.")

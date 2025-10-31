@@ -22,6 +22,8 @@ import logging
 from collections.abc import Generator
 from pathlib import Path
 
+from pathspec import PathSpec
+
 from config.exclusions import EXCLUDED_DIRS, EXCLUDED_EXTENSIONS, EXCLUDED_FILES
 
 # ====================================================
@@ -131,6 +133,9 @@ def list_files(
     exclude_dirs: set[str] | None = None,
     exclude_patterns: set[str] | None = None,
     max_depth: int = 10,
+    *,
+    gitignore_spec: PathSpec | None = None,
+    root: Path | None = None,
 ) -> Generator[Path, None, None]:
     """
     List all files in a directory that aren't excluded.
@@ -144,6 +149,9 @@ def list_files(
     Yields:
         Path: File paths that match criteria
     """
+    if root is None:
+        root = directory
+
     if exclude_dirs is None:
         exclude_dirs = EXCLUDED_DIRS
 
@@ -157,12 +165,23 @@ def list_files(
         for ext in EXCLUDED_EXTENSIONS:
             exclude_patterns.add(f'*{ext}')
 
+    def _is_gitignored(path: Path) -> bool:
+        if gitignore_spec is None:
+            return False
+        try:
+            relative = path.relative_to(root).as_posix()
+        except ValueError:
+            relative = path.as_posix()
+        return gitignore_spec.match_file(relative)
+
     def _list_files_recursive(path: Path, current_depth: int = 0) -> Generator[Path, None, None]:
         if current_depth > max_depth:
             return
 
         try:
             for item in path.iterdir():
+                if gitignore_spec and _is_gitignored(item):
+                    continue
                 if should_exclude(item, exclude_dirs, exclude_patterns):
                     continue
 
@@ -188,6 +207,8 @@ def get_file_contents(
     exclude_patterns: set[str] | None = None,
     max_size_kb: int = 1000,  # Don't process files larger than 1MB by default
     max_files: int = 100,  # Limit the number of files to process
+    *,
+    gitignore_spec: PathSpec | None = None,
 ) -> dict[str, str]:
     """
     Get the contents of all files in a directory, excluding those that match exclusion patterns.
@@ -205,7 +226,13 @@ def get_file_contents(
     file_contents = {}
     file_count = 0
 
-    for file_path in list_files(directory, exclude_dirs, exclude_patterns):
+    for file_path in list_files(
+        directory,
+        exclude_dirs,
+        exclude_patterns,
+        gitignore_spec=gitignore_spec,
+        root=directory,
+    ):
         if file_count >= max_files:
             logger.warning(f"Reached maximum file limit of {max_files}")
             break
@@ -241,7 +268,7 @@ def get_file_contents(
 # clearly marked with its path.
 # ====================================================
 
-def get_formatted_file_contents(directory: Path) -> str:
+def get_formatted_file_contents(directory: Path, *, gitignore_spec: PathSpec | None = None) -> str:
     """
     Get all file contents formatted with file paths in a single string.
 
@@ -251,7 +278,7 @@ def get_formatted_file_contents(directory: Path) -> str:
     Returns:
         str: All formatted file contents concatenated
     """
-    file_contents = get_file_contents(directory)
+    file_contents = get_file_contents(directory, gitignore_spec=gitignore_spec)
     return "\n\n".join(file_contents.values())
 
 
@@ -262,7 +289,12 @@ def get_formatted_file_contents(directory: Path) -> str:
 # to process certain files and not the entire directory.
 # ====================================================
 
-def get_filtered_formatted_contents(directory: Path, files_to_include: list[str]) -> str:
+def get_filtered_formatted_contents(
+    directory: Path,
+    files_to_include: list[str],
+    *,
+    gitignore_spec: PathSpec | None = None,
+) -> str:
     """
     Get formatted contents for only the specified files.
 
@@ -273,7 +305,7 @@ def get_filtered_formatted_contents(directory: Path, files_to_include: list[str]
     Returns:
         str: Formatted contents of the specified files
     """
-    all_contents = get_file_contents(directory)
+    all_contents = get_file_contents(directory, gitignore_spec=gitignore_spec)
     filtered_contents = []
 
     for file_path in files_to_include:

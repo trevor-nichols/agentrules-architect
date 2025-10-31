@@ -265,6 +265,8 @@ def _render_exclusion_summary(context: CliContext) -> dict:
 
     console = context.console
     console.print("\n[bold]Current exclusion rules[/bold]")
+    respect_label = "[green]ON[/]" if overrides.respect_gitignore else "[red]OFF[/]"
+    console.print(f"[cyan]Respect .gitignore:[/] {respect_label}\n")
 
     table = Table(show_header=True, header_style="bold cyan", pad_edge=False)
     table.add_column("Directories", overflow="fold")
@@ -366,12 +368,19 @@ def configure_exclusions(context: CliContext) -> None:
     while True:
         _render_exclusion_summary(context)
 
+        current_gitignore = configuration.is_gitignore_respected()
+
         category = questionary.select(
             "Choose exclusion category:",
             choices=[
                 questionary.Choice(title="Directories", value="directories"),
                 questionary.Choice(title="Files", value="files"),
                 questionary.Choice(title="Extensions", value="extensions"),
+                toggle_choice(
+                    "Respect .gitignore",
+                    current_gitignore,
+                    value="__TOGGLE_GITIGNORE__",
+                ),
                 navigation_choice("Reset to defaults", value="__RESET__"),
                 navigation_choice("Back", value="__BACK__"),
             ],
@@ -382,6 +391,12 @@ def configure_exclusions(context: CliContext) -> None:
         if category in (None, "__BACK__"):
             console.print("[dim]Leaving exclusion settings.[/]")
             return
+
+        if category == "__TOGGLE_GITIGNORE__":
+            configuration.save_respect_gitignore(not current_gitignore)
+            status_text = "enabled" if not current_gitignore else "disabled"
+            console.print(f"[green].gitignore handling {status_text}.[/]")
+            continue
 
         if category == "__RESET__":
             configuration.reset_custom_exclusions()

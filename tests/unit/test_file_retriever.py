@@ -1,5 +1,8 @@
 from pathlib import Path
 
+from pathspec import PathSpec
+from pathspec.patterns.gitwildmatch import GitWildMatchPattern
+
 from core.utils.file_system.file_retriever import (
     get_file_contents,
     get_filtered_formatted_contents,
@@ -83,3 +86,25 @@ def test_get_filtered_formatted_contents_fuzzy_match(tmp_path: Path):
     assert "foo" in combined and "bar" in combined
     assert '<file_path="' in combined
 
+
+def test_get_file_contents_respects_gitignore(tmp_path: Path):
+    (tmp_path / ".gitignore").write_text("*.log\nbuild/\n")
+
+    keep = tmp_path / "keep.py"
+    keep.write_text("print('keep')")
+    ignored_file = tmp_path / "skip.log"
+    ignored_file.write_text("ignored")
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / "artifact.py").write_text("artifact")
+
+    spec = PathSpec.from_lines(
+        GitWildMatchPattern,
+        (tmp_path / ".gitignore").read_text().splitlines(),
+    )
+
+    contents = get_file_contents(tmp_path, gitignore_spec=spec, max_files=10)
+
+    assert "keep.py" in contents
+    assert "skip.log" not in contents
+    assert "build/artifact.py" not in contents
