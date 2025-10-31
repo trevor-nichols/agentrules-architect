@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import typer
 
 from .bootstrap import bootstrap_runtime
@@ -28,7 +30,7 @@ def build_app() -> typer.Typer:
     @app.callback(invoke_without_command=True)
     def main(
         ctx: typer.Context,
-        version: bool | None = typer.Option(
+        version: Optional[bool] = typer.Option(
             None,
             "--version",
             help="Show the agentrules version and exit.",

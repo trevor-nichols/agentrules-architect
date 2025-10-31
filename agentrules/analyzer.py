@@ -38,7 +38,7 @@ logger = logging.getLogger("project_extractor")
 class ProjectAnalyzer:
     """High-level coordinator for the six-phase analysis pipeline."""
 
-    def __init__(self, directory: Path, console: Console | None = None):
+    def __init__(self, directory: Path, console: Optional[Console] = None):
         self.directory = directory
         self.console = console or Console()
 
@@ -260,7 +260,7 @@ class ProjectAnalyzer:
         )
 
 
-def run_analysis(directory: Path, console: Console | None = None) -> str:
+def run_analysis(directory: Path, console: Optional[Console] = None) -> str:
     analyzer = ProjectAnalyzer(directory, console)
     loop = asyncio.new_event_loop()
     try:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional, Tuple
 
 import questionary
 
@@ -90,18 +90,18 @@ def configure_models(context: CliContext) -> None:
     active = configuration.get_active_presets()
     updated = False
 
-    def _split_preset_label(label: str) -> tuple[str, str | None]:
+    def _split_preset_label(label: str) -> Tuple[str, Optional[str]]:
         if " (" in label and label.endswith(")"):
             base, remainder = label.split(" (", 1)
             return base, remainder[:-1]
         return label, None
 
-    def _variant_display_text(variant_label: str | None) -> str:
+    def _variant_display_text(variant_label: Optional[str]) -> str:
         if not variant_label:
             return "Default"
         return variant_label[0].upper() + variant_label[1:]
 
-    def _current_display(key: str | None) -> str:
+    def _current_display(key: Optional[str]) -> str:
         info = model_config.get_preset_info(key) if key else None
         if not info:
             return "Not configured"

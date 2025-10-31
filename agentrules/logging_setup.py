@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from typing import Optional
 
 from rich.logging import RichHandler
 
@@ -38,7 +39,7 @@ class HTTPRequestFilter(logging.Filter):
 def configure_logging(
     *,
     level: int = logging.INFO,
-    filtered_loggers: Iterable[str] | None = None,
+    filtered_loggers: Optional[Iterable[str]] = None,
 ) -> logging.Logger:
     """
     Configure the Rich logging handler and return the project logger.
@@ -59,4 +60,3 @@ def configure_logging(
         logging.getLogger(name).setLevel(logging.WARNING)
 
     return project_logger
-

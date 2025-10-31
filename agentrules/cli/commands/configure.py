@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import questionary
 import typer
 
@@ -17,7 +19,7 @@ def register(app: typer.Typer) -> None:
 
     @app.command()
     def configure(  # type: ignore[func-returns-value]
-        provider: str | None = typer.Option(
+        provider: Optional[str] = typer.Option(
             None,
             "--provider",
             "-p",

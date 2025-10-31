@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 from agentrules import model_config
 from agentrules.config_service import (
@@ -19,7 +20,7 @@ class ProviderState:
 
     name: str
     env_var: str
-    api_key: str | None
+    api_key: Optional[str]
 
 
 def list_provider_states() -> list[ProviderState]:
@@ -30,29 +31,29 @@ def list_provider_states() -> list[ProviderState]:
     ]
 
 
-def save_provider_key(provider: str, api_key: str | None) -> None:
+def save_provider_key(provider: str, api_key: Optional[str]) -> None:
     set_provider_key(provider, api_key)
     model_config.apply_user_overrides()
 
 
-def get_provider_keys() -> dict[str, str | None]:
+def get_provider_keys() -> Dict[str, Optional[str]]:
     return get_current_provider_keys()
 
 
-def get_active_presets(overrides: dict[str, str] | None = None) -> dict[str, str]:
+def get_active_presets(overrides: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     return model_config.get_active_presets(overrides)
 
 
 def get_available_presets_for_phase(
     phase: str,
-    provider_keys: dict[str, str | None] | None = None,
+    provider_keys: Optional[Dict[str, Optional[str]]] = None,
 ):
     return model_config.get_available_presets_for_phase(phase, provider_keys)
 
 
-def save_phase_model(phase: str, preset_key: str | None) -> None:
+def save_phase_model(phase: str, preset_key: Optional[str]) -> None:
     set_phase_model(phase, preset_key)
 
 
-def apply_model_overrides(overrides: dict[str, str] | None = None) -> dict[str, str]:
+def apply_model_overrides(overrides: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     return model_config.apply_user_overrides(overrides)

@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Dict, Optional
 
 import tomli
 import tomli_w
@@ -29,7 +30,7 @@ PROVIDER_ENV_MAP = {
 
 @dataclass
 class ProviderConfig:
-    api_key: str | None = None
+    api_key: Optional[str] = None
 
 
 @dataclass
@@ -78,7 +79,7 @@ def save_config(config: CLIConfig) -> None:
         tomli_w.dump(config.to_dict(), fh)
 
 
-def set_provider_key(provider: str, api_key: str | None) -> CLIConfig:
+def set_provider_key(provider: str, api_key: Optional[str]) -> CLIConfig:
     config = load_config()
     config.providers[provider] = ProviderConfig(api_key=api_key)
     save_config(config)
@@ -86,7 +87,7 @@ def set_provider_key(provider: str, api_key: str | None) -> CLIConfig:
     return config
 
 
-def set_phase_model(phase: str, preset_key: str | None) -> CLIConfig:
+def set_phase_model(phase: str, preset_key: Optional[str]) -> CLIConfig:
     config = load_config()
     if preset_key and preset_key.strip():
         config.models[phase] = preset_key.strip()
@@ -96,7 +97,7 @@ def set_phase_model(phase: str, preset_key: str | None) -> CLIConfig:
     return config
 
 
-def apply_config_to_environment(config: CLIConfig | None = None) -> None:
+def apply_config_to_environment(config: Optional[CLIConfig] = None) -> None:
     config = config or load_config()
     for provider, cfg in config.providers.items():
         env_var = PROVIDER_ENV_MAP.get(provider)
@@ -106,9 +107,9 @@ def apply_config_to_environment(config: CLIConfig | None = None) -> None:
             os.environ[env_var] = cfg.api_key
 
 
-def get_current_provider_keys() -> dict[str, str | None]:
+def get_current_provider_keys() -> Dict[str, Optional[str]]:
     config = load_config()
-    keys: dict[str, str | None] = {}
+    keys: Dict[str, Optional[str]] = {}
     for provider in PROVIDER_ENV_MAP.keys():
         cfg = config.providers.get(provider, ProviderConfig())
         keys[provider] = cfg.api_key
