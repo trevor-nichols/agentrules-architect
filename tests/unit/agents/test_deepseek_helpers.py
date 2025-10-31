@@ -14,6 +14,7 @@ from core.agents.deepseek.config import (
 )
 from core.agents.deepseek.request_builder import prepare_request
 from core.agents.deepseek.response_parser import parse_response
+from core.agents.deepseek.tooling import resolve_tool_config
 
 
 class DeepSeekConfigTests(unittest.TestCase):
@@ -27,7 +28,7 @@ class DeepSeekConfigTests(unittest.TestCase):
         defaults = resolve_model_defaults("deepseek-reasoner")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.ENABLED)
         self.assertFalse(defaults.tools_allowed)
-        self.assertEqual(defaults.max_output_tokens, 4000)
+        self.assertEqual(defaults.max_output_tokens, 32_000)
 
     def test_resolve_base_url_priority(self) -> None:
         explicit = resolve_base_url("https://custom.deepseek.local")
@@ -43,6 +44,20 @@ class DeepSeekConfigTests(unittest.TestCase):
 
 
 class DeepSeekRequestBuilderTests(unittest.TestCase):
+    def test_prepare_request_includes_temperature_for_chat(self) -> None:
+        defaults = resolve_model_defaults("deepseek-chat")
+        prepared = prepare_request(
+            model_name="deepseek-chat",
+            content="Please analyze",
+            reasoning=ReasoningMode.DISABLED,
+            defaults=defaults,
+            tools=None,
+            temperature=0.6,
+        )
+
+        payload = prepared.payload
+        self.assertEqual(payload["temperature"], 0.6)
+
     def test_prepare_request_allows_tools_for_chat(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")
         prepared = prepare_request(
@@ -78,13 +93,15 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
                     "function": {"name": "lookup", "description": "", "parameters": {"type": "object"}},
                 }
             ],
+            temperature=0.2,
         )
 
         payload = prepared.payload
         self.assertEqual(payload["model"], "deepseek-reasoner")
-        self.assertEqual(payload["max_tokens"], 4000)
+        self.assertEqual(payload["max_tokens"], 32_000)
         self.assertNotIn("tools", payload)
         self.assertNotIn("tool_choice", payload)
+        self.assertNotIn("temperature", payload)
 
 
 @dataclass
@@ -151,6 +168,30 @@ class DeepSeekResponseParserTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0]["function"]["name"], "lookup")
         self.assertEqual(calls[0]["function"]["arguments"], '{"query": "foo"}')
+
+
+class DeepSeekToolingTests(unittest.TestCase):
+    def test_resolve_tool_config_returns_tools(self) -> None:
+        tool = {
+            "type": "function",
+            "function": {
+                "name": "lookup",
+                "description": "",
+                "parameters": {"type": "object", "properties": {}}
+            },
+        }
+
+        resolved = resolve_tool_config(
+            tools=None,
+            tools_config={"enabled": True, "tools": [tool]},
+            allow_tools=True,
+        )
+
+        self.assertIsNotNone(resolved)
+        assert resolved is not None
+        self.assertIsInstance(resolved, list)
+        self.assertEqual(resolved[0]["function"]["name"], "lookup")
+
 
 
 if __name__ == "__main__":

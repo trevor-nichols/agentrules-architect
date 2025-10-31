@@ -74,8 +74,8 @@ class ToolManager:
             return converted
 
         elif provider == ModelProvider.DEEPSEEK:
-            # DeepSeek doesn't support tools
-            return []
+            # DeepSeek shares OpenAI's tool schema.
+            return list(normalized)
 
         return []
 

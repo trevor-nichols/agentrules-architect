@@ -32,4 +32,3 @@ def resolve_tool_config(
         return None
 
     return ToolManager.get_provider_tools(tool_list, ModelProvider.DEEPSEEK)
-

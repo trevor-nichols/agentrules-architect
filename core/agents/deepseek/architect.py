@@ -37,18 +37,24 @@ class DeepSeekArchitect(BaseArchitect):
         effective_reasoning = reasoning or self._defaults.default_reasoning
 
         self._client_override: Any | None = None
-        # DeepSeek models currently do not accept a temperature parameter.
-        if temperature is not None:
-            logger.debug(
-                "DeepSeek models ignore supplied temperature values; discarding %.2f",
+        supports_sampling = self.model_name.lower() != "deepseek-reasoner"
+        effective_temperature = temperature if supports_sampling else None
+        if temperature is not None and not supports_sampling:
+            logger.info(
+                (
+                    "[bold teal]%s:[/bold teal] Ignoring temperature %.2f because %s "
+                    "does not support sampling parameters."
+                ),
+                name or "DeepSeek Architect",
                 temperature,
+                model_name,
             )
 
         super().__init__(
             provider=ModelProvider.DEEPSEEK,
             model_name=model_name,
             reasoning=effective_reasoning,
-            temperature=None,
+            temperature=effective_temperature,
             name=name,
             role=role,
             responsibilities=responsibilities,
@@ -203,6 +209,7 @@ class DeepSeekArchitect(BaseArchitect):
             reasoning=self.reasoning,
             defaults=self._defaults,
             tools=tools,
+            temperature=self.temperature,
         )
 
     async def _run_phase_request(

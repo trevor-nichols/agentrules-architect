@@ -27,7 +27,7 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
     ),
     "deepseek-reasoner": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
-        max_output_tokens=4000,
+        max_output_tokens=32_000,
         tools_allowed=False,
     ),
 }
@@ -59,4 +59,3 @@ def resolve_base_url(explicit_base_url: str | None) -> str:
     if env_base:
         return env_base
     return DEFAULT_BASE_URL
-
