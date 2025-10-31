@@ -5,34 +5,51 @@ from __future__ import annotations
 from typing import Any
 
 import questionary
+from rich.table import Table
 
 from agentrules import model_config
 
-from ..context import CliContext, mask_secret
+from ..context import CliContext, format_secret_status, mask_secret
 from ..services import configuration
 
 
-def show_provider_summary(context: CliContext) -> None:
-    context.console.print("\n[bold]Current Provider Configuration[/bold]")
-    for state in configuration.list_provider_states():
-        context.console.print(f"- {state.name.title():<10}: {mask_secret(state.api_key)}")
+def _render_provider_table(context: CliContext, states: list[configuration.ProviderState]) -> None:
+    table = Table(title="[bold]Provider API Keys[/bold]", show_lines=False, pad_edge=False)
+    table.add_column("Provider", style="bold", no_wrap=True)
+    table.add_column("Status", style="", no_wrap=True)
+    table.add_column("Key", style="dim")
+
+    for state in states:
+        status_display = format_secret_status(state.api_key)
+        key_display = mask_secret(state.api_key) if state.api_key else "-"
+        if state.api_key:
+            key_display = f"[dim]{key_display}[/]"
+        else:
+            key_display = "[dim]-[/]"
+        table.add_row(state.name.title(), status_display, key_display)
+
     context.console.print("")
+    context.console.print(table)
+    context.console.print("")
+
+
+def show_provider_summary(context: CliContext) -> None:
+    states = configuration.list_provider_states()
+    _render_provider_table(context, states)
 
 
 def configure_provider_keys(context: CliContext) -> None:
     console = context.console
     console.print("\n[bold]Configure Provider API Keys[/bold]")
-    console.print("Select a provider to update. Leave the key blank to keep the current value.\n")
+    console.print("Select a provider to update. Leave the key blank to keep the current value.")
 
     updated = False
 
     while True:
         states = configuration.list_provider_states()
+        _render_provider_table(context, states)
         choices: list[questionary.Choice] = [
-            questionary.Choice(
-                title=f"{state.name.title()} ({state.env_var}) [{mask_secret(state.api_key)}]",
-                value=state.name,
-            )
+            questionary.Choice(title=state.name.title(), value=state.name)
             for state in states
         ]
         choices.append(questionary.Choice(title="Done", value="__DONE__"))
@@ -56,7 +73,7 @@ def configure_provider_keys(context: CliContext) -> None:
 
         current_display = mask_secret(state.api_key)
         answer = questionary.password(
-            f"Enter {state.name.title()} API key ({state.env_var}) [{current_display}]:",
+            f"Enter {state.name.title()} API key [{current_display}]",
             qmark="🔐",
             default="",
         ).ask()

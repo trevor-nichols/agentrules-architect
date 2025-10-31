@@ -5,16 +5,22 @@ from unittest.mock import patch
 
 from rich.console import Console
 
-from agentrules.cli.context import CliContext, mask_secret
+from agentrules.cli.context import CliContext, format_secret_status, mask_secret
 from agentrules.cli.services import pipeline_runner
 
 
 class MaskSecretTests(unittest.TestCase):
     def test_mask_secret_handles_common_cases(self) -> None:
-        self.assertEqual(mask_secret(None), "[not set]")
+        self.assertEqual(mask_secret(None), "Not set")
         self.assertEqual(mask_secret("abc"), "***")
         self.assertEqual(mask_secret("abcdef"), "******")
         self.assertEqual(mask_secret("abcdefgh"), "abc…fgh")
+
+
+class SecretStatusTests(unittest.TestCase):
+    def test_format_secret_status_uses_color_tokens(self) -> None:
+        self.assertEqual(format_secret_status(None), "[red]Not set[/]")
+        self.assertEqual(format_secret_status("value"), "[green]Configured[/]")
 
 
 class PipelineRunnerTests(unittest.TestCase):

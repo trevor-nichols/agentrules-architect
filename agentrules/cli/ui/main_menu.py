@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from textwrap import dedent
 
 import questionary
+from rich.panel import Panel
+from rich.text import Text
 
 from ..context import CliContext
 from ..services.pipeline_runner import run_pipeline
@@ -14,19 +15,9 @@ from . import config_wizard
 
 def run_main_menu(context: CliContext) -> None:
     console = context.console
-    banner = dedent(
-        """
-        [bold cyan]
-         █████╗  ██████╗ ███████╗███╗   ██╗████████╗██████╗ ██╗   ██╗██╗     ███████╗███████╗
-        ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝██╔══██╗██║   ██║██║     ██╔════╝██╔════╝
-        ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   ██████╔╝██║   ██║██║     ███████╗█████╗
-        ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   ██╔══██╗██║   ██║██║     ╚════██║██╔══╝
-        ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   ██║  ██║╚██████╔╝███████╗███████║███████╗
-        ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝
-        [/bold cyan]
-        """
-    )
-    console.print(banner)
+    title = Text("agentrules", justify="center", style="bold cyan")
+    console.print(Panel(title, border_style="cyan", padding=(1, 4)))
+    console.print("[dim]Analyze projects, manage providers, and tune model presets.[/dim]\n")
 
     menu_choices = {
         "Analyze current directory": "analyze_current",

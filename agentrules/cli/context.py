@@ -23,7 +23,15 @@ def mask_secret(value: str | None) -> str:
     """Return a masked representation of a secret for safe display."""
 
     if not value:
-        return "[not set]"
+        return "Not set"
     if len(value) <= 6:
         return "*" * len(value)
     return f"{value[:3]}…{value[-3:]}"
+
+
+def format_secret_status(value: str | None) -> str:
+    """Return a Rich-colored status indicator for a provider secret."""
+
+    if value:
+        return "[green]Configured[/]"
+    return "[red]Not set[/]"
