@@ -16,15 +16,14 @@ of project structures.
 # ====================================================
 
 import fnmatch  # Provides support for Unix shell-style wildcards
-from pathlib import (
-    Path,  # Offers a way to interact with files and directories in a more object-oriented manner
-)
+from pathlib import Path  # Offers a way to interact with files and directories in a more object-oriented manner
 
 from config.exclusions import (  # Importing predefined exclusion lists
     EXCLUDED_DIRS,
     EXCLUDED_EXTENSIONS,
     EXCLUDED_FILES,
 )
+from core.utils.constants import FINAL_RULES_FILENAME
 
 # ====================================================
 # Setting Up Default Exclusion Constants
@@ -270,7 +269,7 @@ def generate_key(tree_content: list[str]) -> list[str]:
 
 def save_tree_to_file(tree_content: list[str], path: Path) -> str:
     """
-    Save the tree structure to a .cursorrules file.
+    Save the tree structure to the generated rules file.
 
     Args:
         tree_content: List of strings containing the tree structure
@@ -279,7 +278,7 @@ def save_tree_to_file(tree_content: list[str], path: Path) -> str:
     Returns:
         The path to the saved file
     """
-    output_file = path / ".cursorrules"
+    output_file = path / FINAL_RULES_FILENAME
 
     # Remove delimiters if they exist
     filtered_content = tree_content

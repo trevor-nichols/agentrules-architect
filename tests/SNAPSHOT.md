@@ -78,7 +78,7 @@
 │   └── test_tool_manager.py         # Unit tests for adapting tool schemas for different providers.
 └── utils/                         # Contains utility scripts and helpers for testing.
     ├── __init__.py                # Test utilities package marker.
-    ├── clean_cr_test.py           # A test script for the `.cursorrules` file cleaning utility.
+    ├── clean_cr_test.py           # A test script for the `AGENTS.md` file cleaning utility.
     ├── inputs/                    # Directory for test utility inputs.
     ├── offline_stubs.py           # Provides a dummy architect for running tests without making real API calls.
     ├── outputs/                   # Directory for test utility outputs.

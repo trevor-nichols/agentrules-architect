@@ -19,6 +19,8 @@ import os  # Used for creating directories
 from pathlib import Path  # Used for interacting with file paths in a more object-oriented way
 from typing import Any  # Used for type hinting, which makes the code easier to understand
 
+from core.utils.constants import FINAL_RULES_FILENAME
+
 # ====================================================
 # Function to Save Phase Outputs
 # This is the main function that takes the analysis results and saves them into separate files.
@@ -99,7 +101,7 @@ def save_phase_outputs(directory: Path, analysis_data: dict) -> None:
         report_data = analysis_data["consolidated_report"].get("report", "Error in consolidation phase")
         f.write(ensure_string(report_data))  # Ensure we're writing a string
 
-    # Final Analysis - Save to both markdown file and .cursorrules file
+    # Final Analysis - Save to both markdown file and AGENTS.md guidance file
     final_analysis_data = analysis_data["final_analysis"].get("analysis", "Error in final analysis phase")
 
     # Save to markdown file in phases_output directory
@@ -107,7 +109,7 @@ def save_phase_outputs(directory: Path, analysis_data: dict) -> None:
         f.write(f"# Final Analysis (Config: {final_model})\n\n")
         f.write(ensure_string(final_analysis_data))  # Ensure we're writing a string
 
-    # Save to .cursorrules file in project root directory with project tree
+    # Save to AGENTS.md file in project root directory with project tree
     # Define directories to exclude from the tree
     exclude_dirs = ["phases_output", "__pycache__", ".git", ".vscode", ".cursor"]
 
@@ -128,15 +130,15 @@ def save_phase_outputs(directory: Path, analysis_data: dict) -> None:
         exclude_patterns=DEFAULT_EXCLUDE_PATTERNS
     )
 
-    # Add delimiters and format for inclusion in the .cursorrules file
+    # Add delimiters and format for inclusion in the AGENTS.md file
     tree_section = [
         "\n<project_structure>",
     ]
     tree_section.extend(tree)
     tree_section.append("</project_structure>")
 
-    # Write final analysis and tree to .cursorrules file
-    with open(directory / ".cursorrules", "w", encoding="utf-8") as f:
+    # Write final analysis and tree to AGENTS.md file
+    with open(directory / FINAL_RULES_FILENAME, "w", encoding="utf-8") as f:
         f.write(ensure_string(final_analysis_data))  # Save the final analysis
         f.write("\n\n")  # Add spacing
         f.write("# Project Directory Structure\n")  # Section header
@@ -164,7 +166,7 @@ def save_phase_outputs(directory: Path, analysis_data: dict) -> None:
         f.write(f"- Final Analysis - {final_model}\n")
 
         f.write("\n## Generated Files\n\n")
-        f.write("- `.cursorrules` - Contains the final analysis for Cursor IDE\n")
+        f.write(f"- `{FINAL_RULES_FILENAME}` - Contains the final analysis for Cursor IDE\n")
         f.write("- `.cursorignore` - Contains patterns of files to ignore in Cursor IDE\n")
         f.write(f"- `phase1_discovery.md` - Results from Initial Discovery (Config: {phase1_model})\n")
         f.write(f"- `phase2_planning.md` - Results from Methodical Planning (Config: {phase2_model})\n")

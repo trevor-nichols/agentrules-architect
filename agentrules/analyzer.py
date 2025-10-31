@@ -28,6 +28,7 @@ from core.analysis import (
     Phase5Analysis,
 )
 from core.analysis.events import AnalysisEvent, AnalysisEventSink
+from core.utils.constants import FINAL_RULES_FILENAME
 from core.utils.file_creation.cursorignore import create_cursorignore
 from core.utils.file_creation.phases_output import save_phase_outputs
 from core.utils.file_system.tree_generator import get_project_tree
@@ -378,7 +379,7 @@ class ProjectAnalyzer:
             f"[green]Individual phase outputs saved to:[/] {self.directory}/phases_output/"
         )
         self.console.print(
-            f"[green]Cursor rules created at:[/] {self.directory}/.cursorrules"
+            f"[green]Cursor rules created at:[/] {self.directory}/{FINAL_RULES_FILENAME}"
         )
         self.console.print(
             f"[green]Cursor ignore created at:[/] {self.directory}/.cursorignore"

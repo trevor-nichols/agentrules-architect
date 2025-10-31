@@ -80,7 +80,7 @@
     │   └── tree_generator.py  # Generates an ASCII representation of the project's directory structure.
     ├── formatters/            # Contains utilities for formatting output files.
     │   ├── __init__.py        # Exposes the cursorrules file cleaning utility.
-    │   └── clean_cursorrules.py # Cleans .cursorrules files to ensure correct system prompt format.
+    │   └── clean_cursorrules.py # Cleans AGENTS.md files to ensure correct system prompt format.
     ├── model_config_helper.py # Helper function to get the human-readable name of a model configuration.
     ├── offline.py             # Provides stubs for running the analysis pipeline in offline mode.
     └── parsers/               # Contains parsers for extracting structured data from model outputs.

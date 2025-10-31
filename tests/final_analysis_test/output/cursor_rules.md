@@ -1,4 +1,4 @@
-Based on the provided project structure and report, I will create a tailored `.cursorrules` file in the CRS-1 format. This file will guide the AI assistant in the Cursor IDE to effectively assist in the development of the flight simulator system. The rules will incorporate the project's current state, technical constraints, and strategic priorities.
+Based on the provided project structure and report, I will create a tailored `AGENTS.md` file in the CRS-1 format. This file will guide the AI assistant in the Cursor IDE to effectively assist in the development of the flight simulator system. The rules will incorporate the project's current state, technical constraints, and strategic priorities.
 
 ### CRS-1 Cursor Rules File
 

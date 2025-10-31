@@ -12,7 +12,7 @@ from datetime import datetime
 # Prompt for the Final Analysis (OpenAI)
 FINAL_ANALYSIS_PROMPT = """
 
-You are an AI prompt engineer specializing in Cursor rules generation for the Cursor AI IDE. Cursor rules (.cursorrules files) are sophisticated prompt engineering frameworks that serve as persistent context providers for the AI assistant embedded within the Cursor IDE. They represent a significant evolution in AI-assisted development by creating a comprehensive "persona" for the AI to adopt during coding sessions.
+You are an AI prompt engineer specializing in Cursor rules generation for the Cursor AI IDE. Cursor rules (persisted as `AGENTS.md` files) are sophisticated prompt engineering frameworks that serve as persistent context providers for the AI assistant embedded within the Cursor IDE. They represent a significant evolution in AI-assisted development by creating a comprehensive "persona" for the AI to adopt during coding sessions.
 
 ### Core Functions:
 
@@ -27,7 +27,7 @@ Your task is to thoroughly analyze both the project report and the project struc
 
 ## Introduction
 
-The Cursor Rules Specification (CRS-1) provides a standardized framework for creating effective `.cursorrules` files. This specification draws from extensive analysis of successful implementations and aims to optimize AI-assisted development across any codebase or technology stack.
+The Cursor Rules Specification (CRS-1) provides a standardized framework for creating effective `AGENTS.md` files. This specification draws from extensive analysis of successful implementations and aims to optimize AI-assisted development across any codebase or technology stack.
 
 ## Core Structure
 

@@ -9,7 +9,7 @@
 [![Google](https://img.shields.io/badge/Google-gemini--2.0--flash%20%7C%20gemini--2.5--pro-green.svg)](https://ai.google.dev/)
 [![Built By](https://img.shields.io/badge/Built%20By-SlyyCooper-orange.svg)](https://github.com/SlyyCooper)
 
-**Your Multi-Provider AI Code Analysis and .cursorrules Generator 🚀**
+**Your Multi-Provider AI Code Analysis and AGENTS.md Generator 🚀**
 
 [Features](#-features) • [Requirements](#-requirements) • [Installation](#-installation) • [Usage](#-usage) • [Configuration](#-configuration) • [Architecture](#-architecture) • [Output](#-output) • [Contributing](#-contributing)
 
@@ -17,7 +17,7 @@
 
 ## 🌟 What's This All About?
 
-CursorRules Architect V2 is an advanced multi-agent system that analyzes your codebase using a powerful combination of AI models from Anthropic, OpenAI, DeepSeek, and Google. It performs a comprehensive six-phase analysis to understand your project's structure, dependencies, patterns, and architectural decisions. The result is a detailed report and automatically generated `.cursorrules` and `.cursorignore` files customized for your project.
+CursorRules Architect V2 is an advanced multi-agent system that analyzes your codebase using a powerful combination of AI models from Anthropic, OpenAI, DeepSeek, and Google. It performs a comprehensive six-phase analysis to understand your project's structure, dependencies, patterns, and architectural decisions. The result is a detailed report and automatically generated `AGENTS.md` and `.cursorignore` files customized for your project.
 
 ## ✨ Features
 
@@ -28,7 +28,7 @@ CursorRules Architect V2 is an advanced multi-agent system that analyzes your co
 - 🔄 **Async Processing** - Parallel agent execution for faster analysis
 - 📊 **Detailed Metrics** - Track analysis time and token usage
 - 📝 **Comprehensive Documentation** - Generated reports for each phase and component
-- 🎨 **Intelligent Rule Generation** - Creates optimal `.cursorrules` files for your coding style
+- 🎨 **Intelligent Rule Generation** - Creates optimal `AGENTS.md` files for your coding style
 - 📑 **Multi-Format Output** - Separate markdown files for each analysis phase
 - 🚫 **Smart Exclusions** - Customizable patterns to focus analysis on relevant files
 - 🔧 **Fully Configurable** - Easy to customize which models are used for each phase
@@ -424,8 +424,7 @@ cursorrules-architect/
 │   └── utils/                   # Utility functions and tools
 │       ├── file_creation/           # File creation utilities
 │       │   ├── cursorignore.py      # .cursorignore management
-│       │   ├── cursorrules.py       # .cursorrules management
-│       │   └── phases_output.py     # Phase output saving
+│       │   └── phases_output.py     # Phase output & AGENTS.md generation
 │       └── tools/                   # Tool utilities
 │           ├── agent_parser.py      # Parser for Phase 2 output
 │           ├── file_retriever.py    # File content retrieval
@@ -440,7 +439,7 @@ CursorRules Architect V2 generates a rich set of output files:
 
 ```
 your-project/
-├── .cursorrules                 # Generated rules file for Cursor IDE
+├── AGENTS.md                    # Generated rules file for Cursor IDE
 ├── .cursorignore                # Generated ignore patterns for Cursor IDE
 └── phases_output/               # Detailed phase outputs
     ├── phase1_discovery.md      # Initial agent findings
@@ -462,7 +461,7 @@ The system tracks performance metrics for the analysis:
 
 ## 🛠️ Related Tools
 
-Check out [cursorrules-tools](https://github.com/SlyyCooper/cursorrules-tools) for additional utilities that can help with Cursor IDE development. This collection includes tools for managing `.cursorrules` and `.cursorignore` files, generating codebase snapshots, analyzing dependencies, and more.
+Check out [cursorrules-tools](https://github.com/SlyyCooper/cursorrules-tools) for additional utilities that can help with Cursor IDE development. This collection includes tools for managing `AGENTS.md` (formerly `.cursorrules`) and `.cursorignore` files, generating codebase snapshots, analyzing dependencies, and more.
 
 ## 💡 Advanced Features
 

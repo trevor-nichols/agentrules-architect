@@ -2,8 +2,8 @@
 """
 core/utils/formatters/clean_cursorrules.py
 
-This module provides functionality for cleaning .cursorrules files by removing
-any text before the first occurrence of "You are...".
+This module provides functionality for cleaning the generated rules file by
+removing any text before the first occurrence of "You are...".
 
 This ensures that cursor rules files start with the proper system prompt format.
 """
@@ -15,24 +15,26 @@ This ensures that cursor rules files start with the proper system prompt format.
 import os
 import re
 
+from core.utils.constants import FINAL_RULES_FILENAME
+
 # ====================================================
 # Constants
 # ====================================================
-CURSORRULES_FILE = ".cursorrules"  # Default name for the .cursorrules file
+RULES_FILE_NAME = FINAL_RULES_FILENAME  # Default output filename for the agent rules
 START_PATTERN = re.compile(r'\bYou are\b', re.IGNORECASE)  # Pattern to find "You are" text
 
 
 # ====================================================
 # Function: clean_cursorrules_file
-# This function cleans a .cursorrules file by removing any text
+# This function cleans the AGENTS.md rules file by removing any text
 # before the first occurrence of "You are..."
 # ====================================================
 def clean_cursorrules_file(file_path: str) -> tuple[bool, str]:
     """
-    Clean a .cursorrules file by removing any text before "You are...".
+    Clean the rules file by removing any text before "You are...".
 
     Args:
-        file_path: Path to the .cursorrules file
+        file_path: Path to the generated rules file
 
     Returns:
         Tuple[bool, str]: Success status and message
@@ -66,11 +68,11 @@ def clean_cursorrules_file(file_path: str) -> tuple[bool, str]:
 
 # ====================================================
 # Function: clean_cursorrules
-# This function finds and cleans a .cursorrules file in the specified directory
+# This function finds and cleans an AGENTS.md rules file in the specified directory
 # ====================================================
 def clean_cursorrules(directory: str | None = None) -> tuple[bool, str]:
     """
-    Find and clean a .cursorrules file in the specified directory.
+    Find and clean an AGENTS.md rules file in the specified directory.
 
     Args:
         directory: Optional directory path where to find the file. If None, uses current directory.
@@ -78,10 +80,10 @@ def clean_cursorrules(directory: str | None = None) -> tuple[bool, str]:
     Returns:
         Tuple[bool, str]: Success status and message
     """
-    # Determine the full path for the .cursorrules file
+    # Determine the full path for the rules file
     if directory:
-        cursorrules_path = os.path.join(directory, CURSORRULES_FILE)
+        cursorrules_path = os.path.join(directory, RULES_FILE_NAME)
     else:
-        cursorrules_path = CURSORRULES_FILE
+        cursorrules_path = RULES_FILE_NAME
 
     return clean_cursorrules_file(cursorrules_path)
