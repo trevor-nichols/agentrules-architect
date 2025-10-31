@@ -1,68 +1,77 @@
 .
-├── __init__.py                # Marks the directory as the 'core' Python package.
-├── agent_tools/               # Contains tools that can be used by AI agents.
-│   ├── tool_manager.py        # Manages and converts tool schemas for different LLM providers.
-│   └── web_search/            # Contains web search tool implementations.
-│       ├── __init__.py        # Exposes the Tavily web search tool implementation.
+├── __init__.py                # Marks the `core` directory as a Python package.
+├── agent_tools/               # Contains tools that AI agents can use, such as web search.
+│   ├── tool_manager.py        # Manages and converts tool definitions for different LLM providers.
+│   └── web_search/            # Contains implementations for web search tools.
+│       ├── __init__.py        # Exposes the Tavily search tool functionality.
 │       └── tavily.py          # Implements a web search tool using the Tavily API.
-├── agents/                    # Defines interfaces and implementations for various AI model providers.
-│   ├── __init__.py            # Exposes a factory function for creating agent instances.
-│   ├── anthropic/             # Contains the implementation for Anthropic (Claude) models.
+├── agents/                    # Contains all agent implementations, organized by LLM provider.
+│   ├── __init__.py            # Exposes a factory for creating architect instances.
+│   ├── anthropic/             # Implementation for Anthropic's Claude models.
 │   │   ├── __init__.py        # Exposes the AnthropicArchitect class.
-│   │   ├── architect.py       # Implements the BaseArchitect interface for Anthropic models.
-│   │   ├── client.py          # Manages the Anthropic SDK client instance.
-│   │   ├── prompting.py       # Provides helper functions for formatting Anthropic prompts.
+│   │   ├── architect.py       # Main implementation of the BaseArchitect for Anthropic models.
+│   │   ├── client.py          # Manages the Anthropic SDK client.
+│   │   ├── prompting.py       # Contains prompt formatting helpers for Anthropic models.
 │   │   ├── request_builder.py # Constructs API request payloads for Anthropic models.
 │   │   ├── response_parser.py # Parses and normalizes responses from the Anthropic API.
 │   │   └── tooling.py         # Helper for preparing tool configurations for Anthropic models.
-│   ├── base.py                # Defines the abstract BaseArchitect class for all AI agents.
-│   ├── deepseek.py            # Implements the BaseArchitect for DeepSeek models.
+│   ├── base.py                # Defines the abstract BaseArchitect class and core enums.
+│   ├── deepseek/              # Implementation for DeepSeek models.
+│   │   ├── __init__.py        # Exposes the DeepSeekArchitect class.
+│   │   ├── architect.py       # Main implementation of the BaseArchitect for DeepSeek models.
+│   │   ├── client.py          # Manages the OpenAI SDK client for the DeepSeek-compatible API.
+│   │   ├── compat.py          # A backward-compatibility wrapper for a legacy DeepSeek agent.
+│   │   ├── config.py          # Defines model-specific defaults for DeepSeek.
+│   │   ├── prompting.py       # Contains prompt formatting helpers for DeepSeek models.
+│   │   ├── request_builder.py # Constructs API request payloads for DeepSeek models.
+│   │   ├── response_parser.py # Parses and normalizes responses from the DeepSeek API.
+│   │   └── tooling.py         # Helper for preparing tool configurations for DeepSeek models.
 │   ├── factory/               # Contains the factory for creating agent instances.
-│   │   ├── __init__.py        # Exposes the main factory function.
-│   │   └── factory.py         # Implements a factory to create architect instances based on configuration.
-│   ├── gemini/                # Contains the implementation for Google Gemini models.
-│   │   ├── __init__.py        # Exposes the GeminiArchitect and a legacy agent.
-│   │   ├── architect.py       # Implements the BaseArchitect interface for Gemini models.
-│   │   ├── client.py          # Manages the Google GenAI (Gemini) client instance.
+│   │   ├── __init__.py        # Exposes the architect factory function.
+│   │   └── factory.py         # Implements a factory to create agent instances based on configuration.
+│   ├── gemini/                # Implementation for Google's Gemini models.
+│   │   ├── __init__.py        # Exposes the GeminiArchitect class.
+│   │   ├── architect.py       # Main implementation of the BaseArchitect for Gemini models.
+│   │   ├── client.py          # Manages the Google GenAI (Gemini) SDK client.
 │   │   ├── errors.py          # Defines custom exceptions for the Gemini provider.
-│   │   ├── legacy.py          # Provides a backward-compatible wrapper for the Gemini architect.
-│   │   ├── prompting.py       # Provides helper functions for formatting Gemini prompts.
+│   │   ├── legacy.py          # A backward-compatibility wrapper for a legacy Gemini agent.
+│   │   ├── prompting.py       # Contains prompt formatting helpers for Gemini models.
 │   │   ├── response_parser.py # Parses and normalizes responses from the Gemini API.
 │   │   └── tooling.py         # Helper for preparing tool configurations for Gemini models.
-│   └── openai/                # Contains the implementation for OpenAI models.
-│       ├── __init__.py        # Exposes the OpenAIArchitect and a legacy agent.
-│       ├── architect.py       # Implements the BaseArchitect interface for OpenAI models.
-│       ├── client.py          # Manages the OpenAI SDK client instance.
-│       ├── compat.py          # Provides a backward-compatible wrapper for the OpenAI architect.
-│       ├── config.py          # Defines default configurations for various OpenAI models.
-│       ├── request_builder.py # Constructs API request payloads for OpenAI models.
+│   └── openai/                # Implementation for OpenAI models (GPT series).
+│       ├── __init__.py        # Exposes the OpenAIArchitect class.
+│       ├── architect.py       # Main implementation of the BaseArchitect for OpenAI models.
+│       ├── client.py          # Manages the OpenAI SDK client.
+│       ├── compat.py          # A backward-compatibility wrapper for a legacy OpenAI agent.
+│       ├── config.py          # Defines model-specific defaults for OpenAI.
+│       └── request_builder.py # Constructs API request payloads for OpenAI models.
 │       └── response_parser.py # Parses and normalizes responses from the OpenAI API.
-├── analysis/                  # Implements the multi-phase project analysis pipeline.
-│   ├── __init__.py            # Exports all analysis phase classes.
+├── analysis/                  # Contains the logic for the multi-phase analysis pipeline.
+│   ├── __init__.py            # Exposes analysis classes for all phases.
 │   ├── final_analysis.py      # Implements the final analysis phase to generate cursor rules.
 │   ├── phase_1.py             # Implements Phase 1: Initial project discovery and research.
-│   ├── phase_2.py             # Implements Phase 2: Creates a methodical plan for deep analysis.
-│   ├── phase_3.py             # Implements Phase 3: In-depth file analysis by specialized agents.
-│   ├── phase_4.py             # Implements Phase 4: Synthesizes findings from the deep analysis.
-│   ├── phase_5.py             # Implements Phase 5: Consolidates all findings into a final report.
-├── types/                     # Defines custom data types and structures for the project.
-│   ├── __init__.py            # Exports primary type definitions for models and agents.
-│   ├── agent_config.py        # Defines the TypedDict for agent configuration.
-│   ├── models.py              # Defines the ModelConfig named tuple and pre-configured model instances.
-│   └── tool_config.py         # Defines TypedDicts for tool configurations.
-└── utils/                     # Contains shared utility functions and helper modules.
-    ├── file_creation/         # Utilities for generating files like .cursorignore and phase outputs.
+│   ├── phase_2.py             # Implements Phase 2: Creation of a methodical analysis plan.
+│   ├── phase_3.py             # Implements Phase 3: Deep analysis of code files by specialized agents.
+│   ├── phase_4.py             # Implements Phase 4: Synthesis of findings from the deep analysis.
+│   └── phase_5.py             # Implements Phase 5: Consolidation of all findings into a single report.
+├── types/                     # Contains shared data structures and type definitions.
+│   ├── __init__.py            # Exposes key type definitions from the package.
+│   ├── agent_config.py        # Defines a TypedDict for agent configurations.
+│   ├── models.py              # Defines the ModelConfig type and various predefined model settings.
+│   └── tool_config.py         # Defines TypedDict structures for agent tool configurations.
+└── utils/                     # Contains various utility modules for file I/O, formatting, and parsing.
+    ├── file_creation/         # Utilities for creating output files.
     │   ├── cursorignore.py    # Manages the creation and modification of .cursorignore files.
-    │   └── phases_output.py   # Saves the output of each analysis phase to structured files.
-    ├── file_system/           # Utilities for file system operations like reading files and generating trees.
-    │   ├── __init__.py        # Exposes main functions for file retrieval and tree generation.
-    │   ├── file_retriever.py  # Retrieves file contents from a directory, respecting exclusion rules.
-    │   └── tree_generator.py  # Generates a visual ASCII tree representation of the project structure.
-    ├── formatters/            # Contains file content formatting utilities.
+    │   └── phases_output.py   # Saves the output of each analysis phase to separate files.
+    ├── file_system/           # Utilities for interacting with the file system.
+    │   ├── __init__.py        # Exposes key file system utility functions.
+    │   ├── file_retriever.py  # Retrieves and formats file contents from a project, respecting exclusions.
+    │   └── tree_generator.py  # Generates a visual ASCII tree of a project's structure.
+    ├── formatters/            # Utilities for formatting output files.
     │   ├── __init__.py        # Exposes the clean_cursorrules function.
-    │   └── clean_cursorrules.py # Cleans .cursorrules files to ensure a proper starting prompt.
-    ├── model_config_helper.py # Helper to resolve the string name of a model configuration for logging.
-    ├── offline.py             # Provides a dummy architect for running the pipeline without API calls.
-    └── parsers/               # Contains parsers for extracting structured data from text.
-        ├── __init__.py        # Exposes agent parser functions.
-        └── agent_parser.py    # Parses agent definitions and file assignments from Phase 2's output.
+    │   └── clean_cursorrules.py # Cleans up the final .cursorrules file by removing extraneous text.
+    ├── model_config_helper.py # Helper to retrieve the string name of a model configuration.
+    ├── offline.py             # Provides dummy architect stubs for running the pipeline without API calls.
+    └── parsers/               # Utilities for parsing model outputs.
+        ├── __init__.py        # Exposes key agent parser functions.
+        └── agent_parser.py    # Parses agent definitions and file assignments from Phase 2 output.

@@ -9,7 +9,16 @@
 │   ├── response_parser.py     # Parses responses from the Anthropic API.
 │   └── tooling.py             # Handles tool configuration for Anthropic models.
 ├── base.py                    # Defines the abstract BaseArchitect class and common enums.
-├── deepseek.py                # Implements the BaseArchitect interface for DeepSeek models.
+├── deepseek/                  # Contains the implementation for the DeepSeek agent.
+│   ├── __init__.py            # Exports DeepSeekArchitect and compatibility wrappers.
+│   ├── architect.py           # Implements the BaseArchitect interface for DeepSeek models.
+│   ├── client.py              # Manages the OpenAI-compatible DeepSeek client.
+│   ├── compat.py              # Backwards-compatible wrapper matching the legacy agent API.
+│   ├── config.py              # Provides model defaults and base URL resolution.
+│   ├── prompting.py           # Houses prompt templates and formatting helpers.
+│   ├── request_builder.py     # Prepares DeepSeek chat completion payloads.
+│   ├── response_parser.py     # Normalises DeepSeek responses.
+│   └── tooling.py             # Resolves tool configurations for DeepSeek models.
 ├── factory/                   # Contains the factory for creating different architect instances.
 │   ├── __init__.py            # Exposes the main factory function.
 │   └── factory.py             # Implements the logic to create architects based on configuration.
