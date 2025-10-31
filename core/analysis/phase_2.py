@@ -11,9 +11,8 @@ It defines the methods needed for creating a detailed analysis plan based on Pha
 
 import logging  # Used for logging messages
 from typing import Dict, List  # Used for type hinting, making code more readable
-from core.agents.openai import OpenAIAgent  # The OpenAI agent class
 from config.prompts.phase_2_prompts import PHASE_2_PROMPT, format_phase2_prompt  # Prompts for Phase 2
-from core.utils.tools.agent_parser import parse_agents_from_phase2, extract_agent_fallback  # Function to parse agent definitions
+from core.utils.parsers.agent_parser import parse_agents_from_phase2, extract_agent_fallback  # Function to parse agent definitions
 from core.agents import get_architect_for_phase  # Added import for dynamic model configuration
 
 # ====================================================

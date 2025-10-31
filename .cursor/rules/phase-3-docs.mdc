@@ -3,6 +3,9 @@ description:
 globs: core/analysis/phase_3.py,core/utils/tools/agent_parser.py,core/utils/tools/file_retriever.py,tests/phase_3_test/run_test.py
 alwaysApply: false
 ---
+name: phase-3-docs
+globs: core/analysis/phase_3.py,core/utils/parsers/agent_parser.py,core/utils/file_system/file_retriever.py,tests/phase_3_test/run_test.py
+---
 Phase 3 (Deep Analysis) is the third stage in the project analysis pipeline. Here's how it works:
 
 1. **Purpose:** 

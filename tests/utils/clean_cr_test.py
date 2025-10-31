@@ -13,7 +13,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from core.utils.tools.clean_cursorrules import clean_cursorrules_file
+from core.utils.formatters.clean_cursorrules import clean_cursorrules_file
 
 # Setup test paths
 input_file = Path("tests/tests_input/.cursorrules")

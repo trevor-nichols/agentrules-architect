@@ -28,7 +28,7 @@ class ReasoningMode(Enum):
     ENABLED = "enabled"
     DISABLED = "disabled"
     
-    # OpenAI-specific reasoning effort levels (for O1 and O3-mini)
+    # OpenAI-specific reasoning effort levels (for o3 and o4-mini)
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -74,7 +74,8 @@ class BaseArchitect(ABC):
         temperature: Optional[float] = None,
         name: Optional[str] = None,
         role: Optional[str] = None,
-        responsibilities: Optional[List[str]] = None
+        responsibilities: Optional[List[str]] = None,
+        tools_config: Optional[Dict] = None
     ):
         """
         Initialize a BaseArchitect instance.
@@ -87,6 +88,7 @@ class BaseArchitect(ABC):
             name: Optional name for the architect (for specialized roles)
             role: Optional role description
             responsibilities: Optional list of responsibilities
+            tools_config: Optional configuration for tools the model can use
         """
         self.provider = provider
         self.model_name = model_name
@@ -95,14 +97,16 @@ class BaseArchitect(ABC):
         self.name = name
         self.role = role
         self.responsibilities = responsibilities or []
+        self.tools_config = tools_config or {"enabled": False, "tools": None}
         
     @abstractmethod
-    async def analyze(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze(self, context: Dict[str, Any], tools: Optional[List[Any]] = None) -> Dict[str, Any]:
         """
         Run analysis using the AI model.
         
         Args:
             context: Dictionary containing the context for analysis
+            tools: Optional list of tools the model can use
             
         Returns:
             Dictionary containing the analysis results or error information

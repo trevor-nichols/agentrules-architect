@@ -1,11 +1,11 @@
 anthropic
-typer[all]
 rich
-pathlib
-pydantic
-beautifulsoup4
-lxml
 openai
 google-genai
 python-dotenv
 tavily-python
+typer
+questionary
+platformdirs
+tomli
+tomli-w

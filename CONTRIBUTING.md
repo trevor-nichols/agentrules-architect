@@ -37,7 +37,7 @@ To get started with development, you'll need to set up your local environment.
 
 - Python 3.8 or higher
 - API keys for at least one of the following providers:
-  - OpenAI API key with access to `o1`, `o3-mini`, or `gpt-4.1`
+  - OpenAI API key with access to `o3`, `o4-mini`, or `gpt-4.1`
   - Anthropic API key with access to `claude-3-7-sonnet-20250219` 
   - DeepSeek API key with access to DeepSeek Reasoner
 - Git
@@ -205,8 +205,8 @@ CursorRules Architect V2 supports multiple AI models:
   - `claude-3-7-sonnet-20250219` (with or without reasoning)
 
 - **OpenAI**:
-  - `o1` (with low/medium/high reasoning)
-  - `o3-mini` (with low/medium/high reasoning)
+  - `o3` (with low/medium/high reasoning)
+  - `o4-mini` (with low/medium/high reasoning)
   - `gpt-4.1` (with temperature control)
 
 - **DeepSeek**:
@@ -219,7 +219,7 @@ You can configure which models are used for each phase by modifying the `MODEL_C
 ```python
 MODEL_CONFIG = {
     "phase1": CLAUDE_WITH_REASONING,  # Use Claude with reasoning for Phase 1
-    "phase2": O1_HIGH,                # Use OpenAI's o1 with high reasoning for Phase 2
+    "phase2": O1_HIGH,                # Use OpenAI's o3 with high reasoning for Phase 2
     # etc.
 }
 ```

@@ -17,7 +17,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 import os
 from core.agents.anthropic import AnthropicArchitect
-from core.utils.tools.file_retriever import get_filtered_formatted_contents
+from core.utils.file_system.file_retriever import get_filtered_formatted_contents
 from core.agents import get_architect_for_phase
 from config.prompts.phase_3_prompts import format_phase3_prompt
 

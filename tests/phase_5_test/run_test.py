@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.analysis.phase_5 import Phase5Analysis
+from tests.utils.offline_stubs import patch_factory_offline
 
 async def run_phase5_test():
     """
@@ -43,6 +44,7 @@ async def run_phase5_test():
     
     # Initialize Phase 5 Analysis
     print("Initializing Phase 5 Analysis...")
+    patch_factory_offline()
     phase5 = Phase5Analysis()
     
     # Run Phase 5 analysis

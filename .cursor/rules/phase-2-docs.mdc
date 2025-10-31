@@ -18,7 +18,7 @@ Phase 2 (Methodical Planning) is the second stage in the project analysis pipeli
    - **Reasoning:** Provides the rationale behind the agent creation and file assignments
 
 4. **Technical Flow:**
-   1. `Phase2Analysis` class initializes with the specified model (defaults to "o1")
+   1. `Phase2Analysis` class initializes with the specified model (defaults to "o3")
    2. The `run` method formats a prompt using Phase 1 results and the project tree
    3. It calls the `OpenAIAgent.create_analysis_plan()` method to generate the plan
    4. It uses `parse_agents_from_phase2()` to extract structured agent definitions

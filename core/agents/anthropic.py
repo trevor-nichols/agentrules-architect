@@ -59,7 +59,8 @@ class AnthropicArchitect(BaseArchitect):
         name: Optional[str] = None,
         role: Optional[str] = None,
         responsibilities: Optional[List[str]] = None,
-        prompt_template: Optional[str] = None
+        prompt_template: Optional[str] = None,
+        tools_config: Optional[Dict] = None
     ):
         """
         Initialize an Anthropic architect with specific configurations.
@@ -71,6 +72,7 @@ class AnthropicArchitect(BaseArchitect):
             role: Optional role description
             responsibilities: Optional list of responsibilities
             prompt_template: Optional custom prompt template
+            tools_config: Optional configuration for tools the model can use
         """
         super().__init__(
             provider=ModelProvider.ANTHROPIC,
@@ -78,7 +80,8 @@ class AnthropicArchitect(BaseArchitect):
             reasoning=reasoning,
             name=name,
             role=role,
-            responsibilities=responsibilities
+            responsibilities=responsibilities,
+            tools_config=tools_config
         )
         self.prompt_template = prompt_template or self._get_default_prompt_template()
     
@@ -130,12 +133,13 @@ class AnthropicArchitect(BaseArchitect):
     # This function sends a request to the Anthropic API and processes the response.
     # ====================================================
 
-    async def analyze(self, context: Dict) -> Dict:
+    async def analyze(self, context: Dict, tools: Optional[List[Any]] = None) -> Dict:
         """
         Run agent analysis using Claude model.
         
         Args:
             context: Dictionary containing the context for analysis
+            tools: Optional list of tools the model can use
             
         Returns:
             Dictionary containing the agent's findings or error information
@@ -158,6 +162,17 @@ class AnthropicArchitect(BaseArchitect):
                 }]
             }
             
+            # Add tools if provided or from config
+            if tools or (self.tools_config and self.tools_config.get("enabled", False)):
+                # Use provided tools or tools from config
+                tool_list = tools or self.tools_config.get("tools", [])
+                
+                # Convert to Anthropic-specific format
+                if tool_list:
+                    from core.agent_tools.tool_manager import ToolManager
+                    anthropic_tools = ToolManager.get_provider_tools(tool_list, ModelProvider.ANTHROPIC)
+                    params["tools"] = anthropic_tools
+            
             # Add thinking parameter if reasoning is enabled
             if self.reasoning == ReasoningMode.ENABLED:
                 params["thinking"] = {
@@ -166,36 +181,49 @@ class AnthropicArchitect(BaseArchitect):
                 }
             
             # Get the model configuration name
-            from core.utils.tools.model_config_helper import get_model_config_name
+            from core.utils.model_config_helper import get_model_config_name
             model_config_name = get_model_config_name(self)
             
             agent_name = self.name or "Claude Architect"
             logger.info(f"[bold purple]{agent_name}:[/bold purple] Sending request to {self.model_name} (Config: {model_config_name})" + 
-                       (" with reasoning" if self.reasoning == ReasoningMode.ENABLED else ""))
+                       (" with reasoning" if self.reasoning == ReasoningMode.ENABLED else "") +
+                       (" with tools enabled" if "tools" in params else ""))
             
             # Send a request to the Anthropic Claude API to analyze the given context.
             response = anthropic_client.messages.create(**params)
             
             logger.info(f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}")
             
+            # Process different types of response content
+            results = {
+                "agent": agent_name,
+                "findings": None,
+                "tool_calls": None
+            }
+            
             # Handle different content block types
-            # When thinking is enabled, we might get thinking blocks first
-            text_content = ""
             for block in response.content:
                 if hasattr(block, 'text'):
-                    text_content = block.text
-                    break  # Found the text content, so break the loop
+                    results["findings"] = block.text
+                elif hasattr(block, 'tool_use'):
+                    # Anthropic's tool_use block
+                    tool_use = block.tool_use
+                    if not results["tool_calls"]:
+                        results["tool_calls"] = []
+                    
+                    # Format tool call similarly to other providers
+                    results["tool_calls"].append({
+                        "id": tool_use.id,
+                        "name": tool_use.name,
+                        "input": tool_use.input  # Anthropic provides structured input
+                    })
             
-            # If no text content was found, check if there's any content at all
-            if not text_content and response.content:
-                # If only thinking blocks were returned, use a fallback message
-                text_content = "Analysis completed but no text content was returned. Check logs for more details."
+            # If we have tool calls but no findings, set findings to None explicitly
+            if results["tool_calls"] and not results["findings"]:
+                results["findings"] = None
             
             # Return the agent's findings.
-            return {
-                "agent": agent_name,
-                "findings": text_content
-            }
+            return results
         except Exception as e:
             agent_name = self.name or "Claude Architect"
             logger.error(f"[bold red]Error in {agent_name}:[/bold red] {str(e)}")

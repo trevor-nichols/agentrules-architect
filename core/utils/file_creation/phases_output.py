@@ -35,7 +35,7 @@ def save_phase_outputs(directory: Path, analysis_data: dict) -> None:
     """
     # Import the MODEL_CONFIG to get model information for each phase
     from config.agents import MODEL_CONFIG
-    from main import get_model_config_name
+    from core.utils.model_config_helper import get_model_config_name
     
     # Get model configuration names
     phase1_model = get_model_config_name(MODEL_CONFIG['phase1'])
@@ -113,7 +113,7 @@ def save_phase_outputs(directory: Path, analysis_data: dict) -> None:
     exclude_dirs = ["phases_output", "__pycache__", ".git", ".vscode", ".cursor"]
     
     # Get the project tree without the excluded directories
-    from core.utils.tools.tree_generator import generate_tree, DEFAULT_EXCLUDE_DIRS, DEFAULT_EXCLUDE_PATTERNS
+    from core.utils.file_system.tree_generator import generate_tree, DEFAULT_EXCLUDE_DIRS, DEFAULT_EXCLUDE_PATTERNS
     
     # Create a custom set of exclude directories by combining defaults with our additions
     custom_exclude_dirs = DEFAULT_EXCLUDE_DIRS.union(set(exclude_dirs))

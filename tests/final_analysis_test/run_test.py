@@ -16,7 +16,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.analysis.final_analysis import FinalAnalysis
-from core.utils.tools.tree_generator import get_project_tree
+from core.utils.file_system.tree_generator import get_project_tree
+from tests.utils.offline_stubs import patch_factory_offline
 
 async def run_final_analysis_test():
     """
@@ -39,11 +40,12 @@ async def run_final_analysis_test():
     tree = get_project_tree(test_input_dir)
     
     # Remove delimiters for analysis if they exist
-    if len(tree) >= 2 and tree[0] == "<@tree_generator.py project_structure>" and tree[-1] == "</project_structure>":
+    if len(tree) >= 2 and tree[0] == "<project_structure>" and tree[-1] == "</project_structure>":
         tree = tree[1:-1]
     
     # Initialize Final Analysis
     print("Initializing Final Analysis...")
+    patch_factory_offline()
     final_analysis = FinalAnalysis()
     
     # Run Final Analysis

@@ -53,6 +53,17 @@ TECH_STACK_AGENT_PROMPT = {
     ]
 }
 
+# Researcher Agent prompt
+RESEARCHER_AGENT_PROMPT = {
+    "name": "Researcher Agent",
+    "role": "finding official documentation for a list of technologies",
+    "responsibilities": [
+        "Receive a list of technologies (packages, libraries, frameworks).",
+        "For each technology, use the web search tool to find the official documentation URL.",
+        "Return a structured list of the technologies and their corresponding documentation links."
+    ]
+}
+
 # Function to format a prompt for a specific agent
 def format_agent_prompt(agent_config, context):
     """
@@ -76,5 +87,6 @@ def format_agent_prompt(agent_config, context):
 PHASE_1_AGENTS = [
     STRUCTURE_AGENT_PROMPT,
     DEPENDENCY_AGENT_PROMPT,
-    TECH_STACK_AGENT_PROMPT
+    TECH_STACK_AGENT_PROMPT,
+    RESEARCHER_AGENT_PROMPT
 ]

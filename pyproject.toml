@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentrules"
+version = "0.1.0"
+description = "Interactive CLI for the CursorRules Architect multi-phase analysis pipeline."
+readme = "README.md"
+authors = [{name = "SlyyCooper"}]
+license = {text = "MIT"}
+requires-python = ">=3.9"
+keywords = ["cursor", "ai", "analysis", "cli", "agents"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+dependencies = [
+  "anthropic",
+  "rich",
+  "openai",
+  "google-genai",
+  "python-dotenv",
+  "tavily-python",
+  "typer>=0.12",
+  "questionary>=2.0",
+  "platformdirs>=4.0",
+  "tomli; python_version < '3.11'",
+  "tomli-w"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[project.scripts]
+agentrules = "agentrules.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentrules*", "core*", "config*"]

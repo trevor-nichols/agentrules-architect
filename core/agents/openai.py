@@ -15,7 +15,7 @@ This module is used by the main analysis process to perform specialized analysis
 
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any # Added Any
 from openai import OpenAI
 from core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from config.prompts.phase_2_prompts import PHASE_2_PROMPT, format_phase2_prompt
@@ -51,7 +51,7 @@ class OpenAIArchitect(BaseArchitect):
     Architect class for interacting with OpenAI models.
     
     This class provides a structured way to create specialized architects that use
-    OpenAI models for different analysis tasks.
+    OpenAI models for different analysis tasks. It now supports tool usage.
     """
     
     # ====================================================
@@ -61,29 +61,31 @@ class OpenAIArchitect(BaseArchitect):
     # ====================================================
     def __init__(
         self,
-        model_name: str = "o1",
+        model_name: str = "o3",
         reasoning: ReasoningMode = None,
         temperature: Optional[float] = None,
         name: Optional[str] = None,
         role: Optional[str] = None,
         responsibilities: Optional[List[str]] = None,
-        prompt_template: Optional[str] = None
+        prompt_template: Optional[str] = None,
+        tools_config: Optional[Dict] = None
     ):
         """
         Initialize an OpenAI architect with a specific model.
         
         Args:
-            model_name: The OpenAI model to use (default: "o1")
+            model_name: The OpenAI model to use (default: "o3")
             reasoning: Reasoning mode (defaults based on model type)
             temperature: Temperature value for temperature-based models like gpt-4.1
             name: Optional name for specialized roles
             role: Optional role description
             responsibilities: Optional list of responsibilities
             prompt_template: Optional custom prompt template to use
+            tools_config: Optional configuration for tools the model can use
         """
         # Set default reasoning based on model
         if reasoning is None:
-            if model_name in ["o1", "o3-mini"]:
+            if model_name in ["o3", "o4-mini"]:
                 reasoning = ReasoningMode.HIGH
             elif model_name == "gpt-4.1":
                 reasoning = ReasoningMode.TEMPERATURE
@@ -101,7 +103,8 @@ class OpenAIArchitect(BaseArchitect):
             temperature=temperature,
             name=name,
             role=role,
-            responsibilities=responsibilities
+            responsibilities=responsibilities,
+            tools_config=tools_config
         )
         
         # Store the prompt template
@@ -145,12 +148,15 @@ Format your response as a structured report with clear sections and findings."""
     # These methods help with common tasks needed by the public methods.
     # ====================================================
     
-    def _get_model_parameters(self, content: str) -> Dict:
+    def _get_model_parameters(self, content: str, tools: Optional[List[Any]] = None) -> Dict:
         """
         Get the appropriate model parameters based on model and reasoning mode.
         
         Args:
             content: The prompt content to send to the model
+            tools: Optional list of tools (functions) the model can use.
+                   Format should follow OpenAI's tool definition schema.
+                   Example: [{'type': 'function', 'function': {'name': '...', 'description': '...', 'parameters': {...}}}]
             
         Returns:
             Dictionary of model parameters
@@ -165,8 +171,8 @@ Format your response as a structured report with clear sections and findings."""
         }
         
         # Add reasoning parameters based on model and mode
-        if self.model_name in ["o1", "o3-mini"]:
-            # For O1 and O3-Mini models, use reasoning_effort parameter
+        if self.model_name in ["o3", "o4-mini"]:
+            # For O3 and O4-Mini models, use reasoning_effort parameter
             if self.reasoning in [ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH]:
                 # Use the value directly from the enum
                 params["reasoning_effort"] = self.reasoning.value
@@ -181,6 +187,11 @@ Format your response as a structured report with clear sections and findings."""
             if self.temperature is not None:
                 params["temperature"] = self.temperature
         
+        # Add tools if provided
+        if tools:
+            params["tools"] = tools
+            params["tool_choice"] = "auto" # Let the model decide whether to use tools
+
         return params
     
     # ====================================================
@@ -188,15 +199,17 @@ Format your response as a structured report with clear sections and findings."""
     # This method implements the abstract analyze method from BaseArchitect.
     # ====================================================
     
-    async def analyze(self, context: Dict) -> Dict:
+    async def analyze(self, context: Dict, tools: Optional[List[Any]] = None) -> Dict:
         """
-        Run analysis using the OpenAI model.
+        Run analysis using the OpenAI model, potentially using tools.
         
         Args:
             context: Dictionary containing the context for analysis
+            tools: Optional list of tools the model can use.
+                   Follows OpenAI's tool definition format.
             
         Returns:
-            Dictionary containing the analysis results or error information
+            Dictionary containing the analysis results, potential tool calls, or error information
         """
         try:
             # Check if the context already contains a formatted prompt
@@ -205,26 +218,59 @@ Format your response as a structured report with clear sections and findings."""
             else:
                 # Format the prompt using the template
                 content = self.format_prompt(context)
+
+            # Determine which tools to use
+            final_tools = None
+            if tools or (self.tools_config and self.tools_config.get("enabled", False)):
+                tool_list = tools or self.tools_config.get("tools", [])
+                if tool_list:
+                    from core.agent_tools.tool_manager import ToolManager
+                    final_tools = ToolManager.get_provider_tools(tool_list, ModelProvider.OPENAI)
             
-            # Get model parameters
-            params = self._get_model_parameters(content)
+            # Get model parameters, including tools
+            params = self._get_model_parameters(content, tools=final_tools)
             
             # Try to get the model config name
-            from core.utils.tools.model_config_helper import get_model_config_name
+            from core.utils.model_config_helper import get_model_config_name
             model_config_name = get_model_config_name(self)
             
             agent_name = self.name or "OpenAI Architect"
-            logger.info(f"[bold blue]{agent_name}:[/bold blue] Sending request to {self.model_name} (Config: {model_config_name})")
+            logger.info(f"[bold blue]{agent_name}:[/bold blue] Sending request to {self.model_name} (Config: {model_config_name})" +
+                        (" with tools enabled" if tools else ""))
             
             # Call the OpenAI API
             response = openai_client.chat.completions.create(**params)
             
             logger.info(f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}")
             
-            return {
+            message = response.choices[0].message
+            
+            # Prepare results dictionary
+            results = {
                 "agent": agent_name,
-                "findings": response.choices[0].message.content
+                "findings": message.content, # Text response
+                "tool_calls": None
             }
+            
+            # Check if the model requested a tool call
+            if message.tool_calls:
+                logger.info(f"[bold blue]{agent_name}:[/bold blue] Model requested tool call(s).")
+                results["tool_calls"] = [
+                    {
+                        "id": call.id,
+                        "type": call.type,
+                        "function": {
+                            "name": call.function.name,
+                            "arguments": call.function.arguments # Arguments are a JSON string
+                        }
+                    } 
+                    for call in message.tool_calls if call.type == 'function'
+                ]
+                # Clear findings if only tool calls are present
+                if not message.content:
+                    results["findings"] = None
+
+            return results
         except Exception as e:
             agent_name = self.name or "OpenAI Architect"
             logger.error(f"[bold red]Error in {agent_name}:[/bold red] {str(e)}")
@@ -239,6 +285,7 @@ Format your response as a structured report with clear sections and findings."""
     async def create_analysis_plan(self, phase1_results: Dict, prompt: Optional[str] = None) -> Dict:
         """
         Create an analysis plan based on Phase 1 results.
+        (Does not currently support tool usage for this specific task)
         
         Args:
             phase1_results: Dictionary containing the results from Phase 1
@@ -251,7 +298,7 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or the default one
             content = prompt if prompt else format_phase2_prompt(phase1_results)
             
-            # Get model parameters
+            # Get model parameters (no tools for this specific method)
             params = self._get_model_parameters(content)
             
             # Call the OpenAI API
@@ -272,7 +319,8 @@ Format your response as a structured report with clear sections and findings."""
     async def synthesize_findings(self, phase3_results: Dict, prompt: Optional[str] = None) -> Dict:
         """
         Synthesize findings from Phase 3.
-        
+        (Does not currently support tool usage for this specific task)
+
         Args:
             phase3_results: Dictionary containing the results from Phase 3
             prompt: Optional custom prompt to use instead of the default
@@ -284,7 +332,7 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or the default one
             content = prompt if prompt else format_phase4_prompt(phase3_results)
             
-            # Get model parameters
+            # Get model parameters (no tools for this specific method)
             params = self._get_model_parameters(content)
             
             # Call the OpenAI API
@@ -305,7 +353,8 @@ Format your response as a structured report with clear sections and findings."""
     async def final_analysis(self, consolidated_report: Dict, prompt: Optional[str] = None) -> Dict:
         """
         Perform final analysis on the consolidated report.
-        
+        (Does not currently support tool usage for this specific task)
+
         Args:
             consolidated_report: Dictionary containing the consolidated report
             prompt: Optional custom prompt to use instead of the default
@@ -317,7 +366,7 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or the default one
             content = prompt if prompt else format_final_analysis_prompt(consolidated_report)
             
-            # Get model parameters
+            # Get model parameters (no tools for this specific method)
             params = self._get_model_parameters(content)
             
             # Call the OpenAI API
@@ -338,6 +387,7 @@ Format your response as a structured report with clear sections and findings."""
     async def consolidate_results(self, all_results: Dict, prompt: Optional[str] = None) -> Dict:
         """
         Consolidate results from all previous phases.
+        (Does not currently support tool usage for this specific task)
         
         This is implemented for compatibility with the base class but not the
         primary function of the OpenAI model in the current architecture.
@@ -353,7 +403,7 @@ Format your response as a structured report with clear sections and findings."""
             # Use the provided prompt or format a default one
             content = prompt if prompt else f"Consolidate these results into a comprehensive report:\n\n{json.dumps(all_results, indent=2)}"
             
-            # Get model parameters
+            # Get model parameters (no tools for this specific method)
             params = self._get_model_parameters(content)
             
             # Call the OpenAI API
@@ -386,27 +436,28 @@ class OpenAIAgent:
     OpenAIArchitect instead.
     """
     
-    def __init__(self, model: str = "o1", temperature: Optional[float] = None):
+    def __init__(self, model: str = "o3", temperature: Optional[float] = None):
         """
         Initialize an OpenAI agent with a specific model.
         
         Args:
-            model: The OpenAI model to use (default: "o1")
+            model: The OpenAI model to use (default: "o3")
             temperature: Temperature value for temperature-based models like gpt-4.1
         """
         self.model = model
         
         # Create underlying OpenAIArchitect with appropriate reasoning mode
-        if model in ["o1", "o3-mini"]:
+        if model in ["o3", "o4-mini"]:
             self._architect = OpenAIArchitect(model_name=model, reasoning=ReasoningMode.HIGH)
         elif model == "gpt-4.1":
             self._architect = OpenAIArchitect(model_name=model, reasoning=ReasoningMode.TEMPERATURE, temperature=temperature)
         else:
             self._architect = OpenAIArchitect(model_name=model)
     
+    # Note: Legacy methods don't pass 'tools' parameter
     async def create_analysis_plan(self, phase1_results: Dict, prompt: Optional[str] = None) -> Dict:
         """
-        Create an analysis plan based on Phase 1 results using o1 model.
+        Create an analysis plan based on Phase 1 results using o3 model.
         
         Args:
             phase1_results: Dictionary containing the results from Phase 1
@@ -419,7 +470,7 @@ class OpenAIAgent:
     
     async def synthesize_findings(self, phase3_results: Dict, prompt: Optional[str] = None) -> Dict:
         """
-        Synthesize findings from Phase 3 using o1 model.
+        Synthesize findings from Phase 3 using o3 model.
         
         Args:
             phase3_results: Dictionary containing the results from Phase 3
@@ -432,7 +483,7 @@ class OpenAIAgent:
     
     async def final_analysis(self, consolidated_report: Dict, prompt: Optional[str] = None) -> Dict:
         """
-        Perform final analysis on the consolidated report using o1 model.
+        Perform final analysis on the consolidated report using o3 model.
         
         Args:
             consolidated_report: Dictionary containing the consolidated report

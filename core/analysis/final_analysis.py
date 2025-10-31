@@ -12,9 +12,8 @@ It defines the methods needed for performing the final analysis on the consolida
 
 import logging  # Used for logging events and errors.
 from typing import Dict, List  # Used for type hinting.
-from core.agents.openai import OpenAIAgent  # Custom class for interacting with OpenAI models.
 from config.prompts.final_analysis_prompt import format_final_analysis_prompt  # Function to format the final analysis prompt.
-from core.agents import get_architect_for_phase  # Import for dynamic model configuration
+# Architect factory is resolved at call time to honor test monkeypatching
 
 # ====================================================
 # Logger Setup
@@ -45,11 +44,8 @@ class FinalAnalysis:
     # ====================================================
     
     def __init__(self):
-        """
-        Initialize the Final Analysis with the architect from configuration.
-        """
-        # Use the factory function to get the appropriate architect based on configuration
-        self.architect = get_architect_for_phase("final")
+        """Initialize Final Analysis. Architect resolved lazily in run()."""
+        self.architect = None
     
     # ====================================================
     # Run Method
@@ -73,6 +69,11 @@ class FinalAnalysis:
             
             logger.info("[bold]Final Analysis:[/bold] Creating Cursor rules from consolidated report")
             
+            # Resolve architect at call time to allow test monkeypatches
+            if self.architect is None:
+                from core.agents.factory import factory as _factory
+                self.architect = _factory.get_architect_for_phase("final")
+
             # Use the architect to perform the final analysis with the formatted prompt.
             result = await self.architect.final_analysis(consolidated_report, prompt)
             

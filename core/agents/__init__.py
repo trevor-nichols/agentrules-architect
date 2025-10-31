@@ -1,7 +1,17 @@
 """
-core/agents package
+core.agents package
 
-This package contains agent classes for interacting with different AI models.
+Defines public shortcuts for constructing architect instances without triggering
+eager import cycles during module initialization.
 """
 
-from .factory import get_architect_for_phase 
+from .base import ModelProvider
+
+
+def get_architect_for_phase(*args, **kwargs):
+    from .factory.factory import get_architect_for_phase as _impl
+
+    return _impl(*args, **kwargs)
+
+
+__all__ = ["get_architect_for_phase", "ModelProvider"]

@@ -18,7 +18,6 @@
 import json
 import logging
 from typing import Dict
-from anthropic import Anthropic
 from config.prompts.phase_5_prompts import PHASE_5_PROMPT, format_phase5_prompt
 from core.agents import get_architect_for_phase
 
@@ -27,7 +26,6 @@ from core.agents import get_architect_for_phase
 # This section initializes the Anthropic client for API calls and sets up
 # logging to track the process.
 # =============================================================================
-anthropic_client = Anthropic()
 logger = logging.getLogger("project_extractor")
 
 # =============================================================================

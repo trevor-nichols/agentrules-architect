@@ -3,7 +3,7 @@
 <div align="center">
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-o1%20%7C%20o3--mini%20%7C%20gpt--4o-blue.svg)](https://openai.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-o3%20%7C%20o3--mini%20%7C%20gpt--4o-blue.svg)](https://openai.com/)
 [![Anthropic](https://img.shields.io/badge/Anthropic-claude--3.7--sonnet-purple.svg)](https://www.anthropic.com/)
 [![DeepSeek](https://img.shields.io/badge/DeepSeek-deepseek--reasoner-red.svg)](https://deepseek.com/)
 [![Google](https://img.shields.io/badge/Google-gemini--2.0--flash%20%7C%20gemini--2.5--pro-green.svg)](https://ai.google.dev/)
@@ -38,13 +38,13 @@ CursorRules Architect V2 is an advanced multi-agent system that analyzes your co
 - Python 3.8+
 - API keys for at least one of the supported providers:
   - Anthropic API key with access to `claude-3-7-sonnet-20250219`
-  - OpenAI API key with access to `o1`, `o3-mini`, or `gpt-4.1`
+  - OpenAI API key with access to `o3`, `o4-mini`, or `gpt-4.1`
   - DeepSeek API key with access to DeepSeek Reasoner
   - Google API key with access to `gemini-2.0-flash` or `gemini-2.5-pro-exp-03-25`
 - Dependencies:
   - `anthropic` for Anthropic API access
   - `openai` for OpenAI API access
-  - `google-generativeai` for Google Gemini API access
+  - `google-genai` (Google GenAI SDK) for Google Gemini API access
   - `rich` for beautiful terminal output
   - `click` for CLI interface
   - `pathlib` for path manipulation
@@ -90,9 +90,58 @@ CursorRules Architect V2 is an advanced multi-agent system that analyzes your co
 
 ### Basic Usage
 
+Install the package (locally or via `pipx`) and launch the interactive CLI:
+
+```bash
+pip install -e .
+agentrules
+```
+
+The default menu lets you analyze the current directory, point at another repository, or configure provider API keys. For automation/CI you can run a single command without prompts:
+
+```bash
+agentrules analyze /path/to/your/project
+```
+
+The legacy entry point still works if you prefer to execute the script directly:
+
 ```bash
 python main.py -p /path/to/your/project
 ```
+
+### Configuring Provider Credentials
+
+Run:
+
+```bash
+agentrules configure
+```
+
+The CLI will securely prompt for each provider key and store them in `~/.config/agentrules/config.toml`. Values are exported to environment variables the next time you launch the CLI so the pipeline can authenticate automatically.
+
+### Selecting Models Per Phase
+
+Want different providers for different stages? Run the interactive menu entry or:
+
+```bash
+agentrules configure --models
+```
+
+You’ll get a prompt for each phase with the presets that match the API keys you’ve configured. Selections are saved in `~/.config/agentrules/config.toml` and automatically merged into the runtime `MODEL_CONFIG` the next time you launch the CLI.
+
+### Optional: Quick Smoke Test in a Fresh Virtualenv
+
+To verify that packaging metadata and dependencies stay in sync, spin up an isolated environment and run a basic CLI command:
+
+```bash
+python -m venv .venv_agentrules
+. .venv_agentrules/bin/activate
+pip install --upgrade pip
+pip install .
+agentrules --version
+```
+
+On macOS you may see the `LibreSSL` warning the first time you run this command with older builds of the package; the current release suppresses it automatically. Feel free to adapt this snippet for CI to catch packaging regressions early.
 
 ### Advanced Options
 
@@ -126,13 +175,13 @@ CLAUDE_WITH_REASONING = ModelConfig(
 # OpenAI Configurations
 O1_HIGH = ModelConfig(
     provider=ModelProvider.OPENAI,
-    model_name="o1",
+    model_name="o3",
     reasoning=ReasoningMode.HIGH
 )
 
 O3_MINI_MEDIUM = ModelConfig(
     provider=ModelProvider.OPENAI,
-    model_name="o3-mini",
+    model_name="o4-mini",
     reasoning=ReasoningMode.MEDIUM
 )
 
@@ -151,13 +200,13 @@ DEEPSEEK_REASONER = ModelConfig(
 )
 
 # Gemini Configurations
-GEMINI_BASIC = ModelConfig(
+GEMINI_FLASH = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-2.0-flash",
     reasoning=ReasoningMode.DISABLED
 )
 
-GEMINI_WITH_REASONING = ModelConfig(
+GEMINI_PRO = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-2.5-pro-exp-03-25",
     reasoning=ReasoningMode.ENABLED
@@ -170,10 +219,10 @@ To change which model is used for each phase, simply update the `MODEL_CONFIG` d
 
 ```python
 MODEL_CONFIG = {
-    "phase1": GEMINI_BASIC,                # Use Gemini-2.0-flash for Phase 1
-    "phase2": GEMINI_WITH_REASONING,       # Use Gemini-2.5-pro with reasoning for Phase 2
+    "phase1": GEMINI_FLASH,                # Use Gemini-2.0-flash for Phase 1
+    "phase2": GEMINI_PRO,       # Use Gemini-2.5-pro with reasoning for Phase 2
     "phase3": CLAUDE_WITH_REASONING,       # Use Claude with reasoning for Phase 3
-    "phase4": O1_HIGH,                     # Use OpenAI's o1 with high reasoning for Phase 4
+    "phase4": O1_HIGH,                     # Use OpenAI's o3 with high reasoning for Phase 4
     "phase5": DEEPSEEK_REASONER,           # Use DeepSeek Reasoner for Phase 5
     "final": CLAUDE_WITH_REASONING,        # Use Claude with reasoning for final analysis
 }
@@ -211,7 +260,7 @@ CursorRules Architect V2 follows a sophisticated multi-phase analysis approach:
 The system is built on a `BaseArchitect` abstract class that standardizes how different AI model providers are integrated:
 
 - `AnthropicArchitect` - Interface to Anthropic's Claude models
-- `OpenAIArchitect` - Interface to OpenAI's models (o1, o3-mini, gpt-4.1)
+- `OpenAIArchitect` - Interface to OpenAI's models (o3, o4-mini, gpt-4.1)
 - `DeepSeekArchitect` - Interface to DeepSeek's reasoning models
 - `GeminiArchitect` - Interface to Google's Gemini models
 
@@ -273,7 +322,7 @@ The system supports different reasoning modes depending on the model:
   - `DISABLED` - Standard inference
 
 - For OpenAI models:
-  - For O1 and O3-mini:
+  - For O3 and O4-mini:
     - `LOW`/`MEDIUM`/`HIGH` - Different reasoning effort levels
   - For gpt-4.1:
     - `TEMPERATURE` - Use temperature-based sampling
@@ -382,7 +431,7 @@ The system's key innovation is the dynamic agent creation process:
 You can run the system with one or more AI providers:
 
 - **Anthropic-only**: Set all phases to use Claude models
-- **OpenAI-only**: Set all phases to use o1, o3-mini, or gpt-4.1
+- **OpenAI-only**: Set all phases to use o3, o4-mini, or gpt-4.1
 - **DeepSeek-only**: Set all phases to use DeepSeek Reasoner
 - **Gemini-only**: Set all phases to use Google Gemini models
 - **Mix and match**: Use different providers for different phases
@@ -410,6 +459,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-Built with 💙 using [Claude-3.7-Sonnet](https://www.anthropic.com/claude), [o1](https://openai.com/), [DeepSeek Reasoner](https://deepseek.com/), and [Google Gemini](https://ai.google.dev/)
+Built with 💙 using [Claude-3.7-Sonnet](https://www.anthropic.com/claude), [o3](https://openai.com/), [DeepSeek Reasoner](https://deepseek.com/), and [Google Gemini](https://ai.google.dev/)
 
 </div>
