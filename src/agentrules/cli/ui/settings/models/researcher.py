@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import questionary
 
-from agentrules import model_config
 from agentrules.cli.context import CliContext
 from agentrules.cli.services import configuration
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice
+from agentrules.core.configuration import model_presets
 
 from .utils import (
     build_model_choice_state,
@@ -18,7 +18,7 @@ from .utils import (
 
 def configure_researcher_phase(
     context: CliContext,
-    presets: list[model_config.PresetInfo],
+    presets: list[model_presets.PresetInfo],
     current_key: str | None,
     default_key: str | None,
     current_mode: str,
@@ -70,7 +70,7 @@ def configure_researcher_phase(
     desired_mode = mode_selection
     mode_changed = desired_mode != current_mode
 
-    default_info = model_config.get_preset_info(default_key) if default_key else None
+    default_info = model_presets.get_preset_info(default_key) if default_key else None
     current_label, _ = current_labels(current_key)
 
     keep_title = "Keep current preset"
@@ -127,7 +127,7 @@ def configure_researcher_phase(
         preset_changed = True
     else:
         configuration.save_phase_model("researcher", selection)
-        preset_info = model_config.get_preset_info(selection)
+        preset_info = model_presets.get_preset_info(selection)
         if preset_info:
             console.print(
                 f"[green]Researcher agent will use {preset_info.label} [{preset_info.provider_display}].[/]"

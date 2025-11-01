@@ -5,8 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from agentrules import model_config
-from agentrules.core.configuration import PROVIDER_ENV_MAP, OutputPreferences, get_config_manager
+from agentrules.core.configuration import (
+    PROVIDER_ENV_MAP,
+    OutputPreferences,
+    get_config_manager,
+    model_presets,
+)
 
 CONFIG_MANAGER = get_config_manager()
 
@@ -30,7 +34,7 @@ def list_provider_states() -> list[ProviderState]:
 
 def save_provider_key(provider: str, api_key: str | None) -> None:
     CONFIG_MANAGER.set_provider_key(provider, api_key)
-    model_config.apply_user_overrides()
+    model_presets.apply_user_overrides()
 
 
 def get_provider_keys() -> dict[str, str | None]:
@@ -38,14 +42,14 @@ def get_provider_keys() -> dict[str, str | None]:
 
 
 def get_active_presets(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
-    return model_config.get_active_presets(overrides)
+    return model_presets.get_active_presets(overrides)
 
 
 def get_available_presets_for_phase(
     phase: str,
     provider_keys: Mapping[str, str | None] | None = None,
 ):
-    return model_config.get_available_presets_for_phase(phase, provider_keys)
+    return model_presets.get_available_presets_for_phase(phase, provider_keys)
 
 
 def save_phase_model(phase: str, preset_key: str | None) -> None:
@@ -69,7 +73,7 @@ def is_researcher_active() -> bool:
 
 
 def apply_model_overrides(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
-    return model_config.apply_user_overrides(overrides)
+    return model_presets.apply_user_overrides(overrides)
 
 
 def get_logging_preference() -> str | None:

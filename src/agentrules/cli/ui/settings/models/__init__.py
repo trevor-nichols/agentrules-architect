@@ -6,10 +6,10 @@ from collections.abc import Mapping
 
 import questionary
 
-from agentrules import model_config
 from agentrules.cli.context import CliContext
 from agentrules.cli.services import configuration
 from agentrules.cli.ui.styles import CLI_STYLE, model_display_choice, navigation_choice
+from agentrules.core.configuration import model_presets
 
 from .researcher import configure_researcher_phase
 from .utils import build_model_choice_state, current_labels, select_variant
@@ -49,13 +49,13 @@ def configure_models(context: CliContext) -> None:
             break
 
         phase = phase_selection
-        title = model_config.get_phase_title(phase)
+        title = model_presets.get_phase_title(phase)
         presets = configuration.get_available_presets_for_phase(phase, provider_keys)
         if not presets:
             console.print(f"[yellow]No presets available for {title}; configure provider keys first.[/]")
             continue
 
-        default_key = model_config.get_default_preset_key(phase)
+        default_key = model_presets.get_default_preset_key(phase)
         current_key = active.get(phase, default_key)
 
         if phase == "researcher":
@@ -85,7 +85,7 @@ def configure_models(context: CliContext) -> None:
 
     if updated:
         active = configuration.get_active_presets()
-        overrides = {phase: key for phase, key in active.items() if phase in model_config.PHASE_SEQUENCE and key}
+        overrides = {phase: key for phase, key in active.items() if phase in model_presets.PHASE_SEQUENCE and key}
         configuration.apply_model_overrides(overrides)
         configuration.apply_model_overrides()
         console.print("[green]Model selections saved.[/]")
@@ -101,21 +101,21 @@ def _build_phase_choices(
     phase_choices: list[questionary.Choice | questionary.Separator] = []
     handled_phases: set[str] = set()
 
-    for phase in model_config.PHASE_SEQUENCE:
+    for phase in model_presets.PHASE_SEQUENCE:
         if phase in handled_phases:
             continue
 
-        if phase == "phase1" and "researcher" in model_config.PHASE_SEQUENCE:
-            header_title = model_config.get_phase_title("phase1")
+        if phase == "phase1" and "researcher" in model_presets.PHASE_SEQUENCE:
+            header_title = model_presets.get_phase_title("phase1")
             phase_choices.append(questionary.Separator(header_title))
 
-            general_key = active.get("phase1", model_config.get_default_preset_key("phase1"))
+            general_key = active.get("phase1", model_presets.get_default_preset_key("phase1"))
             general_model, general_provider = current_labels(general_key)
             phase_choices.append(
                 model_display_choice("├─ General Agents", general_model, general_provider, value="phase1")
             )
 
-            researcher_key = active.get("researcher", model_config.get_default_preset_key("researcher"))
+            researcher_key = active.get("researcher", model_presets.get_default_preset_key("researcher"))
             researcher_model, researcher_provider = current_labels(researcher_key)
             if researcher_mode == "off":
                 researcher_model = "Disabled"
@@ -126,7 +126,7 @@ def _build_phase_choices(
                     researcher_model = f"{researcher_model}{mode_suffix}"
                 if researcher_mode == "auto" and not tavily_available:
                     researcher_model += " – awaiting Tavily key"
-            researcher_title = model_config.get_phase_title("researcher")
+            researcher_title = model_presets.get_phase_title("researcher")
             phase_choices.append(
                 model_display_choice(
                     f"└─ {researcher_title}",
@@ -139,8 +139,8 @@ def _build_phase_choices(
             handled_phases.update({"phase1", "researcher"})
             continue
 
-        title = model_config.get_phase_title(phase)
-        current_key = active.get(phase, model_config.get_default_preset_key(phase))
+        title = model_presets.get_phase_title(phase)
+        current_key = active.get(phase, model_presets.get_default_preset_key(phase))
         model_label, provider_label = current_labels(current_key)
         phase_choices.append(model_display_choice(title, model_label, provider_label, value=phase))
         handled_phases.add(phase)
@@ -152,12 +152,12 @@ def _configure_general_phase(
     context: CliContext,
     phase: str,
     title: str,
-    presets: list[model_config.PresetInfo],
+    presets: list[model_presets.PresetInfo],
     current_key: str | None,
     default_key: str | None,
 ) -> bool:
     console = context.console
-    default_info = model_config.get_preset_info(default_key) if default_key else None
+    default_info = model_presets.get_preset_info(default_key) if default_key else None
     if default_info:
         reset_title = f"Reset to default ({default_info.label} – {default_info.provider_display})"
     else:
@@ -196,7 +196,7 @@ def _configure_general_phase(
         console.print(f"[green]{title} reset to default preset.[/]")
     else:
         configuration.save_phase_model(phase, selection)
-        preset_info = model_config.get_preset_info(selection)
+        preset_info = model_presets.get_preset_info(selection)
         if preset_info:
             console.print(f"[green]{title} now uses {preset_info.label} [{preset_info.provider_display}].[/]")
         else:

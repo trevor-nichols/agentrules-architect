@@ -55,6 +55,23 @@
 │       ├── request_builder.py # Constructs request payloads for the xAI API.
 │       ├── response_parser.py # Parses and normalizes responses from the xAI API.
 │       └── tooling.py         # Helper for preparing tool configurations for xAI models.
+├── configuration/             # Runtime configuration management and persistence.
+│   ├── __init__.py            # Exposes the ConfigManager facade and cached accessor.
+│   ├── constants.py           # Shared constants for config directories, verbosity, and env mappings.
+│   ├── environment.py         # Applies persisted provider keys and verbosity into environment variables.
+│   ├── manager.py             # High-level coordinator combining repositories and domain services.
+│   ├── models.py              # Dataclasses describing the persisted CLI configuration schema.
+│   ├── model_presets.py       # Maps user selections to concrete model preset configurations.
+│   ├── repository.py          # TOML-backed persistence adapter for reading/writing config.
+│   ├── serde.py               # Serialization helpers between dataclasses and dict payloads.
+│   ├── utils.py               # Normalization helpers shared across configuration services.
+│   └── services/              # Domain-specific helpers for providers, outputs, exclusions, etc.
+│       ├── exclusions.py      # Manages inclusion/exclusion overrides for analysis.
+│       ├── features.py        # Handles researcher feature toggles.
+│       ├── logging.py         # Persists logging verbosity preferences.
+│       ├── outputs.py         # Stores output generation preferences.
+│       ├── phase_models.py    # Persists per-phase model overrides.
+│       └── providers.py       # Persists provider credentials.
 ├── analysis/                  # Contains modules for each phase of the project analysis pipeline.
 │   ├── __init__.py            # Exports the classes for each analysis phase.
 │   ├── events.py              # Defines event primitives for monitoring the analysis pipeline.
@@ -64,6 +81,9 @@
 │   ├── phase_3.py             # Implements Phase 3: In-depth file analysis by specialized agents.
 │   ├── phase_4.py             # Implements Phase 4: Synthesizes findings from the deep analysis.
 │   └── phase_5.py             # Implements Phase 5: Consolidates all findings into a final report.
+├── logging/                   # Shared logging configuration and filtering utilities.
+│   ├── __init__.py            # Exports the Rich-based logging configuration helper.
+│   └── config.py              # Configures Rich handlers and filters provider noise.
 ├── streaming/                # Shared streaming primitives and helpers.
 │   ├── __init__.py            # Re-exports common streaming types.
 │   └── types.py               # Defines streaming event enums and chunk dataclass.

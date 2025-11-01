@@ -1,8 +1,4 @@
-"""
-agentrules.logging_setup
-
-Utilities for configuring Rich-based logging consistently across the CLI.
-"""
+"""Rich logging configuration helpers for agentrules."""
 
 from __future__ import annotations
 

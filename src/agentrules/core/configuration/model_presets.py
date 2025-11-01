@@ -1,6 +1,4 @@
-"""
-Helpers for mapping user configuration to model presets.
-"""
+"""Helpers for mapping user configuration to model presets."""
 
 from __future__ import annotations
 
@@ -11,7 +9,9 @@ from dataclasses import dataclass
 from agentrules.config import agents as agent_settings
 from agentrules.config.agents import PresetDefinition
 from agentrules.core.agents.base import ModelProvider
-from agentrules.core.configuration import PROVIDER_ENV_MAP, get_config_manager
+
+from . import get_config_manager
+from .constants import PROVIDER_ENV_MAP
 
 PHASE_TITLES: dict[str, str] = {
     "phase1": "Phase 1 – Initial Discovery",

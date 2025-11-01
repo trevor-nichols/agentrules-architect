@@ -30,7 +30,7 @@ You are a professional software engineer in charge of the agentrules-architect p
 ## CLI Overview
 - **Entry command**: Installing in editable mode registers the `agentrules` executable. Running it without arguments opens an interactive menu covering analysis, key configuration, and per-phase model overrides.
 - **Interactive configuration**: The "Configure provider API keys" flow lets you pick a provider, enter a key, and persists it to `~/.config/agentrules/config.toml` (or `AGENTRULES_CONFIG_DIR`). Keys are mirrored into environment variables for subsequent runs.
-- **Model presets**: "Configure models per phase" presents each phase (with Phase 1 broken into General vs. Researcher agents). Selecting a phase first chooses a base model, then—when multiple variants exist—prompts for effort/temperature settings. Selections are persisted in the same TOML file and applied at startup via `agentrules/model_config.py`.
+- **Model presets**: "Configure models per phase" presents each phase (with Phase 1 broken into General vs. Researcher agents). Selecting a phase first chooses a base model, then—when multiple variants exist—prompts for effort/temperature settings. Selections are persisted in the same TOML file and applied at startup via `agentrules/core/configuration/model_presets.py`.
 - **Offline mode**: `agentrules analyze --offline …` (or `OFFLINE=1`) swaps in deterministic dummy architects and mocked Tavily calls for local smoke tests without provider traffic.
 - **Outputs**: Successful runs write `AGENTS.md`, `.cursorignore`, and phase-specific markdown files under `<target>/phases_output`, while logging progress via Rich spinners.
 

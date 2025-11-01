@@ -122,6 +122,7 @@
 │   │   ├── models.py          # Dataclasses representing persisted CLI configuration.
 │   │   ├── repository.py      # TOML-backed persistence adapter for configuration.
 │   │   ├── serde.py           # Conversion helpers between dataclasses and dict payloads.
+│   │   ├── model_presets.py   # Maps user selections to concrete model preset configs.
 │   │   ├── utils.py           # Coercion/validation helpers shared across services.
 │   │   └── services/          # Domain-specific helpers for providers, outputs, exclusions, etc.
 │   │       ├── __init__.py
@@ -137,6 +138,9 @@
 │   │   ├── agent_config.py    # Defines a TypedDict for agent configurations.
 │   │   ├── models.py          # Defines the ModelConfig type and various preset model configurations.
 │   │   └── tool_config.py     # Defines TypedDicts for tool configurations.
+│   ├── logging/               # Central logging configuration helpers.
+│   │   ├── __init__.py        # Exports the Rich logging configuration facade.
+│   │   └── config.py          # Configures Rich handlers and request filters.
 │   └── utils/                 # Contains various utility functions.
 │       ├── async_stream.py    # Helper to adapt synchronous streaming iterators to async generators.
 │       ├── constants.py       # Defines shared constants like default filenames.
@@ -180,5 +184,3 @@
 │       └── parsers/           # Utilities for parsing AI model outputs.
 │           ├── __init__.py    # Parsers package initializer.
 │           └── agent_parser.py # Parses agent definitions from Phase 2's XML-like output.
-├── logging_setup.py           # Configures Rich-based logging for the application.
-└── model_config.py            # Helpers for mapping user selections to model presets.

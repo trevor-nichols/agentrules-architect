@@ -12,8 +12,8 @@ class ModelOverrideTestCase(unittest.TestCase):
         import agentrules.core.configuration as configuration_package
         import agentrules.core.configuration.constants as configuration_constants
         import agentrules.core.configuration.manager as configuration_manager_module
+        import agentrules.core.configuration.model_presets as model_config
         import agentrules.core.configuration.repository as configuration_repository
-        from agentrules import model_config
         from agentrules.config import agents as agents_module
 
         reload(configuration_constants)

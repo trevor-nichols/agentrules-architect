@@ -7,9 +7,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 
-from agentrules import model_config
-from agentrules.core.configuration import get_config_manager
-from agentrules.logging_setup import configure_logging
+from agentrules.core.configuration import get_config_manager, model_presets
+from agentrules.core.logging import configure_logging
 
 from .context import CliContext
 
@@ -29,7 +28,7 @@ def bootstrap_runtime() -> CliContext:
     configure_logging(level=log_level)
     CONFIG_MANAGER.apply_config_to_environment()
     _load_env_files()
-    model_config.apply_user_overrides()
+    model_presets.apply_user_overrides()
 
     console = Console()
     return CliContext(console=console)

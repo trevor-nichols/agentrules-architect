@@ -44,6 +44,7 @@ __all__ = [
     "VERBOSITY_ENV_VAR",
     "VERBOSITY_PRESETS",
     "get_config_manager",
+    "model_presets",
 ]
 
 
@@ -52,3 +53,5 @@ def get_config_manager() -> ConfigManager:
     """Return the process-wide configuration manager singleton."""
     return ConfigManager()
 
+# Import after defining get_config_manager to avoid circular imports in submodules.
+from . import model_presets  # noqa: E402

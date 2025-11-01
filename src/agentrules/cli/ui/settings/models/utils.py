@@ -8,13 +8,13 @@ from typing import cast
 
 import questionary
 
-from agentrules import model_config
 from agentrules.cli.ui.styles import CLI_STYLE, model_display_choice, model_variant_choice
+from agentrules.core.configuration import model_presets
 
 
 @dataclass
 class VariantOption:
-    preset: model_config.PresetInfo
+    preset: model_presets.PresetInfo
     preset_key: str
     variant_label: str | None
     variant_display: str
@@ -50,14 +50,14 @@ def variant_display_text(variant_label: str | None) -> str:
 
 
 def current_labels(key: str | None) -> tuple[str, str]:
-    info = model_config.get_preset_info(key) if key else None
+    info = model_presets.get_preset_info(key) if key else None
     if not info:
         return "Not configured", ""
     return info.label, info.provider_display
 
 
 def build_model_choice_state(
-    presets: Sequence[model_config.PresetInfo],
+    presets: Sequence[model_presets.PresetInfo],
     current_key: str | None,
     default_key: str | None,
     *,
