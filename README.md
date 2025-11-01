@@ -12,9 +12,15 @@
 
 **Your multi-provider AI code analysis and AGENTS.md generator 🚀**
 
-[Highlights](#-v3-highlights) • [Features](#-feature-overview) • [Requirements](#-requirements) • [Installation](#-installation) • [CLI](#-cli-at-a-glance) • [Configuration](#-configuration--preferences) • [Architecture](#-project-architecture) • [Outputs](#-output-artifacts) • [Development](#-development-workflow)
+[Demo](#-cli-demo) • [Highlights](#-v3-highlights) • [Features](#-feature-overview) • [Requirements](#-requirements) • [Installation](#-installation) • [CLI](#-cli-at-a-glance) • [Configuration](#-configuration--preferences) • [Architecture](#-project-architecture) • [Outputs](#-output-artifacts) • [Development](#-development-workflow)
 
 </div>
+
+## 🎥 CLI Demo
+
+<video controls src="docs/assets/media/demo.mov" width="100%">
+  Your browser does not support the video tag. You can download it [here](docs/assets/media/demo.mov).
+</video>
 
 ## Why AgentRules Architect?
 
@@ -38,6 +44,19 @@ Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Ar
 - 📊 Rich terminal UI (Rich) showing per-agent progress, duration, and failures in real time.
 - 🪵 Configurable outputs: `AGENTS.md`, `.cursorignore`, and per-phase markdown/json snapshots.
 - 🔧 Declarative model presets plus runtime overrides via CLI or TOML.
+
+## 🧮 Analysis Pipeline
+
+All CLI entry points ultimately execute the `AnalysisPipeline` orchestrator (`src/agentrules/core/pipeline`) that wires the six analysis phases together and streams progress events to the Rich console.
+
+1. **Phase 1 – Initial Discovery** (`core/analysis/phase_1.py`) inventories the repo tree, surfaces tech stack signals, and collects dependency metadata that later phases reuse.
+2. **Phase 2 – Methodical Planning** (`core/analysis/phase_2.py`) asks the configured model to draft an XML-ish agent plan, then parses it into structured agent definitions (with a safe fallback extractor).
+3. **Phase 3 – Deep Analysis** (`core/analysis/phase_3.py`) spins up specialized architects per agent definition, hydrates them with file excerpts, and runs them in parallel; if no plan exists it falls back to three default agents.
+4. **Phase 4 – Synthesis** (`core/analysis/phase_4.py`) stitches together Phase 3 findings, elevates cross-cutting insights, and flags follow-up prompts for the final steps.
+5. **Phase 5 – Consolidation** (`core/analysis/phase_5.py`) produces a canonical report object that downstream tooling (rules generator, metrics, exporters) consumes.
+6. **Final Analysis** (`core/analysis/final_analysis.py`) produces the narrative summary that drives `AGENTS.md`, output toggles, and console highlights.
+
+The pipeline captures metrics (elapsed time, agent counts) and hands them to the output writer so offline runs and full analyses share the same persistence path.
 
 ## 🛠 Requirements
 
@@ -133,7 +152,7 @@ Presets live in `config/agents.py` via the `MODEL_PRESETS` dictionary. Each pres
 - Model name plus reasoning/temperature configuration
 - Human-readable label and description for the CLI wizard
 
-Defaults favor `gemini-2.5-flash` for every phase, but you can mix providers:
+Defaults favor `gemini-2.5-flash` for every phase, but you can mix providers. For example:
 
 ```python
 MODEL_PRESET_DEFAULTS = {
@@ -148,6 +167,14 @@ MODEL_PRESET_DEFAULTS = {
 ```
 
 Adjust presets through the CLI (`agentrules configure --models`) or by editing `config/agents.py`. At runtime the values populate `MODEL_CONFIG`, which the pipeline reads in `agentrules/analyzer.py`.
+
+## 🧠 Reasoning & Advanced Configuration
+
+- **Reasoning modes:** Anthropic presets toggle `ReasoningMode.ENABLED`/`DISABLED`, Gemini Pro/Flash Thinking use `ReasoningMode.DYNAMIC`, OpenAI o3/o4-mini/GPT‑5 expose `MINIMAL`→`HIGH` effort levels, GPT‑4.1 presets rely on `ReasoningMode.TEMPERATURE`, and DeepSeek Reasoner/xAI Grok fast reasoning ship with their baked-in reasoning defaults (`src/agentrules/core/types/models.py`).
+- **Agent planning:** Phase 2 generates agent manifests that Phase 3 converts into live architects; when parsing fails the fallback extractor and default agents keep the pipeline running (`core/analysis/phase_2.py`, `core/analysis/phase_3.py`).
+- **Provider-specific tools:** `create_researcher_config` enables Tavily-backed tool use for whichever preset you promote to the Researcher role, and the CLI’s Researcher row simply flips that on/off (`core/types/models.py`, `config/tools.py`).
+- **Prompt customization:** Fine-tune behaviour by editing the phase prompts under `src/agentrules/config/prompts/`—heavy modifications should stay aligned with the YAML/XML formats expected by the parser utilities.
+- **Direct overrides:** Advanced users can swap presets or tweak reasoning levels by modifying `MODEL_PRESETS`/`MODEL_PRESET_DEFAULTS` in `config/agents.py`; the configuration manager merges those with TOML overrides at runtime.
 
 ## 🔍 Tooling & Research Agents
 

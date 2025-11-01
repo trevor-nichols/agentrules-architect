@@ -20,7 +20,7 @@ EXCLUDED_DIRS = {
     '.pytest_cache', '.mypy_cache', '.ruff_cache', '.tox',
     'env', '.env', '.venv', 'site-packages', '.egg-info',
     '.gradle', '.parcel-cache', 'buck-out', 'out', 'tmp', 'temp',
-    'artifacts', 'target'
+    'log', 'logs', 'artifacts', 'target'
 }
 
 EXCLUDED_FILES = {

@@ -38,6 +38,6 @@ project_tree_*
 our-notes/
 venv_agentrules/
 venv_agentrules_legacy/
-docs/
+internal-docs/
 .claude/
 *SHAPSHOT.md
