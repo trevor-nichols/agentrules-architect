@@ -24,6 +24,7 @@ from agentrules.config_service import (
     get_effective_exclusions,
     get_exclusion_overrides,
     get_rules_filename,
+    get_tree_max_depth,
     is_researcher_enabled,
     should_generate_cursorignore,
     should_generate_phase_outputs,
@@ -181,6 +182,7 @@ class ProjectAnalyzer:
         self.gitignore_spec: PathSpec | None = None
         self.gitignore_path: Path | None = None
         self.respect_gitignore: bool = True
+        self.tree_max_depth: int = get_tree_max_depth()
 
         self.phase1_analyzer = Phase1Analysis(researcher_enabled=is_researcher_enabled())
         self.phase2_analyzer = Phase2Analysis()
@@ -227,6 +229,7 @@ class ProjectAnalyzer:
         exclude_dirs, exclude_files, exclude_exts = get_effective_exclusions()
         self.effective_exclusions = (exclude_dirs, exclude_files, exclude_exts)
         self.respect_gitignore = should_respect_gitignore()
+        self.tree_max_depth = get_tree_max_depth()
         self.gitignore_spec = None
         self.gitignore_path = None
         if self.respect_gitignore:
@@ -237,6 +240,7 @@ class ProjectAnalyzer:
 
         tree_with_delimiters = get_project_tree(
             self.directory,
+            max_depth=self.tree_max_depth,
             exclude_dirs=exclude_dirs,
             exclude_files=exclude_files,
             exclude_extensions=exclude_exts,
@@ -448,6 +452,7 @@ class ProjectAnalyzer:
             exclusion_summary=exclusion_summary,
             gitignore_spec=self.gitignore_spec,
             gitignore_info=gitignore_info,
+            tree_max_depth=self.tree_max_depth,
         )
 
         if should_generate_cursorignore():

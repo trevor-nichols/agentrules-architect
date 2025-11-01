@@ -17,8 +17,8 @@ excluded from the project tree structure and analysis.
 EXCLUDED_DIRS = {
     'node_modules', '.next', '.git', 'venv', '__pycache__', '_pycache_',
     'dist', 'build', '.vscode', '.idea', 'coverage',
-    '.pytest_cache', '.mypy_cache', 'env', '.env', '.venv',
-    'site-packages'
+    '.pytest_cache', '.mypy_cache', '.ruff_cache', '.tox',
+    'env', '.env', '.venv', 'site-packages'
 }
 
 EXCLUDED_FILES = {
@@ -27,6 +27,7 @@ EXCLUDED_FILES = {
     'README.md', 'LICENSE', '.eslintrc', '.prettierrc',
     'tsconfig.json', 'requirements.txt', 'poetry.lock',
     'Pipfile.lock', '.gitattributes', '.gitconfig', '.gitmodules',
+    '.coverage',
 }
 
 EXCLUDED_EXTENSIONS = {

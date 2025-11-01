@@ -69,6 +69,7 @@ class ExclusionOverrides:
     remove_files: list[str] = field(default_factory=list)
     add_extensions: list[str] = field(default_factory=list)
     remove_extensions: list[str] = field(default_factory=list)
+    tree_max_depth: int | None = None
 
     def is_empty(self) -> bool:
         override_lists = (
@@ -79,7 +80,8 @@ class ExclusionOverrides:
             self.add_extensions,
             self.remove_extensions,
         )
-        return self.respect_gitignore and not any(override_lists)
+        depth_overridden = self.tree_max_depth is not None
+        return self.respect_gitignore and not any(override_lists) and not depth_overridden
 
 
 @dataclass
@@ -140,6 +142,13 @@ class CLIConfig:
             remove_files=_coerce_string_list(exclusions_payload, "remove_files"),
             add_extensions=_coerce_string_list(exclusions_payload, "extensions"),
             remove_extensions=_coerce_string_list(exclusions_payload, "remove_extensions"),
+            tree_max_depth=_coerce_positive_int(
+                exclusions_payload.get("tree_max_depth")
+                if isinstance(exclusions_payload, dict)
+                else None,
+                minimum=1,
+                default=None,
+            ),
         )
         features_payload = payload.get("features")
         features = FeatureToggles(
@@ -189,6 +198,8 @@ class CLIConfig:
             }
             if not self.exclusions.respect_gitignore:
                 exclusions_payload["respect_gitignore"] = False
+            if self.exclusions.tree_max_depth is not None:
+                exclusions_payload["tree_max_depth"] = self.exclusions.tree_max_depth
             payload["exclusions"] = exclusions_payload
         if not self.features.is_default():
             features_payload = payload.setdefault("features", {})
@@ -408,6 +419,31 @@ def should_respect_gitignore(default: bool = True) -> bool:
     return bool(config.exclusions.respect_gitignore)
 
 
+def get_tree_max_depth(default: int = 4) -> int:
+    config = load_config()
+    overrides = config.exclusions
+    depth = overrides.tree_max_depth
+    if depth is None:
+        return max(default, 1)
+    return max(depth, 1)
+
+
+def set_tree_max_depth(value: int | None) -> CLIConfig:
+    if value is not None and value < 1:
+        raise ValueError("tree depth must be at least 1")
+    config = load_config()
+    config.exclusions.tree_max_depth = value
+    save_config(config)
+    return config
+
+
+def reset_tree_max_depth() -> CLIConfig:
+    config = load_config()
+    config.exclusions.tree_max_depth = None
+    save_config(config)
+    return config
+
+
 def _coerce_bool(value: object, default: bool = False) -> bool:
     if isinstance(value, bool):
         return value
@@ -418,6 +454,34 @@ def _coerce_bool(value: object, default: bool = False) -> bool:
         if normalized in {"0", "false", "no", "off"}:
             return False
         return default
+    return default
+
+
+def _coerce_positive_int(
+    value: object,
+    *,
+    minimum: int = 1,
+    default: int | None = None,
+) -> int | None:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value if value >= minimum else default
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return default
+        if stripped.isdigit():
+            parsed = int(stripped)
+            return parsed if parsed >= minimum else default
+        try:
+            parsed = int(float(stripped))
+        except ValueError:
+            return default
+        return parsed if parsed >= minimum else default
+    return default
     if isinstance(value, int | float):
         return bool(value)
     return default

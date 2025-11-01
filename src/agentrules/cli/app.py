@@ -8,6 +8,7 @@ from .bootstrap import bootstrap_runtime
 from .commands.analyze import register as register_analyze
 from .commands.configure import register as register_configure
 from .commands.keys import register as register_keys
+from .commands.tree import register as register_tree
 from .ui.main_menu import run_main_menu
 
 
@@ -24,6 +25,7 @@ def build_app() -> typer.Typer:
     register_analyze(app)
     register_configure(app)
     register_keys(app)
+    register_tree(app)
 
     @app.callback(invoke_without_command=True)
     def main(

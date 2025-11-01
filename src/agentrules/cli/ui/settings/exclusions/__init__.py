@@ -9,6 +9,7 @@ from agentrules.cli.services import configuration
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice, toggle_choice
 
 from .editor import prompt_exclusion_value
+from .preview import preview_filtered_tree
 from .summary import render_exclusion_summary
 
 
@@ -32,6 +33,8 @@ def configure_exclusions(context: CliContext) -> None:
                 questionary.Choice(title="Directories", value="directories"),
                 questionary.Choice(title="Files", value="files"),
                 questionary.Choice(title="Extensions", value="extensions"),
+                questionary.Choice(title="Tree traversal depth", value="__TREE_DEPTH__"),
+                questionary.Choice(title="Preview filtered tree", value="__PREVIEW__"),
                 toggle_choice(
                     "Respect .gitignore",
                     current_gitignore,
@@ -52,6 +55,12 @@ def configure_exclusions(context: CliContext) -> None:
             configuration.save_respect_gitignore(not current_gitignore)
             status_text = "enabled" if not current_gitignore else "disabled"
             console.print(f"[green].gitignore handling {status_text}.[/]")
+            continue
+        if category == "__TREE_DEPTH__":
+            _configure_tree_depth(context)
+            continue
+        if category == "__PREVIEW__":
+            preview_filtered_tree(context)
             continue
 
         if category == "__RESET__":
@@ -107,3 +116,44 @@ def configure_exclusions(context: CliContext) -> None:
                 console.print(f"[yellow]'{normalized}' remains excluded (already default).[/]")
             else:
                 console.print(f"[green]'{normalized}' will no longer be excluded.[/]")
+
+
+def _configure_tree_depth(context: CliContext) -> None:
+    console = context.console
+    current_depth = configuration.get_tree_traversal_depth()
+    overrides = configuration.get_exclusion_settings()["overrides"]
+    prompt_default = str(overrides.tree_max_depth or current_depth)
+
+    answer = questionary.text(
+        "Enter maximum tree depth (positive integer). Type 'reset' to restore default.",
+        default=prompt_default,
+        qmark="🌳",
+        style=CLI_STYLE,
+    ).ask()
+
+    if answer is None:
+        console.print("[yellow]No changes made.[/]")
+        return
+
+    trimmed = answer.strip().lower()
+    if not trimmed:
+        console.print("[yellow]No changes made.[/]")
+        return
+
+    if trimmed in {"reset", "default"}:
+        configuration.reset_tree_traversal_depth()
+        console.print("[green]Tree traversal depth reset to default.[/]")
+        return
+
+    try:
+        depth_value = int(trimmed)
+    except ValueError:
+        console.print("[red]Depth must be a whole number of 1 or greater.[/]")
+        return
+
+    if depth_value < 1:
+        console.print("[red]Depth must be at least 1.[/]")
+        return
+
+    configuration.save_tree_traversal_depth(depth_value)
+    console.print(f"[green]Tree traversal depth set to {depth_value}.[/]")

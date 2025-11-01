@@ -48,6 +48,12 @@ def render_exclusion_summary(context: CliContext) -> dict:
 
     console.print(table)
 
+    tree_depth = configuration.get_tree_traversal_depth()
+    if overrides.tree_max_depth is None:
+        console.print(f"[dim]Tree traversal depth:[/] {tree_depth}")
+    else:
+        console.print(f"[green]Tree traversal depth:[/] {tree_depth} (custom override)")
+
     added_summary: list[str] = []
     removed_summary: list[str] = []
 

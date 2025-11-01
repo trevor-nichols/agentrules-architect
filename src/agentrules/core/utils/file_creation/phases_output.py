@@ -37,6 +37,7 @@ def save_phase_outputs(
     exclusion_summary: dict | None = None,
     gitignore_spec: PathSpec | None = None,
     gitignore_info: dict | None = None,
+    tree_max_depth: int | None = None,
 ) -> None:
     """
     Save the outputs of each phase to separate markdown files.
@@ -138,8 +139,14 @@ def save_phase_outputs(
     custom_exclude_dirs = DEFAULT_EXCLUDE_DIRS.union(set(exclude_dirs))
 
     # Generate a tree with our custom exclusions
+    if tree_max_depth is None:
+        from agentrules.config_service import get_tree_max_depth  # Lazy import to avoid cycles
+
+        tree_max_depth = get_tree_max_depth()
+
     tree = generate_tree(
         directory,
+        max_depth=tree_max_depth,
         exclude_dirs=custom_exclude_dirs,
         exclude_patterns=DEFAULT_EXCLUDE_PATTERNS,
         gitignore_spec=gitignore_spec,

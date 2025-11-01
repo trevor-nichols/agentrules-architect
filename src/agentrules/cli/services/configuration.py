@@ -15,8 +15,10 @@ from agentrules.config_service import (
     get_exclusion_overrides,
     get_logging_verbosity,
     get_rules_filename,
+    get_tree_max_depth,
     remove_exclusion_entry,
     reset_exclusions,
+    reset_tree_max_depth,
     set_generate_cursorignore,
     set_generate_phase_outputs,
     set_logging_verbosity,
@@ -24,6 +26,7 @@ from agentrules.config_service import (
     set_provider_key,
     set_respect_gitignore,
     set_rules_filename,
+    set_tree_max_depth,
     should_respect_gitignore,
 )
 from agentrules.config_service import (
@@ -177,3 +180,15 @@ def save_respect_gitignore(enabled: bool) -> None:
 
 def is_gitignore_respected() -> bool:
     return should_respect_gitignore()
+
+
+def get_tree_traversal_depth() -> int:
+    return get_tree_max_depth()
+
+
+def save_tree_traversal_depth(value: int | None) -> None:
+    set_tree_max_depth(value)
+
+
+def reset_tree_traversal_depth() -> None:
+    reset_tree_max_depth()
