@@ -1,7 +1,7 @@
 anthropic
 rich
 openai
-google-genai
+google-genai>=1.51.0
 flask
 protobuf>=4.25
 python-dotenv

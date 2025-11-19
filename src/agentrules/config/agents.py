@@ -22,9 +22,14 @@ from agentrules.core.types.models import (
     GEMINI_FLASH,
     GEMINI_FLASH_DYNAMIC,
     GEMINI_PRO,
+    GEMINI_3_PRO_PREVIEW,
     GPT4_1_CREATIVE,
     GPT4_1_DEFAULT,
     GPT4_1_PRECISE,
+    GPT5_1_DEFAULT,
+    GPT5_1_HIGH,
+    GPT5_1_CODEX,
+    GPT5_1_MINIMAL,
     GPT5_DEFAULT,
     GPT5_HIGH,
     GPT5_MINIMAL,
@@ -71,6 +76,15 @@ def _preset(
 
 
 MODEL_PRESETS: dict[str, PresetDefinition] = {
+    "gemini-3-pro-preview": _preset(
+        config=GEMINI_3_PRO_PREVIEW,
+        label="Gemini 3 Pro (Preview)",
+        description=(
+            "Newest Gemini tier with 1M token context, high reasoning depth, and "
+            "thinking_level controls."
+        ),
+        provider=ModelProvider.GEMINI,
+    ),
     "gemini-flash": _preset(
         config=GEMINI_FLASH,
         label="Gemini 2.5 Flash",
@@ -195,6 +209,30 @@ MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=GPT5_HIGH,
         label="GPT-5 (high reasoning)",
         description="GPT-5 via Responses API with high reasoning depth and verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt51-default": _preset(
+        config=GPT5_1_DEFAULT,
+        label="GPT-5.1 (medium reasoning)",
+        description="GPT-5.1 via Responses API with medium reasoning and verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt51-minimal": _preset(
+        config=GPT5_1_MINIMAL,
+        label="GPT-5.1 (minimal reasoning)",
+        description="GPT-5.1 minimal reasoning and low verbosity for speed.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt51-high": _preset(
+        config=GPT5_1_HIGH,
+        label="GPT-5.1 (high reasoning)",
+        description="GPT-5.1 via Responses API with high reasoning depth and verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt-5.1-codex": _preset(
+        config=GPT5_1_CODEX,
+        label="GPT-5.1 Codex",
+        description="Coding-optimized GPT-5.1 variant via Responses API with medium reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "deepseek-reasoner": _preset(

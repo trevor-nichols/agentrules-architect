@@ -66,11 +66,14 @@ TECH_STACK_AGENT_PROMPT = {
 # Researcher Agent prompt
 RESEARCHER_AGENT_PROMPT = {
     "name": "Researcher Agent",
-    "role": "finding official documentation for a list of technologies",
+    "role": "researching and documenting current versions of dependencies and frameworks",
     "responsibilities": [
-        "Receive a list of technologies (packages, libraries, frameworks).",
-        "For each technology, use the web search tool to find the official documentation URL.",
-        "Return a structured list of the technologies and their corresponding documentation links."
+        "Receive a list of technologies (packages, libraries, frameworks) with their specific versions that may be beyond your training data or have significant updates",
+        "For each technology, use the web search tool to find and retrieve the official documentation for that specific version",
+        "Read and synthesize the documentation to extract key information: new features, breaking changes, API updates, best practices, and important usage patterns",
+        "Create comprehensive documentation summaries for each technology so downstream agents have accurate, up-to-date context",
+        "Focus on information that would impact code analysis: API changes, deprecated features, new capabilities, and version-specific gotchas",
+        "Return structured documentation that fills knowledge gaps and prevents downstream agents from providing outdated advice"
     ]
 }
 

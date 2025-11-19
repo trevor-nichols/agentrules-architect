@@ -32,7 +32,7 @@ class ReasoningMode(Enum):
     DISABLED = "disabled"
     DYNAMIC = "dynamic"
 
-    # OpenAI-specific reasoning effort levels (for o3, o4-mini, gpt-5)
+    # OpenAI-specific reasoning effort levels (for o3, o4-mini, gpt-5.1)
     MINIMAL = "minimal"
     LOW = "low"
     MEDIUM = "medium"

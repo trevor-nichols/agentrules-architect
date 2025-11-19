@@ -22,7 +22,7 @@ class ModelConfig(NamedTuple):
     reasoning: ReasoningMode = ReasoningMode.DISABLED
     temperature: float | None = None  # For temperature-based models like gpt-4.1
     tools_config: ToolConfig | None = None  # Tool configuration for this model
-    text_verbosity: str | None = None  # GPT-5 text verbosity control
+    text_verbosity: str | None = None  # GPT-5 family text verbosity control
 
 # ====================================================
 # Predefined Model Configurations
@@ -227,7 +227,14 @@ GEMINI_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# GPT-5 configurations
+# GPT-5 configurations (Responses API only)
+GEMINI_3_PRO_PREVIEW = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3-pro-preview",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GPT5_DEFAULT = ModelConfig(
     provider=ModelProvider.OPENAI,
     model_name="gpt-5",
@@ -253,6 +260,43 @@ GPT5_HIGH = ModelConfig(
     temperature=None,
     tools_config={"enabled": False, "tools": None},
     text_verbosity="high"
+)
+
+# GPT-5.1 configurations
+GPT5_1_DEFAULT = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.1",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium"
+)
+
+GPT5_1_MINIMAL = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.1",
+    reasoning=ReasoningMode.MINIMAL,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="low"
+)
+
+GPT5_1_HIGH = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.1",
+    reasoning=ReasoningMode.HIGH,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="high"
+)
+
+GPT5_1_CODEX = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.1-codex",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium"
 )
 
 # -----------------------------------------------------------------------------

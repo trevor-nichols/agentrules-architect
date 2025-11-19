@@ -17,6 +17,12 @@ class OpenAIConfigTests(unittest.TestCase):
         self.assertTrue(defaults.use_responses_api)
         self.assertIsNone(defaults.default_temperature)
 
+    def test_resolve_defaults_for_gpt51_prefix(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.1-large")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
     def test_resolve_defaults_for_known_model(self) -> None:
         defaults = resolve_model_defaults("gpt-4.1")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.TEMPERATURE)
@@ -31,7 +37,7 @@ class OpenAIConfigTests(unittest.TestCase):
 
 
 class OpenAIRequestBuilderTests(unittest.TestCase):
-    def test_prepare_request_for_responses_api(self) -> None:
+    def test_prepare_request_for_responses_api_gpt5(self) -> None:
         prepared = prepare_request(
             model_name="gpt-5-turbo",
             content="Hello world",
@@ -50,6 +56,25 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["text"], {"verbosity": "concise"})
         self.assertIn("tools", payload)
         self.assertEqual(payload["tool_choice"], "auto")
+
+    def test_prepare_request_for_responses_api_gpt51(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5.1-turbo",
+            content="Hello gpt-5.1",
+            reasoning=ReasoningMode.MINIMAL,
+            temperature=None,
+            tools=None,
+            text_verbosity="low",
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["model"], "gpt-5.1-turbo")
+        self.assertEqual(payload["input"], "Hello gpt-5.1")
+        self.assertEqual(payload["reasoning"], {"effort": "minimal"})
+        self.assertEqual(payload["text"], {"verbosity": "low"})
+        self.assertNotIn("tools", payload)
 
     def test_prepare_request_for_chat_api(self) -> None:
         prepared = prepare_request(

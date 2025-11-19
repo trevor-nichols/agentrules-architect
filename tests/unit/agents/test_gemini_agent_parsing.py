@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from typing import Any
 
+from google.genai import types as genai_types
 from google.protobuf.struct_pb2 import Struct
 
 from agentrules.core.agents.base import ReasoningMode
@@ -59,3 +60,19 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]
         self.assertEqual(config.thinking_config.thinking_budget, -1)
+
+    async def test_gemini3_dynamic_maps_to_thinking_level_high(self):
+        arch = GeminiArchitect(model_name="gemini-3-pro-preview", reasoning=ReasoningMode.DYNAMIC)
+        arch.client = _GeminiFakeClient()  # type: ignore
+        await arch.analyze({})
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertEqual(config.thinking_config.thinking_level, genai_types.ThinkingLevel.HIGH)
+        self.assertIsNone(config.thinking_config.thinking_budget)
+
+    async def test_gemini3_disabled_maps_to_thinking_level_low(self):
+        arch = GeminiArchitect(model_name="gemini-3-pro-preview", reasoning=ReasoningMode.DISABLED)
+        arch.client = _GeminiFakeClient()  # type: ignore
+        await arch.analyze({})
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertEqual(config.thinking_config.thinking_level, genai_types.ThinkingLevel.LOW)
+        self.assertIsNone(config.thinking_config.thinking_budget)

@@ -25,14 +25,14 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
     ),
 }
 
+_GPT5_RESPONSES_DEFAULTS = ModelDefaults(
+    default_reasoning=ReasoningMode.MEDIUM,
+    use_responses_api=True,
+)
+
 _PREFIX_DEFAULTS: tuple[tuple[str, ModelDefaults], ...] = (
-    (
-        "gpt-5",
-        ModelDefaults(
-            default_reasoning=ReasoningMode.MEDIUM,
-            use_responses_api=True,
-        ),
-    ),
+    ("gpt-5.1", _GPT5_RESPONSES_DEFAULTS),
+    ("gpt-5", _GPT5_RESPONSES_DEFAULTS),
 )
 
 _FALLBACK_DEFAULTS = ModelDefaults(default_reasoning=ReasoningMode.DISABLED)

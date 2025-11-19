@@ -115,18 +115,7 @@ class GeminiArchitect(BaseArchitect):
         generation_config = genai_types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
         agent_name = self.name or "Gemini Architect"
-        details: list[str] = []
-        if thinking_config is not None:
-            budget = thinking_config.thinking_budget
-            if budget == DISABLED_THINKING_BUDGET:
-                details.append("with thinking disabled")
-            elif budget == DYNAMIC_THINKING_BUDGET:
-                details.append("with dynamic thinking")
-            else:
-                details.append(f"with thinking (budget={budget})")
-        if api_tools:
-            details.append("with tools enabled")
-        detail_suffix = f" ({', '.join(details)})" if details else ""
+        detail_suffix = self._compose_request_detail_suffix(thinking_config, api_tools)
 
         from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycle
 
@@ -244,18 +233,7 @@ class GeminiArchitect(BaseArchitect):
             generation_config = genai_types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
             agent_name = self.name or "Gemini Architect"
-            details: list[str] = []
-            if thinking_config is not None:
-                budget = thinking_config.thinking_budget
-                if budget == DISABLED_THINKING_BUDGET:
-                    details.append("with thinking disabled")
-                elif budget == DYNAMIC_THINKING_BUDGET:
-                    details.append("with dynamic thinking")
-                else:
-                    details.append(f"with thinking (budget={budget})")
-            if api_tools:
-                details.append("with tools enabled")
-            detail_suffix = f" ({', '.join(details)})" if details else ""
+            detail_suffix = self._compose_request_detail_suffix(thinking_config, api_tools)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycle
 
@@ -289,8 +267,49 @@ class GeminiArchitect(BaseArchitect):
             "error": message,
         }
 
+    def _compose_request_detail_suffix(
+        self,
+        thinking_config: genai_types.ThinkingConfig | None,
+        api_tools: list[Any] | None,
+    ) -> str:
+        details: list[str] = []
+        thinking_detail = self._describe_thinking_config(thinking_config)
+        if thinking_detail:
+            details.append(thinking_detail)
+        if api_tools:
+            details.append("with tools enabled")
+        return f" ({', '.join(details)})" if details else ""
+
+    @staticmethod
+    def _describe_thinking_config(
+        thinking_config: genai_types.ThinkingConfig | None,
+    ) -> str | None:
+        if thinking_config is None:
+            return None
+
+        level = getattr(thinking_config, "thinking_level", None)
+        if level:
+            normalized = str(getattr(level, "value", level)).lower()
+            return f"with thinking level {normalized}"
+
+        budget = getattr(thinking_config, "thinking_budget", None)
+        if budget == DISABLED_THINKING_BUDGET:
+            return "with thinking disabled"
+        if budget == DYNAMIC_THINKING_BUDGET:
+            return "with dynamic thinking"
+        if isinstance(budget, int):
+            return f"with thinking (budget={budget})"
+        return None
+
     def _build_thinking_config(self) -> genai_types.ThinkingConfig | None:
         reasoning_mode = self.reasoning
+
+        if self._model_supports_thinking_level():
+            level = self._map_reasoning_mode_to_thinking_level(reasoning_mode)
+            if level is None:
+                return None
+            return genai_types.ThinkingConfig(thinking_level=level)
+
         if reasoning_mode == ReasoningMode.DYNAMIC:
             return genai_types.ThinkingConfig(thinking_budget=DYNAMIC_THINKING_BUDGET)
         if reasoning_mode == ReasoningMode.ENABLED:
@@ -305,10 +324,31 @@ class GeminiArchitect(BaseArchitect):
             return genai_types.ThinkingConfig(thinking_budget=DYNAMIC_THINKING_BUDGET)
         return None
 
+    def _map_reasoning_mode_to_thinking_level(
+        self,
+        reasoning_mode: ReasoningMode,
+    ) -> genai_types.ThinkingLevel | None:
+        if reasoning_mode in (ReasoningMode.DISABLED, ReasoningMode.MINIMAL, ReasoningMode.LOW):
+            return genai_types.ThinkingLevel.LOW
+        if reasoning_mode in (
+            ReasoningMode.ENABLED,
+            ReasoningMode.DYNAMIC,
+            ReasoningMode.MEDIUM,
+            ReasoningMode.HIGH,
+        ):
+            return genai_types.ThinkingLevel.HIGH
+        return None
+
     def _model_supports_disabling_thinking(self) -> bool:
+        if self._model_supports_thinking_level():
+            return False
         normalized = self.model_name.lower()
         # Gemini 2.5 Pro does not allow disabling thinking according to the docs.
         return "gemini-2.5-pro" not in normalized
+
+    def _model_supports_thinking_level(self) -> bool:
+        normalized = self.model_name.lower()
+        return "gemini-3" in normalized
 
     def _stable_model_name(self) -> str:
         normalized = self.model_name.lower()
@@ -316,6 +356,8 @@ class GeminiArchitect(BaseArchitect):
             return "gemini-2.5-flash"
         if "gemini-2.5-pro" in normalized:
             return "gemini-2.5-pro"
+        if "gemini-3-pro" in normalized:
+            return "gemini-3-pro-preview"
         return self.model_name
 
     def _stream_content(

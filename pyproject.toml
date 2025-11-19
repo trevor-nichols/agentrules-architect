@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentrules"
-version = "3.0.0"
+version = "3.0.1"
 description = "Interactive CLI for the CursorRules Architect multi-phase analysis pipeline."
 readme = "README.md"
 authors = [{name = "trevor-nichols"}]
@@ -22,7 +22,7 @@ dependencies = [
   "anthropic",
   "rich",
   "openai",
-  "google-genai",
+  "google-genai>=1.51.0",
   "protobuf>=4.25",
   "python-dotenv",
   "tavily-python",
