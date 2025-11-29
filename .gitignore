@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# macOS
+.DS_Store
+
 # Python
 __pycache__/
 *.py[cod]
