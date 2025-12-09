@@ -65,7 +65,7 @@ The pipeline captures metrics (elapsed time, agent counts) and hands them to the
   - Google (`gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-2.5-pro`)
   - xAI (`grok-4` family)
   - Tavily (optional, enables live web search tooling)
-- Core dependencies: `anthropic`, `openai`, `google-genai>=1.51.0`, `tavily-python`, `rich`, `typer`, `questionary`, `platformdirs`, `pathspec`, `python-dotenv`, `protobuf`.
+- Core dependencies: `anthropic`, `openai`, `google-genai>=1.51.0`, `tavily-python`, `tiktoken`, `rich`, `typer`, `questionary`, `platformdirs`, `pathspec`, `python-dotenv`, `protobuf`.
 - Dev tooling: `pytest`, `pytest-asyncio`, `pytest-mock`, `ruff`, `pyright`.
 
 ## 📦 Installation
@@ -171,6 +171,7 @@ MODEL_PRESET_DEFAULTS = {
 Adjust presets through the CLI (`agentrules configure --models`) or by editing `config/agents.py`. At runtime the values populate `MODEL_CONFIG`, which the pipeline consumes while resolving phase architects (`src/agentrules/core/agents/factory/factory.py`).
 
 Need a coding-optimized OpenAI tier? Select the `gpt-5.1-codex` preset, which uses `gpt-5.1-codex` under the hood (same Responses API interface and reasoning controls as the rest of the GPT-5.x family, but tuned on code-heavy workloads).
+Looking for a cost-aware default? The new `gpt5-mini` preset pairs high reasoning with a generous context window and lower per-token cost—ideal for Phase 3 deep dives when budgets matter.
 
 > **Preset tip:** Legacy-friendly presets stay under the `gpt5-*` keys (backed by the `gpt-5` model name) so existing `config.toml` files continue to work, while the newer GPT‑5.1 presets live under the `gpt51-*` keys. Mixing them per phase or per-agent is fully supported.
 
@@ -180,6 +181,7 @@ Need a coding-optimized OpenAI tier? Select the `gpt-5.1-codex` preset, which us
 - **Agent planning:** Phase 2 generates agent manifests that Phase 3 converts into live architects; when parsing fails the fallback extractor and default agents keep the pipeline running (`core/analysis/phase_2.py`, `core/analysis/phase_3.py`).
 - **Provider-specific tools:** `create_researcher_config` enables Tavily-backed tool use for whichever preset you promote to the Researcher role, and the CLI’s Researcher row simply flips that on/off (`core/types/models.py`, `config/tools.py`).
 - **Prompt customization:** Fine-tune behaviour by editing the phase prompts under `src/agentrules/config/prompts/`—heavy modifications should stay aligned with the YAML/XML formats expected by the parser utilities.
+- **Token-aware runs:** Architects now emit token preflight logs using configured context limits/estimators, and Phase 3 uses limit-aware batching plus summarization when a model’s max input tokens are provided.
 - **Direct overrides:** Advanced users can swap presets or tweak reasoning levels by modifying `MODEL_PRESETS`/`MODEL_PRESET_DEFAULTS` in `config/agents.py`; the configuration manager merges those with TOML overrides at runtime.
 
 ## 🔍 Tooling & Research Agents

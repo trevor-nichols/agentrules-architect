@@ -40,7 +40,7 @@ class ViewEventSink(AnalysisEventSink):
         agent_name = self._resolve_agent_name(payload)
 
         if event.type == "agent_registered":
-            detail = self._format_file_detail(payload.get("files"))
+            detail = self._format_detail(payload)
             message = f"Pending{detail}" if detail else "Pending"
             self.view.update_agent_progress(
                 event.phase,
@@ -53,7 +53,7 @@ class ViewEventSink(AnalysisEventSink):
             )
             return
         if event.type == "agent_started":
-            detail = self._format_file_detail(payload.get("files"))
+            detail = self._format_detail(payload)
             message = f"In progress{detail}"
             self.view.update_agent_progress(
                 event.phase,
@@ -65,7 +65,8 @@ class ViewEventSink(AnalysisEventSink):
                 phase_color,
             )
         elif event.type == "agent_completed":
-            message = "Completed"
+            detail = self._format_detail(payload)
+            message = f"Completed{detail}"
             duration = payload.get("duration")
             if isinstance(duration, Real):
                 message += f" in {duration:.1f}s"
@@ -93,6 +94,36 @@ class ViewEventSink(AnalysisEventSink):
                 "red",
                 phase_color,
             )
+        elif event.type == "agent_batch_started":
+            message = self._format_batch_status(
+                payload,
+                prefix="Batch",
+                in_progress=True,
+            )
+            self.view.update_agent_progress(
+                event.phase,
+                agent_id or agent_name,
+                agent_name,
+                message,
+                "⟳",
+                phase_color,
+                phase_color,
+            )
+        elif event.type == "agent_batch_completed":
+            message = self._format_batch_status(
+                payload,
+                prefix="Completed batch",
+                in_progress=False,
+            )
+            self.view.update_agent_progress(
+                event.phase,
+                agent_id or agent_name,
+                agent_name,
+                message,
+                "",
+                phase_color,
+                phase_color,
+            )
 
     def _cache_agents(self, agents: list[dict]) -> None:
         for entry in agents:
@@ -107,12 +138,47 @@ class ViewEventSink(AnalysisEventSink):
             return str(payload["id"])
         return "Agent"
 
-    def _format_file_detail(self, files: object) -> str:
-        if not files:
-            return ""
-        try:
-            count = len(files)  # type: ignore[arg-type]
-        except TypeError:
-            return ""
-        label = "file" if count == 1 else "files"
-        return f" · {count} {label}"
+    def _format_detail(self, payload: dict) -> str:
+        files = payload.get("files")
+        file_count = payload.get("file_count")
+        batches = payload.get("batches")
+
+        count = None
+        if isinstance(file_count, int):
+            count = file_count
+        if files:
+            try:
+                count = len(files)  # type: ignore[arg-type]
+            except TypeError:
+                pass
+
+        parts: list[str] = []
+        if isinstance(count, int):
+            label = "file" if count == 1 else "files"
+            parts.append(f"{count} {label}")
+        if isinstance(batches, int) and batches > 1:
+            label = "batch" if batches == 1 else "batches"
+            parts.append(f"{batches} {label}")
+
+        return f" · {' · '.join(parts)}" if parts else ""
+
+    def _format_batch_status(self, payload: dict, *, prefix: str, in_progress: bool) -> str:
+        index = payload.get("batch_index")
+        total = payload.get("batch_total")
+        files = payload.get("files")
+
+        parts: list[str] = []
+        if isinstance(index, int) and isinstance(total, int):
+            parts.append(f"{prefix} {index}/{total}")
+        elif isinstance(index, int):
+            parts.append(f"{prefix} {index}")
+        else:
+            parts.append(prefix)
+
+        file_detail = self._format_detail({"files": files, "file_count": len(files) if files else None})
+        if file_detail:
+            parts.append(file_detail.strip(" ·"))
+
+        if in_progress:
+            return " ".join(parts)
+        return " ".join(parts)

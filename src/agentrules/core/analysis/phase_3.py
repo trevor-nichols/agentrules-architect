@@ -211,6 +211,16 @@ class Phase3Analysis:
         started = time.perf_counter()
         try:
             for batch_index, batch in enumerate(batches, start=1):
+                self._publish_agent_event(
+                    "agent_batch_started",
+                    phase="phase3",
+                    agent=agent_def,
+                    extra={
+                        "batch_index": batch_index,
+                        "batch_total": len(batches),
+                        "files": batch.assigned_files,
+                    },
+                )
                 context = {
                     "agent_name": agent_def.get("name", "Analysis Agent"),
                     "agent_role": agent_def.get("description", "Analyzing the project"),
@@ -233,6 +243,17 @@ class Phase3Analysis:
 
                 # Local summary of the batch result to carry forward
                 prior_summary = self._local_summary_from_result(result)
+
+                self._publish_agent_event(
+                    "agent_batch_completed",
+                    phase="phase3",
+                    agent=agent_def,
+                    extra={
+                        "batch_index": batch_index,
+                        "batch_total": len(batches),
+                        "files": batch.assigned_files,
+                    },
+                )
         except Exception as error:  # pragma: no cover - defensive + passthrough
             duration = time.perf_counter() - started
             self._publish_agent_event(
