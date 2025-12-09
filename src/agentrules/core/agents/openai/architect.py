@@ -13,6 +13,7 @@ from agentrules.config.prompts.phase_4_prompts import format_phase4_prompt
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_request, get_client
 from .config import resolve_model_defaults
@@ -41,6 +42,7 @@ class OpenAIArchitect(BaseArchitect):
         prompt_template: str | None = None,
         tools_config: dict | None = None,
         text_verbosity: str | None = None,
+        model_config: Any | None = None,
     ):
         defaults = resolve_model_defaults(model_name)
         effective_reasoning = reasoning or defaults.default_reasoning
@@ -62,6 +64,7 @@ class OpenAIArchitect(BaseArchitect):
             role=role,
             responsibilities=responsibilities,
             tools_config=tools_config,
+            model_config=model_config,
         )
 
         self.prompt_template = prompt_template or self._get_default_prompt_template()
@@ -125,6 +128,7 @@ Format your response as a structured report with clear sections and findings."""
 
             final_tools = self._resolve_tools(tools)
             prepared = self._prepare_request(content, final_tools)
+            self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name
 
@@ -174,6 +178,7 @@ Format your response as a structured report with clear sections and findings."""
             content = context.get("formatted_prompt") or self.format_prompt(context)
             final_tools = self._resolve_tools(tools)
             prepared = self._prepare_request(content, final_tools)
+            self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name
 
@@ -273,6 +278,7 @@ Format your response as a structured report with clear sections and findings."""
     ) -> dict:
         try:
             prepared = self._prepare_request(content)
+            self._log_token_estimate(prepared)
             response = execute_request(prepared)
             parsed = parse_response(response, prepared.api)
 
@@ -456,6 +462,28 @@ Format your response as a structured report with clear sections and findings."""
             }
 
         return {key: value for key, value in payload.items() if value is not None} or None
+
+    def _log_token_estimate(self, prepared: PreparedRequest) -> None:
+        result = estimate_tokens(
+            provider=self.provider,
+            model_name=self.model_name,
+            payload=prepared.payload,
+            api=getattr(prepared, "api", None),
+            estimator_family=getattr(self._model_config, "estimator_family", None),
+        )
+        limit, _margin, effective = compute_effective_limits(
+            getattr(self._model_config, "max_input_tokens", None),
+            getattr(self._model_config, "safety_margin_tokens", None),
+        )
+
+        detail = f"estimate={result.estimated or 'n/a'} source={result.source}"
+        if result.error:
+            detail += f" error={result.error}"
+        if limit:
+            detail += f" limit={limit}"
+        if effective:
+            detail += f" effective_limit={effective}"
+        logger.info(f"[bold blue]Token preflight:[/bold blue] {detail}")
 
 
 __all__ = ["OpenAIArchitect"]

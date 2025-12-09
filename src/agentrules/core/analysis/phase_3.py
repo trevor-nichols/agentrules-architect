@@ -19,6 +19,7 @@ from pathlib import Path
 from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
 from agentrules.core.agents import get_architect_for_phase
 from agentrules.core.analysis.events import AnalysisEvent, AnalysisEventSink, NullEventSink
+from agentrules.core.utils.token_packer import PackedBatch, pack_files_for_phase3
 
 # ====================================================
 # Phase 3 Analysis Class
@@ -140,7 +141,7 @@ class Phase3Analysis:
                     extra={"file_count": files_count},
                 )
 
-            # Create analysis tasks for each architect
+            # Create analysis tasks for each architect (sequential per agent to allow batching)
             analysis_tasks = []
 
             logging.info("[bold]Phase 3:[/bold] Beginning parallel analysis of files")
@@ -159,21 +160,16 @@ class Phase3Analysis:
                 # Get the content of assigned files
                 file_contents = await self._get_file_contents(directory, assigned_files)
 
-                # Create the context for this agent
-                context = {
-                    "agent_name": agent_def.get("name", "Analysis Agent"),
-                    "agent_role": agent_def.get("description", "Analyzing the project"),
-                    "assigned_files": assigned_files,
-                    "file_contents": file_contents,
-                    "tree_structure": tree,
-                }
+                # Pack into batches respecting model limits
+                batches = self._pack_batches(
+                    architect=architect,
+                    agent_def=agent_def,
+                    file_contents=file_contents,
+                    tree=tree,
+                )
 
-                # Create a formatted prompt for this agent
-                formatted_prompt = format_phase3_prompt(context)
-                context["formatted_prompt"] = formatted_prompt
-
-                # Add the analysis task
-                analysis_tasks.append(self._execute_agent(architect, agent_def, context))
+                # Queue execution (sequential inside)
+                analysis_tasks.append(self._execute_agent_batches(architect, agent_def, batches, tree))
 
             # Run all analysis tasks in parallel
             results = await asyncio.gather(*analysis_tasks)
@@ -192,28 +188,58 @@ class Phase3Analysis:
                 "error": str(e)
             }
 
-    async def _execute_agent(self, architect, agent_def: dict, context: dict) -> dict:
-        """Run an individual agent while emitting lifecycle events."""
+    async def _execute_agent_batches(
+        self,
+        architect,
+        agent_def: dict,
+        batches: list[PackedBatch],
+        tree: list[str],
+    ) -> dict:
+        """Run an individual agent across one or more batches while emitting lifecycle events."""
 
-        files = list(agent_def.get("file_assignments", []) or [])
+        all_results: list[dict] = []
+        prior_summary: str | None = None
+        files_all = list(agent_def.get("file_assignments", []) or [])
 
         self._publish_agent_event(
             "agent_started",
             phase="phase3",
             agent=agent_def,
-            extra={"files": files},
+            extra={"files": files_all, "batches": len(batches)},
         )
 
         started = time.perf_counter()
         try:
-            result = await architect.analyze(context)
+            for batch_index, batch in enumerate(batches, start=1):
+                context = {
+                    "agent_name": agent_def.get("name", "Analysis Agent"),
+                    "agent_role": agent_def.get("description", "Analyzing the project"),
+                    "assigned_files": batch.assigned_files,
+                    "file_contents": batch.file_contents,
+                    "tree_structure": tree,
+                    "previous_summary": prior_summary,
+                }
+                formatted_prompt = format_phase3_prompt(context)
+                context["formatted_prompt"] = formatted_prompt
+
+                result = await architect.analyze(context)
+                all_results.append(
+                    {
+                        "batch": batch_index,
+                        "files": batch.assigned_files,
+                        "result": result,
+                    }
+                )
+
+                # Local summary of the batch result to carry forward
+                prior_summary = self._local_summary_from_result(result)
         except Exception as error:  # pragma: no cover - defensive + passthrough
             duration = time.perf_counter() - started
             self._publish_agent_event(
                 "agent_failed",
                 phase="phase3",
                 agent=agent_def,
-                extra={"files": files, "error": str(error), "duration": duration},
+                extra={"files": files_all, "error": str(error), "duration": duration},
             )
             raise
 
@@ -222,9 +248,19 @@ class Phase3Analysis:
             "agent_completed",
             phase="phase3",
             agent=agent_def,
-            extra={"files": files, "duration": duration},
+            extra={
+                "files": files_all,
+                "batches": len(batches),
+                "duration": duration,
+            },
         )
-        return result
+
+        if len(all_results) == 1:
+            return all_results[0]["result"]
+        return {
+            "batches": all_results,
+            "summary": prior_summary,
+        }
 
     async def _get_file_contents(self, directory: Path, assigned_files: list[str]) -> dict[str, str]:
         """
@@ -277,3 +313,40 @@ class Phase3Analysis:
             payload.update(extra)
         event = AnalysisEvent(phase=phase, type=event_type, payload=payload)
         self._events.publish(event)
+
+    def _pack_batches(
+        self,
+        *,
+        architect,
+        agent_def: dict,
+        file_contents: dict[str, str],
+        tree: list[str],
+    ) -> list[PackedBatch]:
+        """
+        Split file_contents into batches that fit within the architect's effective limit.
+        """
+        model_config = getattr(architect, "_model_config", None)
+        if model_config is None:
+            from agentrules.core.utils.token_packer import resolve_model_config
+
+            try:
+                model_config = resolve_model_config(getattr(architect, "model_name", ""))
+            except ValueError:
+                model_config = None  # Unknown/custom/offline model; treat as no-limit
+
+        return pack_files_for_phase3(
+            files_with_content=file_contents,
+            tree=tree,
+            model_config=model_config,
+        )
+
+    def _local_summary_from_result(self, result: dict | str | None) -> str:
+        if result is None:
+            return ""
+        if isinstance(result, str):
+            return result[:2000]
+        # Prefer a few common keys
+        for key in ("analysis", "report", "findings"):
+            if isinstance(result, dict) and key in result:
+                return str(result[key])[:2000]
+        return str(result)[:2000]

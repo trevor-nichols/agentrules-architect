@@ -31,7 +31,8 @@ dependencies = [
   "platformdirs>=4.0",
   "pathspec>=0.12",
   "tomli; python_version < '3.11'",
-  "tomli-w"
+  "tomli-w",
+  "tiktoken>=0.7.0"
 ]
 
 [project.optional-dependencies]

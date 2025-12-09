@@ -35,7 +35,8 @@ class ArchitectFactory:
             "role": role,
             "responsibilities": responsibilities,
             "prompt_template": prompt_template,
-            "tools_config": model_config.tools_config
+            "tools_config": model_config.tools_config,
+            "model_config": model_config,
         }
         text_verbosity = getattr(model_config, "text_verbosity", None)
 

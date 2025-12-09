@@ -13,6 +13,7 @@ from google.genai import types as genai_types
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import build_gemini_client, generate_content_async
 from .prompting import default_prompt_template, format_prompt
@@ -48,6 +49,7 @@ class GeminiArchitect(BaseArchitect):
         prompt_template: str | None = None,
         api_key: str | None = None,
         tools_config: dict[str, Any] | None = None,
+        model_config: Any | None = None,
     ):
         super().__init__(
             provider=ModelProvider.GEMINI,
@@ -57,6 +59,7 @@ class GeminiArchitect(BaseArchitect):
             role=role,
             responsibilities=responsibilities,
             tools_config=tools_config,
+            model_config=model_config,
         )
         self.prompt_template = prompt_template or default_prompt_template()
         google_key = os.environ.get("GOOGLE_API_KEY")
@@ -135,6 +138,7 @@ class GeminiArchitect(BaseArchitect):
             contents=prompt,
             config=generation_config,
         )
+        self._log_token_estimate(prompt, generation_config)
 
         logger.info(f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}")
 
@@ -247,6 +251,8 @@ class GeminiArchitect(BaseArchitect):
                 f"(Config: {model_config_name}){detail_suffix}"
             )
 
+            self._log_token_estimate(prompt, generation_config)
+
             try:
                 async for chunk in iterate_in_thread(
                     lambda: self._stream_content(client, prompt, generation_config)
@@ -270,6 +276,28 @@ class GeminiArchitect(BaseArchitect):
             "agent": self.name or "Gemini Architect",
             "error": message,
         }
+
+    def _log_token_estimate(self, prompt: str, config: Any) -> None:
+        payload = {"contents": prompt, "config": config}
+        result = estimate_tokens(
+            provider=self.provider,
+            model_name=self.model_name,
+            payload=payload,
+            estimator_family=getattr(self._model_config, "estimator_family", None),
+            client=self.client,
+        )
+        limit, _margin, effective = compute_effective_limits(
+            getattr(self._model_config, "max_input_tokens", None),
+            getattr(self._model_config, "safety_margin_tokens", None),
+        )
+        detail = f"estimate={result.estimated or 'n/a'} source={result.source}"
+        if result.error:
+            detail += f" error={result.error}"
+        if limit:
+            detail += f" limit={limit}"
+        if effective:
+            detail += f" effective_limit={effective}"
+        logger.info(f"[bold magenta]Token preflight:[/bold magenta] {detail}")
 
     def _compose_request_detail_suffix(
         self,

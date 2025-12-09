@@ -34,6 +34,7 @@ from agentrules.core.types.models import (
     GPT5_1_MINIMAL,
     GPT5_DEFAULT,
     GPT5_HIGH,
+    GPT5_MINI,
     GPT5_MINIMAL,
     GROK_4_0709,
     GROK_4_FAST_NON_REASONING,
@@ -61,6 +62,51 @@ class PresetDefinition(TypedDict):
     provider: ModelProvider
 
 
+def _apply_model_limits(config: ModelConfig) -> ModelConfig:
+    """
+    Attach provisional context window metadata and estimator hints to a ModelConfig.
+
+    Values are conservative and logging-only; refine once telemetry is available.
+    """
+    name = config.model_name.lower()
+    provider = config.provider
+
+    limit: int | None = getattr(config, "max_input_tokens", None)
+    estimator_family: str | None = getattr(config, "estimator_family", None)
+
+    if provider == ModelProvider.ANTHROPIC:
+        limit = limit or 200_000
+        estimator_family = estimator_family or "anthropic_api"
+    elif provider == ModelProvider.GEMINI:
+        estimator_family = estimator_family or "gemini_api"
+        if limit is None:
+            if "3-pro" in name:
+                limit = 1_000_000
+            else:
+                limit = 1_048_576
+    elif provider == ModelProvider.OPENAI:
+        estimator_family = estimator_family or "tiktoken"
+        if limit is None:
+            if "o3" in name or "o4-mini" in name:
+                limit = 200_000
+            elif "gpt-4.1" in name:
+                limit = 128_000
+            elif "gpt-5.1" in name or "gpt-5" in name:
+                limit = 400_000
+    elif provider == ModelProvider.DEEPSEEK:
+        limit = limit or 64_000
+        estimator_family = estimator_family or "tiktoken"
+    elif provider == ModelProvider.XAI:
+        limit = limit or 256_000
+        estimator_family = estimator_family or "tiktoken"
+
+    return config._replace(
+        max_input_tokens=limit,
+        estimator_family=estimator_family,
+        safety_margin_tokens=getattr(config, "safety_margin_tokens", None),
+    )
+
+
 def _preset(
     *,
     config: ModelConfig,
@@ -70,7 +116,7 @@ def _preset(
 ) -> PresetDefinition:
     """Typed helper to construct preset definitions."""
     return PresetDefinition(
-        config=config,
+        config=_apply_model_limits(config),
         label=label,
         description=description,
         provider=provider,
@@ -211,6 +257,12 @@ MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=GPT5_DEFAULT,
         label="GPT-5 (medium reasoning)",
         description="GPT-5 via Responses API with medium reasoning and verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt5-mini": _preset(
+        config=GPT5_MINI,
+        label="GPT-5 Mini (high reasoning)",
+        description="Cost-efficient GPT-5 Mini with 400k context and high reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-minimal": _preset(

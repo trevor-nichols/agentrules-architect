@@ -42,6 +42,11 @@ def format_phase3_prompt(context: dict) -> str:
     else:
         file_content_str = str(file_contents)
 
+    previous_summary = context.get("previous_summary")
+    summary_block = ""
+    if previous_summary:
+        summary_block = f"\nPREVIOUS BATCH SUMMARY:\n{previous_summary}\n"
+
     # Return a formatted prompt
     return f"""You are {agent_name}, responsible for {agent_role}.
 
@@ -55,6 +60,7 @@ ASSIGNED FILES:
 
 FILE CONTENTS:
 {file_content_str}
+{summary_block}
 
 Analyze the code following these guidelines:
 1. Focus on understanding the purpose and functionality of each file

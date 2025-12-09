@@ -9,6 +9,7 @@ from typing import Any
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_message_request, get_client
 from .prompting import default_prompt_template, format_prompt
@@ -31,6 +32,7 @@ class AnthropicArchitect(BaseArchitect):
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
         tools_config: dict[str, Any] | None = None,
+        model_config: Any | None = None,
     ) -> None:
         super().__init__(
             provider=ModelProvider.ANTHROPIC,
@@ -40,6 +42,7 @@ class AnthropicArchitect(BaseArchitect):
             role=role,
             responsibilities=responsibilities,
             tools_config=tools_config,
+            model_config=model_config,
         )
         self.prompt_template = prompt_template or default_prompt_template()
 
@@ -62,6 +65,7 @@ class AnthropicArchitect(BaseArchitect):
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
             prepared = self._prepare_request(prompt, provider_tools)
+            self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
 
@@ -122,6 +126,7 @@ class AnthropicArchitect(BaseArchitect):
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
             prepared = self._prepare_request(prompt, provider_tools)
+            self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
 
@@ -223,6 +228,27 @@ class AnthropicArchitect(BaseArchitect):
             reasoning=self.reasoning,
             tools=tools,
         )
+
+    def _log_token_estimate(self, prepared: PreparedRequest) -> None:
+        result = estimate_tokens(
+            provider=self.provider,
+            model_name=self.model_name,
+            payload=prepared.payload,
+            estimator_family=getattr(self._model_config, "estimator_family", None),
+            client=get_client(),
+        )
+        limit, _margin, effective = compute_effective_limits(
+            getattr(self._model_config, "max_input_tokens", None),
+            getattr(self._model_config, "safety_margin_tokens", None),
+        )
+        detail = f"estimate={result.estimated or 'n/a'} source={result.source}"
+        if result.error:
+            detail += f" error={result.error}"
+        if limit:
+            detail += f" limit={limit}"
+        if effective:
+            detail += f" effective_limit={effective}"
+        logger.info(f"[bold purple]Token preflight:[/bold purple] {detail}")
 
     def _stream_messages(self, prepared: PreparedRequest) -> Iterator[StreamChunk]:
         client = get_client()
