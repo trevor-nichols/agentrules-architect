@@ -31,6 +31,7 @@ _GPT5_RESPONSES_DEFAULTS = ModelDefaults(
 )
 
 _PREFIX_DEFAULTS: tuple[tuple[str, ModelDefaults], ...] = (
+    ("gpt-5.2", _GPT5_RESPONSES_DEFAULTS),
     ("gpt-5.1", _GPT5_RESPONSES_DEFAULTS),
     ("gpt-5", _GPT5_RESPONSES_DEFAULTS),
 )

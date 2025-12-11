@@ -26,8 +26,8 @@ def bootstrap_runtime() -> CliContext:
 
     log_level = CONFIG_MANAGER.resolve_log_level()
     configure_logging(level=log_level)
+    # Apply persisted config; do not ingest .env so config.toml is the single source of truth.
     CONFIG_MANAGER.apply_config_to_environment()
-    _load_env_files()
     model_presets.apply_user_overrides()
 
     console = Console()

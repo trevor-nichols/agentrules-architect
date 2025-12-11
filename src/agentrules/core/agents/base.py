@@ -16,9 +16,12 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agentrules.core.streaming import StreamChunk
+
+if TYPE_CHECKING:
+    from agentrules.core.types.models import ModelConfig
 
 # ====================================================
 # Type Definitions
@@ -81,7 +84,8 @@ class BaseArchitect(ABC):
         name: str | None = None,
         role: str | None = None,
         responsibilities: list[str] | None = None,
-        tools_config: dict | None = None
+        tools_config: dict | None = None,
+        model_config: "ModelConfig | None" = None,
     ):
         """
         Initialize a BaseArchitect instance.
@@ -104,6 +108,7 @@ class BaseArchitect(ABC):
         self.role = role
         self.responsibilities = responsibilities or []
         self.tools_config = tools_config or {"enabled": False, "tools": None}
+        self._model_config = model_config
 
     @property
     def supports_streaming(self) -> bool:

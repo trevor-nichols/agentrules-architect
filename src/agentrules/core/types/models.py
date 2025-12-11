@@ -23,6 +23,9 @@ class ModelConfig(NamedTuple):
     temperature: float | None = None  # For temperature-based models like gpt-4.1
     tools_config: ToolConfig | None = None  # Tool configuration for this model
     text_verbosity: str | None = None  # GPT-5 family text verbosity control
+    max_input_tokens: int | None = None  # Provider-advertised or conservative context window (input side)
+    safety_margin_tokens: int | None = None  # Margin to reserve within the context window
+    estimator_family: str | None = None  # Which estimator to use (anthropic_api, gemini_api, tiktoken, heuristic)
 
 # ====================================================
 # Predefined Model Configurations
@@ -276,6 +279,15 @@ GPT5_HIGH = ModelConfig(
     text_verbosity="high"
 )
 
+GPT5_MINI = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5-mini",
+    reasoning=ReasoningMode.HIGH,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium",
+)
+
 # GPT-5.1 configurations
 GPT5_1_DEFAULT = ModelConfig(
     provider=ModelProvider.OPENAI,
@@ -311,6 +323,34 @@ GPT5_1_CODEX = ModelConfig(
     temperature=None,
     tools_config={"enabled": False, "tools": None},
     text_verbosity="medium"
+)
+
+# GPT-5.2 configurations (Responses API)
+GPT5_2_DEFAULT = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.2",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium",
+)
+
+GPT5_2_MINIMAL = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.2",
+    reasoning=ReasoningMode.MINIMAL,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="low",
+)
+
+GPT5_2_HIGH = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.2",
+    reasoning=ReasoningMode.HIGH,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="high",
 )
 
 # -----------------------------------------------------------------------------

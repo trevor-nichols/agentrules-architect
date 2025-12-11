@@ -43,4 +43,4 @@ venv_agentrules/
 venv_agentrules_legacy/
 internal-docs/
 .claude/
-*SHAPSHOT.md
+SHAPSHOT.md*

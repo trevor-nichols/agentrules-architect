@@ -39,6 +39,20 @@ class OpenAIResponsesTests(unittest.TestCase):
         self.assertEqual(params.get("reasoning"), {"effort": "medium"})
         self.assertEqual(params.get("text"), {"verbosity": "medium"})
 
+    def test_prepare_request_uses_responses_api_for_gpt52(self) -> None:
+        architect = OpenAIArchitect(
+            model_name="gpt-5.2",
+            reasoning=ReasoningMode.HIGH,
+            text_verbosity="high"
+        )
+        prepared = architect._prepare_request("Bonjour")
+        params = prepared.payload
+
+        self.assertEqual(prepared.api, "responses")
+        self.assertEqual(params["model"], "gpt-5.2")
+        self.assertEqual(params.get("reasoning"), {"effort": "high"})
+        self.assertEqual(params.get("text"), {"verbosity": "high"})
+
     def test_parse_responses_output_normalizes_tool_calls(self) -> None:
         payload = {
             "output": [

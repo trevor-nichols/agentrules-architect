@@ -23,6 +23,12 @@ class OpenAIConfigTests(unittest.TestCase):
         self.assertTrue(defaults.use_responses_api)
         self.assertIsNone(defaults.default_temperature)
 
+    def test_resolve_defaults_for_gpt52_prefix(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.2-large")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
     def test_resolve_defaults_for_known_model(self) -> None:
         defaults = resolve_model_defaults("gpt-4.1")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.TEMPERATURE)
