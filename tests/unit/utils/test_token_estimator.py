@@ -85,6 +85,36 @@ def test_tiktoken_encode_error(monkeypatch):
     assert "boom" in (result.error or "")
 
 
+def test_anthropic_estimator_strips_output_config() -> None:
+    recorded: dict[str, object] = {}
+
+    class FakeMessages:
+        def count_tokens(self, **kwargs):  # type: ignore[no-untyped-def]
+            recorded["kwargs"] = kwargs
+            return {"input_tokens": 42}
+
+    class FakeClient:
+        messages = FakeMessages()
+
+    payload = {
+        "model": "claude-opus-4-6",
+        "messages": [{"role": "user", "content": "hi"}],
+        "output_config": {"effort": "low"},
+    }
+    result = estimate_tokens(
+        provider=ModelProvider.ANTHROPIC,
+        model_name="claude-opus-4-6",
+        payload=payload,
+        estimator_family="anthropic_api",
+        client=FakeClient(),
+    )
+
+    assert result.estimated == 42
+    kwargs = recorded.get("kwargs")
+    assert isinstance(kwargs, dict)
+    assert "output_config" not in kwargs
+
+
 def test_compute_effective_limits_defaults():
     limit, margin, effective = compute_effective_limits(20_000, None)
     assert limit == 20_000

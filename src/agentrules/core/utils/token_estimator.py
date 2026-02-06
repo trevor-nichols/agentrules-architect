@@ -97,7 +97,10 @@ def _estimate_anthropic(payload: dict[str, Any], client: Any | None) -> TokenEst
 
             client = get_client()
 
-        response = client.messages.count_tokens(**payload)  # type: ignore[arg-type]
+        # Token counting is about input tokens; exclude output-only knobs like effort.
+        count_payload = dict(payload)
+        count_payload.pop("output_config", None)
+        response = client.messages.count_tokens(**count_payload)  # type: ignore[arg-type]
         tokens = getattr(response, "input_tokens", None)
         if tokens is None and isinstance(response, dict):
             tokens = response.get("input_tokens")
@@ -196,4 +199,3 @@ def _flatten_messages(messages: Iterable[Any]) -> str:
             content = " ".join(str(c) for c in content)
         parts.append(f"{role}: {content}")
     return "\n".join(parts)
-

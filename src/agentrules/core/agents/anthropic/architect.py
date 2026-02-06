@@ -227,6 +227,7 @@ class AnthropicArchitect(BaseArchitect):
             prompt=prompt,
             reasoning=self.reasoning,
             tools=tools,
+            effort=getattr(self._model_config, "anthropic_effort", None),
         )
 
     def _log_token_estimate(self, prepared: PreparedRequest) -> None:

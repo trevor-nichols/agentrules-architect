@@ -5,7 +5,7 @@ This module defines the model configuration types and predefined model configura
 used throughout the CursorRules Architect system.
 """
 
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types.tool_config import ToolConfig
@@ -14,6 +14,9 @@ from agentrules.core.types.tool_config import ToolConfig
 # Model Configuration Types
 # This section defines types for model configuration.
 # ====================================================
+
+AnthropicEffort = Literal["low", "medium", "high", "max"]
+
 
 class ModelConfig(NamedTuple):
     """Configuration for a specific AI model."""
@@ -26,6 +29,7 @@ class ModelConfig(NamedTuple):
     max_input_tokens: int | None = None  # Provider-advertised or conservative context window (input side)
     safety_margin_tokens: int | None = None  # Margin to reserve within the context window
     estimator_family: str | None = None  # Which estimator to use (anthropic_api, gemini_api, tiktoken, heuristic)
+    anthropic_effort: AnthropicEffort | None = None  # output_config.effort (Opus 4.5/4.6 only)
 
 # ====================================================
 # Predefined Model Configurations

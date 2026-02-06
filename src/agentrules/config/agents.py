@@ -211,9 +211,27 @@ MODEL_PRESETS: dict[str, PresetDefinition] = {
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.6-reasoning": _preset(
-        config=CLAUDE_OPUS_46_WITH_REASONING,
-        label="Claude Opus 4.6 (Adaptive Thinking)",
-        description="Opus 4.6 with adaptive thinking enabled (recommended for deep reasoning).",
+        config=CLAUDE_OPUS_46_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 4.6 (Adaptive Thinking, High Effort)",
+        description="Opus 4.6 adaptive thinking with high effort (default) for deep reasoning.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.6-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_46_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 4.6 (Adaptive Thinking, Medium Effort)",
+        description="Opus 4.6 adaptive thinking with medium effort for balanced speed/cost.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.6-reasoning-low": _preset(
+        config=CLAUDE_OPUS_46_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 4.6 (Adaptive Thinking, Low Effort)",
+        description="Opus 4.6 adaptive thinking with low effort for faster, cheaper runs.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.6-reasoning-max": _preset(
+        config=CLAUDE_OPUS_46_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 4.6 (Adaptive Thinking, Max Effort)",
+        description="Opus 4.6 adaptive thinking with max effort for the absolute highest capability.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "o3-low": _preset(
