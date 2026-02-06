@@ -19,7 +19,7 @@ classifiers = [
   "Operating System :: OS Independent"
 ]
 dependencies = [
-  "anthropic",
+  "anthropic>=0.78.0",
   "rich",
   "openai",
   "google-genai>=1.51.0",
