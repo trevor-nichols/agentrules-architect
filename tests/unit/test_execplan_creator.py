@@ -129,6 +129,37 @@ class ExecPlanCreatorTests(unittest.TestCase):
                     update_registry=False,
                 )
 
+    def test_create_execplan_rejects_multiline_title_without_writing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            with self.assertRaisesRegex(ValueError, "single-line"):
+                create_execplan(
+                    root=root,
+                    title="Line 1\nLine 2",
+                    execplans_dir=execplans_dir,
+                    update_registry=True,
+                )
+
+            self.assertFalse(any(execplans_dir.rglob("EP-*.md")))
+
+    def test_create_execplan_rejects_multiline_owner_without_writing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            with self.assertRaisesRegex(ValueError, "single-line"):
+                create_execplan(
+                    root=root,
+                    title="Valid Title",
+                    owner="@owner\nextra",
+                    execplans_dir=execplans_dir,
+                    update_registry=True,
+                )
+
+            self.assertFalse(any(execplans_dir.rglob("EP-*.md")))
+
     def test_create_execplan_resolves_default_paths_from_root(self) -> None:
         with tempfile.TemporaryDirectory() as root_tmp, tempfile.TemporaryDirectory() as cwd_tmp:
             root = Path(root_tmp).resolve()

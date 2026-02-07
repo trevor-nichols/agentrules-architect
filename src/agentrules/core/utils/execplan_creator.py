@@ -53,6 +53,12 @@ def _yaml_dquote(value: str) -> str:
     return f'"{escaped}"'
 
 
+def _validate_single_line_field(value: str, *, field_name: str) -> str:
+    if any(char in value for char in ("\n", "\r", "\t")):
+        raise ValueError(f"Field '{field_name}' must be a single-line value without control characters.")
+    return value
+
+
 def _validate_date_yyyymmdd(value: str) -> datetime:
     if DATE_YYYYMMDD_RE.fullmatch(value) is None:
         raise ValueError(f"Date must use YYYYMMDD format (got {value!r}).")
@@ -107,7 +113,7 @@ def create_execplan(
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
     resolved_registry_path = _resolve_path(resolved_root, registry_path)
 
-    normalized_title = title.strip()
+    normalized_title = _validate_single_line_field(title.strip(), field_name="title")
     if not normalized_title:
         raise ValueError("Title is required.")
 
@@ -119,7 +125,7 @@ def create_execplan(
     if normalized_domain not in ALLOWED_DOMAINS:
         raise ValueError(f"Invalid domain {normalized_domain!r}. Allowed: {sorted(ALLOWED_DOMAINS)}")
 
-    normalized_owner = owner.strip()
+    normalized_owner = _validate_single_line_field(owner.strip(), field_name="owner")
     if not normalized_owner:
         raise ValueError("Owner must be non-empty.")
 
