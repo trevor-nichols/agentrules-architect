@@ -62,6 +62,31 @@ class ExecPlanCreatorTests(unittest.TestCase):
             )
             self.assertEqual(second.plan_id, "EP-20260207-002")
 
+    def test_create_execplan_counts_slug_named_milestones(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            first = create_execplan(
+                root=root,
+                title="Milestones",
+                slug="milestones",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            self.assertEqual(first.plan_id, "EP-20260207-001")
+
+            second = create_execplan(
+                root=root,
+                title="Another Plan",
+                slug="another-plan",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            self.assertEqual(second.plan_id, "EP-20260207-002")
+
     def test_create_execplan_requires_valid_slug(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

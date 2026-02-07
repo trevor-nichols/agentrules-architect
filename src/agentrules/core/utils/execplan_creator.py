@@ -9,6 +9,7 @@ from importlib import resources
 from pathlib import Path
 from string import Template
 
+from agentrules.core.utils.execplan_paths import is_execplan_milestone_path
 from agentrules.core.utils.execplan_registry import (
     ALLOWED_DOMAINS,
     ALLOWED_KINDS,
@@ -52,10 +53,6 @@ def _yaml_dquote(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _is_milestone_path(path: Path) -> bool:
-    return any(part == "milestones" for part in path.parts)
-
-
 def _validate_date_yyyymmdd(value: str) -> datetime:
     if DATE_YYYYMMDD_RE.fullmatch(value) is None:
         raise ValueError(f"Date must use YYYYMMDD format (got {value!r}).")
@@ -68,7 +65,7 @@ def _validate_date_yyyymmdd(value: str) -> datetime:
 def _next_sequence_for_date(execplans_dir: Path, date_yyyymmdd: str) -> int:
     max_sequence = 0
     for candidate in execplans_dir.rglob("EP-*.md"):
-        if not candidate.is_file() or _is_milestone_path(candidate):
+        if not candidate.is_file() or is_execplan_milestone_path(candidate, execplans_root=execplans_dir):
             continue
         match = EXECPLAN_FILENAME_RE.match(candidate.name)
         if match is None:

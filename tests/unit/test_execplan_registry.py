@@ -140,6 +140,54 @@ class ExecPlanRegistryTests(unittest.TestCase):
             self.assertEqual(len(result.registry["plans"]), 1)
             self.assertEqual(result.registry["plans"][0]["path"], (execplans_dir / "api" / "EP-20260207-001_api.md").resolve().as_posix())
 
+    def test_collect_includes_execplans_under_slug_named_milestones(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            _write_execplan(
+                execplans_dir / "milestones" / "EP-20260207-001_milestones.md",
+                plan_id="EP-20260207-001",
+                title="Milestones Plan",
+            )
+            _write_execplan(
+                execplans_dir / "normal" / "EP-20260207-002_normal.md",
+                plan_id="EP-20260207-002",
+                title="Normal Plan",
+                depends_on="[EP-20260207-001]",
+            )
+
+            result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
+            self.assertEqual(result.error_count, 0)
+            ids = [entry["id"] for entry in result.registry["plans"]]
+            self.assertEqual(ids, ["EP-20260207-001", "EP-20260207-002"])
+            self.assertTrue(any("milestones/EP-20260207-001_milestones.md" in entry["path"] for entry in result.registry["plans"]))
+
+    def test_collect_does_not_treat_slug_named_archive_as_archived_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            registry_path = execplans_dir / "registry.json"
+
+            _write_execplan(
+                execplans_dir / "archive" / "EP-20260207-001_archive.md",
+                plan_id="EP-20260207-001",
+                title="Archive Slug Plan",
+            )
+
+            result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
+            warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
+            self.assertFalse(any("under archive path" in message for message in warning_messages))
+
+            build = build_execplan_registry(
+                root=root,
+                execplans_dir=execplans_dir,
+                output_path=registry_path,
+                fail_on_warn=True,
+            )
+            self.assertTrue(build.wrote_registry)
+            self.assertEqual(build.warning_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

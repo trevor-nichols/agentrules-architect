@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from agentrules.core.utils.execplan_paths import is_execplan_archive_path, is_execplan_milestone_path
+
 FRONT_MATTER_RE = re.compile(r"\A\s*---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
 EXECPLAN_ID_RE = re.compile(r"^EP-\d{8}-\d{3}$")
 TOP_LEVEL_KEY_RE = re.compile(r"^(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*:(?P<value>.*)$")
@@ -106,10 +108,6 @@ class RegistryBuildResult:
 
 def _iso_utc_now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-def _is_milestone_path(path: Path) -> bool:
-    return any(part == "milestones" for part in path.parts)
 
 
 def _parse_inline_list(raw: str) -> list[str]:
@@ -271,7 +269,7 @@ def _discover_execplan_files(execplans_dir: Path) -> list[Path]:
     return sorted(
         path
         for path in execplans_dir.rglob("EP-*.md")
-        if path.is_file() and not _is_milestone_path(path)
+        if path.is_file() and not is_execplan_milestone_path(path, execplans_root=execplans_dir)
     )
 
 
@@ -280,6 +278,7 @@ def _build_plan(
     *,
     plan_path: Path,
     root: Path,
+    execplans_dir: Path,
 ) -> tuple[RegistryPlan | None, tuple[RegistryIssue, ...]]:
     issues: list[RegistryIssue] = []
     path_text = _to_rel_posix(plan_path, root)
@@ -400,7 +399,7 @@ def _build_plan(
     depends_on = _normalize_str_list(metadata.get("depends_on"))
     supersedes = _normalize_str_list(metadata.get("supersedes"))
 
-    in_archive = "archive" in plan_path.parts
+    in_archive = is_execplan_archive_path(plan_path, execplans_root=execplans_dir)
     if status == "archived" and not in_archive:
         issues.append(
             RegistryIssue(
@@ -473,7 +472,12 @@ def collect_execplan_registry(
             )
             continue
 
-        parsed_plan, plan_issues = _build_plan(metadata, plan_path=plan_path, root=root)
+        parsed_plan, plan_issues = _build_plan(
+            metadata,
+            plan_path=plan_path,
+            root=root,
+            execplans_dir=execplans_dir,
+        )
         issues.extend(plan_issues)
         if parsed_plan is not None:
             plans.append(parsed_plan)
