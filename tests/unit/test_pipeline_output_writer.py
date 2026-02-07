@@ -16,15 +16,24 @@ from agentrules.core.pipeline import (
 
 class PipelineOutputWriterTests(unittest.TestCase):
     @patch("agentrules.core.pipeline.output.clean_agentrules")
+    @patch("agentrules.core.pipeline.output.create_agent_scaffold")
     @patch("agentrules.core.pipeline.output.create_cursorignore")
     @patch("agentrules.core.pipeline.output.save_phase_outputs")
     def test_persist_writes_expected_artifacts(
         self,
         mock_save_phase_outputs,
         mock_create_cursorignore,
+        mock_create_agent_scaffold,
         mock_clean_agentrules,
     ) -> None:
         mock_create_cursorignore.return_value = (True, ".cursorignore created")
+        mock_create_agent_scaffold.return_value = (
+            True,
+            [
+                "Created .agent/PLANS.md",
+                "Created .agent/templates/MILESTONE_TEMPLATE.md",
+            ],
+        )
         mock_clean_agentrules.return_value = (True, "cleaned")
 
         settings = PipelineSettings(
@@ -59,6 +68,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
             rules_filename="AGENTS.md",
             generate_phase_outputs=True,
             generate_cursorignore=True,
+            generate_agent_scaffold=True,
         )
 
         writer = PipelineOutputWriter()
@@ -71,6 +81,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
         self.assertEqual(save_kwargs["gitignore_info"]["path"], str(snapshot.gitignore.path))
 
         mock_create_cursorignore.assert_called_once_with(str(settings.target_directory))
+        mock_create_agent_scaffold.assert_called_once_with(settings.target_directory)
         mock_clean_agentrules.assert_called_once_with(
             str(settings.target_directory),
             filename="AGENTS.md",
@@ -78,16 +89,19 @@ class PipelineOutputWriterTests(unittest.TestCase):
 
         self.assertIn("Individual phase outputs saved to:", " ".join(summary.messages))
         self.assertIn("Cursor ignore created at:", " ".join(summary.messages))
+        self.assertIn("Created .agent/PLANS.md", " ".join(summary.messages))
         self.assertIn("Cleaned Agent rules file", " ".join(summary.messages))
         self.assertIn("Execution metrics saved to:", " ".join(summary.messages))
 
     @patch("agentrules.core.pipeline.output.clean_agentrules")
+    @patch("agentrules.core.pipeline.output.create_agent_scaffold")
     @patch("agentrules.core.pipeline.output.create_cursorignore")
     @patch("agentrules.core.pipeline.output.save_phase_outputs")
     def test_persist_handles_disabled_options(
         self,
         mock_save_phase_outputs,
         mock_create_cursorignore,
+        mock_create_agent_scaffold,
         mock_clean_agentrules,
     ) -> None:
         mock_clean_agentrules.return_value = (False, "not found")
@@ -123,6 +137,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
             rules_filename="AGENTS.md",
             generate_phase_outputs=False,
             generate_cursorignore=False,
+            generate_agent_scaffold=False,
         )
 
         writer = PipelineOutputWriter()
@@ -133,11 +148,13 @@ class PipelineOutputWriterTests(unittest.TestCase):
         self.assertFalse(save_kwargs["include_phase_files"])
 
         mock_create_cursorignore.assert_not_called()
+        mock_create_agent_scaffold.assert_not_called()
         mock_clean_agentrules.assert_called_once()
 
         joined = " ".join(summary.messages)
         self.assertIn("Skipped phase report archive", joined)
         self.assertIn("Skipped .cursorignore generation", joined)
+        self.assertIn("Skipped .agent scaffold generation", joined)
         self.assertIn("not found", joined)
 
 

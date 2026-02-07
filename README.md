@@ -39,7 +39,7 @@ Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Ar
 - 🔍 Six-phase pipeline: discovery → planning → deep dives → synthesis → consolidation → final AGENTS.md generation.
 - 🧩 Researcher tooling via Tavily search with provider-aware tool translation.
 - 📊 Rich terminal UI (Rich) showing per-agent progress, duration, and failures in real time.
-- 🪵 Configurable outputs: `AGENTS.md`, `.cursorignore`, and per-phase markdown/json snapshots.
+- 🪵 Configurable outputs: `AGENTS.md`, `.cursorignore`, optional `.agent/` scaffold templates, and per-phase markdown/json snapshots.
 - 🔧 Declarative model presets plus runtime overrides via CLI or TOML.
 
 ## 🧮 Analysis Pipeline
@@ -127,7 +127,7 @@ agentrules keys
 - `agentrules` – interactive main menu (analyze, configure models/outputs, check keys).
 - `agentrules analyze /path/to/project` – full six-phase analysis.
 - `agentrules configure --models` – assign presets per phase with guided prompts; the Phase 1 → Researcher entry lets you toggle the agent On/Off once a Tavily key is configured.
-- `agentrules configure --outputs` – toggle `.cursorignore`, `phases_output/`, and custom rules filename.
+- `agentrules configure --outputs` – toggle `.cursorignore`, `.agent/` scaffold generation, `phases_output/`, and custom rules filename.
 - `agentrules configure --logging` – set verbosity (`quiet`, `standard`, `verbose`) or export via `AGENTRULES_LOG_LEVEL`.
 
 ## ⚙️ Configuration & Preferences
@@ -135,7 +135,7 @@ agentrules keys
 - **Config file**: `~/.config/agentrules/config.toml`
   - `providers` – API keys per provider.
   - `models` – preset IDs applied to each phase (`phase1`, `phase2`, `final`, `researcher`, …).
-  - `outputs` – `generate_cursorignore`, `generate_phase_outputs`, `rules_filename`.
+  - `outputs` – `generate_cursorignore`, `generate_agent_scaffold`, `generate_phase_outputs`, `rules_filename`.
   - `features` – `researcher_mode` (`on`/`off`) to control Phase 1 web research (managed from the Researcher row in the models wizard).
   - `exclusions` – add/remove directories, files, or extensions; choose to respect `.gitignore`.
 - **Runtime helpers** (via `agentrules/core/configuration/manager.py`):
@@ -204,6 +204,7 @@ By default the pipeline produces:
 
 - `AGENTS.md` (or your custom rules filename) – cleaned, standardized agent instructions.
 - `.cursorignore` – generated when enabled to keep editor agents focused on relevant files.
+- `.agent/` scaffold – generated when enabled (`.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md`).
 - `phases_output/` – per-phase markdown/JSON snapshots for auditing and downstream automation.
 - Want a concrete sample? See `docs/examples/phases_output/` for a full run’s phase artifacts.
 - Rich console logs summarizing model usage, timing, and file counts.

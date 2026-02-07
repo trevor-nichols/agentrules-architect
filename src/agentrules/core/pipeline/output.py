@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agentrules.core.pipeline.config import PipelineResult, PipelineSettings
+from agentrules.core.utils.file_creation.agent_scaffold import create_agent_scaffold
 from agentrules.core.utils.file_creation.cursorignore import create_cursorignore
 from agentrules.core.utils.file_creation.phases_output import save_phase_outputs
 from agentrules.core.utils.formatters.clean_agentrules import clean_agentrules
@@ -17,6 +18,7 @@ class PipelineOutputOptions:
     rules_filename: str
     generate_phase_outputs: bool
     generate_cursorignore: bool
+    generate_agent_scaffold: bool
 
 
 @dataclass
@@ -89,6 +91,18 @@ class PipelineOutputWriter:
                 messages.append(f"[yellow]{message}[/]")
         else:
             messages.append("[dim]Skipped .cursorignore generation (disabled in settings).[/]")
+
+        if options.generate_agent_scaffold:
+            success, scaffold_messages = create_agent_scaffold(settings.target_directory)
+            if success:
+                for scaffold_message in scaffold_messages:
+                    style = "dim" if scaffold_message.startswith("Skipped ") else "green"
+                    messages.append(f"[{style}]{scaffold_message}[/]")
+            else:
+                for scaffold_message in scaffold_messages:
+                    messages.append(f"[yellow]{scaffold_message}[/]")
+        else:
+            messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
 
         success, message = clean_agentrules(
             str(settings.target_directory),

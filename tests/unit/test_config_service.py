@@ -137,3 +137,16 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(self.config_manager.get_tree_max_depth(), 5)
         cfg = self.config_manager.load()
         self.assertIsNone(cfg.exclusions.tree_max_depth)
+
+    def test_generate_agent_scaffold_preference_persists(self) -> None:
+        self.assertFalse(self.config_manager.should_generate_agent_scaffold())
+
+        self.config_manager.set_generate_agent_scaffold(True)
+        cfg = self.config_manager.load()
+        self.assertTrue(cfg.outputs.generate_agent_scaffold)
+        self.assertTrue(self.config_manager.should_generate_agent_scaffold())
+
+        self.config_manager.set_generate_agent_scaffold(False)
+        cfg = self.config_manager.load()
+        self.assertFalse(cfg.outputs.generate_agent_scaffold)
+        self.assertFalse(self.config_manager.should_generate_agent_scaffold())

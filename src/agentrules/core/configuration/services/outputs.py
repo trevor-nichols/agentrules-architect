@@ -20,6 +20,14 @@ def should_generate_cursorignore(config: CLIConfig, default: bool = False) -> bo
     return bool(config.outputs.generate_cursorignore) if config.outputs else default
 
 
+def set_generate_agent_scaffold(config: CLIConfig, enabled: bool) -> None:
+    config.outputs.generate_agent_scaffold = bool(enabled)
+
+
+def should_generate_agent_scaffold(config: CLIConfig, default: bool = False) -> bool:
+    return bool(config.outputs.generate_agent_scaffold) if config.outputs else default
+
+
 def set_generate_phase_outputs(config: CLIConfig, enabled: bool) -> None:
     config.outputs.generate_phase_outputs = bool(enabled)
 
@@ -38,4 +46,3 @@ def get_rules_filename(config: CLIConfig, default: str = DEFAULT_RULES_FILENAME)
 
 def set_rules_filename(config: CLIConfig, name: str) -> None:
     config.outputs.rules_filename = normalize_rules_filename(name, default=DEFAULT_RULES_FILENAME)
-

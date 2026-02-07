@@ -51,6 +51,9 @@ agentrules = "agentrules.cli:app"
 where = ["src"]
 include = ["agentrules*"]
 
+[tool.setuptools.package-data]
+agentrules = ["core/utils/file_creation/templates/*.md"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"

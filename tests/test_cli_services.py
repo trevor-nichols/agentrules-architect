@@ -51,6 +51,7 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_config.get_rules_filename.return_value = "AGENTS.md"
         mock_config.should_generate_phase_outputs.return_value = True
         mock_config.should_generate_cursorignore.return_value = True
+        mock_config.should_generate_agent_scaffold.return_value = True
         mock_get_config_manager.return_value = mock_config
 
         mock_snapshot = MagicMock()
@@ -71,6 +72,8 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_create_pipeline.assert_called_once()
         mock_asyncio_run.assert_called_once()
         mock_writer_instance.persist.assert_called_once()
+        output_options = mock_writer_instance.persist.call_args.args[2]
+        self.assertTrue(output_options.generate_agent_scaffold)
 
         output = buffer.getvalue()
         self.assertIn("Analysis finished for:", output)
