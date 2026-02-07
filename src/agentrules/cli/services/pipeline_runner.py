@@ -191,6 +191,7 @@ def run_pipeline(path: Path, offline: bool, context: CliContext) -> None:
         rules_filename=config_manager.get_rules_filename(),
         generate_phase_outputs=config_manager.should_generate_phase_outputs(),
         generate_cursorignore=config_manager.should_generate_cursorignore(),
+        generate_agent_scaffold=config_manager.should_generate_agent_scaffold(),
     )
     summary = output_writer.persist(result, settings, output_options)
     for message in summary.messages:

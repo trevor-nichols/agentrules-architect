@@ -12,7 +12,7 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 
 # 2. TEMPORAL FRAMEWORK
 
-It is December 2025 and you are developing using Python 3.11+ with modern provider SDKs (Anthropic, OpenAI, Gemini, xAI, DeepSeek). Local tokenization/counting (tiktoken-style encoders) is available and should be preferred for cost and determinism. Pyright lints and ruff style checks are enforced in CI.
+It is February 2026 and you are developing using Python 3.11+ with modern provider SDKs (Anthropic, OpenAI, Gemini, xAI, DeepSeek). Local tokenization/counting (tiktoken-style encoders) is available and should be preferred for cost and determinism. Pyright lints and ruff style checks are enforced in CI.
 
 # 3. TECHNICAL CONSTRAINTS
 
@@ -40,7 +40,8 @@ It is December 2025 and you are developing using Python 3.11+ with modern provid
   - Providers: src/agentrules/core/agents/{anthropic,openai,gemini,deepseek,xai}
   - Prompt templates: src/agentrules/config/prompts/*
   - Parser: src/agentrules/core/utils/parsers/agent_parser.py
-- Phase outputs dir: phases_output/ (and AGENTS.md artifacts produced by pipeline)
+- Output artifacts: AGENTS.md (`rules_filename`), optional `phases_output/`, optional `.cursorignore`, and optional `.agent` scaffold (`.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md`).
+- Scaffold template sources: src/agentrules/core/utils/file_creation/templates/{PLANS.md,MILESTONE_TEMPLATE.md} (packaged via pyproject package-data).
 - Concurrency defaults: AGENTRULES_IO_CONCURRENCY = 8 (configurable)
 - Token cache: in-memory per-run cache keyed by (model_name, sha256(content)); persisted caching optional but disabled by default.
 - Template validation: run template substitution checks in CI.
@@ -120,6 +121,11 @@ It is December 2025 and you are developing using Python 3.11+ with modern provid
 # Atomic Output Persistence
 - Use temp file + os.replace for AGENTS.md and any phase artifacts.
 - Optionally create a backup/rotate scheme if desired.
+
+# Output Artifact Scaffolding
+- Materialize optional `.agent` scaffolding from package templates during output persistence (not during analysis phases).
+- `.agent` generation must be configurable via output preferences (`generate_agent_scaffold`) and default to disabled.
+- Scaffold generation must be idempotent and non-destructive by default (do not overwrite existing `.agent` files unless explicitly requested).
 
 # CLI & UX
 - All questionary prompts must use CLI_STYLE.
@@ -342,6 +348,7 @@ Examples:
 - [ ] No blocking I/O in async functions in modified files (checked by review / tests)
 - [ ] Token packer uses per-file token cache and runs in O(n) for test fixture
 - [ ] Critical outputs (AGENTS.md, phase artifacts) written atomically
+- [ ] Optional `.agent` scaffold generation is configurable and templates are packaged/importable in installed builds
 - [ ] ToolManager returns plain dicts in all code paths
 - [ ] Provider coercion logic centralized in provider_utils.py
 - [ ] Prompt templates validated in CI
@@ -571,8 +578,12 @@ This AGS-1-compliant agent rules file is the canonical system prompt for the Age
 │       │   │   │   ├── 🐍 registry.py
 │       │   │   │   └── 🐍 scan.py
 │       │   │   ├── 📁 file_creation
+│       │   │   │   ├── 🐍 agent_scaffold.py
 │       │   │   │   ├── 🐍 cursorignore.py
-│       │   │   │   └── 🐍 phases_output.py
+│       │   │   │   ├── 🐍 phases_output.py
+│       │   │   │   └── 📁 templates
+│       │   │   │       ├── 📝 MILESTONE_TEMPLATE.md
+│       │   │   │       └── 📝 PLANS.md
 │       │   │   ├── 📁 file_system
 │       │   │   │   ├── 🐍 __init__.py
 │       │   │   │   ├── 🐍 file_retriever.py
@@ -694,7 +705,8 @@ This AGS-1-compliant agent rules file is the canonical system prompt for the Age
 │   │   ├── 🐍 test_pipeline_snapshot.py
 │   │   ├── 🐍 test_streaming_support.py
 │   │   ├── 🐍 test_tavily_tool.py
-│   │   └── 🐍 test_tool_manager.py
+│   │   ├── 🐍 test_tool_manager.py
+│   │   └── 🐍 test_agent_scaffold.py
 │   ├── 📁 utils
 │   │   ├── 📁 inputs
 │   │   │   └── 📄 .cursorrules

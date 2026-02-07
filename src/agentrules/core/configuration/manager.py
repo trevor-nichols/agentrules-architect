@@ -134,6 +134,16 @@ class ConfigManager:
         config = self._repository.load()
         return outputs.should_generate_cursorignore(config, default)
 
+    def set_generate_agent_scaffold(self, enabled: bool) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_generate_agent_scaffold(config, enabled)
+        self._repository.save(config)
+        return config
+
+    def should_generate_agent_scaffold(self, default: bool = False) -> bool:
+        config = self._repository.load()
+        return outputs.should_generate_agent_scaffold(config, default)
+
     def set_generate_phase_outputs(self, enabled: bool) -> CLIConfig:
         config = self._repository.load()
         outputs.set_generate_phase_outputs(config, enabled)

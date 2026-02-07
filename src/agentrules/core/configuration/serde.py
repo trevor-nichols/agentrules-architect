@@ -43,6 +43,10 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
             outputs_payload.get("generate_cursorignore") if isinstance(outputs_payload, Mapping) else None,
             default=False,
         ),
+        generate_agent_scaffold=coerce_bool(
+            outputs_payload.get("generate_agent_scaffold") if isinstance(outputs_payload, Mapping) else None,
+            default=False,
+        ),
         generate_phase_outputs=coerce_bool(
             outputs_payload.get("generate_phase_outputs") if isinstance(outputs_payload, Mapping) else None,
             default=True,
@@ -110,6 +114,8 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
     outputs_payload: dict[str, Any] = {}
     if config.outputs.generate_cursorignore:
         outputs_payload["generate_cursorignore"] = True
+    if config.outputs.generate_agent_scaffold:
+        outputs_payload["generate_agent_scaffold"] = True
     if not config.outputs.generate_phase_outputs:
         outputs_payload["generate_phase_outputs"] = False
     if config.outputs.rules_filename != DEFAULT_RULES_FILENAME:

@@ -96,6 +96,14 @@ def is_cursorignore_generation_enabled() -> bool:
     return CONFIG_MANAGER.should_generate_cursorignore()
 
 
+def save_generate_agent_scaffold_preference(enabled: bool) -> None:
+    CONFIG_MANAGER.set_generate_agent_scaffold(enabled)
+
+
+def is_agent_scaffold_generation_enabled() -> bool:
+    return CONFIG_MANAGER.should_generate_agent_scaffold()
+
+
 def save_generate_phase_outputs_preference(enabled: bool) -> None:
     CONFIG_MANAGER.set_generate_phase_outputs(enabled)
 

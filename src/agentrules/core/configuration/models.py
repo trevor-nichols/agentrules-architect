@@ -18,6 +18,7 @@ class ProviderConfig:
 @dataclass
 class OutputPreferences:
     generate_cursorignore: bool = False
+    generate_agent_scaffold: bool = False
     generate_phase_outputs: bool = True
     rules_filename: str = DEFAULT_RULES_FILENAME
 
