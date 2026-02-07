@@ -41,6 +41,10 @@ DEFAULT_EXECPLANS_DIR = Path(".agent/exec_plans")
 DEFAULT_REGISTRY_PATH = Path(".agent/exec_plans/registry.json")
 
 
+def _resolve_path(root: Path, value: Path) -> Path:
+    return value.resolve() if value.is_absolute() else (root / value).resolve()
+
+
 @dataclass(frozen=True, slots=True)
 class RegistryIssue:
     severity: Literal["warning", "error"]
@@ -450,15 +454,17 @@ def collect_execplan_registry(
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
     include_timestamp: bool = False,
 ) -> RegistryBuildResult:
-    if not execplans_dir.exists():
-        raise FileNotFoundError(f"ExecPlans directory not found: {execplans_dir}")
+    resolved_root = root.resolve()
+    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    if not resolved_execplans_dir.exists():
+        raise FileNotFoundError(f"ExecPlans directory not found: {resolved_execplans_dir}")
 
     issues: list[RegistryIssue] = []
     plans: list[RegistryPlan] = []
-    discovered = _discover_execplan_files(execplans_dir)
+    discovered = _discover_execplan_files(resolved_execplans_dir)
 
     for plan_path in discovered:
-        path_text = _to_rel_posix(plan_path, root)
+        path_text = _to_rel_posix(plan_path, resolved_root)
         try:
             content = plan_path.read_text(encoding="utf-8")
             metadata = _extract_front_matter(content)
@@ -475,8 +481,8 @@ def collect_execplan_registry(
         parsed_plan, plan_issues = _build_plan(
             metadata,
             plan_path=plan_path,
-            root=root,
-            execplans_dir=execplans_dir,
+            root=resolved_root,
+            execplans_dir=resolved_execplans_dir,
         )
         issues.extend(plan_issues)
         if parsed_plan is not None:
@@ -556,9 +562,13 @@ def build_execplan_registry(
     include_timestamp: bool = False,
     fail_on_warn: bool = False,
 ) -> RegistryBuildResult:
+    resolved_root = root.resolve()
+    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    resolved_output_path = _resolve_path(resolved_root, output_path)
+
     result = collect_execplan_registry(
-        root=root,
-        execplans_dir=execplans_dir,
+        root=resolved_root,
+        execplans_dir=resolved_execplans_dir,
         include_timestamp=include_timestamp,
     )
     if result.error_count > 0:
@@ -566,7 +576,7 @@ def build_execplan_registry(
     if fail_on_warn and result.warning_count > 0:
         return result
 
-    written_path = write_registry_atomic(result.registry, output_path)
+    written_path = write_registry_atomic(result.registry, resolved_output_path)
     return RegistryBuildResult(
         registry=result.registry,
         issues=result.issues,

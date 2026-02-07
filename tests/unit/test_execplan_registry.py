@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -139,6 +140,53 @@ class ExecPlanRegistryTests(unittest.TestCase):
             self.assertEqual(result.error_count, 0)
             self.assertEqual(len(result.registry["plans"]), 1)
             self.assertEqual(result.registry["plans"][0]["path"], (execplans_dir / "api" / "EP-20260207-001_api.md").resolve().as_posix())
+
+    def test_collect_resolves_default_execplans_dir_from_root(self) -> None:
+        with tempfile.TemporaryDirectory() as root_tmp, tempfile.TemporaryDirectory() as cwd_tmp:
+            root = Path(root_tmp).resolve()
+            cwd = Path(cwd_tmp).resolve()
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            _write_execplan(
+                execplans_dir / "rooted" / "EP-20260207-001_rooted.md",
+                plan_id="EP-20260207-001",
+                title="Rooted Plan",
+            )
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(cwd)
+                result = collect_execplan_registry(root=root)
+            finally:
+                os.chdir(original_cwd)
+
+            self.assertEqual(result.error_count, 0)
+            self.assertEqual(len(result.registry["plans"]), 1)
+            self.assertEqual(result.registry["plans"][0]["id"], "EP-20260207-001")
+
+    def test_build_resolves_default_output_path_from_root(self) -> None:
+        with tempfile.TemporaryDirectory() as root_tmp, tempfile.TemporaryDirectory() as cwd_tmp:
+            root = Path(root_tmp).resolve()
+            cwd = Path(cwd_tmp).resolve()
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            _write_execplan(
+                execplans_dir / "rooted" / "EP-20260207-001_rooted.md",
+                plan_id="EP-20260207-001",
+                title="Rooted Plan",
+            )
+
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(cwd)
+                result = build_execplan_registry(root=root, execplans_dir=execplans_dir)
+            finally:
+                os.chdir(original_cwd)
+
+            self.assertTrue(result.wrote_registry)
+            self.assertEqual(result.output_path, (root / ".agent" / "exec_plans" / "registry.json").resolve())
+            self.assertTrue((root / ".agent" / "exec_plans" / "registry.json").exists())
+            self.assertFalse((cwd / ".agent" / "exec_plans" / "registry.json").exists())
 
     def test_collect_includes_execplans_under_slug_named_milestones(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
