@@ -5,6 +5,11 @@
 * Base your milestone on the template shown within the `<MILESTONE_TEMPLATE>` tag.
 * Create your milestone within `.agent/exec_plans/<short_slug>/milestones/active/`.
 * When your milestone is complete, archive it in `.agent/exec_plans/<short_slug>/milestones/archive/`.
+* Prefer CLI milestone workflow over manual file creation:
+  - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  - List: `agentrules execplan milestone list EP-YYYYMMDD-NNN` (or `--active-only`)
+  - Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
+* Do not hand-pick `MS###` during creation. The CLI assigns the next monotonic sequence for that ExecPlan.
 
 ## Milestone identity and association (required)
 

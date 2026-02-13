@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agentrules.core.utils.execplan_registry import (
+from agentrules.core.execplan.registry import (
     build_execplan_registry,
     collect_execplan_registry,
 )

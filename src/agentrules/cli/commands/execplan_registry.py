@@ -7,7 +7,7 @@ from typing import Any
 
 import typer
 
-from agentrules.core.utils.execplan_registry import (
+from agentrules.core.execplan.registry import (
     DEFAULT_EXECPLANS_DIR,
     DEFAULT_REGISTRY_PATH,
     RegistryBuildResult,

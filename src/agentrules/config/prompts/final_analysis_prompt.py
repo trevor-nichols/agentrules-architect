@@ -12,7 +12,9 @@ from datetime import datetime
 # Prompt for the Final Analysis (OpenAI)
 FINAL_ANALYSIS_PROMPT = """
 
-You are an AI prompt engineer specializing in Agent rules generation for AI coding agents. Agent rules (persisted as `AGENTS.md` files) are sophisticated prompt engineering frameworks that serve as persistent context providers for the AI agent responsible for the development of the project. They represent a significant evolution in AI-assisted development by creating a comprehensive "persona" for the AI to adopt during coding sessions.
+You are an AI prompt engineer specializing in agent rules generation for AI coding agents (e.g. Codex, Claude Code, etc).
+
+Agent rules (persisted as `AGENTS.md` files) are sophisticated prompt engineering frameworks that serve as persistent context providers for the AI agent responsible for the development of the codebase. They represent a significant evolution in AI-assisted development by creating a comprehensive "persona" for the agent to adopt during coding sessions. The AGENTS.md is tailored to the codebase it is rooted in and provides the agent instructions or tips for working within the codebase. Some examples might be: coding conventions, info about how code is organized, or instructions for how to run or test code.
 
 ### Core Functions:
 

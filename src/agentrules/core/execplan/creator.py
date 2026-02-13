@@ -9,9 +9,9 @@ from importlib import resources
 from pathlib import Path
 from string import Template
 
-from agentrules.core.utils.execplan_identity import parse_execplan_filename
-from agentrules.core.utils.execplan_paths import is_execplan_milestone_path
-from agentrules.core.utils.execplan_registry import (
+from agentrules.core.execplan.identity import parse_execplan_filename
+from agentrules.core.execplan.paths import is_execplan_milestone_path
+from agentrules.core.execplan.registry import (
     ALLOWED_DOMAINS,
     ALLOWED_KINDS,
     DEFAULT_EXECPLANS_DIR,
@@ -22,7 +22,7 @@ from agentrules.core.utils.execplan_registry import (
 
 DATE_YYYYMMDD_RE = re.compile(r"^\d{8}$")
 
-_TEMPLATE_PACKAGE = "agentrules.core.utils.file_creation"
+_TEMPLATE_PACKAGE = "agentrules.core.execplan"
 _TEMPLATE_NAME = "EXECPLAN_TEMPLATE.md"
 
 

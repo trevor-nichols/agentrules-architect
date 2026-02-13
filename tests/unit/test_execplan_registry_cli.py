@@ -8,7 +8,7 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from agentrules.cli.context import CliContext
-from agentrules.core.utils.execplan_registry import RegistryBuildResult, RegistryIssue
+from agentrules.core.execplan.registry import RegistryBuildResult, RegistryIssue
 
 
 class ExecPlanRegistryCLITests(unittest.TestCase):

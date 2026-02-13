@@ -1,4 +1,9 @@
-"""Helpers for creating the optional .agent planning scaffold."""
+"""Helpers for creating the optional .agent planning scaffold.
+
+This scaffold materializes human-facing planning guides (for example
+``.agent/templates/MILESTONE_TEMPLATE.md``). It is intentionally separate
+from internal runtime templates used by ExecPlan command handlers.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +13,7 @@ from pathlib import Path
 AGENT_DIRNAME = ".agent"
 TEMPLATES_DIRNAME = "templates"
 PLANS_FILENAME = "PLANS.md"
-MILESTONE_TEMPLATE_FILENAME = "MILESTONE_TEMPLATE.md"
+MILESTONE_GUIDE_TEMPLATE_FILENAME = "MILESTONE_TEMPLATE.md"
 
 
 def _load_template_text(template_name: str) -> str:
@@ -40,7 +45,7 @@ def create_agent_scaffold(target_directory: Path) -> tuple[bool, list[str]]:
 
         files_to_create: tuple[tuple[Path, str], ...] = (
             (agent_dir / PLANS_FILENAME, PLANS_FILENAME),
-            (templates_dir / MILESTONE_TEMPLATE_FILENAME, MILESTONE_TEMPLATE_FILENAME),
+            (templates_dir / MILESTONE_GUIDE_TEMPLATE_FILENAME, MILESTONE_GUIDE_TEMPLATE_FILENAME),
         )
 
         messages: list[str] = []

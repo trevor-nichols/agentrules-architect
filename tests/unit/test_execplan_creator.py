@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agentrules.core.utils.execplan_creator import create_execplan
+from agentrules.core.execplan.creator import create_execplan
 
 
 class ExecPlanCreatorTests(unittest.TestCase):

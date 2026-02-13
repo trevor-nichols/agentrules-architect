@@ -6,12 +6,19 @@ from pathlib import Path
 
 import typer
 
-from agentrules.core.utils.execplan_creator import create_execplan
-from agentrules.core.utils.execplan_registry import DEFAULT_EXECPLANS_DIR, DEFAULT_REGISTRY_PATH
+from agentrules.core.execplan.creator import create_execplan
+from agentrules.core.execplan.milestones import (
+    archive_execplan_milestone,
+    create_execplan_milestone,
+    list_execplan_milestones,
+)
+from agentrules.core.execplan.registry import DEFAULT_EXECPLANS_DIR, DEFAULT_REGISTRY_PATH
 
 from ..bootstrap import bootstrap_runtime
 
 TITLE_ARGUMENT = typer.Argument(..., help="Human-readable ExecPlan title.")
+EXECPLAN_ID_ARGUMENT = typer.Argument(..., help="Canonical ExecPlan ID (EP-YYYYMMDD-NNN).")
+MILESTONE_TITLE_ARGUMENT = typer.Argument(..., help="Human-readable milestone title.")
 ROOT_OPTION = typer.Option(
     None,
     "--root",
@@ -56,6 +63,33 @@ REGISTRY_TIMESTAMP_OPTION = typer.Option(
     "--registry-timestamp",
     help="Include generated_at timestamp when refreshing registry.",
 )
+MILESTONE_SLUG_OPTION = typer.Option(
+    None,
+    "--slug",
+    help="Optional milestone slug. Defaults to a slugified milestone title.",
+)
+MILESTONE_OWNER_OPTION = typer.Option(
+    None,
+    "--owner",
+    help="Override milestone owner metadata. Defaults to parent ExecPlan owner.",
+)
+MILESTONE_DOMAIN_OPTION = typer.Option(
+    None,
+    "--domain",
+    help="Override milestone domain metadata. Defaults to parent ExecPlan domain.",
+)
+MILESTONE_MS_OPTION = typer.Option(
+    ...,
+    "--ms",
+    min=1,
+    max=999,
+    help="Milestone sequence number (MS###) to archive.",
+)
+MILESTONE_INCLUDE_ARCHIVED_OPTION = typer.Option(
+    True,
+    "--archived/--active-only",
+    help="Include archived milestones in list output.",
+)
 
 
 def _resolve_path(root: Path, value: Path) -> Path:
@@ -67,6 +101,8 @@ def register(app: typer.Typer) -> None:
 
     execplan_app = typer.Typer(help="Create and manage ExecPlan documents.")
     app.add_typer(execplan_app, name="execplan")
+    milestone_app = typer.Typer(help="Create and manage milestones for a specific ExecPlan.")
+    execplan_app.add_typer(milestone_app, name="milestone")
 
     @execplan_app.command("new")
     def create_new_execplan(  # type: ignore[func-returns-value]
@@ -149,3 +185,108 @@ def register(app: typer.Typer) -> None:
 
         console.print("[yellow]Registry was not updated.[/]")
         raise typer.Exit(1)
+
+    @milestone_app.command("new")
+    def create_new_milestone(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        title: str = MILESTONE_TITLE_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        slug: str | None = MILESTONE_SLUG_OPTION,
+        owner: str | None = MILESTONE_OWNER_OPTION,
+        domain: str | None = MILESTONE_DOMAIN_OPTION,
+    ) -> None:
+        context = bootstrap_runtime()
+        console = context.console
+
+        resolved_root = (root or Path.cwd()).resolve()
+        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+
+        try:
+            result = create_execplan_milestone(
+                root=resolved_root,
+                execplan_id=execplan_id.strip(),
+                title=title,
+                slug=slug,
+                owner=owner,
+                domain=domain,
+                execplans_dir=resolved_execplans_dir,
+            )
+        except (ValueError, FileNotFoundError) as error:
+            raise typer.BadParameter(str(error)) from error
+        except FileExistsError as error:
+            console.print(f"[red]{error}[/]")
+            raise typer.Exit(2) from error
+        except OSError as error:
+            console.print(f"[red]Milestone creation failed due to filesystem error: {error}[/]")
+            raise typer.Exit(2) from error
+
+        console.print(f"[green]Created milestone:[/] {result.milestone_path.as_posix()}")
+        console.print(f"[green]Milestone ID:[/] {result.milestone_id}")
+        raise typer.Exit(0)
+
+    @milestone_app.command("list")
+    def list_milestones(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        include_archived: bool = MILESTONE_INCLUDE_ARCHIVED_OPTION,
+    ) -> None:
+        context = bootstrap_runtime()
+        console = context.console
+
+        resolved_root = (root or Path.cwd()).resolve()
+        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+
+        try:
+            milestones = list_execplan_milestones(
+                root=resolved_root,
+                execplan_id=execplan_id.strip(),
+                execplans_dir=resolved_execplans_dir,
+                include_archived=include_archived,
+            )
+        except (ValueError, FileNotFoundError) as error:
+            raise typer.BadParameter(str(error)) from error
+
+        if not milestones:
+            console.print(f"[yellow]No milestones found for {execplan_id.strip()}.[/]")
+            raise typer.Exit(0)
+
+        for milestone in milestones:
+            status = "[green]active[/]" if milestone.location == "active" else "[yellow]archived[/]"
+            console.print(f"{status} {milestone.milestone_id} -> {milestone.path.as_posix()}")
+        raise typer.Exit(0)
+
+    @milestone_app.command("archive")
+    def archive_milestone(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        ms: int = MILESTONE_MS_OPTION,
+    ) -> None:
+        context = bootstrap_runtime()
+        console = context.console
+
+        resolved_root = (root or Path.cwd()).resolve()
+        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+
+        try:
+            result = archive_execplan_milestone(
+                root=resolved_root,
+                execplan_id=execplan_id.strip(),
+                sequence=ms,
+                execplans_dir=resolved_execplans_dir,
+            )
+        except (ValueError, FileNotFoundError) as error:
+            raise typer.BadParameter(str(error)) from error
+        except FileExistsError as error:
+            console.print(f"[red]{error}[/]")
+            raise typer.Exit(2) from error
+        except OSError as error:
+            console.print(f"[red]Milestone archive failed due to filesystem error: {error}[/]")
+            raise typer.Exit(2) from error
+
+        console.print(f"[green]Archived milestone:[/] {result.milestone_id}")
+        console.print(f"[green]From:[/] {result.source_path.as_posix()}")
+        console.print(f"[green]To:[/] {result.archived_path.as_posix()}")
+        raise typer.Exit(0)

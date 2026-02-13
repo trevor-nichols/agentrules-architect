@@ -13,8 +13,8 @@ from typing import Any, Literal
 
 import yaml
 
-from agentrules.core.utils.execplan_identity import extract_execplan_id_from_filename
-from agentrules.core.utils.execplan_paths import is_execplan_archive_path, is_execplan_milestone_path
+from agentrules.core.execplan.identity import extract_execplan_id_from_filename
+from agentrules.core.execplan.paths import is_execplan_archive_path, is_execplan_milestone_path
 
 FRONT_MATTER_RE = re.compile(r"\A\s*---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
 EXECPLAN_ID_RE = re.compile(r"^EP-\d{8}-\d{3}$")

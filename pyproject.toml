@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentrules"
-version = "3.2.0"
+version = "3.2.1"
 description = "Interactive CLI for the CursorRules Architect multi-phase analysis pipeline."
 readme = "README.md"
 authors = [{name = "trevor-nichols"}]
@@ -53,7 +53,10 @@ where = ["src"]
 include = ["agentrules*"]
 
 [tool.setuptools.package-data]
-agentrules = ["core/utils/file_creation/templates/*.md"]
+agentrules = [
+  "core/execplan/templates/*.md",
+  "core/utils/file_creation/templates/*.md",
+]
 
 [tool.ruff]
 line-length = 120

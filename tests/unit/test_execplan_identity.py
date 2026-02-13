@@ -1,6 +1,6 @@
 import unittest
 
-from agentrules.core.utils.execplan_identity import (
+from agentrules.core.execplan.identity import (
     matches_execplan_filename_policy,
     parse_execplan_filename,
 )

@@ -320,27 +320,6 @@ output = template.format(items="x")  # can raise KeyError / ValueError
 
 # 8. KNOWLEDGE EVOLUTION MECHANISM
 
-# Knowledge Evolution:
-Document new learnings, architecture decisions, and deprecated patterns in:
-- .cursor/rules/lessons-learned-and-new-knowledge.mdc
-
-Use the following format for each entry:
-```
-## YYYY-MM-DD — [Category] — Short Title
-- Old pattern: [what we used to do]
-- New pattern: [what we should do now]
-- Rationale: [why the change]
-- Files touched: [list of repository paths]
-- Tests/CI added: [list of tests / CI jobs]
-```
-
-Examples:
-- For token caching:
-  - Old pattern → Repeated tiktoken encode calls in nested loops
-  - New pattern → per-file token cache keyed by (model, sha256(content)), precompute skeleton tokens
-  - Rationale → reduces runtime and provider costs, fixes O(n^2) behavior
-  - Files touched → src/agentrules/core/utils/token_packer.py, token_estimator.py
-  - Tests → tests/test_token_packer.py (benchmark/anti-regression)
 
 # Validation Checklist (before merging PRs)
 - [ ] Identity statement present in AGENTS.md

@@ -127,10 +127,48 @@ agentrules keys
 - `agentrules` – interactive main menu (analyze, configure models/outputs, check keys).
 - `agentrules analyze /path/to/project` – full six-phase analysis.
 - `agentrules execplan new \"Title\"` – create a new ExecPlan markdown file under `.agent/exec_plans/<slug>/`.
+- `agentrules execplan milestone new EP-YYYYMMDD-NNN \"Title\"` – create a milestone under a specific ExecPlan.
+- `agentrules execplan milestone list EP-YYYYMMDD-NNN [--active-only]` – list milestones for one ExecPlan.
+- `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>` – archive an active milestone sequence.
 - `agentrules execplan-registry [build|check|update]` – manage `.agent/exec_plans/registry.json` from ExecPlan front matter.
 - `agentrules configure --models` – assign presets per phase with guided prompts; the Phase 1 → Researcher entry lets you toggle the agent On/Off once a Tavily key is configured.
 - `agentrules configure --outputs` – toggle `.cursorignore`, `.agent/` scaffold generation, `phases_output/`, and custom rules filename.
 - `agentrules configure --logging` – set verbosity (`quiet`, `standard`, `verbose`) or export via `AGENTRULES_LOG_LEVEL`.
+
+## 🧭 ExecPlan & Milestones
+
+ExecPlans and milestones use canonical IDs and deterministic file locations:
+
+- ExecPlan ID: `EP-YYYYMMDD-NNN`
+- Milestone ID: `EP-YYYYMMDD-NNN/MS###`
+- Active milestone path: `.agent/exec_plans/<plan-slug>/milestones/active/EP-YYYYMMDD-NNN_MS###_<milestone-slug>.md`
+- Archive milestone path: `.agent/exec_plans/<plan-slug>/milestones/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_MS###_<milestone-slug>.md`
+
+Milestone creation is parent-first and sequence-safe:
+
+- Users provide parent ExecPlan ID + milestone title.
+- CLI/API assign `MS###` automatically.
+- Sequence is monotonic per plan across active and archived milestones (`MS001`, `MS002`, ...).
+- `.agent/templates/MILESTONE_TEMPLATE.md` is a guidance scaffold for authors.
+  Generated milestone files come from an internal file template used by `execplan milestone new`.
+
+Examples:
+
+```bash
+# 1) Create an ExecPlan
+agentrules execplan new "Auth Refresh" --date 20260207
+
+# 2) Create milestones for that plan (auto-assigns MS001, then MS002, ...)
+agentrules execplan milestone new EP-20260207-001 "Design callback flow"
+agentrules execplan milestone new EP-20260207-001 "Implement callback flow"
+
+# 3) List milestones (all or active-only)
+agentrules execplan milestone list EP-20260207-001
+agentrules execplan milestone list EP-20260207-001 --active-only
+
+# 4) Archive a completed milestone
+agentrules execplan milestone archive EP-20260207-001 --ms 1
+```
 
 ## ⚙️ Configuration & Preferences
 
