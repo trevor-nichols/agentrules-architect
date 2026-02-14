@@ -311,6 +311,6 @@ Remember to always keep user experience in mind, implementing appropriate loadin
 
 
 <project_structure>
-├── 🌐 index.html
-└── 🐍 main.py
+├── index.html
+└── main.py
 </project_structure>

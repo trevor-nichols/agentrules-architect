@@ -2,8 +2,8 @@
 """
 core/utils/file_system/tree_generator.py
 
-This module provides enhanced tree generation functionality for visualizing
-directory structures with file type icons and customizable exclusion rules.
+This module provides tree generation functionality for visualizing
+directory structures with customizable exclusion rules.
 
 It is used by the main analysis process to generate visual representations
 of project structures.
@@ -49,93 +49,11 @@ def _build_exclude_patterns(files: set[str], extensions: set[str]) -> set[str]:
 DEFAULT_EXCLUDE_PATTERNS = _build_exclude_patterns(EXCLUDED_FILES, EXCLUDED_EXTENSIONS)
 
 # ====================================================
-# Defining File Type Icons and Descriptions
-# This section maps file extensions and specific filenames to emoji icons
-# and provides human-readable descriptions for each icon.
-# ====================================================
-
-# File type emojis
-FILE_ICONS: dict[str, str] = {
-    # Programming Languages
-    '.py': '🐍',    # Python
-    '.js': '📜',    # JavaScript
-    '.jsx': '⚛️',    # React
-    '.ts': '💠',    # TypeScript
-    '.tsx': '⚛️',    # React TypeScript
-    '.html': '🌐',   # HTML
-    '.css': '🎨',    # CSS
-    '.scss': '🎨',   # SCSS
-    '.sass': '🎨',   # SASS
-    '.less': '🎨',   # LESS
-    '.json': '📋',   # JSON
-    '.xml': '📋',    # XML
-    '.yaml': '📋',   # YAML
-    '.yml': '📋',    # YML
-    '.md': '📝',     # Markdown
-    '.txt': '📄',    # Text
-    '.sh': '💻',     # Shell
-    '.bash': '💻',   # Bash
-    '.zsh': '💻',    # Zsh
-    '.env': '🔒',    # Environment
-    'Dockerfile': '🐳',    # Dockerfile
-    'docker-compose.yml': '🐳',  # Docker compose
-    'package.json': '📦',  # Package JSON
-    'requirements.txt': '📦',  # Python requirements
-    'README': '📖',        # README
-}
-
-# File type descriptions for the key
-ICON_DESCRIPTIONS = {
-    '📁': 'Directory',
-    '🐍': 'Python',
-    '📜': 'JavaScript',
-    '⚛️': 'React',
-    '💠': 'TypeScript',
-    '🌐': 'HTML',
-    '🎨': 'CSS/SCSS/SASS',
-    '📋': 'Data file (JSON/YAML/XML)',
-    '📝': 'Markdown',
-    '📄': 'Text file',
-    '💻': 'Shell script',
-    '🔒': 'Environment file',
-    '📦': 'Package file',
-    '📖': 'README',
-    '🐳': 'Docker file',
-    '️': 'Error/Warning'
-}
-
-# ====================================================
 # Function Definitions
 # This section contains all the functions that perform the core logic
-# of the script, such as getting file icons, checking exclusions,
-# generating the tree, creating a key, and saving the output.
+# of the script, such as checking exclusions, generating the tree,
+# and saving the output.
 # ====================================================
-
-
-def get_file_icon(path: Path) -> str:
-    """
-    Get the appropriate emoji icon for a file.
-
-    Args:
-        path: Path object to get icon for
-
-    Returns:
-        str: Emoji icon representing the file type
-    """
-    if path.is_dir():
-        return '📁'
-
-    # Check for exact filename matches first
-    if path.name in FILE_ICONS:
-        return FILE_ICONS[path.name]
-
-    # Then check extensions
-    ext = path.suffix.lower()
-    if ext in FILE_ICONS:
-        return FILE_ICONS[ext]
-
-    # Default file icon
-    return '📄'
 
 
 def should_exclude(item: Path, exclude_dirs: set[str], exclude_patterns: set[str]) -> bool:
@@ -229,9 +147,8 @@ def generate_tree(
             is_last = index == len(items) - 1
             connector = "└── " if is_last else "├── "
 
-            # Add the current item to the tree with its icon
-            icon = get_file_icon(item)
-            tree.append(f"{prefix}{connector}{icon} {item.name}")
+            # Add the current item to the tree
+            tree.append(f"{prefix}{connector}{item.name}")
 
             # If it's a directory, recursively process its contents
             if item.is_dir():
@@ -249,48 +166,11 @@ def generate_tree(
                     )
                 )
     except PermissionError:
-        tree.append(f"{prefix}└── ⚠️ <Permission Denied>")
+        tree.append(f"{prefix}└── <Permission Denied>")
     except Exception as e:
-        tree.append(f"{prefix}└── ⚠️ <Error: {str(e)}>")
+        tree.append(f"{prefix}└── <Error: {str(e)}>")
 
     return tree
-
-
-def generate_key(tree_content: list[str]) -> list[str]:
-    """
-    Generate a key of emojis used in the tree.
-
-    Args:
-        tree_content: List of strings containing the tree structure
-
-    Returns:
-        List of strings representing the key
-    """
-    used_icons = set()
-
-    # Extract all emojis used in the tree
-    for line in tree_content:
-        # Find emoji in the line (emojis are between connector and filename)
-        parts = line.split(' ')
-        for part in parts:
-            if any(icon in part for icon in ICON_DESCRIPTIONS):
-                used_icons.add(part.strip())
-
-    if not used_icons:
-        return []
-
-    # Generate key lines
-    key_lines = [
-        "File Type Key:",
-        "------------"
-    ]
-
-    # Add descriptions for used icons
-    for icon in sorted(used_icons):
-        if icon in ICON_DESCRIPTIONS:
-            key_lines.append(f"{icon} : {ICON_DESCRIPTIONS[icon]}")
-
-    return key_lines + [""]  # Add empty line after key
 
 
 def save_tree_to_file(tree_content: list[str], path: Path, *, rules_filename: str | None = None) -> str:
@@ -316,17 +196,11 @@ def save_tree_to_file(tree_content: list[str], path: Path, *, rules_filename: st
     if has_wrapping_tags:
         filtered_content = tree_content[1:-1]
 
-    # Generate key for used icons
-    key = generate_key(filtered_content)
-
     header = [
         "<!-- BEGIN_STRUCTURE -->",
         "# Project Directory Structure",
         "------------------------------"
     ]
-
-    if key:  # Only add key if there are icons used
-        header.extend(key)
 
     header.append("```")
 
@@ -376,16 +250,7 @@ def get_project_tree(
         root=directory,
     )
 
-    # Add the key
-    key = generate_key(tree)
-
-    # Prepare the complete tree with key
-    if key:
-        complete_tree = key + tree
-    else:
-        complete_tree = tree
-
     # Add the delimiters
-    delimited_tree = ["<project_structure>"] + complete_tree + ["</project_structure>"]
+    delimited_tree = ["<project_structure>"] + tree + ["</project_structure>"]
 
     return delimited_tree

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentrules"
-version = "3.2.1"
+version = "3.2.2"
 description = "Interactive CLI for the CursorRules Architect multi-phase analysis pipeline."
 readme = "README.md"
 authors = [{name = "trevor-nichols"}]

@@ -23,7 +23,7 @@ Agent rules (persisted as `AGENTS.md` files) are sophisticated prompt engineerin
 3. **Behavioral Guidance**: Control how the AI interacts, reasons, and responds
 4. **Consistency Enforcement**: Ensure coherent development patterns across a project
 
-Your task is to thoroughly analyze both the project report and the project structure provided within specific XML tags in order to create a tailored system prompt in a ARS-1 format.
+Your task is to thoroughly analyze both the project report and the project structure provided within specific XML tags in order to create a tailored AGENTS.md use the following ARS-1 format.
 
 # ARS-1: The Agent Rules Specification
 
@@ -52,7 +52,7 @@ A compliant agent rules file should follow this hierarchical organization:
 
 ## Section 1: Identity Establishment
 
-Begin with a declarative identity statement that establishes the AI's role, expertise level, and development context.
+Begin with a declarative identity statement that establishes the agent's role, expertise level, and development context.
 
 ### Format:
 
@@ -85,7 +85,7 @@ You are a professional engineer and developer in charge of the OpenAI-Agent-Star
 ### Example 2:
 
 ```
-You are an expert senior software developer and AI code generator with deep expertise in the newly released Langchain and Langchain Core v1.0.0 libraries. You are in charge of development and expansion of the 'agenai' python package.
+You are an expert senior software developer with deep expertise in the newly released Langchain and Langchain Core v1.0.0 libraries. You are in charge of development and expansion of the 'agenai' python package.
 
 # Development Principles:
 
@@ -141,11 +141,6 @@ Specify the technical environment, dependencies, and configuration details that 
 ### Format:
 
 ```
-# Technical Environment
-- [Environment Constraint 1]
-- [Environment Constraint 2]
-...
-
 # Dependencies
 - [Dependency 1]: [Version]
 - [Dependency 2]: [Version]
@@ -161,20 +156,15 @@ Specify the technical environment, dependencies, and configuration details that 
 ### Example:
 
 ```
-# Technical Environment
-- You are currently developing on a M3 Mac with an ARM processor but are hosting this code based on a Digital Ocean Droplet running ubuntu
-- The droplet has been set up to clone the github repo 'agenai' by 'trevor-nichols' via ssh
-
 # Dependencies
 - React: 19.0.0
 - React DOM: 19.0.0
-- Next.js: 15.0.4-canary.48
+- Next.js: 16.1.1
 - Anthropic Typescript SDK: 'anthropic-typescript-sdk' version 0.33.1
 
 # Configuration
 - Next.js Config: PPR (Partial Page Regeneration) enabled
 - TypeScript: ESNext target with bundler module resolution
-
 ```
 
 ## Section 4: Imperative Directives
@@ -194,11 +184,13 @@ Provide explicit, numbered requirements that govern development behavior. Use fo
 ### Example:
 
 ```
-# Your Requirements:
-1. ONLY USE camelCase naming style for all files and folders!
-2. **Anthropic DEVELOPMENT**: You are required to use the brand new latest model: **'claude-3-5-sonnet-20241022'**!!
-   - !!!NEVER use 'claude-3-sonnet-20240229' or 'claude-3-haiku-20240307'!!!
-3. Develop systematically and logically, but DO NOT over complicate the codebase!
+# Development Guidelines:
+
+1. Hold the implementation to production-grade standards: clean architecture, DRY, minimal coupling, clear module boundaries, predictable conventions and maintainable patterns.
+2. ONLY USE camelCase naming style for all files and folders.
+3. **Anthropic DEVELOPMENT**: You are required to use the brand new latest model: **'claude-3-5-sonnet-20241022'**.
+   - !!!NEVER use 'claude-3-sonnet-20240229' or 'claude-3-haiku-20240307'.
+4. Develop systematically and logically, but DO NOT over complicate the codebase.
 
 ```
 
