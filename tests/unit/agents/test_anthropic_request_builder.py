@@ -108,3 +108,46 @@ def test_prepare_request_effort_max_unsupported_model_raises() -> None:
         assert "Effort 'max'" in str(exc)
     else:
         raise AssertionError("Expected ValueError for effort=max on unsupported model")
+
+
+def test_prepare_request_merges_effort_and_output_format() -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-opus-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        effort="low",
+        output_format=output_format,
+    )
+
+    assert prepared.payload["output_config"] == {
+        "effort": "low",
+        "format": output_format,
+    }
+
+
+def test_prepare_request_includes_output_format_for_supported_model() -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        output_format=output_format,
+    )
+
+    assert prepared.payload["output_config"] == {"format": output_format}
+
+
+def test_prepare_request_skips_output_format_for_unsupported_model() -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-opus-4-1",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        output_format=output_format,
+    )
+
+    assert "output_config" not in prepared.payload

@@ -13,6 +13,11 @@ from google.genai import types as genai_types
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.structured_outputs import (
+    build_gemini_response_schema,
+    extract_phase2_agents,
+    resolve_phase_result_value,
+)
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import build_gemini_client, generate_content_async
@@ -103,6 +108,8 @@ class GeminiArchitect(BaseArchitect):
         if client is None:
             return self._client_not_initialized_result()
 
+        phase_name = context.get("_structured_output_phase")
+        disable_tools_for_request = bool(context.get("_disable_tools_for_request"))
         prompt = context.get("formatted_prompt") or self.format_prompt(context)
 
         config_kwargs: dict[str, Any] = {}
@@ -111,13 +118,36 @@ class GeminiArchitect(BaseArchitect):
                 f"You are {self.name or 'an AI assistant'}, responsible for {self.role}."
             )
 
-        api_tools = resolve_tool_config(tools, self.tools_config)
+        api_tools = None if disable_tools_for_request else resolve_tool_config(tools, self.tools_config)
+
+        response_schema = build_gemini_response_schema(phase_name)
+        if (
+            response_schema is not None
+            and api_tools
+            and not self._supports_structured_output_with_tools()
+        ):
+            logger.info(
+                (
+                    "[bold magenta]%s:[/bold magenta] Structured output schema requested for %s with tools enabled, "
+                    "but model %s does not support schema+tools in one request. "
+                    "Disabling tools for this phase request."
+                ),
+                self.name or "Gemini Architect",
+                phase_name or "this phase",
+                self.model_name,
+            )
+            api_tools = None
+
         if api_tools:
             config_kwargs["tools"] = api_tools
 
         thinking_config = self._build_thinking_config()
         if thinking_config is not None:
             config_kwargs["thinking_config"] = thinking_config
+
+        if response_schema is not None:
+            config_kwargs["response_mime_type"] = "application/json"
+            config_kwargs["response_json_schema"] = response_schema
 
         generation_config = GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
@@ -159,58 +189,51 @@ class GeminiArchitect(BaseArchitect):
         context: dict[str, Any] = {"phase1_results": phase1_results}
         if prompt:
             context["formatted_prompt"] = prompt
-        result = await self.analyze(context)
-        return {
-            "plan": result.get("findings", "No plan generated"),
-            "error": result.get("error"),
-        }
+        return await self._run_phase_request(
+            context,
+            phase_name="phase2",
+            result_key="plan",
+            empty_value="No plan generated",
+        )
 
     async def synthesize_findings(self, phase3_results: dict, prompt: str | None = None) -> dict[str, Any]:
         context: dict[str, Any] = {"phase3_results": phase3_results}
         if prompt:
             context["formatted_prompt"] = prompt
-        result = await self.analyze(context)
-        return {
-            "analysis": result.get("findings", "No synthesis generated"),
-            "error": result.get("error"),
-        }
+        return await self._run_phase_request(
+            context,
+            phase_name="phase4",
+            result_key="analysis",
+            empty_value="No synthesis generated",
+        )
 
     async def final_analysis(self, consolidated_report: dict, prompt: str | None = None) -> dict[str, Any]:
         context: dict[str, Any] = {"consolidated_report": consolidated_report}
         if prompt:
             context["formatted_prompt"] = prompt
-        result = await self.analyze(context)
-        return {
-            "analysis": result.get("findings", "No final analysis generated"),
-            "error": result.get("error"),
-        }
+        return await self._run_phase_request(
+            context,
+            phase_name="final",
+            result_key="analysis",
+            empty_value="No final analysis generated",
+        )
 
     async def consolidate_results(self, all_results: dict, prompt: str | None = None) -> dict[str, Any]:
-        client = self.client
-        if client is None:
-            return {
-                "phase": "Consolidation",
-                "error": self._client_error_hint or "Gemini client not initialized.",
-            }
-
         content = prompt or (
             "Consolidate these results into a comprehensive report:\n\n"
             f"{json.dumps(all_results, indent=2)}"
         )
 
-        model_name = self._resolve_consolidation_model()
-        response = await generate_content_async(
-            client,
-            model=model_name,
-            contents=content,
-            config=None,
+        response = await self._run_phase_request(
+            {"formatted_prompt": content},
+            phase_name="phase5",
+            result_key="report",
+            empty_value="No report generated",
+            include_phase=True,
+            disable_tools=True,
         )
-
-        parsed = parse_generate_response(response)
-        return {
-            "phase": "Consolidation",
-            "report": parsed.findings or "No report generated",
-        }
+        response.setdefault("phase", "Consolidation")
+        return response
 
     def stream_analyze(
         self,
@@ -269,6 +292,45 @@ class GeminiArchitect(BaseArchitect):
         if self.reasoning == ReasoningMode.DISABLED:
             return self.model_name
         return self._stable_model_name()
+
+    async def _run_phase_request(
+        self,
+        context: dict[str, Any],
+        *,
+        phase_name: str,
+        result_key: str,
+        empty_value: str,
+        include_phase: bool = False,
+        disable_tools: bool = False,
+    ) -> dict[str, Any]:
+        request_context = dict(context)
+        request_context["_structured_output_phase"] = phase_name
+        if disable_tools:
+            request_context["_disable_tools_for_request"] = True
+        result = await self.analyze(request_context)
+
+        value, structured_payload = resolve_phase_result_value(
+            phase=phase_name,
+            result_key=result_key,
+            findings=result.get("findings"),
+            empty_value=empty_value,
+        )
+
+        response: dict[str, Any] = {
+            result_key: value,
+            "error": result.get("error"),
+        }
+        if include_phase:
+            response["phase"] = "Consolidation"
+        if result.get("function_calls"):
+            response["function_calls"] = result["function_calls"]
+        if structured_payload is not None:
+            response["structured_output"] = structured_payload
+            if phase_name == "phase2":
+                phase2_agents = extract_phase2_agents(structured_payload)
+                if phase2_agents is not None:
+                    response["agents"] = phase2_agents
+        return response
 
     def _client_not_initialized_result(self) -> dict[str, Any]:
         message = self._client_error_hint or "Gemini client not initialized."
@@ -379,6 +441,10 @@ class GeminiArchitect(BaseArchitect):
         return "gemini-2.5-pro" not in normalized
 
     def _model_supports_thinking_level(self) -> bool:
+        normalized = self.model_name.lower()
+        return "gemini-3" in normalized
+
+    def _supports_structured_output_with_tools(self) -> bool:
         normalized = self.model_name.lower()
         return "gemini-3" in normalized
 

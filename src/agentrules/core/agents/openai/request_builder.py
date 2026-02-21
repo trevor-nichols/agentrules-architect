@@ -26,6 +26,8 @@ def prepare_request(
     tools: list[Any] | None,
     text_verbosity: str | None,
     use_responses_api: bool,
+    structured_text: dict[str, Any] | None = None,
+    chat_response_format: dict[str, Any] | None = None,
 ) -> PreparedRequest:
     """Build an OpenAI SDK request payload based on the active model pathway."""
     if use_responses_api:
@@ -38,7 +40,7 @@ def prepare_request(
         if reasoning_payload:
             payload["reasoning"] = reasoning_payload
 
-        text_config = _build_text_config(text_verbosity)
+        text_config = _build_text_config(text_verbosity, structured_text)
         if text_config:
             payload["text"] = text_config
 
@@ -69,6 +71,9 @@ def prepare_request(
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
 
+    if chat_response_format:
+        payload["response_format"] = chat_response_format
+
     return PreparedRequest(api="chat", payload=payload)
 
 
@@ -87,10 +92,21 @@ def _build_responses_reasoning_payload(reasoning: ReasoningMode) -> dict[str, st
     return None
 
 
-def _build_text_config(text_verbosity: str | None) -> dict[str, Any] | None:
-    if not text_verbosity:
+def _build_text_config(
+    text_verbosity: str | None,
+    structured_text: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    text_config: dict[str, Any] = {}
+
+    if text_verbosity:
+        text_config["verbosity"] = text_verbosity
+
+    if structured_text:
+        text_config.update(structured_text)
+
+    if not text_config:
         return None
-    return {"verbosity": text_verbosity}
+    return text_config
 
 
 def _build_chat_reasoning_params(

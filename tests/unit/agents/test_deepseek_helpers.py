@@ -103,6 +103,20 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
         self.assertNotIn("tool_choice", payload)
         self.assertNotIn("temperature", payload)
 
+    def test_prepare_request_adds_response_format(self) -> None:
+        defaults = resolve_model_defaults("deepseek-chat")
+        prepared = prepare_request(
+            model_name="deepseek-chat",
+            content="Return JSON",
+            reasoning=ReasoningMode.DISABLED,
+            defaults=defaults,
+            tools=None,
+            response_format={"type": "json_object"},
+        )
+
+        payload = prepared.payload
+        self.assertEqual(payload["response_format"], {"type": "json_object"})
+
 
 @dataclass
 class _FakeFunction:

@@ -9,6 +9,8 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 - Prioritize long-term maintainability and auditability.
 - Use type annotations and keep stubs (.pyi) in sync with implementation.
 - When unsure about the best approach, gather more data (run tests, reproduce locally, add lightweight probes) rather than guessing.
+- When writing complex features or significant refactors, use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.
+- Keep this AGENTS.md file up-to-date and update/edit for any significant changes.
 
 # 2. TEMPORAL FRAMEWORK
 

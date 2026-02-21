@@ -27,6 +27,44 @@ async def test_phase2_fallback_agents_from_assignments(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_phase2_invalid_preparsed_agents_falls_back_to_plan(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            return {
+                "agents": [{"id": "agent_1"}],  # Invalid; missing file_assignments
+                "plan": (
+                    "<analysis_plan><agent_1 name='A'>"
+                    "<file_assignments><file_path>a.py</file_path></file_assignments>"
+                    "</agent_1></analysis_plan>"
+                ),
+            }
+
+    p2 = Phase2Analysis()
+    p2.architect = cast(Any, ArchStub())
+    out = await p2.run({"phase": 1}, ["a.py"])
+    assert "agents" in out and len(out["agents"]) == 1
+    assert out["agents"][0]["id"] == "agent_1"
+    assert out["agents"][0]["file_assignments"] == ["a.py"]
+
+
+@pytest.mark.asyncio
+async def test_phase2_non_string_plan_payload_does_not_fail(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            return {"plan": {"kind": "json_plan", "meta": {"x": 1}}}
+
+    p2 = Phase2Analysis()
+    p2.architect = cast(Any, ArchStub())
+    out = await p2.run({"phase": 1}, ["a.py"])
+    assert "error" not in out
+    assert out.get("agents") == []
+
+
+@pytest.mark.asyncio
 async def test_phase3_fallback_when_no_agents(tmp_path: Path, monkeypatch):
     patch_factory_offline()
     # Create a file; ensure tree includes it

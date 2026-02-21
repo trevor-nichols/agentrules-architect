@@ -53,11 +53,29 @@ def extract_from_json(data: dict[str, Any] | str) -> str:
     Returns:
         str: The extracted plan content or original data if not found
     """
+    def _normalize_plan_content(value: Any) -> str:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            # If the plan is itself structured JSON, preserve it as JSON text so
+            # downstream parsing can still inspect it without raising type errors.
+            nested_plan = value.get("plan")
+            if isinstance(nested_plan, str):
+                return nested_plan
+            if "agents" in value and isinstance(value.get("agents"), list):
+                return json.dumps(value, ensure_ascii=False)
+            return json.dumps(value, ensure_ascii=False)
+        if isinstance(value, list):
+            return json.dumps(value, ensure_ascii=False)
+        if value is None:
+            return ""
+        return str(value)
+
     # Handle dictionary input
     if isinstance(data, dict):
         logger.debug("Extracting plan from dictionary")
         if "plan" in data:
-            return data["plan"]
+            return _normalize_plan_content(data["plan"])
         else:
             logger.debug("No 'plan' field found in dictionary")
             return ""
@@ -68,7 +86,7 @@ def extract_from_json(data: dict[str, Any] | str) -> str:
             json_data = json.loads(data)
             if isinstance(json_data, dict) and "plan" in json_data:
                 logger.debug("Extracted plan from JSON string")
-                return json_data["plan"]
+                return _normalize_plan_content(json_data["plan"])
         except json.JSONDecodeError:
             logger.debug("Failed to parse as JSON, continuing with raw string")
             pass
@@ -416,9 +434,14 @@ def parse_agents_from_phase2(input_data: dict[str, Any] | str) -> list[dict]:
         # Direct access to pre-parsed agents if available
         if "agents" in input_data and isinstance(input_data["agents"], list):
             agents = input_data["agents"]
-            if agents:
+            if _is_valid_preparsed_agents(agents):
                 logger.info(f"[bold green]Agents:[/bold green] Found {len(agents)} pre-parsed agents")
                 return agents
+            if agents:
+                logger.warning(
+                    "[bold yellow]Warning:[/bold yellow] Ignoring invalid pre-parsed agents; "
+                    "falling back to plan parsing",
+                )
 
     # STEP 2: Extract text from JSON if needed
     content = extract_from_json(input_data)
@@ -480,6 +503,35 @@ def parse_agents_from_phase2(input_data: dict[str, Any] | str) -> list[dict]:
         logger.error("[bold red]Error:[/bold red] Failed to extract any agents using all available methods")
 
     return agents
+
+
+def _is_valid_preparsed_agents(raw_agents: list[Any]) -> bool:
+    """
+    Validate model-provided Phase 2 agents before trusting them as canonical.
+
+    We fail closed on malformed payloads so the parser can fall back to plan/XML
+    extraction instead of propagating partial agent definitions to Phase 3.
+    """
+    if not raw_agents:
+        return False
+
+    for agent in raw_agents:
+        if not isinstance(agent, dict):
+            return False
+
+        agent_id = agent.get("id")
+        if not isinstance(agent_id, str) or not re.fullmatch(r"agent_\d+", agent_id):
+            return False
+
+        file_assignments = agent.get("file_assignments")
+        if not isinstance(file_assignments, list):
+            return False
+
+        for file_path in file_assignments:
+            if not isinstance(file_path, str) or not file_path.strip():
+                return False
+
+    return True
 
 def _log_detailed_agent_info(agents: list[dict], method: str) -> None:
     """

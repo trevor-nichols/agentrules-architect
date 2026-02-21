@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from typing import Any, cast
+from unittest.mock import patch
 
 from google.genai import types as genai_types
 from google.protobuf.struct_pb2 import Struct
@@ -25,6 +26,29 @@ class _GeminiFakeModelsService:
 class _GeminiFakeClient:
     def __init__(self):
         self.models = _GeminiFakeModelsService()
+
+
+class _GeminiToolSensitiveModelsService:
+    def __init__(self) -> None:
+        self.last_call: dict[str, Any] | None = None
+
+    def generate_content(self, model, contents, config=None):
+        self.last_call = {"model": model, "contents": contents, "config": config}
+        has_tools = bool(getattr(config, "tools", None)) if config is not None else False
+
+        if has_tools:
+            args = Struct()
+            args.update({"query": "should-not-be-used-in-phase5"})
+            return GeminiGenerateContentResponseFake(text=None, function_call=_FunctionCallFake("lookup", args))
+
+        return GeminiGenerateContentResponseFake(
+            text='{"phase":"Consolidation","report":"Merged findings"}'
+        )
+
+
+class _GeminiToolSensitiveClient:
+    def __init__(self) -> None:
+        self.models = _GeminiToolSensitiveModelsService()
 
 
 class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
@@ -80,3 +104,69 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(thinking_level)
         self.assertEqual(config.thinking_config.thinking_level, thinking_level.LOW)
         self.assertIsNone(config.thinking_config.thinking_budget)
+
+    async def test_consolidation_disables_tools_even_when_configured(self):
+        arch = GeminiArchitect(
+            model_name="gemini-2.5-flash",
+            tools_config={
+                "enabled": True,
+                "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],
+            },
+        )
+        arch.client = _GeminiToolSensitiveClient()  # type: ignore
+
+        with patch(
+            "agentrules.core.agents.gemini.architect.resolve_tool_config",
+            return_value=[{"function_declarations": [{"name": "lookup"}]}],
+        ):
+            result = await arch.consolidate_results({"phase1": {}, "phase2": {}, "phase3": {}, "phase4": {}})
+
+        self.assertEqual(result.get("phase"), "Consolidation")
+        self.assertEqual(result.get("report"), "Merged findings")
+
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertIsNotNone(config)
+        self.assertFalse(bool(getattr(config, "tools", None)))
+
+    async def test_phase_schema_request_disables_tools_for_non_gemini3_models(self):
+        arch = GeminiArchitect(
+            model_name="gemini-2.5-flash",
+            tools_config={
+                "enabled": True,
+                "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],
+            },
+        )
+        arch.client = _GeminiToolSensitiveClient()  # type: ignore
+
+        with patch(
+            "agentrules.core.agents.gemini.architect.resolve_tool_config",
+            return_value=[{"function_declarations": [{"name": "lookup"}]}],
+        ):
+            result = await arch.create_analysis_plan({"phase": "Initial Discovery"}, prompt="Return a plan")
+
+        self.assertIn("plan", result)
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertIsNotNone(config)
+        self.assertFalse(bool(getattr(config, "tools", None)))
+        self.assertIsNotNone(getattr(config, "response_json_schema", None))
+
+    async def test_phase_schema_request_keeps_tools_for_gemini3_models(self):
+        arch = GeminiArchitect(
+            model_name="gemini-3-pro-preview",
+            tools_config={
+                "enabled": True,
+                "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],
+            },
+        )
+        arch.client = _GeminiToolSensitiveClient()  # type: ignore
+
+        with patch(
+            "agentrules.core.agents.gemini.architect.resolve_tool_config",
+            return_value=[{"function_declarations": [{"name": "lookup"}]}],
+        ):
+            _ = await arch.create_analysis_plan({"phase": "Initial Discovery"}, prompt="Return a plan")
+
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertIsNotNone(config)
+        self.assertTrue(bool(getattr(config, "tools", None)))
+        self.assertIsNotNone(getattr(config, "response_json_schema", None))

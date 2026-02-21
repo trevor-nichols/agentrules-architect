@@ -100,6 +100,53 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["temperature"], 0.42)
         self.assertNotIn("reasoning_effort", payload)
 
+    def test_prepare_request_for_responses_api_merges_structured_text(self) -> None:
+        text_format = {
+            "format": {
+                "type": "json_schema",
+                "name": "phase2_response",
+                "schema": {"type": "object"},
+                "strict": True,
+            }
+        }
+        prepared = prepare_request(
+            model_name="gpt-5-turbo",
+            content="Hello world",
+            reasoning=ReasoningMode.LOW,
+            temperature=None,
+            tools=None,
+            text_verbosity="concise",
+            use_responses_api=True,
+            structured_text=text_format,
+        )
+
+        payload = prepared.payload
+        self.assertEqual(payload["text"]["verbosity"], "concise")
+        self.assertEqual(payload["text"]["format"], text_format["format"])
+
+    def test_prepare_request_for_chat_api_adds_response_format(self) -> None:
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "phase2_response",
+                "schema": {"type": "object"},
+                "strict": True,
+            },
+        }
+        prepared = prepare_request(
+            model_name="gpt-4.1",
+            content="Plan",
+            reasoning=ReasoningMode.DISABLED,
+            temperature=None,
+            tools=None,
+            text_verbosity=None,
+            use_responses_api=False,
+            chat_response_format=response_format,
+        )
+
+        payload = prepared.payload
+        self.assertEqual(payload["response_format"], response_format)
+
     def test_prepare_request_includes_reasoning_effort_for_o3(self) -> None:
         prepared = prepare_request(
             model_name="o3",

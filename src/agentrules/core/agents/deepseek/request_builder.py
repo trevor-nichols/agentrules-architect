@@ -25,6 +25,7 @@ def prepare_request(
     defaults: ModelDefaults,
     tools: list[Any] | None,
     temperature: float | None = None,
+    response_format: dict[str, Any] | None = None,
 ) -> PreparedRequest:
     """
     Construct the request payload sent to the DeepSeek Chat Completions API.
@@ -54,5 +55,8 @@ def prepare_request(
 
     if temperature is not None and defaults.tools_allowed:
         payload["temperature"] = temperature
+
+    if response_format is not None:
+        payload["response_format"] = response_format
 
     return PreparedRequest(payload=payload)

@@ -1,0 +1,37 @@
+{
+  "plans": [
+    {
+      "breaking": false,
+      "created": "2026-02-21",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260221-001",
+      "kind": "refactor",
+      "links": {
+        "docs": "internal-docs/integrations",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/structured-output-contracts/EP-20260221-001_structured-output-contracts.md",
+      "risk": "med",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "structured-outputs",
+        "schemas",
+        "providers"
+      ],
+      "title": "Structured outputs contracts across analysis phases",
+      "touches": [
+        "agents",
+        "cli",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-02-21"
+    }
+  ],
+  "schema_version": 1
+}

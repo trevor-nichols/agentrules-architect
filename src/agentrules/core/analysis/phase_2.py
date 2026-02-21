@@ -102,9 +102,10 @@ class Phase2Analysis:
             # ====================================================
             plan_text = analysis_plan_response.get("plan", "")  # Extract the raw plan text
 
-            # Try parsing agents from the plan text
+            # Prefer structured fields on the full response payload; parser falls
+            # back to plan text/XML recovery when structured agents are absent.
             logger.info("[bold]Phase 2:[/bold] Parsing agent definitions from plan")
-            agents = parse_agents_from_phase2(plan_text)  # Parse the agent definitions from plan text
+            agents = parse_agents_from_phase2(analysis_plan_response)
 
             if agents:
                 logger.info(f"[bold green]Success:[/bold green] Found {len(agents)} agents in the analysis plan")

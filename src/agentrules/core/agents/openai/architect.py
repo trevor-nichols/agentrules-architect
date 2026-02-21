@@ -13,6 +13,12 @@ from agentrules.config.prompts.phase_4_prompts import format_phase4_prompt
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.structured_outputs import (
+    build_openai_chat_response_format,
+    build_openai_text_format,
+    extract_phase2_agents,
+    resolve_phase_result_value,
+)
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_request, get_client
@@ -205,6 +211,7 @@ Format your response as a structured report with clear sections and findings."""
         """Create an analysis plan based on Phase 1 results."""
         return await self._run_simple_request(
             prompt or format_phase2_prompt(phase1_results),
+            phase_name="phase2",
             result_key="plan",
             empty_value="No plan generated",
         )
@@ -213,6 +220,7 @@ Format your response as a structured report with clear sections and findings."""
         """Synthesize findings from Phase 3."""
         return await self._run_simple_request(
             prompt or format_phase4_prompt(phase3_results),
+            phase_name="phase4",
             result_key="analysis",
             empty_value="No synthesis generated",
         )
@@ -221,6 +229,7 @@ Format your response as a structured report with clear sections and findings."""
         """Perform final analysis on the consolidated report."""
         return await self._run_simple_request(
             prompt or format_final_analysis_prompt(consolidated_report),
+            phase_name="final",
             result_key="analysis",
             empty_value="No final analysis generated",
         )
@@ -234,6 +243,7 @@ Format your response as a structured report with clear sections and findings."""
 
         response = await self._run_simple_request(
             prompt or default_prompt,
+            phase_name="phase5",
             result_key="report",
             empty_value="No report generated",
             include_phase=True,
@@ -245,6 +255,9 @@ Format your response as a structured report with clear sections and findings."""
         self,
         content: str,
         tools: list[Any] | None = None,
+        *,
+        structured_text: dict[str, Any] | None = None,
+        chat_response_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
         return prepare_request(
             model_name=self.model_name,
@@ -254,6 +267,8 @@ Format your response as a structured report with clear sections and findings."""
             tools=tools,
             text_verbosity=self.text_verbosity,
             use_responses_api=self._use_responses_api,
+            structured_text=structured_text,
+            chat_response_format=chat_response_format,
         )
 
     def _resolve_tools(self, tools: list[Any] | None) -> list[Any] | None:
@@ -272,19 +287,38 @@ Format your response as a structured report with clear sections and findings."""
         self,
         content: str,
         *,
+        phase_name: str | None = None,
         result_key: str,
         empty_value: str,
         include_phase: bool = False,
     ) -> dict:
         try:
-            prepared = self._prepare_request(content)
+            structured_text = build_openai_text_format(phase_name)
+            chat_response_format = build_openai_chat_response_format(phase_name)
+            prepared = self._prepare_request(
+                content,
+                structured_text=structured_text,
+                chat_response_format=chat_response_format,
+            )
             self._log_token_estimate(prepared)
             response = execute_request(prepared)
             parsed = parse_response(response, prepared.api)
 
-            result: dict[str, Any] = {result_key: parsed.findings or empty_value}
+            value, structured_payload = resolve_phase_result_value(
+                phase=phase_name,
+                result_key=result_key,
+                findings=parsed.findings,
+                empty_value=empty_value,
+            )
+            result: dict[str, Any] = {result_key: value}
             if parsed.tool_calls:
                 result["tool_calls"] = parsed.tool_calls
+            if structured_payload is not None:
+                result["structured_output"] = structured_payload
+                if phase_name == "phase2":
+                    phase2_agents = extract_phase2_agents(structured_payload)
+                    if phase2_agents is not None:
+                        result["agents"] = phase2_agents
 
             if include_phase:
                 result["phase"] = "Consolidation"
