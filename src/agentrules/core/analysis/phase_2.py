@@ -13,14 +13,17 @@ import logging  # Used for logging messages
 from collections.abc import Sequence
 
 from agentrules.config.prompts.phase_2_prompts import (  # Prompts for Phase 2
-    format_phase2_prompt,
+    format_phase2_legacy_prompt,
+    format_phase2_structured_prompt,
 )
 from agentrules.core.agents import get_architect_for_phase  # Added import for dynamic model configuration
+from agentrules.core.agents.base import ModelProvider
 from agentrules.core.analysis.events import AnalysisEvent, AnalysisEventSink, NullEventSink
 from agentrules.core.utils.parsers.agent_parser import (  # Function to parse agent definitions
     extract_agent_fallback,
     parse_agents_from_phase2,
 )
+from agentrules.core.utils.structured_outputs import should_use_legacy_phase2_prompt
 
 # ====================================================
 # Logger Initialization
@@ -78,7 +81,23 @@ class Phase2Analysis:
             # Prompt Formatting
             # Format the prompt using the template.
             # ====================================================
-            prompt = format_phase2_prompt(phase1_results, tree)
+            structured_prompt = format_phase2_structured_prompt(phase1_results, tree)
+            legacy_prompt = format_phase2_legacy_prompt(phase1_results, tree)
+            prompt = structured_prompt
+
+            provider = getattr(self.architect, "provider", None)
+            model_name = getattr(self.architect, "model_name", None)
+            if isinstance(provider, ModelProvider) and isinstance(model_name, str):
+                if should_use_legacy_phase2_prompt(provider=provider, model_name=model_name):
+                    prompt = legacy_prompt
+                    logger.info(
+                        (
+                            "[bold yellow]Phase 2:[/bold yellow] Structured outputs unavailable for %s/%s; "
+                            "using legacy XML prompt fallback."
+                        ),
+                        provider.value,
+                        model_name,
+                    )
 
             logger.info("[bold]Phase 2:[/bold] Creating analysis plan using configured model")
 

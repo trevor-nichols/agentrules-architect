@@ -14,6 +14,8 @@ from agentrules.core.utils.structured_outputs import (
     get_phase_output_schema,
     parse_structured_output_text,
     resolve_phase_result_value,
+    resolve_structured_output_mode,
+    should_use_legacy_phase2_prompt,
 )
 
 
@@ -27,6 +29,52 @@ def test_phase_output_schemas_expose_expected_phase2_fields() -> None:
 def test_phase_model_response_schema_none_for_unsupported_phase() -> None:
     assert get_phase_model_response_schema("phase1") is None
     assert get_phase_model_response_schema("missing") is None
+
+
+def test_resolve_structured_output_mode_for_phase_and_provider() -> None:
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.OPENAI,
+            model_name="gpt-5-mini",
+            phase="phase2",
+        )
+        == "json_schema"
+    )
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.DEEPSEEK,
+            model_name="deepseek-chat",
+            phase="phase4",
+        )
+        == "json_object"
+    )
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.ANTHROPIC,
+            model_name="claude-opus-4-1",
+            phase="phase2",
+        )
+        == "disabled"
+    )
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.OPENAI,
+            model_name="gpt-5-mini",
+            phase="phase1",
+        )
+        == "disabled"
+    )
+
+
+def test_should_use_legacy_phase2_prompt_for_unsupported_model() -> None:
+    assert should_use_legacy_phase2_prompt(
+        provider=ModelProvider.ANTHROPIC,
+        model_name="claude-opus-4-1",
+    )
+    assert not should_use_legacy_phase2_prompt(
+        provider=ModelProvider.OPENAI,
+        model_name="gpt-5-mini",
+    )
 
 
 def test_provider_mapping_uses_expected_docs_and_modes() -> None:

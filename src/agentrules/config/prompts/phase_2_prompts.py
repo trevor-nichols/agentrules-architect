@@ -9,8 +9,41 @@ modifying the core logic of the agents.
 import json
 from collections.abc import Sequence
 
-# Base prompt template for Phase 2 (Methodical Planning)
-PHASE_2_PROMPT = """You are a project documentation planner tasked with processing the <initial_findings>...</initial_findings> from the given <project_structure>...</project_structure> in order to:
+# Base prompt template for Phase 2 (Methodical Planning) when structured outputs
+# are enabled for the selected provider/model.
+PHASE_2_STRUCTURED_PROMPT = """You are a project documentation planner responsible for assigning specialized agents to analyze a codebase.
+
+Your tasks:
+1. Create a team of 3 to 5 agents best suited for this repository.
+2. Assign files to agents so all relevant files are covered.
+3. Keep assignments practical and balanced by responsibility.
+
+Project structure:
+{project_structure}
+
+Initial findings from the discovery phase:
+<initial_findings>
+{phase1_results}
+</initial_findings>
+
+Output contract:
+- `plan`: concise planning summary in markdown/plain text.
+- `agents`: list of objects with:
+  - `id` as `agent_1`, `agent_2`, ...
+  - `name`: short role name
+  - `description`: what the agent does
+  - `responsibilities`: list of specific responsibilities
+  - `file_assignments`: list of file paths
+- `reasoning`: optional rationale string.
+
+Constraints:
+- Ensure file paths are repository-relative.
+- Avoid duplicate file assignments unless a file genuinely needs multi-agent review.
+- Do not include markdown code fences in the response body.
+"""
+
+# Legacy fallback prompt for models/pathways that cannot use structured outputs.
+PHASE_2_LEGACY_XML_PROMPT = """You are a project documentation planner tasked with processing the <initial_findings>...</initial_findings> from the given <project_structure>...</project_structure> in order to:
 
 1. Create a listing of a team of 3 to 5 agents that would be the best fit to analyze the contents of each file shown within the project structure.
 
@@ -81,30 +114,69 @@ Describe your approach or reasoning here.
 
 """
 
-def format_phase2_prompt(
+# Backwards-compatible alias retained for existing imports.
+PHASE_2_PROMPT = PHASE_2_STRUCTURED_PROMPT
+
+def _format_phase2_template(
+    template: str,
     phase1_results: dict,
     project_structure: Sequence[str] | None = None,
 ) -> str:
-    """
-    Format the Phase 2 prompt with the Phase 1 results and project structure.
-
-    Args:
-        phase1_results: Dictionary containing the results from Phase 1
-        project_structure: List of strings representing the project tree structure
-
-    Returns:
-        Formatted prompt string
-    """
-    # Format the project structure
+    """Render a Phase 2 prompt template with project data."""
     structure_lines = (
         list(project_structure)
         if project_structure is not None
         else ["No project structure provided"]
     )
-
     structure_str = "\n".join(structure_lines)
 
-    return PHASE_2_PROMPT.format(
+    return template.format(
         phase1_results=json.dumps(phase1_results, indent=2),
-        project_structure=structure_str
+        project_structure=structure_str,
     )
+
+
+def format_phase2_structured_prompt(
+    phase1_results: dict,
+    project_structure: Sequence[str] | None = None,
+) -> str:
+    """Format the structured-output Phase 2 prompt."""
+    return _format_phase2_template(
+        PHASE_2_STRUCTURED_PROMPT,
+        phase1_results,
+        project_structure,
+    )
+
+
+def format_phase2_legacy_prompt(
+    phase1_results: dict,
+    project_structure: Sequence[str] | None = None,
+) -> str:
+    """Format the legacy XML Phase 2 prompt used as compatibility fallback."""
+    return _format_phase2_template(
+        PHASE_2_LEGACY_XML_PROMPT,
+        phase1_results,
+        project_structure,
+    )
+
+
+def format_phase2_prompt(
+    phase1_results: dict,
+    project_structure: Sequence[str] | None = None,
+    *,
+    use_legacy_xml: bool = False,
+) -> str:
+    """
+    Backwards-compatible Phase 2 prompt formatter.
+
+    Args:
+        phase1_results: Dictionary containing the results from Phase 1
+        project_structure: List of strings representing the project tree structure
+        use_legacy_xml: When True, use the old XML prompt instructions
+
+    Returns:
+        Formatted prompt string
+    """
+    if use_legacy_xml:
+        return format_phase2_legacy_prompt(phase1_results, project_structure)
+    return format_phase2_structured_prompt(phase1_results, project_structure)

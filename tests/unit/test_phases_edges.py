@@ -3,11 +3,58 @@ from typing import Any, cast
 
 import pytest
 
+from agentrules.core.agents.base import ModelProvider
 from agentrules.core.analysis.final_analysis import FinalAnalysis
 from agentrules.core.analysis.phase_2 import Phase2Analysis
 from agentrules.core.analysis.phase_3 import Phase3Analysis
 from agentrules.core.analysis.phase_5 import Phase5Analysis
 from tests.utils.offline_stubs import patch_factory_offline
+
+
+@pytest.mark.asyncio
+async def test_phase2_uses_legacy_prompt_when_structured_outputs_unsupported(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        provider = ModelProvider.ANTHROPIC
+        model_name = "claude-opus-4-1"
+
+        def __init__(self) -> None:
+            self.seen_prompt = ""
+
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            self.seen_prompt = prompt or ""
+            return {"plan": "<analysis_plan></analysis_plan>"}
+
+    p2 = Phase2Analysis()
+    arch = ArchStub()
+    p2.architect = cast(Any, arch)
+    await p2.run({"phase": 1}, ["a.py"])
+    assert "## OUTPUT FORMAT" in arch.seen_prompt
+    assert "<analysis_plan>" in arch.seen_prompt
+
+
+@pytest.mark.asyncio
+async def test_phase2_uses_structured_prompt_when_supported(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        provider = ModelProvider.OPENAI
+        model_name = "gpt-5-mini"
+
+        def __init__(self) -> None:
+            self.seen_prompt = ""
+
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            self.seen_prompt = prompt or ""
+            return {"plan": "Structured plan", "agents": []}
+
+    p2 = Phase2Analysis()
+    arch = ArchStub()
+    p2.architect = cast(Any, arch)
+    await p2.run({"phase": 1}, ["a.py"])
+    assert "Output contract:" in arch.seen_prompt
+    assert "## OUTPUT FORMAT" not in arch.seen_prompt
 
 
 @pytest.mark.asyncio

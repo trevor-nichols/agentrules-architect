@@ -11,6 +11,7 @@ from typing import Any, Literal, cast
 from agentrules.core.agents.base import ModelProvider
 
 PhaseName = Literal["phase1", "phase2", "phase3", "phase4", "phase5", "final"]
+StructuredOutputMode = Literal["json_schema", "json_object", "disabled"]
 
 _SUPPORTED_PHASES: tuple[PhaseName, ...] = (
     "phase1",
@@ -195,6 +196,53 @@ def get_phase_model_response_schema(phase: str | None) -> dict[str, Any] | None:
 
 def get_provider_structured_output_spec(provider: ModelProvider) -> ProviderStructuredOutputSpec:
     return PROVIDER_STRUCTURED_OUTPUT_SPECS[provider]
+
+
+def resolve_structured_output_mode(
+    *,
+    provider: ModelProvider,
+    model_name: str,
+    phase: str | None,
+) -> StructuredOutputMode:
+    """
+    Resolve the structured-output mode for a provider/model/phase combination.
+
+    This is the central capability decision used by phase orchestration and
+    provider adapters. If a phase has no structured schema contract, structured
+    outputs are disabled regardless of provider.
+    """
+    if get_phase_model_response_schema(phase) is None:
+        return "disabled"
+
+    if provider == ModelProvider.ANTHROPIC:
+        # Anthropic advertises model-family gating for output_config.format.
+        from agentrules.core.agents.anthropic.capabilities import supports_structured_output_format
+
+        if not supports_structured_output_format(model_name):
+            return "disabled"
+        return "json_schema"
+
+    if provider in {ModelProvider.OPENAI, ModelProvider.GEMINI}:
+        return "json_schema"
+
+    if provider in {ModelProvider.DEEPSEEK, ModelProvider.XAI}:
+        return "json_object"
+
+    return "disabled"
+
+
+def should_use_legacy_phase2_prompt(*, provider: ModelProvider, model_name: str) -> bool:
+    """
+    Return True when Phase 2 should use the legacy XML prompt fallback.
+    """
+    return (
+        resolve_structured_output_mode(
+            provider=provider,
+            model_name=model_name,
+            phase="phase2",
+        )
+        == "disabled"
+    )
 
 
 def build_openai_text_format(phase: str | None) -> dict[str, Any] | None:

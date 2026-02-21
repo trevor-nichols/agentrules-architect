@@ -13,7 +13,9 @@ from agentrules.core.utils.structured_outputs import (
     augment_prompt_for_json_mode,
     build_chat_json_object_response_format,
     extract_phase2_agents,
+    get_phase_model_response_schema,
     resolve_phase_result_value,
+    resolve_structured_output_mode,
 )
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
@@ -94,9 +96,33 @@ class DeepSeekArchitect(BaseArchitect):
         try:
             phase_name = context.get("_structured_output_phase")
             content = context.get("formatted_prompt") or self.format_prompt(context)
-            response_format = build_chat_json_object_response_format(self.provider, phase_name)
+            force_unstructured = bool(context.get("_force_unstructured_output"))
+            mode = (
+                "disabled"
+                if force_unstructured
+                else resolve_structured_output_mode(
+                    provider=self.provider,
+                    model_name=self.model_name,
+                    phase=phase_name,
+                )
+            )
+            response_format = (
+                build_chat_json_object_response_format(self.provider, phase_name)
+                if mode == "json_object"
+                else None
+            )
             if response_format is not None:
                 content = augment_prompt_for_json_mode(content, phase_name)
+            elif get_phase_model_response_schema(phase_name) is not None:
+                logger.info(
+                    (
+                        "[bold teal]%s:[/bold teal] Structured output disabled for %s on model %s; "
+                        "using plain-text fallback."
+                    ),
+                    self.name or "DeepSeek Architect",
+                    phase_name or "this phase",
+                    self.model_name,
+                )
 
             provider_tools = resolve_tool_config(
                 tools,

@@ -12,11 +12,12 @@ from agentrules.core.utils.async_stream import iterate_in_thread
 from agentrules.core.utils.structured_outputs import (
     build_anthropic_output_format,
     extract_phase2_agents,
+    get_phase_model_response_schema,
     resolve_phase_result_value,
+    resolve_structured_output_mode,
 )
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
-from .capabilities import supports_structured_output_format
 from .client import execute_message_request, execute_message_stream, get_client
 from .prompting import default_prompt_template, format_prompt
 from .request_builder import PreparedRequest, prepare_request
@@ -71,12 +72,22 @@ class AnthropicArchitect(BaseArchitect):
             phase_name = context.get("_structured_output_phase")
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
-            output_format = build_anthropic_output_format(phase_name)
-            if output_format is not None and not supports_structured_output_format(self.model_name):
+            force_unstructured = bool(context.get("_force_unstructured_output"))
+            mode = (
+                "disabled"
+                if force_unstructured
+                else resolve_structured_output_mode(
+                    provider=self.provider,
+                    model_name=self.model_name,
+                    phase=phase_name,
+                )
+            )
+            output_format = build_anthropic_output_format(phase_name) if mode == "json_schema" else None
+            if output_format is None and get_phase_model_response_schema(phase_name) is not None:
                 logger.info(
                     (
                         "[bold purple]%s:[/bold purple] Structured output schema requested for %s, "
-                        "but model %s does not support output_config.format. "
+                        "but model %s does not support structured schema mode. "
                         "Falling back to plain-text output."
                     ),
                     self.name or "Claude Architect",

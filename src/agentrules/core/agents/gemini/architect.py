@@ -16,7 +16,9 @@ from agentrules.core.utils.async_stream import iterate_in_thread
 from agentrules.core.utils.structured_outputs import (
     build_gemini_response_schema,
     extract_phase2_agents,
+    get_phase_model_response_schema,
     resolve_phase_result_value,
+    resolve_structured_output_mode,
 )
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
@@ -109,6 +111,7 @@ class GeminiArchitect(BaseArchitect):
             return self._client_not_initialized_result()
 
         phase_name = context.get("_structured_output_phase")
+        force_unstructured = bool(context.get("_force_unstructured_output"))
         disable_tools_for_request = bool(context.get("_disable_tools_for_request"))
         prompt = context.get("formatted_prompt") or self.format_prompt(context)
 
@@ -120,7 +123,26 @@ class GeminiArchitect(BaseArchitect):
 
         api_tools = None if disable_tools_for_request else resolve_tool_config(tools, self.tools_config)
 
-        response_schema = build_gemini_response_schema(phase_name)
+        mode = (
+            "disabled"
+            if force_unstructured
+            else resolve_structured_output_mode(
+                provider=self.provider,
+                model_name=self.model_name,
+                phase=phase_name,
+            )
+        )
+        response_schema = build_gemini_response_schema(phase_name) if mode == "json_schema" else None
+        if response_schema is None and get_phase_model_response_schema(phase_name) is not None:
+            logger.info(
+                (
+                    "[bold magenta]%s:[/bold magenta] Structured output schema requested for %s, "
+                    "but model %s is running plain-text fallback."
+                ),
+                self.name or "Gemini Architect",
+                phase_name or "this phase",
+                self.model_name,
+            )
         if (
             response_schema is not None
             and api_tools

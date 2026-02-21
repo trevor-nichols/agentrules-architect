@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 from agentrules.config.prompts.final_analysis_prompt import format_final_analysis_prompt
-from agentrules.config.prompts.phase_2_prompts import format_phase2_prompt
+from agentrules.config.prompts.phase_2_prompts import format_phase2_structured_prompt
 from agentrules.config.prompts.phase_4_prompts import format_phase4_prompt
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
@@ -17,7 +17,9 @@ from agentrules.core.utils.structured_outputs import (
     build_openai_chat_response_format,
     build_openai_text_format,
     extract_phase2_agents,
+    get_phase_model_response_schema,
     resolve_phase_result_value,
+    resolve_structured_output_mode,
 )
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
@@ -210,7 +212,7 @@ Format your response as a structured report with clear sections and findings."""
     async def create_analysis_plan(self, phase1_results: dict, prompt: str | None = None) -> dict:
         """Create an analysis plan based on Phase 1 results."""
         return await self._run_simple_request(
-            prompt or format_phase2_prompt(phase1_results),
+            prompt or format_phase2_structured_prompt(phase1_results),
             phase_name="phase2",
             result_key="plan",
             empty_value="No plan generated",
@@ -293,8 +295,26 @@ Format your response as a structured report with clear sections and findings."""
         include_phase: bool = False,
     ) -> dict:
         try:
-            structured_text = build_openai_text_format(phase_name)
-            chat_response_format = build_openai_chat_response_format(phase_name)
+            structured_text: dict[str, Any] | None = None
+            chat_response_format: dict[str, Any] | None = None
+            output_mode = resolve_structured_output_mode(
+                provider=self.provider,
+                model_name=self.model_name,
+                phase=phase_name,
+            )
+            if output_mode == "json_schema":
+                structured_text = build_openai_text_format(phase_name)
+                chat_response_format = build_openai_chat_response_format(phase_name)
+            elif phase_name and get_phase_model_response_schema(phase_name) is not None:
+                logger.info(
+                    (
+                        "[bold blue]%s:[/bold blue] Structured output disabled for %s on model %s; "
+                        "using plain-text fallback."
+                    ),
+                    self.name or "OpenAI Architect",
+                    phase_name,
+                    self.model_name,
+                )
             prepared = self._prepare_request(
                 content,
                 structured_text=structured_text,
