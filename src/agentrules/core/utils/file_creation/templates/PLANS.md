@@ -33,10 +33,10 @@ Example:
 
 The slug is a short, human-friendly hint. The ID is the real identity.
 
-### ExecPlan Creation
+### Instructions for Creating ExecPlans
 
-Create an ExecPlan using `agentrules execplan new "<title>" --slug <short-slug>` (e.g. `agentrules execplan new "Auth Refresh" --slug auth-refresh`). If --slug is omitted, a slug is derived from the title. The file is generated under `.agent/exec_plans/active/<short-slug>/` as `EP-YYYYMMDD-NNN_<short-slug>.md`.
-When the ExecPlan is complete, archive the full directory with `agentrules execplan archive EP-YYYYMMDD-NNN` (optionally `--date YYYYMMDD`). Archived plans are stored under `.agent/exec_plans/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_<short-slug>/`.
+- Create an ExecPlan using `agentrules execplan new "<title>" --slug <short-slug>` (e.g. `agentrules execplan new "Auth Refresh" --slug auth-refresh`). If --slug is omitted, a slug is derived from the title. The file is generated under `.agent/exec_plans/active/<short-slug>/` as `EP-YYYYMMDD-NNN_<short-slug>.md`.
+- When the ExecPlan is complete, archive the full directory with `agentrules execplan archive EP-YYYYMMDD-NNN` (optionally `--date YYYYMMDD`).
 
 ### Registry Creation & Update
 
