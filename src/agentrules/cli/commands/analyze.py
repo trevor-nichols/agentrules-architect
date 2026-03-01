@@ -44,6 +44,8 @@ def register(app: typer.Typer) -> None:
             help="Override the output rules filename for this run (for example CLAUDE.md).",
         ),
     ) -> None:
+        """Analyze a project directory and generate rules artifacts."""
+
         context = bootstrap_runtime()
         run_pipeline(
             path,

@@ -102,6 +102,23 @@ class CLITestCase(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Rules filename override must be a file name, not a path.", result.output)
 
+    def test_root_help_includes_descriptions_for_core_commands(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.app,
+            ["--help"],
+            env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+        )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Analyze a project directory and generate rules artifacts.", result.output)
+        self.assertIn("Configure provider keys, model presets, logging, and", result.output)
+        self.assertIn("output settings.", result.output)
+        self.assertIn("Show configured provider key status without printing", result.output)
+        self.assertIn("secret values.", result.output)
+
     def test_scaffold_sync_check_exits_nonzero_when_drift_detected(self) -> None:
         from agentrules import cli
         from agentrules.core.utils.file_creation.agent_scaffold import AgentScaffoldSyncResult
