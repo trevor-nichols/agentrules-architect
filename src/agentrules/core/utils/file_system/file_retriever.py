@@ -59,12 +59,18 @@ def should_exclude(path: Path, exclude_dirs: set[str], exclude_patterns: set[str
     """
     # Check if any part of the path is in excluded dirs
     for part in path.parts:
+        normalized_part = part.lower()
         if part in exclude_dirs:
+            return True
+        if normalized_part.startswith('.') and normalized_part.endswith('_cache'):
+            return True
+        if '.egg-' in normalized_part:
             return True
 
     # Check filename against excluded patterns
+    path_name = path.name.lower()
     for pattern in exclude_patterns:
-        if fnmatch.fnmatch(path.name, pattern):
+        if fnmatch.fnmatch(path_name, pattern.lower()):
             return True
 
     return False

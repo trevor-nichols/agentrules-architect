@@ -56,6 +56,43 @@ def test_list_files_respects_exclusions_and_depth(tmp_path: Path):
     assert "deep/d1/d2/d3/deep.py" not in rels  # beyond max_depth
 
 
+def test_list_files_applies_new_default_exclusion_patterns(tmp_path: Path):
+    (tmp_path / "keep.py").write_text("print('keep')")
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "config.md").write_text("claude")
+    (tmp_path / ".codex").mkdir()
+    (tmp_path / ".codex" / "state.json").write_text("{}")
+    (tmp_path / ".cursor").mkdir()
+    (tmp_path / ".cursor" / "rules.mdc").write_text("x")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "workflow.yml").write_text("name: ci")
+    (tmp_path / ".custom_cache").mkdir()
+    (tmp_path / ".custom_cache" / "cached.py").write_text("cached")
+    (tmp_path / "pkg.egg-info").mkdir()
+    (tmp_path / "pkg.egg-info" / "PKG-INFO").write_text("metadata")
+    (tmp_path / "AGENTS.md").write_text("rules")
+    (tmp_path / "CLAUDE.md").write_text("rules")
+    (tmp_path / "diagram.svgz").write_text("svg")
+    (tmp_path / "animation.gifv").write_text("gif")
+    (tmp_path / "PHOTO.PNG").write_text("png")
+
+    files = list(list_files(tmp_path, max_depth=3))
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "keep.py" in rels
+    assert ".claude/config.md" not in rels
+    assert ".codex/state.json" not in rels
+    assert ".cursor/rules.mdc" not in rels
+    assert ".github/workflow.yml" not in rels
+    assert ".custom_cache/cached.py" not in rels
+    assert "pkg.egg-info/PKG-INFO" not in rels
+    assert "AGENTS.md" not in rels
+    assert "CLAUDE.md" not in rels
+    assert "diagram.svgz" not in rels
+    assert "animation.gifv" not in rels
+    assert "PHOTO.PNG" not in rels
+
+
 def test_get_file_contents_respects_size_and_max_files(tmp_path: Path):
     small1 = tmp_path / "s1.py"
     small2 = tmp_path / "s2.txt"

@@ -70,6 +70,29 @@ class TreeGeneratorTests(unittest.TestCase):
         self.assertIn("# Project Directory Structure", content)
         self.assertIn("└── app.py", content)
 
+    def test_get_project_tree_omits_newly_excluded_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "keep.py").write_text("print('ok')\n", encoding="utf-8")
+            (root / ".claude").mkdir()
+            (root / ".claude" / "notes.md").write_text("x", encoding="utf-8")
+            (root / ".custom_cache").mkdir()
+            (root / ".custom_cache" / "cache.txt").write_text("x", encoding="utf-8")
+            (root / "pkg.egg-info").mkdir()
+            (root / "pkg.egg-info" / "PKG-INFO").write_text("x", encoding="utf-8")
+            (root / "AGENTS.md").write_text("x", encoding="utf-8")
+            (root / "diagram.svgz").write_text("x", encoding="utf-8")
+
+            tree = get_project_tree(root, max_depth=4)
+            rendered = "\n".join(tree)
+
+        self.assertIn("keep.py", rendered)
+        self.assertNotIn(".claude", rendered)
+        self.assertNotIn(".custom_cache", rendered)
+        self.assertNotIn("pkg.egg-info", rendered)
+        self.assertNotIn("AGENTS.md", rendered)
+        self.assertNotIn("diagram.svgz", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()
