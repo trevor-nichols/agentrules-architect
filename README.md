@@ -39,7 +39,7 @@ Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Ar
 - 🔍 Six-phase pipeline: discovery → planning → deep dives → synthesis → consolidation → final AGENTS.md generation.
 - 🧩 Researcher tooling via Tavily search with provider-aware tool translation.
 - 📊 Rich terminal UI (Rich) showing per-agent progress, duration, and failures in real time.
-- 🪵 Configurable outputs: `AGENTS.md`, `.cursorignore`, optional `.agent/` scaffold templates, and per-phase markdown/json snapshots.
+- 🪵 Configurable outputs: `AGENTS.md`, `SNAPSHOT.md` (enabled by default), `.cursorignore`, optional `.agent/` scaffold templates, and per-phase markdown/json snapshots.
 - 🔧 Declarative model presets plus runtime overrides via CLI or TOML.
 
 ## 🧮 Analysis Pipeline
@@ -191,7 +191,8 @@ agentrules execplan list
 - **Config file**: `~/.config/agentrules/config.toml`
   - `providers` – API keys per provider.
   - `models` – preset IDs applied to each phase (`phase1`, `phase2`, `final`, `researcher`, …).
-  - `outputs` – `generate_cursorignore`, `generate_agent_scaffold`, `generate_phase_outputs`, `rules_filename`.
+  - `outputs` – `generate_cursorignore`, `generate_agent_scaffold`, `generate_phase_outputs`, `generate_snapshot`, `rules_filename`, `snapshot_filename`.
+    - `generate_snapshot` defaults to `true` and writes `SNAPSHOT.md` at project root after each analysis run (toggle anytime in `agentrules configure --outputs`).
   - `features` – `researcher_mode` (`on`/`off`) to control Phase 1 web research (managed from the Researcher row in the models wizard).
   - `exclusions` – add/remove directories, files, or extensions; choose to respect `.gitignore`.
 - **Runtime helpers** (via `agentrules/core/configuration/manager.py`):
@@ -264,6 +265,7 @@ Looking for a cost-aware default? The new `gpt5-mini` preset pairs high reasonin
 By default the pipeline produces:
 
 - `AGENTS.md` (or your custom rules filename) – cleaned, standardized agent instructions.
+- `SNAPSHOT.md` – project tree + base64-encoded file snapshots generated at the project root after the pipeline finishes.
 - `.cursorignore` – generated when enabled to keep editor agents focused on relevant files.
 - `.agent/` scaffold – generated when enabled (`.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md`).
 - `phases_output/` – per-phase markdown/JSON snapshots for auditing and downstream automation.

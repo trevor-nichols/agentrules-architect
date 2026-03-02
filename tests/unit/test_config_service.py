@@ -157,7 +157,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertFalse(self.config_manager.should_generate_agent_scaffold())
 
     def test_generate_snapshot_preference_persists(self) -> None:
-        self.assertFalse(self.config_manager.should_generate_snapshot())
+        self.assertTrue(self.config_manager.should_generate_snapshot())
 
         self.config_manager.set_generate_snapshot(True)
         cfg = self.config_manager.load()

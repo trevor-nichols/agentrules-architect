@@ -20,7 +20,7 @@ class OutputPreferences:
     generate_cursorignore: bool = False
     generate_agent_scaffold: bool = False
     generate_phase_outputs: bool = True
-    generate_snapshot: bool = False
+    generate_snapshot: bool = True
     rules_filename: str = DEFAULT_RULES_FILENAME
     snapshot_filename: str = DEFAULT_SNAPSHOT_FILENAME
 

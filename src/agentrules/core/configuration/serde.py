@@ -54,7 +54,7 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
         ),
         generate_snapshot=coerce_bool(
             outputs_payload.get("generate_snapshot") if isinstance(outputs_payload, Mapping) else None,
-            default=False,
+            default=True,
         ),
         rules_filename=normalize_rules_filename(
             outputs_payload.get("rules_filename") if isinstance(outputs_payload, Mapping) else None,
@@ -127,8 +127,8 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
         outputs_payload["generate_agent_scaffold"] = True
     if not config.outputs.generate_phase_outputs:
         outputs_payload["generate_phase_outputs"] = False
-    if config.outputs.generate_snapshot:
-        outputs_payload["generate_snapshot"] = True
+    if not config.outputs.generate_snapshot:
+        outputs_payload["generate_snapshot"] = False
     if config.outputs.rules_filename != DEFAULT_RULES_FILENAME:
         outputs_payload["rules_filename"] = config.outputs.rules_filename
     if config.outputs.snapshot_filename != DEFAULT_SNAPSHOT_FILENAME:

@@ -40,7 +40,7 @@ def set_generate_snapshot(config: CLIConfig, enabled: bool) -> None:
     config.outputs.generate_snapshot = bool(enabled)
 
 
-def should_generate_snapshot(config: CLIConfig, default: bool = False) -> bool:
+def should_generate_snapshot(config: CLIConfig, default: bool = True) -> bool:
     return bool(config.outputs.generate_snapshot) if config.outputs else default
 
 

@@ -162,7 +162,7 @@ class ConfigManager:
         self._repository.save(config)
         return config
 
-    def should_generate_snapshot(self, default: bool = False) -> bool:
+    def should_generate_snapshot(self, default: bool = True) -> bool:
         config = self._repository.load()
         return outputs.should_generate_snapshot(config, default)
 
