@@ -136,6 +136,14 @@ def save_snapshot_file_name(name: str) -> None:
     CONFIG_MANAGER.set_snapshot_filename(name)
 
 
+def get_rules_tree_depth() -> int:
+    return CONFIG_MANAGER.get_rules_tree_max_depth()
+
+
+def save_rules_tree_depth(value: int | None) -> None:
+    CONFIG_MANAGER.set_rules_tree_max_depth(value)
+
+
 def get_exclusion_settings():
     overrides = CONFIG_MANAGER.get_exclusion_overrides()
     effective_dirs, effective_files, effective_exts = CONFIG_MANAGER.get_effective_exclusions()

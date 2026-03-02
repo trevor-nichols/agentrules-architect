@@ -47,6 +47,19 @@ def _validate_snapshot_filename_input(text: str, *, rules_filename: str) -> bool
     return True
 
 
+def _validate_positive_depth_input(text: str) -> bool | str:
+    stripped = text.strip()
+    if not stripped:
+        return "Depth is required."
+    try:
+        value = int(stripped)
+    except ValueError:
+        return "Depth must be an integer."
+    if value < 1:
+        return "Depth must be greater than zero."
+    return True
+
+
 def configure_output_preferences(context: CliContext) -> None:
     """Interactive prompts for toggling generated artifacts."""
 
@@ -58,6 +71,7 @@ def configure_output_preferences(context: CliContext) -> None:
         preferences = configuration.get_output_preferences()
         rules_filename = configuration.get_rules_file_name()
         snapshot_filename = configuration.get_snapshot_file_name()
+        rules_tree_depth = configuration.get_rules_tree_depth()
         selection = questionary.select(
             "Select preference to toggle:",
             choices=[
@@ -90,6 +104,11 @@ def configure_output_preferences(context: CliContext) -> None:
                     "Snapshot file name",
                     snapshot_filename,
                     value="__EDIT_SNAPSHOT_FILENAME__",
+                ),
+                value_choice(
+                    "Rules tree depth",
+                    str(rules_tree_depth),
+                    value="__EDIT_RULES_TREE_DEPTH__",
                 ),
                 navigation_choice("Back", value="__BACK__"),
             ],
@@ -173,3 +192,26 @@ def configure_output_preferences(context: CliContext) -> None:
             trimmed = _normalize_filename_input(answer)
             configuration.save_snapshot_file_name(trimmed)
             console.print(f"[green]Snapshot file will now be written to {trimmed}.[/]")
+        elif selection == "__EDIT_RULES_TREE_DEPTH__":
+            answer = questionary.text(
+                "Enter rules tree depth for AGENTS project structure section:",
+                default=str(rules_tree_depth),
+                qmark="🗂️",
+                style=CLI_STYLE,
+                validate=_validate_positive_depth_input,
+            ).ask()
+
+            if not answer:
+                console.print("[yellow]No changes made to rules tree depth.[/]")
+                continue
+
+            validated = _validate_positive_depth_input(answer)
+            if validated is not True:
+                console.print(f"[red]{validated}[/]")
+                continue
+
+            depth = int(answer.strip())
+            configuration.save_rules_tree_depth(depth)
+            console.print(
+                f"[green]Rules project tree depth will now use {depth} level{'s' if depth != 1 else ''}.[/]"
+            )

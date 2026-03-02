@@ -13,8 +13,7 @@ from agentrules.core.utils.file_system.gitignore import load_gitignore_spec
 
 from ..bootstrap import bootstrap_runtime
 from ..services.output_validation import (
-    validate_snapshot_filename_distinct,
-    validate_snapshot_filename_reserved,
+    validate_pipeline_output_filenames,
 )
 
 
@@ -89,10 +88,11 @@ def register(app: typer.Typer) -> None:
         tree_depth = max_depth if max_depth is not None else config_manager.get_tree_max_depth()
 
         try:
-            validate_snapshot_filename_reserved(snapshot_filename)
-            validate_snapshot_filename_distinct(
+            validate_pipeline_output_filenames(
+                target_directory=path,
                 rules_filename=rules_filename,
                 snapshot_filename=snapshot_filename,
+                generate_snapshot=True,
             )
         except ValueError as error:
             console.print(f"[red]Invalid output configuration:[/] {error}")

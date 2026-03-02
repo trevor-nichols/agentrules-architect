@@ -176,6 +176,19 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.config_manager.set_snapshot_filename("nested/SNAPSHOT.md")
         self.assertEqual(self.config_manager.get_snapshot_filename(), "SNAPSHOT.md")
 
+    def test_rules_tree_depth_defaults_set_and_normalizes(self) -> None:
+        self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 3)
+
+        self.config_manager.set_rules_tree_max_depth(6)
+        self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 6)
+        cfg = self.config_manager.load()
+        self.assertEqual(cfg.outputs.rules_tree_max_depth, 6)
+
+        self.config_manager.set_rules_tree_max_depth(0)
+        self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 3)
+        cfg = self.config_manager.load()
+        self.assertEqual(cfg.outputs.rules_tree_max_depth, 3)
+
     def test_resolve_rules_filename_uses_config_by_default(self) -> None:
         self.config_manager.set_rules_filename("CLAUDE.md")
         self.assertEqual(self.config_manager.resolve_rules_filename(), "CLAUDE.md")

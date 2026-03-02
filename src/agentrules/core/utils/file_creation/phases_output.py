@@ -39,6 +39,8 @@ def save_phase_outputs(
     gitignore_spec: PathSpec | None = None,
     gitignore_info: dict | None = None,
     tree_max_depth: int | None = None,
+    rules_tree_max_depth: int | None = None,
+    snapshot_reference_filename: str | None = None,
 ) -> None:
     """
     Save the outputs of each phase to separate markdown files.
@@ -139,13 +141,18 @@ def save_phase_outputs(
     # Create a custom set of exclude directories by combining defaults with our additions
     custom_exclude_dirs = DEFAULT_EXCLUDE_DIRS.union(set(exclude_dirs))
 
-    # Generate a tree with our custom exclusions
-    if tree_max_depth is None:
-        tree_max_depth = get_config_manager().get_tree_max_depth()
+    # Generate a tree with our custom exclusions.
+    # Keep AGENTS tree depth independent from analysis traversal depth.
+    config_manager = get_config_manager()
+    if rules_tree_max_depth is None:
+        if tree_max_depth is not None:
+            rules_tree_max_depth = tree_max_depth
+        else:
+            rules_tree_max_depth = config_manager.get_rules_tree_max_depth()
 
     tree = generate_tree(
         directory,
-        max_depth=tree_max_depth,
+        max_depth=rules_tree_max_depth,
         exclude_dirs=custom_exclude_dirs,
         exclude_patterns=DEFAULT_EXCLUDE_PATTERNS,
         gitignore_spec=gitignore_spec,
@@ -163,6 +170,11 @@ def save_phase_outputs(
     with open(directory / resolved_rules_filename, "w", encoding="utf-8") as f:
         f.write(ensure_string(final_analysis_data))  # Save the final analysis
         f.write("\n\n")  # Add spacing
+        if snapshot_reference_filename:
+            f.write("## Developer Notes\n")
+            f.write(
+                f"- Refer to `{snapshot_reference_filename}` for the full project snapshot artifact.\n\n"
+            )
         f.write("# Project Directory Structure\n")  # Section header
         f.write("---\n\n")  # Section divider
         f.write('\n'.join(tree_section))  # Append the tree structure

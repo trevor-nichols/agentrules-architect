@@ -21,6 +21,7 @@ class PipelineOutputOptions:
     """Runtime flags that control which artifacts get materialized."""
 
     rules_filename: str
+    rules_tree_max_depth: int
     snapshot_filename: str
     generate_phase_outputs: bool
     generate_cursorignore: bool
@@ -65,57 +66,60 @@ class PipelineOutputWriter:
         if exclusion_summary is not None:
             exclusion_summary["gitignore"] = gitignore_info
 
-        save_phase_outputs(
-            settings.target_directory,
-            analysis_data,
-            options.rules_filename,
-            include_phase_files=options.generate_phase_outputs,
-            exclusion_summary=exclusion_summary,
-            gitignore_spec=result.snapshot.gitignore.spec,
-            gitignore_info=gitignore_info,
-            tree_max_depth=settings.tree_max_depth,
-        )
-
-        messages: list[str] = []
-        if options.generate_phase_outputs:
-            messages.append(
-                f"[green]Individual phase outputs saved to:[/] {settings.target_directory / 'phases_output'}"
-            )
-        else:
-            messages.append("[dim]Skipped phase report archive (disabled in settings).[/]")
-
-        rules_path = settings.target_directory / options.rules_filename
-        messages.append(f"[green]Agent rules created at:[/] {rules_path}")
-
+        cursorignore_messages: list[str] = []
         if options.generate_cursorignore:
-            success, message = create_cursorignore(str(settings.target_directory))
-            if success:
-                messages.append(f"[green]{message}[/]")
-                messages.append(
-                    f"[green]Cursor ignore created at:[/] {settings.target_directory / '.cursorignore'}"
+            try:
+                success, message = create_cursorignore(str(settings.target_directory))
+            except Exception as error:
+                logger.warning(
+                    "Cursor ignore generation failed for %s: %s",
+                    settings.target_directory,
+                    error,
+                    exc_info=True,
                 )
+                cursorignore_messages.append(f"[yellow]Cursor ignore generation failed:[/] {error}")
             else:
-                messages.append(f"[yellow]{message}[/]")
+                if success:
+                    cursorignore_messages.append(f"[green]{message}[/]")
+                    cursorignore_messages.append(
+                        f"[green]Cursor ignore created at:[/] {settings.target_directory / '.cursorignore'}"
+                    )
+                else:
+                    cursorignore_messages.append(f"[yellow]{message}[/]")
         else:
-            messages.append("[dim]Skipped .cursorignore generation (disabled in settings).[/]")
+            cursorignore_messages.append("[dim]Skipped .cursorignore generation (disabled in settings).[/]")
 
+        agent_scaffold_messages: list[str] = []
         if options.generate_agent_scaffold:
-            success, scaffold_messages = create_agent_scaffold(settings.target_directory)
-            if success:
-                for scaffold_message in scaffold_messages:
-                    style = "dim" if scaffold_message.startswith("Skipped ") else "green"
-                    messages.append(f"[{style}]{scaffold_message}[/]")
+            try:
+                success, scaffold_messages = create_agent_scaffold(settings.target_directory)
+            except Exception as error:
+                logger.warning(
+                    "Agent scaffold generation failed for %s: %s",
+                    settings.target_directory,
+                    error,
+                    exc_info=True,
+                )
+                agent_scaffold_messages.append(f"[yellow]Agent scaffold generation failed:[/] {error}")
             else:
-                for scaffold_message in scaffold_messages:
-                    messages.append(f"[yellow]{scaffold_message}[/]")
+                if success:
+                    for scaffold_message in scaffold_messages:
+                        style = "dim" if scaffold_message.startswith("Skipped ") else "green"
+                        agent_scaffold_messages.append(f"[{style}]{scaffold_message}[/]")
+                else:
+                    for scaffold_message in scaffold_messages:
+                        agent_scaffold_messages.append(f"[yellow]{scaffold_message}[/]")
         else:
-            messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
+            agent_scaffold_messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
 
+        snapshot_reference_filename: str | None = None
+        snapshot_messages: list[str] = []
+        snapshot_output_path = settings.target_directory / options.snapshot_filename
         if options.generate_snapshot:
             try:
                 snapshot_result = sync_snapshot_artifact(
                     settings.target_directory,
-                    output_path=settings.target_directory / options.snapshot_filename,
+                    output_path=snapshot_output_path,
                     tree_max_depth=settings.tree_max_depth,
                     exclude_dirs=set(settings.effective_exclusions.directories),
                     exclude_files=set(settings.effective_exclusions.files),
@@ -134,10 +138,13 @@ class PipelineOutputWriter:
                     error,
                     exc_info=True,
                 )
-                messages.append(f"[yellow]Snapshot artifact generation failed:[/] {error}")
+                if snapshot_output_path.is_file():
+                    snapshot_reference_filename = options.snapshot_filename
+                snapshot_messages.append(f"[yellow]Snapshot artifact generation failed:[/] {error}")
             else:
+                snapshot_reference_filename = options.snapshot_filename
                 if snapshot_result.changed:
-                    messages.append(
+                    snapshot_messages.append(
                         "[green]Snapshot artifact written to:[/] "
                         f"{snapshot_result.output_path} "
                         f"([green]+{len(snapshot_result.added_paths)}[/], "
@@ -145,11 +152,38 @@ class PipelineOutputWriter:
                         f"{snapshot_result.preserved_comments} comments preserved)"
                     )
                 else:
-                    messages.append(
+                    snapshot_messages.append(
                         f"[dim]Snapshot artifact already up-to-date:[/] {snapshot_result.output_path}"
                     )
         else:
-            messages.append("[dim]Skipped snapshot artifact generation (disabled in settings).[/]")
+            snapshot_messages.append("[dim]Skipped snapshot artifact generation (disabled in settings).[/]")
+
+        save_phase_outputs(
+            settings.target_directory,
+            analysis_data,
+            options.rules_filename,
+            include_phase_files=options.generate_phase_outputs,
+            exclusion_summary=exclusion_summary,
+            gitignore_spec=result.snapshot.gitignore.spec,
+            gitignore_info=gitignore_info,
+            tree_max_depth=settings.tree_max_depth,
+            rules_tree_max_depth=options.rules_tree_max_depth,
+            snapshot_reference_filename=snapshot_reference_filename,
+        )
+
+        messages: list[str] = []
+        if options.generate_phase_outputs:
+            messages.append(
+                f"[green]Individual phase outputs saved to:[/] {settings.target_directory / 'phases_output'}"
+            )
+        else:
+            messages.append("[dim]Skipped phase report archive (disabled in settings).[/]")
+
+        rules_path = settings.target_directory / options.rules_filename
+        messages.append(f"[green]Agent rules created at:[/] {rules_path}")
+        messages.extend(cursorignore_messages)
+        messages.extend(agent_scaffold_messages)
+        messages.extend(snapshot_messages)
 
         success, message = clean_agentrules(
             str(settings.target_directory),

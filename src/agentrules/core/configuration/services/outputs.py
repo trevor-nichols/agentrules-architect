@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
+from agentrules.core.utils.constants import (
+    DEFAULT_RULES_FILENAME,
+    DEFAULT_RULES_TREE_MAX_DEPTH,
+    DEFAULT_SNAPSHOT_FILENAME,
+)
 
 from ..models import CLIConfig, OutputPreferences
-from ..utils import normalize_output_filename, normalize_rules_filename
+from ..utils import coerce_positive_int, normalize_output_filename, normalize_rules_filename
 
 
 def get_output_preferences(config: CLIConfig) -> OutputPreferences:
@@ -66,3 +70,19 @@ def get_snapshot_filename(config: CLIConfig, default: str = DEFAULT_SNAPSHOT_FIL
 
 def set_snapshot_filename(config: CLIConfig, name: str) -> None:
     config.outputs.snapshot_filename = normalize_output_filename(name, default=DEFAULT_SNAPSHOT_FILENAME)
+
+
+def get_rules_tree_max_depth(
+    config: CLIConfig,
+    default: int = DEFAULT_RULES_TREE_MAX_DEPTH,
+) -> int:
+    current = config.outputs.rules_tree_max_depth if config.outputs else None
+    normalized = coerce_positive_int(current, minimum=1, default=default) or default
+    if config.outputs:
+        config.outputs.rules_tree_max_depth = normalized
+    return normalized
+
+
+def set_rules_tree_max_depth(config: CLIConfig, value: int | None) -> None:
+    normalized = coerce_positive_int(value, minimum=1, default=DEFAULT_RULES_TREE_MAX_DEPTH)
+    config.outputs.rules_tree_max_depth = normalized or DEFAULT_RULES_TREE_MAX_DEPTH

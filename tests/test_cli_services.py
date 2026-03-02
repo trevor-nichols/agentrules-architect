@@ -51,6 +51,7 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_config.get_exclusion_overrides.return_value = MagicMock(is_empty=lambda: True)
         mock_config.get_effective_exclusions.return_value = (set(), set(), set())
         mock_config.get_tree_max_depth.return_value = 5
+        mock_config.get_rules_tree_max_depth.return_value = 3
         mock_config.should_respect_gitignore.return_value = True
         mock_config.is_researcher_enabled.return_value = False
         mock_config.resolve_rules_filename.return_value = "AGENTS.md"
@@ -83,6 +84,7 @@ class PipelineRunnerTests(unittest.TestCase):
         output_options = mock_writer_instance.persist.call_args.args[2]
         self.assertTrue(output_options.generate_agent_scaffold)
         self.assertTrue(output_options.generate_snapshot)
+        self.assertEqual(output_options.rules_tree_max_depth, 3)
         self.assertEqual(output_options.snapshot_filename, "SNAPSHOT.md")
 
         output = buffer.getvalue()
@@ -110,6 +112,7 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_config.get_exclusion_overrides.return_value = MagicMock(is_empty=lambda: True)
         mock_config.get_effective_exclusions.return_value = (set(), set(), set())
         mock_config.get_tree_max_depth.return_value = 5
+        mock_config.get_rules_tree_max_depth.return_value = 3
         mock_config.should_respect_gitignore.return_value = True
         mock_config.is_researcher_enabled.return_value = False
         mock_config.resolve_rules_filename.return_value = "CLAUDE.md"

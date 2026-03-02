@@ -5,15 +5,19 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, cast
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
+from agentrules.core.utils.constants import (
+    DEFAULT_RULES_FILENAME,
+    DEFAULT_RULES_TREE_MAX_DEPTH,
+    DEFAULT_SNAPSHOT_FILENAME,
+)
 
 from .models import CLIConfig, ExclusionOverrides, FeatureToggles, OutputPreferences, ProviderConfig
 from .utils import (
     coerce_bool,
     coerce_positive_int,
     coerce_string_list,
-    normalize_researcher_mode,
     normalize_output_filename,
+    normalize_researcher_mode,
     normalize_rules_filename,
     normalize_verbosity_label,
 )
@@ -64,6 +68,12 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
             outputs_payload.get("snapshot_filename") if isinstance(outputs_payload, Mapping) else None,
             default=DEFAULT_SNAPSHOT_FILENAME,
         ),
+        rules_tree_max_depth=coerce_positive_int(
+            outputs_payload.get("rules_tree_max_depth") if isinstance(outputs_payload, Mapping) else None,
+            minimum=1,
+            default=DEFAULT_RULES_TREE_MAX_DEPTH,
+        )
+        or DEFAULT_RULES_TREE_MAX_DEPTH,
     )
 
     exclusions_payload = payload.get("exclusions")
@@ -133,6 +143,8 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
         outputs_payload["rules_filename"] = config.outputs.rules_filename
     if config.outputs.snapshot_filename != DEFAULT_SNAPSHOT_FILENAME:
         outputs_payload["snapshot_filename"] = config.outputs.snapshot_filename
+    if config.outputs.rules_tree_max_depth != DEFAULT_RULES_TREE_MAX_DEPTH:
+        outputs_payload["rules_tree_max_depth"] = config.outputs.rules_tree_max_depth
     if outputs_payload:
         payload["outputs"] = outputs_payload
 

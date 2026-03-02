@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
+from agentrules.core.utils.constants import (
+    DEFAULT_RULES_FILENAME,
+    DEFAULT_RULES_TREE_MAX_DEPTH,
+    DEFAULT_SNAPSHOT_FILENAME,
+)
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
@@ -203,6 +207,20 @@ class ConfigManager:
     def set_snapshot_filename(self, name: str) -> CLIConfig:
         config = self._repository.load()
         outputs.set_snapshot_filename(config, name)
+        self._repository.save(config)
+        return config
+
+    def get_rules_tree_max_depth(self, default: int = DEFAULT_RULES_TREE_MAX_DEPTH) -> int:
+        config = self._repository.load()
+        previous = config.outputs.rules_tree_max_depth
+        normalized = outputs.get_rules_tree_max_depth(config, default)
+        if normalized != previous:
+            self._repository.save(config)
+        return normalized
+
+    def set_rules_tree_max_depth(self, value: int | None) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_rules_tree_max_depth(config, value)
         self._repository.save(config)
         return config
 

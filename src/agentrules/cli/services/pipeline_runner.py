@@ -55,11 +55,13 @@ def run_pipeline(
 
     config_manager = get_config_manager()
     resolved_rules_filename = config_manager.resolve_rules_filename(override=rules_filename_override)
+    rules_tree_max_depth = config_manager.get_rules_tree_max_depth()
     snapshot_filename = config_manager.get_snapshot_filename()
     generate_snapshot = config_manager.should_generate_snapshot()
     generate_cursorignore = config_manager.should_generate_cursorignore()
     try:
         validate_pipeline_output_filenames(
+            target_directory=path,
             rules_filename=resolved_rules_filename,
             snapshot_filename=snapshot_filename,
             generate_snapshot=generate_snapshot,
@@ -217,6 +219,7 @@ def run_pipeline(
     output_writer = PipelineOutputWriter()
     output_options = PipelineOutputOptions(
         rules_filename=resolved_rules_filename,
+        rules_tree_max_depth=rules_tree_max_depth,
         snapshot_filename=snapshot_filename,
         generate_phase_outputs=config_manager.should_generate_phase_outputs(),
         generate_cursorignore=generate_cursorignore,

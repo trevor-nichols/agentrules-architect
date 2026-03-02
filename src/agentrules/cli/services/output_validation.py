@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from agentrules.core.utils.file_creation.snapshot_policy import GENERATED_PHASE_OUTPUT_DIR
 
 
@@ -33,6 +35,7 @@ def validate_snapshot_filename_reserved(snapshot_filename: str) -> None:
 
 def validate_pipeline_output_filenames(
     *,
+    target_directory: Path | None = None,
     rules_filename: str,
     snapshot_filename: str,
     generate_snapshot: bool,
@@ -48,3 +51,10 @@ def validate_pipeline_output_filenames(
         rules_filename=rules_filename,
         snapshot_filename=snapshot_filename,
     )
+
+    if target_directory is not None:
+        snapshot_target = target_directory / snapshot_filename.strip()
+        if snapshot_target.exists() and snapshot_target.is_dir():
+            raise ValueError(
+                "Snapshot filename points to an existing directory. Choose a file name."
+            )

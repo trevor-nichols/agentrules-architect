@@ -1,4 +1,5 @@
 from agentrules.cli.ui.settings.outputs import (
+    _validate_positive_depth_input,
     _validate_rules_filename_input,
     _validate_snapshot_filename_input,
 )
@@ -28,3 +29,13 @@ def test_validate_rules_filename_input_rejects_snapshot_collision() -> None:
 def test_validate_rules_filename_input_rejects_paths() -> None:
     result = _validate_rules_filename_input("nested/AGENTS.md", snapshot_filename="SNAPSHOT.md")
     assert isinstance(result, str)
+
+
+def test_validate_positive_depth_input_rejects_invalid_values() -> None:
+    assert isinstance(_validate_positive_depth_input(""), str)
+    assert isinstance(_validate_positive_depth_input("abc"), str)
+    assert isinstance(_validate_positive_depth_input("0"), str)
+
+
+def test_validate_positive_depth_input_accepts_positive_integer() -> None:
+    assert _validate_positive_depth_input("3") is True

@@ -10,6 +10,9 @@ DEFAULT_RULES_FILENAME = "AGENTS.md"
 DEFAULT_SNAPSHOT_FILENAME = "SNAPSHOT.md"
 """Default filename for generated snapshot artifacts."""
 
+DEFAULT_RULES_TREE_MAX_DEPTH = 3
+"""Default depth for the AGENTS project structure tree section."""
+
 # Historically this constant was imported directly across the codebase. Preserve it for
 # backward compatibility, but prefer `DEFAULT_RULES_FILENAME` and allow runtime overrides
 # via configuration where supported.

@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
+from agentrules.core.utils.constants import (
+    DEFAULT_RULES_FILENAME,
+    DEFAULT_RULES_TREE_MAX_DEPTH,
+    DEFAULT_SNAPSHOT_FILENAME,
+)
 
 ResearcherMode = Literal["on", "off"]
 
@@ -23,6 +27,7 @@ class OutputPreferences:
     generate_snapshot: bool = True
     rules_filename: str = DEFAULT_RULES_FILENAME
     snapshot_filename: str = DEFAULT_SNAPSHOT_FILENAME
+    rules_tree_max_depth: int = DEFAULT_RULES_TREE_MAX_DEPTH
 
 
 @dataclass
