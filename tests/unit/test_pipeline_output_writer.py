@@ -15,6 +15,7 @@ from agentrules.core.pipeline import (
 
 
 class PipelineOutputWriterTests(unittest.TestCase):
+    @patch("agentrules.core.pipeline.output.sync_snapshot_artifact")
     @patch("agentrules.core.pipeline.output.ensure_execplans_guidance")
     @patch("agentrules.core.pipeline.output.clean_agentrules")
     @patch("agentrules.core.pipeline.output.create_agent_scaffold")
@@ -27,6 +28,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
         mock_create_agent_scaffold,
         mock_clean_agentrules,
         mock_ensure_execplans_guidance,
+        mock_sync_snapshot,
     ) -> None:
         mock_create_cursorignore.return_value = (True, ".cursorignore created")
         mock_create_agent_scaffold.return_value = (
@@ -38,6 +40,15 @@ class PipelineOutputWriterTests(unittest.TestCase):
         )
         mock_clean_agentrules.return_value = (True, "cleaned")
         mock_ensure_execplans_guidance.return_value = (True, "Added ExecPlans guidance under Development Principles.")
+        mock_sync_snapshot.return_value = MagicMock(
+            changed=True,
+            output_path=Path("/tmp/project/SNAPSHOT.md"),
+            added_paths=("src/new.py",),
+            removed_paths=("src/old.py",),
+            preserved_comments=2,
+            tree_entries=3,
+            file_entries=1,
+        )
 
         settings = PipelineSettings(
             target_directory=Path("/tmp/project"),
@@ -69,9 +80,11 @@ class PipelineOutputWriterTests(unittest.TestCase):
         )
         options = PipelineOutputOptions(
             rules_filename="AGENTS.md",
+            snapshot_filename="SNAPSHOT.md",
             generate_phase_outputs=True,
             generate_cursorignore=True,
             generate_agent_scaffold=True,
+            generate_snapshot=True,
         )
 
         writer = PipelineOutputWriter()
@@ -85,6 +98,12 @@ class PipelineOutputWriterTests(unittest.TestCase):
 
         mock_create_cursorignore.assert_called_once_with(str(settings.target_directory))
         mock_create_agent_scaffold.assert_called_once_with(settings.target_directory)
+        mock_sync_snapshot.assert_called_once()
+        snapshot_kwargs = mock_sync_snapshot.call_args.kwargs
+        self.assertEqual(
+            snapshot_kwargs["additional_exclude_relative_paths"],
+            {"phases_output", "AGENTS.md"},
+        )
         mock_clean_agentrules.assert_called_once_with(
             str(settings.target_directory),
             filename="AGENTS.md",
@@ -99,8 +118,10 @@ class PipelineOutputWriterTests(unittest.TestCase):
         self.assertIn("Created .agent/PLANS.md", " ".join(summary.messages))
         self.assertIn("Added ExecPlans guidance under Development Principles.", " ".join(summary.messages))
         self.assertIn("Cleaned Agent rules file", " ".join(summary.messages))
+        self.assertIn("Snapshot artifact written to:", " ".join(summary.messages))
         self.assertIn("Execution metrics saved to:", " ".join(summary.messages))
 
+    @patch("agentrules.core.pipeline.output.sync_snapshot_artifact")
     @patch("agentrules.core.pipeline.output.ensure_execplans_guidance")
     @patch("agentrules.core.pipeline.output.clean_agentrules")
     @patch("agentrules.core.pipeline.output.create_agent_scaffold")
@@ -113,6 +134,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
         mock_create_agent_scaffold,
         mock_clean_agentrules,
         mock_ensure_execplans_guidance,
+        mock_sync_snapshot,
     ) -> None:
         mock_clean_agentrules.return_value = (False, "not found")
         mock_ensure_execplans_guidance.return_value = (True, "ExecPlans guidance already present.")
@@ -146,9 +168,11 @@ class PipelineOutputWriterTests(unittest.TestCase):
         )
         options = PipelineOutputOptions(
             rules_filename="AGENTS.md",
+            snapshot_filename="SNAPSHOT.md",
             generate_phase_outputs=False,
             generate_cursorignore=False,
             generate_agent_scaffold=False,
+            generate_snapshot=False,
         )
 
         writer = PipelineOutputWriter()
@@ -160,6 +184,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
 
         mock_create_cursorignore.assert_not_called()
         mock_create_agent_scaffold.assert_not_called()
+        mock_sync_snapshot.assert_not_called()
         mock_clean_agentrules.assert_called_once()
         mock_ensure_execplans_guidance.assert_called_once()
 
@@ -167,8 +192,77 @@ class PipelineOutputWriterTests(unittest.TestCase):
         self.assertIn("Skipped phase report archive", joined)
         self.assertIn("Skipped .cursorignore generation", joined)
         self.assertIn("Skipped .agent scaffold generation", joined)
+        self.assertIn("Skipped snapshot artifact generation", joined)
         self.assertIn("ExecPlans guidance already present.", joined)
         self.assertIn("not found", joined)
+
+    @patch("agentrules.core.pipeline.output.sync_snapshot_artifact")
+    @patch("agentrules.core.pipeline.output.ensure_execplans_guidance")
+    @patch("agentrules.core.pipeline.output.clean_agentrules")
+    @patch("agentrules.core.pipeline.output.create_agent_scaffold")
+    @patch("agentrules.core.pipeline.output.create_cursorignore")
+    @patch("agentrules.core.pipeline.output.save_phase_outputs")
+    def test_persist_reports_snapshot_failures_without_crashing(
+        self,
+        mock_save_phase_outputs,
+        mock_create_cursorignore,
+        mock_create_agent_scaffold,
+        mock_clean_agentrules,
+        mock_ensure_execplans_guidance,
+        mock_sync_snapshot,
+    ) -> None:
+        mock_clean_agentrules.return_value = (True, "cleaned")
+        mock_ensure_execplans_guidance.return_value = (True, "ExecPlans guidance already present.")
+        mock_sync_snapshot.side_effect = PermissionError("permission denied")
+
+        settings = PipelineSettings(
+            target_directory=Path("/workspace/project"),
+            tree_max_depth=2,
+            respect_gitignore=True,
+            effective_exclusions=EffectiveExclusions(
+                directories=frozenset(),
+                files=frozenset(),
+                extensions=frozenset(),
+            ),
+            exclusion_overrides=None,
+        )
+        snapshot = ProjectSnapshot(
+            tree_with_delimiters=("src/",),
+            tree=("src/",),
+            dependency_info={},
+            gitignore=GitignoreSnapshot(spec=None, path=Path("/workspace/project/.gitignore")),
+        )
+        result = PipelineResult(
+            snapshot=snapshot,
+            phase1={},
+            phase2={},
+            phase3={},
+            phase4={},
+            consolidated_report={},
+            final_analysis={},
+            metrics=PipelineMetrics(elapsed_seconds=1.0),
+        )
+        options = PipelineOutputOptions(
+            rules_filename="AGENTS.md",
+            snapshot_filename="SNAPSHOT.md",
+            generate_phase_outputs=False,
+            generate_cursorignore=False,
+            generate_agent_scaffold=False,
+            generate_snapshot=True,
+        )
+
+        writer = PipelineOutputWriter()
+        summary = writer.persist(result, settings, options)
+
+        mock_save_phase_outputs.assert_called_once()
+        mock_create_cursorignore.assert_not_called()
+        mock_create_agent_scaffold.assert_not_called()
+        mock_sync_snapshot.assert_called_once()
+
+        joined = " ".join(summary.messages)
+        self.assertIn("Snapshot artifact generation failed:", joined)
+        self.assertIn("permission denied", joined)
+        self.assertIn("Cleaned Agent rules file", joined)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,10 @@ logger = logging.getLogger("project_extractor")
 ENCODINGS = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
 
 
+def _normalize_relative_path(path: str) -> str:
+    return path.strip("/").replace("\\", "/")
+
+
 # ====================================================
 # Function: should_exclude
 # This function checks if a given file or directory should be excluded
@@ -142,6 +146,8 @@ def list_files(
     *,
     gitignore_spec: PathSpec | None = None,
     root: Path | None = None,
+    exclude_relative_paths: set[str] | None = None,
+    follow_symlinks: bool = True,
 ) -> Generator[Path, None, None]:
     """
     List all files in a directory that aren't excluded.
@@ -151,6 +157,8 @@ def list_files(
         exclude_dirs: Set of directory names to exclude
         exclude_patterns: Set of file patterns to exclude
         max_depth: Maximum depth to search
+        exclude_relative_paths: Exact relative paths (from ``root``) to exclude
+        follow_symlinks: Whether to traverse symlinked files/directories
 
     Yields:
         Path: File paths that match criteria
@@ -171,6 +179,13 @@ def list_files(
         for ext in EXCLUDED_EXTENSIONS:
             exclude_patterns.add(f'*{ext}')
 
+    normalized_exclude_relative_paths = {
+        _normalize_relative_path(entry)
+        for entry in (exclude_relative_paths or set())
+        if _normalize_relative_path(entry)
+    }
+    folded_exclude_relative_paths = {entry.casefold() for entry in normalized_exclude_relative_paths}
+
     def _is_gitignored(path: Path) -> bool:
         if gitignore_spec is None:
             return False
@@ -187,6 +202,18 @@ def list_files(
         try:
             for item in path.iterdir():
                 if gitignore_spec and _is_gitignored(item):
+                    continue
+                if not follow_symlinks and item.is_symlink():
+                    continue
+                try:
+                    relative = item.relative_to(root).as_posix()
+                except ValueError:
+                    relative = item.as_posix()
+                normalized_relative = _normalize_relative_path(relative)
+                if (
+                    normalized_relative in normalized_exclude_relative_paths
+                    or normalized_relative.casefold() in folded_exclude_relative_paths
+                ):
                     continue
                 if should_exclude(item, exclude_dirs, exclude_patterns):
                     continue

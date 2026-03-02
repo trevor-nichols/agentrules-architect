@@ -93,6 +93,38 @@ def test_list_files_applies_new_default_exclusion_patterns(tmp_path: Path):
     assert "PHOTO.PNG" not in rels
 
 
+def test_list_files_skips_symlink_entries_when_follow_symlinks_disabled(tmp_path: Path):
+    external = tmp_path / "external"
+    external.mkdir()
+    (external / "secret.txt").write_text("secret")
+
+    (tmp_path / "linked").symlink_to(external, target_is_directory=True)
+    (tmp_path / "keep.py").write_text("print('ok')")
+
+    files = list(list_files(tmp_path, max_depth=3, follow_symlinks=False))
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "keep.py" in rels
+    assert "linked/secret.txt" not in rels
+
+
+def test_list_files_exclude_relative_paths_matches_case_insensitively(tmp_path: Path):
+    (tmp_path / "Snapshot.md").write_text("snapshot")
+    (tmp_path / "keep.py").write_text("print('ok')")
+
+    files = list(
+        list_files(
+            tmp_path,
+            max_depth=3,
+            exclude_relative_paths={"snapshot.md"},
+        )
+    )
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "keep.py" in rels
+    assert "Snapshot.md" not in rels
+
+
 def test_get_file_contents_respects_size_and_max_files(tmp_path: Path):
     small1 = tmp_path / "s1.py"
     small2 = tmp_path / "s2.txt"

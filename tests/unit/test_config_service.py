@@ -156,6 +156,26 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertFalse(cfg.outputs.generate_agent_scaffold)
         self.assertFalse(self.config_manager.should_generate_agent_scaffold())
 
+    def test_generate_snapshot_preference_persists(self) -> None:
+        self.assertFalse(self.config_manager.should_generate_snapshot())
+
+        self.config_manager.set_generate_snapshot(True)
+        cfg = self.config_manager.load()
+        self.assertTrue(cfg.outputs.generate_snapshot)
+        self.assertTrue(self.config_manager.should_generate_snapshot())
+
+        self.config_manager.set_generate_snapshot(False)
+        cfg = self.config_manager.load()
+        self.assertFalse(cfg.outputs.generate_snapshot)
+        self.assertFalse(self.config_manager.should_generate_snapshot())
+
+    def test_snapshot_filename_persists_and_normalizes(self) -> None:
+        self.config_manager.set_snapshot_filename("SNAPSHOT.custom.md")
+        self.assertEqual(self.config_manager.get_snapshot_filename(), "SNAPSHOT.custom.md")
+
+        self.config_manager.set_snapshot_filename("nested/SNAPSHOT.md")
+        self.assertEqual(self.config_manager.get_snapshot_filename(), "SNAPSHOT.md")
+
     def test_resolve_rules_filename_uses_config_by_default(self) -> None:
         self.config_manager.set_rules_filename("CLAUDE.md")
         self.assertEqual(self.config_manager.resolve_rules_filename(), "CLAUDE.md")

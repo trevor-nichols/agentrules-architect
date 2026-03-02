@@ -31,6 +31,29 @@
         "docs"
       ],
       "updated": "2026-02-21"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-01",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260301-001",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/snapshot-sync/EP-20260301-001_snapshot-sync.md",
+      "risk": "low",
+      "status": "planned",
+      "supersedes": [],
+      "tags": [],
+      "title": "Snapshot artifact generation and comment-preserving sync",
+      "touches": [],
+      "updated": "2026-03-01"
     }
   ],
   "schema_version": 1

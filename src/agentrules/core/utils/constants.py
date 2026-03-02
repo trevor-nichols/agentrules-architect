@@ -7,6 +7,9 @@ updated in one place without combing through multiple modules.
 DEFAULT_RULES_FILENAME = "AGENTS.md"
 """Default filename for the generated agent guidance document."""
 
+DEFAULT_SNAPSHOT_FILENAME = "SNAPSHOT.md"
+"""Default filename for generated snapshot artifacts."""
+
 # Historically this constant was imported directly across the codebase. Preserve it for
 # backward compatibility, but prefer `DEFAULT_RULES_FILENAME` and allow runtime overrides
 # via configuration where supported.

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, cast
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
+from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
 
 from .models import CLIConfig, ExclusionOverrides, FeatureToggles, OutputPreferences, ProviderConfig
 from .utils import (
@@ -13,6 +13,7 @@ from .utils import (
     coerce_positive_int,
     coerce_string_list,
     normalize_researcher_mode,
+    normalize_output_filename,
     normalize_rules_filename,
     normalize_verbosity_label,
 )
@@ -51,9 +52,17 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
             outputs_payload.get("generate_phase_outputs") if isinstance(outputs_payload, Mapping) else None,
             default=True,
         ),
+        generate_snapshot=coerce_bool(
+            outputs_payload.get("generate_snapshot") if isinstance(outputs_payload, Mapping) else None,
+            default=False,
+        ),
         rules_filename=normalize_rules_filename(
             outputs_payload.get("rules_filename") if isinstance(outputs_payload, Mapping) else None,
             default=DEFAULT_RULES_FILENAME,
+        ),
+        snapshot_filename=normalize_output_filename(
+            outputs_payload.get("snapshot_filename") if isinstance(outputs_payload, Mapping) else None,
+            default=DEFAULT_SNAPSHOT_FILENAME,
         ),
     )
 
@@ -118,8 +127,12 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
         outputs_payload["generate_agent_scaffold"] = True
     if not config.outputs.generate_phase_outputs:
         outputs_payload["generate_phase_outputs"] = False
+    if config.outputs.generate_snapshot:
+        outputs_payload["generate_snapshot"] = True
     if config.outputs.rules_filename != DEFAULT_RULES_FILENAME:
         outputs_payload["rules_filename"] = config.outputs.rules_filename
+    if config.outputs.snapshot_filename != DEFAULT_SNAPSHOT_FILENAME:
+        outputs_payload["snapshot_filename"] = config.outputs.snapshot_filename
     if outputs_payload:
         payload["outputs"] = outputs_payload
 

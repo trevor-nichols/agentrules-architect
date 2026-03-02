@@ -46,6 +46,10 @@ def _build_exclude_patterns(files: set[str], extensions: set[str]) -> set[str]:
     return patterns
 
 
+def _normalize_relative_path(path: str) -> str:
+    return path.strip("/").replace("\\", "/")
+
+
 DEFAULT_EXCLUDE_PATTERNS = _build_exclude_patterns(EXCLUDED_FILES, EXCLUDED_EXTENSIONS)
 
 # ====================================================
@@ -97,6 +101,8 @@ def generate_tree(
     *,
     gitignore_spec: PathSpec | None = None,
     root: Path | None = None,
+    exclude_relative_paths: set[str] | None = None,
+    follow_symlinks: bool = True,
 ) -> list[str]:
     """
     Generate a tree structure of the specified directory path.
@@ -123,6 +129,13 @@ def generate_tree(
     if exclude_patterns is None:
         exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
 
+    normalized_exclude_relative_paths = {
+        _normalize_relative_path(entry)
+        for entry in (exclude_relative_paths or set())
+        if _normalize_relative_path(entry)
+    }
+    folded_exclude_relative_paths = {entry.casefold() for entry in normalized_exclude_relative_paths}
+
     # If we've reached max depth, indicate there's more
     if current_depth >= max_depth:
         return [f"{prefix}└── ... (max depth reached)"]
@@ -136,12 +149,25 @@ def generate_tree(
         # Filter out excluded items
         filtered_items = []
         for item in items:
+            if not follow_symlinks and item.is_symlink():
+                continue
             if gitignore_spec is not None:
                 try:
                     relative = item.relative_to(root).as_posix()
                 except ValueError:
                     relative = item.as_posix()
                 if gitignore_spec.match_file(relative):
+                    continue
+            if normalized_exclude_relative_paths:
+                try:
+                    relative = item.relative_to(root).as_posix()
+                except ValueError:
+                    relative = item.as_posix()
+                normalized_relative = _normalize_relative_path(relative)
+                if (
+                    normalized_relative in normalized_exclude_relative_paths
+                    or normalized_relative.casefold() in folded_exclude_relative_paths
+                ):
                     continue
             if should_exclude(item, exclude_dirs, exclude_patterns):
                 continue
@@ -158,7 +184,11 @@ def generate_tree(
             tree.append(f"{prefix}{connector}{item.name}")
 
             # If it's a directory, recursively process its contents
-            if item.is_dir():
+            is_directory = item.is_dir()
+            if not follow_symlinks and item.is_symlink():
+                is_directory = False
+
+            if is_directory:
                 extension = "    " if is_last else "│   "
                 tree.extend(
                     generate_tree(
@@ -170,6 +200,8 @@ def generate_tree(
                         current_depth + 1,
                         gitignore_spec=gitignore_spec,
                         root=root,
+                        exclude_relative_paths=exclude_relative_paths,
+                        follow_symlinks=follow_symlinks,
                     )
                 )
     except PermissionError:
@@ -230,6 +262,8 @@ def get_project_tree(
     exclude_files: set[str] | None = None,
     exclude_extensions: set[str] | None = None,
     gitignore_spec: PathSpec | None = None,
+    exclude_relative_paths: set[str] | None = None,
+    follow_symlinks: bool = True,
 ) -> list[str]:
     """
     Generate a tree structure for a project directory.
@@ -247,6 +281,11 @@ def get_project_tree(
     files = exclude_files or EXCLUDED_FILES
     extensions = exclude_extensions or EXCLUDED_EXTENSIONS
     patterns = _build_exclude_patterns(set(files), set(extensions))
+    normalized_exclude_relative_paths = {
+        entry.strip("/").replace("\\", "/")
+        for entry in (exclude_relative_paths or set())
+        if entry and entry.strip("/").replace("\\", "/")
+    }
 
     tree = generate_tree(
         directory,
@@ -255,6 +294,8 @@ def get_project_tree(
         exclude_patterns=patterns,
         gitignore_spec=gitignore_spec,
         root=directory,
+        exclude_relative_paths=normalized_exclude_relative_paths,
+        follow_symlinks=follow_symlinks,
     )
 
     # Add the delimiters

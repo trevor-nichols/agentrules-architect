@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from agentrules.core.pipeline.config import PipelineResult, PipelineSettings
 from agentrules.core.utils.file_creation.agent_scaffold import create_agent_scaffold
 from agentrules.core.utils.file_creation.cursorignore import create_cursorignore
 from agentrules.core.utils.file_creation.phases_output import save_phase_outputs
+from agentrules.core.utils.file_creation.snapshot_artifact import sync_snapshot_artifact
+from agentrules.core.utils.file_creation.snapshot_policy import build_snapshot_additional_exclude_paths
 from agentrules.core.utils.formatters.clean_agentrules import clean_agentrules, ensure_execplans_guidance
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -16,9 +21,11 @@ class PipelineOutputOptions:
     """Runtime flags that control which artifacts get materialized."""
 
     rules_filename: str
+    snapshot_filename: str
     generate_phase_outputs: bool
     generate_cursorignore: bool
     generate_agent_scaffold: bool
+    generate_snapshot: bool
 
 
 @dataclass
@@ -103,6 +110,46 @@ class PipelineOutputWriter:
                     messages.append(f"[yellow]{scaffold_message}[/]")
         else:
             messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
+
+        if options.generate_snapshot:
+            try:
+                snapshot_result = sync_snapshot_artifact(
+                    settings.target_directory,
+                    output_path=settings.target_directory / options.snapshot_filename,
+                    tree_max_depth=settings.tree_max_depth,
+                    exclude_dirs=set(settings.effective_exclusions.directories),
+                    exclude_files=set(settings.effective_exclusions.files),
+                    exclude_extensions=set(settings.effective_exclusions.extensions),
+                    gitignore_spec=result.snapshot.gitignore.spec,
+                    include_file_contents=True,
+                    additional_exclude_relative_paths=build_snapshot_additional_exclude_paths(
+                        options.rules_filename
+                    ),
+                    write=True,
+                )
+            except Exception as error:
+                logger.warning(
+                    "Snapshot artifact generation failed for %s: %s",
+                    settings.target_directory,
+                    error,
+                    exc_info=True,
+                )
+                messages.append(f"[yellow]Snapshot artifact generation failed:[/] {error}")
+            else:
+                if snapshot_result.changed:
+                    messages.append(
+                        "[green]Snapshot artifact written to:[/] "
+                        f"{snapshot_result.output_path} "
+                        f"([green]+{len(snapshot_result.added_paths)}[/], "
+                        f"[red]-{len(snapshot_result.removed_paths)}[/], "
+                        f"{snapshot_result.preserved_comments} comments preserved)"
+                    )
+                else:
+                    messages.append(
+                        f"[dim]Snapshot artifact already up-to-date:[/] {snapshot_result.output_path}"
+                    )
+        else:
+            messages.append("[dim]Skipped snapshot artifact generation (disabled in settings).[/]")
 
         success, message = clean_agentrules(
             str(settings.target_directory),

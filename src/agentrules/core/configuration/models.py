@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
+from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
 
 ResearcherMode = Literal["on", "off"]
 
@@ -20,7 +20,9 @@ class OutputPreferences:
     generate_cursorignore: bool = False
     generate_agent_scaffold: bool = False
     generate_phase_outputs: bool = True
+    generate_snapshot: bool = False
     rules_filename: str = DEFAULT_RULES_FILENAME
+    snapshot_filename: str = DEFAULT_SNAPSHOT_FILENAME
 
 
 @dataclass

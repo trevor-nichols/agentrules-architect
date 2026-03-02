@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
+from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME, DEFAULT_SNAPSHOT_FILENAME
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
@@ -156,6 +156,16 @@ class ConfigManager:
         config = self._repository.load()
         return outputs.should_generate_phase_outputs(config, default)
 
+    def set_generate_snapshot(self, enabled: bool) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_generate_snapshot(config, enabled)
+        self._repository.save(config)
+        return config
+
+    def should_generate_snapshot(self, default: bool = False) -> bool:
+        config = self._repository.load()
+        return outputs.should_generate_snapshot(config, default)
+
     def get_rules_filename(self, default: str | None = None) -> str:
         config = self._repository.load()
         fallback = default if default is not None else DEFAULT_RULES_FILENAME
@@ -179,6 +189,20 @@ class ConfigManager:
     def set_rules_filename(self, name: str) -> CLIConfig:
         config = self._repository.load()
         outputs.set_rules_filename(config, name)
+        self._repository.save(config)
+        return config
+
+    def get_snapshot_filename(self, default: str | None = None) -> str:
+        config = self._repository.load()
+        previous = config.outputs.snapshot_filename
+        normalized = outputs.get_snapshot_filename(config, default or DEFAULT_SNAPSHOT_FILENAME)
+        if normalized != previous:
+            self._repository.save(config)
+        return normalized
+
+    def set_snapshot_filename(self, name: str) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_snapshot_filename(config, name)
         self._repository.save(config)
         return config
 
