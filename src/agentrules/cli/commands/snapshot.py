@@ -126,25 +126,14 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(2) from error
 
         if not result.changed:
-            console.print(f"[green]Snapshot already up to date:[/] {result.output_path}")
+            console.print(f"[dim]No snapshot updates needed:[/] {result.output_path}")
             raise typer.Exit(0)
 
         mode = "would be updated" if dry_run else "updated"
-        console.print(f"[green]Snapshot {mode}:[/] {result.output_path}")
+        updated_paths = len(result.added_paths) + len(result.removed_paths)
         console.print(
-            "[dim]"
-            f"Tree entries: {result.tree_entries} · "
-            f"File entries: {result.file_entries} · "
-            f"Preserved comments: {result.preserved_comments}"
-            "[/]"
+            f"[green]Snapshot {mode}:[/] {result.output_path} "
+            f"([bold]{updated_paths}[/] path{'s' if updated_paths != 1 else ''} changed)"
         )
-        if result.added_paths:
-            console.print("[green]Added paths:[/]")
-            for rel_path in result.added_paths:
-                console.print(f"[green]+ {rel_path}[/]")
-        if result.removed_paths:
-            console.print("[yellow]Removed paths:[/]")
-            for rel_path in result.removed_paths:
-                console.print(f"[yellow]- {rel_path}[/]")
         if dry_run:
             console.print("[dim]Dry run only: no files were written.[/]")

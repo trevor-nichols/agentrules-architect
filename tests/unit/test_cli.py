@@ -227,6 +227,59 @@ class CLITestCase(unittest.TestCase):
             {"phases_output", "AGENTS.md"},
         )
         self.assertFalse(kwargs["write"])
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("Snapshot would be updated:", printed)
+        self.assertIn("1[/] path changed", printed)
+        self.assertIn("Dry run only: no files were written.", printed)
+        self.assertNotIn("Added paths:", printed)
+        self.assertNotIn("Removed paths:", printed)
+
+    def test_snapshot_sync_reports_when_no_updates_are_needed(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            mock_sync_snapshot.return_value = MagicMock(
+                changed=False,
+                output_path=Path.cwd() / "SNAPSHOT.md",
+                tree_entries=3,
+                file_entries=2,
+                preserved_comments=1,
+                added_paths=(),
+                removed_paths=(),
+            )
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_sync_snapshot.assert_called_once()
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("No snapshot updates needed:", printed)
+        self.assertNotIn("path changed", printed)
 
     def test_snapshot_sync_rejects_filename_paths(self) -> None:
         from agentrules import cli
