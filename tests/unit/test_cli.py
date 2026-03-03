@@ -181,6 +181,72 @@ class CLITestCase(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Choose either --check or --force, not both.", result.output)
 
+    def test_snapshot_find_searches_recursively_from_path(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "SNAPSHOT.md").write_text("root\n", encoding="utf-8")
+            nested = root / "services" / "payments"
+            nested.mkdir(parents=True)
+            (nested / "SNAPSHOT.md").write_text("nested\n", encoding="utf-8")
+            (nested / "notes.md").write_text("ignore\n", encoding="utf-8")
+
+            with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+                "agentrules.cli.commands.snapshot.get_config_manager"
+            ) as mock_get_config_manager:
+                context = MagicMock()
+                mock_bootstrap.return_value = context
+                mock_config = MagicMock()
+                mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+                mock_get_config_manager.return_value = mock_config
+
+                result = runner.invoke(
+                    cli.app,
+                    ["snapshot", "find", str(root)],
+                    env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+                )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("Found 2 SNAPSHOT.md files under:", printed)
+        self.assertIn("-[/] SNAPSHOT.md", printed)
+        self.assertIn("-[/] services/payments/SNAPSHOT.md", printed)
+
+    def test_snapshot_find_reports_when_no_matching_files_exist(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "README.md").write_text("hello\n", encoding="utf-8")
+
+            with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+                "agentrules.cli.commands.snapshot.get_config_manager"
+            ) as mock_get_config_manager:
+                context = MagicMock()
+                mock_bootstrap.return_value = context
+                mock_config = MagicMock()
+                mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+                mock_get_config_manager.return_value = mock_config
+
+                result = runner.invoke(
+                    cli.app,
+                    ["snapshot", "find", str(root)],
+                    env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+                )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("No SNAPSHOT.md files found under:", printed)
+
     def test_snapshot_sync_dry_run_uses_config_filename(self) -> None:
         from agentrules import cli
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -64,11 +65,44 @@ DRY_RUN_OPTION = typer.Option(
 )
 
 
+def _find_snapshot_files(path: Path, filename: str) -> list[Path]:
+    matches: list[Path] = []
+    for root, _dirs, files in os.walk(path, followlinks=False):
+        if filename in files:
+            matches.append(Path(root) / filename)
+    return sorted(matches)
+
+
 def register(app: typer.Typer) -> None:
     """Register the `snapshot` command group."""
 
     snapshot_app = typer.Typer(help="Manage SNAPSHOT artifact generation and sync.")
     app.add_typer(snapshot_app, name="snapshot")
+
+    @snapshot_app.command("find")
+    def find(  # type: ignore[func-returns-value]
+        path: Path = PATH_ARGUMENT,
+        filename: str | None = FILENAME_OPTION,
+    ) -> None:
+        """Locate snapshot artifacts recursively under a directory."""
+
+        context = bootstrap_runtime()
+        console = context.console
+        config_manager = get_config_manager()
+        snapshot_filename = filename or config_manager.get_snapshot_filename()
+
+        matches = _find_snapshot_files(path, snapshot_filename)
+        if not matches:
+            console.print(f"[dim]No {snapshot_filename} files found under:[/] {path}")
+            raise typer.Exit(0)
+
+        count = len(matches)
+        console.print(
+            f"[green]Found {count} {snapshot_filename} file{'s' if count != 1 else ''} under:[/] {path}"
+        )
+        for match in matches:
+            rel_path = match.relative_to(path).as_posix()
+            console.print(f"[green]-[/] {rel_path}")
 
     @snapshot_app.command("sync")
     def sync(  # type: ignore[func-returns-value]
