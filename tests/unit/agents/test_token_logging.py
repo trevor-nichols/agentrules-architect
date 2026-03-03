@@ -43,7 +43,7 @@ def _dummy_model_config():
 
 def test_openai_token_log(caplog, fake_estimate):
     arch = openai_mod.OpenAIArchitect(model_name="o3", model_config=_dummy_model_config())
-    prepared = OpenAIPrepared(api="chat", payload={"messages": [{"role": "user", "content": "hi"}]})
+    prepared = OpenAIPrepared(api="responses", payload={"model": "o3", "input": "hi"})
     arch._log_token_estimate(prepared)
     assert "Token preflight" in caplog.text
     assert "estimate=123" in caplog.text
@@ -88,7 +88,7 @@ def test_gpt5_mini_logs_limits(caplog, monkeypatch):
     monkeypatch.setattr(openai_mod, "estimate_tokens", _fake_estimator)
     cfg = agents_config._apply_model_limits(model_types.GPT5_MINI)
     arch = openai_mod.OpenAIArchitect(model_name="gpt-5-mini", model_config=cfg)
-    prepared = OpenAIPrepared(api="chat", payload={"messages": [{"role": "user", "content": "hi"}]})
+    prepared = OpenAIPrepared(api="responses", payload={"model": "gpt-5-mini", "input": "hi"})
     arch._log_token_estimate(prepared)
 
     assert "Token preflight" in caplog.text

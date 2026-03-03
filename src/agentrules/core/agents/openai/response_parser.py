@@ -54,8 +54,18 @@ def _parse_responses_output(response: Any) -> ParsedResponse:
 
     for item in output_items:
         item_dict = _as_dict(item)
-        if item_dict.get("type") != "message":
+        item_type = item_dict.get("type")
+
+        # Responses API function/custom tool calls are top-level output items.
+        if item_type in {"function_call", "custom_tool_call"}:
+            normalized = _normalize_tool_call(item_dict)
+            if normalized:
+                tool_calls.append(normalized)
             continue
+
+        if item_type != "message":
+            continue
+
         for part in item_dict.get("content", []) or []:
             part_dict = _as_dict(part)
             part_type = part_dict.get("type")
@@ -63,7 +73,10 @@ def _parse_responses_output(response: Any) -> ParsedResponse:
                 text_value = part_dict.get("text")
                 if text_value:
                     text_segments.append(str(text_value))
-            elif part_type in {"function_call", "custom_tool_call"}:
+                continue
+
+            # Keep compatibility for synthetic fixtures that place tool calls in message parts.
+            if part_type in {"function_call", "custom_tool_call"}:
                 normalized = _normalize_tool_call(part_dict)
                 if normalized:
                     tool_calls.append(normalized)

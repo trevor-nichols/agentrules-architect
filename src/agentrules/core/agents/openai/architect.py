@@ -261,12 +261,13 @@ Format your response as a structured report with clear sections and findings."""
         structured_text: dict[str, Any] | None = None,
         chat_response_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
+        resolved_tools = self._resolve_tools(tools) if tools is not None else tools
         return prepare_request(
             model_name=self.model_name,
             content=content,
             reasoning=self.reasoning,
             temperature=self.temperature,
-            tools=tools,
+            tools=resolved_tools,
             text_verbosity=self.text_verbosity,
             use_responses_api=self._use_responses_api,
             structured_text=structured_text,

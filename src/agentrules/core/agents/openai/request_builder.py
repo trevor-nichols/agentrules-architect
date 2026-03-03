@@ -48,6 +48,9 @@ def prepare_request(
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
+        if _should_attach_temperature(model_name, reasoning, temperature):
+            payload["temperature"] = temperature
+
         return PreparedRequest(api="responses", payload=payload)
 
     payload = {

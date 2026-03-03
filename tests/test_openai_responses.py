@@ -58,16 +58,14 @@ class OpenAIResponsesTests(unittest.TestCase):
             "output": [
                 {
                     "type": "message",
-                    "content": [
-                        {"type": "output_text", "text": "Result body"},
-                        {
-                            "type": "function_call",
-                            "id": "call_123",
-                            "name": "summarize",
-                            "arguments": '{"topic": "ai"}'
-                        }
-                    ]
-                }
+                    "content": [{"type": "output_text", "text": "Result body"}],
+                },
+                {
+                    "type": "function_call",
+                    "id": "call_123",
+                    "name": "summarize",
+                    "arguments": '{"topic": "ai"}'
+                },
             ]
         }
 

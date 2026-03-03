@@ -26,6 +26,7 @@ EXCLUDED_DIRS = {
 EXCLUDED_FILES = {
     'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
     '.DS_Store', '.env', '.env.local', '.gitignore',
+    '.python-version',
     'AGENTS.md', 'CLAUDE.md',
     'README.md', 'LICENSE', '.eslintrc', '.prettierrc',
     'tsconfig.json', 'requirements.txt', 'poetry.lock',

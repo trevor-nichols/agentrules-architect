@@ -35,8 +35,22 @@ def test_get_provider_tools_no_tools_returns_empty():
 def test_get_provider_tools_openai_identity():
     tools = [_sample_tool()]
     converted = ToolManager.get_provider_tools(tools, ModelProvider.OPENAI)
-    # OpenAI path keeps the same schema
-    assert converted == tools
+    # OpenAI Responses API expects top-level function metadata fields.
+    assert converted == [
+        {
+            "type": "function",
+            "name": "tavily_web_search",
+            "description": "Search the web",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "max_results": {"type": "integer"},
+                },
+                "required": ["query"],
+            },
+        }
+    ]
 
 
 def test_get_provider_tools_anthropic_conversion():

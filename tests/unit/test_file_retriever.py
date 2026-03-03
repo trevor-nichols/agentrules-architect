@@ -72,6 +72,7 @@ def test_list_files_applies_new_default_exclusion_patterns(tmp_path: Path):
     (tmp_path / "pkg.egg-info" / "PKG-INFO").write_text("metadata")
     (tmp_path / "AGENTS.md").write_text("rules")
     (tmp_path / "CLAUDE.md").write_text("rules")
+    (tmp_path / ".python-version").write_text("3.11.9")
     (tmp_path / "diagram.svgz").write_text("svg")
     (tmp_path / "animation.gifv").write_text("gif")
     (tmp_path / "PHOTO.PNG").write_text("png")
@@ -88,6 +89,7 @@ def test_list_files_applies_new_default_exclusion_patterns(tmp_path: Path):
     assert "pkg.egg-info/PKG-INFO" not in rels
     assert "AGENTS.md" not in rels
     assert "CLAUDE.md" not in rels
+    assert ".python-version" not in rels
     assert "diagram.svgz" not in rels
     assert "animation.gifv" not in rels
     assert "PHOTO.PNG" not in rels
