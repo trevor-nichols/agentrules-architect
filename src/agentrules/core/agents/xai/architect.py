@@ -17,6 +17,7 @@ from agentrules.core.utils.structured_outputs import (
     resolve_phase_result_value,
     resolve_structured_output_mode,
 )
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_chat_completion
@@ -42,6 +43,7 @@ class XaiArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         base_url: str | None = None,
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
@@ -59,6 +61,7 @@ class XaiArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
 
         self.prompt_template = prompt_template or default_prompt_template()
@@ -78,10 +81,21 @@ class XaiArchitect(BaseArchitect):
             context=context,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "xAI Architect",
+                agent_role=self.role or "analyzing the project",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict[str, Any], tools: list[Any] | None = None) -> dict[str, Any]:
         try:
             phase_name = context.get("_structured_output_phase")
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             force_unstructured = bool(context.get("_force_unstructured_output"))
             mode = (
                 "disabled"
@@ -119,6 +133,7 @@ class XaiArchitect(BaseArchitect):
             prepared = self._prepare_request(
                 content,
                 provider_tools,
+                system_prompt=system_prompt,
                 response_format=response_format,
             )
             self._log_token_estimate(prepared)
@@ -175,6 +190,7 @@ class XaiArchitect(BaseArchitect):
         tools: list[Any] | None = None,
     ) -> AsyncIterator[StreamChunk]:
         content = context.get("formatted_prompt") or self.format_prompt(context)
+        system_prompt = self._resolve_system_prompt(context)
 
         provider_tools = resolve_tool_config(
             tools,
@@ -182,7 +198,7 @@ class XaiArchitect(BaseArchitect):
             allow_tools=self._defaults.tools_allowed,
         )
 
-        prepared = self._prepare_request(content, provider_tools)
+        prepared = self._prepare_request(content, provider_tools, system_prompt=system_prompt)
         self._log_token_estimate(prepared)
 
         from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -283,11 +299,13 @@ class XaiArchitect(BaseArchitect):
         content: str,
         tools: list[Any] | None,
         *,
+        system_prompt: str | None = None,
         response_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
         return prepare_request(
             model_name=self.model_name,
             content=content,
+            system_prompt=system_prompt if system_prompt is not None else self._resolve_system_prompt(None),
             reasoning=self.reasoning,
             defaults=self._defaults,
             tools=tools,

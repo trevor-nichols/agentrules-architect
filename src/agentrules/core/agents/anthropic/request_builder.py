@@ -35,6 +35,7 @@ def prepare_request(
     tools: list[Any] | None,
     effort: AnthropicEffort | str | None = None,
     output_format: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
 ) -> PreparedRequest:
     payload: dict[str, Any] = {
         "model": model_name,
@@ -46,6 +47,8 @@ def prepare_request(
             }
         ],
     }
+    if system_prompt:
+        payload["system"] = system_prompt
 
     thinking = _build_thinking_payload(model_name=model_name, reasoning=reasoning)
     if thinking is not None:

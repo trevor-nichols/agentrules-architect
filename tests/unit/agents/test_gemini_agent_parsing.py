@@ -52,6 +52,39 @@ class _GeminiToolSensitiveClient:
 
 
 class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_system_instruction_includes_role_and_responsibilities(self):
+        arch = GeminiArchitect(
+            name="Gemini Planner",
+            role="security-focused architecture analysis",
+            responsibilities=["Identify high-risk code paths"],
+        )
+        arch.client = _GeminiFakeClient()  # type: ignore
+
+        await arch.analyze({})
+
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertIsNotNone(config)
+        instruction = getattr(config, "system_instruction", "")
+        self.assertIn("Gemini Planner", instruction)
+        self.assertIn("security-focused architecture analysis", instruction)
+        self.assertIn("Identify high-risk code paths", instruction)
+
+    async def test_system_instruction_can_be_overridden_from_context(self):
+        arch = GeminiArchitect(
+            name="Gemini Planner",
+            role="architecture analysis",
+        )
+        arch.client = _GeminiFakeClient()  # type: ignore
+
+        await arch.analyze({"system_prompt": "Use strict JSON output and concise findings."})
+
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertIsNotNone(config)
+        self.assertEqual(
+            getattr(config, "system_instruction", None),
+            "Use strict JSON output and concise findings.",
+        )
+
     async def test_extracts_text_and_function_calls(self):
         arch = GeminiArchitect()
         # Inject fake client

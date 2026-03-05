@@ -86,6 +86,7 @@ class BaseArchitect(ABC):
         responsibilities: list[str] | None = None,
         tools_config: dict | None = None,
         model_config: "ModelConfig | None" = None,
+        system_prompt: str | None = None,
     ):
         """
         Initialize a BaseArchitect instance.
@@ -109,6 +110,7 @@ class BaseArchitect(ABC):
         self.responsibilities = responsibilities or []
         self.tools_config = tools_config or {"enabled": False, "tools": None}
         self._model_config = model_config
+        self.system_prompt = system_prompt.strip() if isinstance(system_prompt, str) and system_prompt.strip() else None
 
     @property
     def supports_streaming(self) -> bool:

@@ -9,16 +9,28 @@ modifying the core logic of the agents.
 import json
 from collections.abc import Sequence
 
+# Phase 2 system prompts (planner behavior guidance).
+PHASE_2_STRUCTURED_SYSTEM_PROMPT = (
+    "You are a project documentation planner.\n\n"
+    "Behavior requirements:\n"
+    "- Design a practical 3-5 agent plan with balanced workloads.\n"
+    "- Ensure broad repository coverage and avoid unnecessary duplication.\n"
+    "- Keep outputs concise and machine-parseable.\n"
+    "- Follow the response schema contract exactly.\n"
+)
+
+PHASE_2_LEGACY_XML_SYSTEM_PROMPT = (
+    "You are a project documentation planner.\n\n"
+    "Behavior requirements:\n"
+    "- Design a practical 3-5 agent plan with balanced workloads.\n"
+    "- Ensure broad repository coverage and avoid unnecessary duplication.\n"
+    "- Output valid XML only (no markdown fences) matching the requested structure.\n"
+    "- Keep IDs stable as agent_1, agent_2, ... and keep file paths repository-relative.\n"
+)
+
 # Base prompt template for Phase 2 (Methodical Planning) when structured outputs
 # are enabled for the selected provider/model.
-PHASE_2_STRUCTURED_PROMPT = """You are a project documentation planner responsible for assigning specialized agents to analyze a codebase.
-
-Your tasks:
-1. Create a team of 3 to 5 agents best suited for this repository.
-2. Assign files to agents so all relevant files are covered.
-3. Keep assignments practical and balanced by responsibility.
-
-Project structure:
+PHASE_2_STRUCTURED_PROMPT = """Project structure:
 {project_structure}
 
 Initial findings from the discovery phase:
@@ -35,37 +47,16 @@ Output contract:
   - `responsibilities`: list of specific responsibilities
   - `file_assignments`: list of file paths
 - `reasoning`: optional rationale string.
-
-Constraints:
-- Ensure file paths are repository-relative.
-- Avoid duplicate file assignments unless a file genuinely needs multi-agent review.
-- Do not include markdown code fences in the response body.
 """
 
 # Legacy fallback prompt for models/pathways that cannot use structured outputs.
-PHASE_2_LEGACY_XML_PROMPT = """You are a project documentation planner tasked with processing the <initial_findings>...</initial_findings> from the given <project_structure>...</project_structure> in order to:
-
-1. Create a listing of a team of 3 to 5 agents that would be the best fit to analyze the contents of each file shown within the project structure.
-
-2. Assign each file to the applicable agent you created until all files have been assigned.
-
-# Approach
-
-- Agent Creation: Identify roles and expertise suitable for the project's needs.
-
-- File Assignment: Distribute files based on agent expertise to ensure efficient analysis.
-
----
-
+PHASE_2_LEGACY_XML_PROMPT = """Project structure:
 {project_structure}
 
----
-
+Initial findings from discovery:
 <initial_findings>
 {phase1_results}
 </initial_findings>
-
----
 
 # OUTPUT REQUIREMENTS
 # 1. Use valid XML format with proper closing tags **NOT IN A CODE BLOCK**
@@ -116,6 +107,15 @@ Describe your approach or reasoning here.
 
 # Backwards-compatible alias retained for existing imports.
 PHASE_2_PROMPT = PHASE_2_STRUCTURED_PROMPT
+
+
+def format_phase2_structured_system_prompt() -> str:
+    return PHASE_2_STRUCTURED_SYSTEM_PROMPT
+
+
+def format_phase2_legacy_xml_system_prompt() -> str:
+    return PHASE_2_LEGACY_XML_SYSTEM_PROMPT
+
 
 def _format_phase2_template(
     template: str,

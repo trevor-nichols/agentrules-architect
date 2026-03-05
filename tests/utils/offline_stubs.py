@@ -125,6 +125,7 @@ def patch_factory_offline() -> None:
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
     ) -> BaseArchitect:
         agent_name = name or f"{phase.title()} Architect (Offline)"
         agent_role = role or "analyzing the project offline"
@@ -135,6 +136,7 @@ def patch_factory_offline() -> None:
         role: str,
         responsibilities: list[str],
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
     ) -> BaseArchitect:
         # Ensure name contains Researcher to trigger tool call generation
         return _make_dummy(name or "Researcher Agent", role or "research", responsibilities)

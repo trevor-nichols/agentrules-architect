@@ -5,6 +5,41 @@ This module provides prompt templates for Phase 3 (Deep Analysis) of the project
 It defines functions to format prompts for the dynamic agents based on their assignments.
 """
 
+from __future__ import annotations
+
+from collections.abc import Iterable
+
+
+PHASE_3_SYSTEM_PROMPT = (
+    "You are {agent_name}, responsible for {agent_role}.\n\n"
+    "Responsibilities:\n"
+    "{agent_responsibilities}\n\n"
+    "Behavior requirements:\n"
+    "- Focus on purpose, behavior, and cross-file interactions.\n"
+    "- Identify risks, correctness issues, and maintainability concerns.\n"
+    "- Separate observations from recommendations.\n"
+    "- Return a structured report that is useful to downstream synthesis.\n"
+)
+
+
+def _format_responsibilities(responsibilities: Iterable[str] | None) -> str:
+    cleaned = [item.strip() for item in (responsibilities or []) if item and item.strip()]
+    if not cleaned:
+        return "- (no specific responsibilities provided)"
+    return "\n".join(f"- {item}" for item in cleaned)
+
+
+def format_phase3_system_prompt(
+    *,
+    agent_name: str,
+    agent_role: str,
+    responsibilities: Iterable[str] | None,
+) -> str:
+    return PHASE_3_SYSTEM_PROMPT.format(
+        agent_name=agent_name,
+        agent_role=agent_role,
+        agent_responsibilities=_format_responsibilities(responsibilities),
+    )
 
 
 def format_phase3_prompt(context: dict) -> str:
@@ -17,10 +52,6 @@ def format_phase3_prompt(context: dict) -> str:
     Returns:
         Formatted prompt string
     """
-    # Extract required context elements with defaults
-    agent_name = context.get("agent_name", "Analysis Agent")
-    agent_role = context.get("agent_role", "analyzing code files")
-
     # Format the tree structure
     tree_structure = context.get("tree_structure", [])
     if isinstance(tree_structure, list):
@@ -48,11 +79,7 @@ def format_phase3_prompt(context: dict) -> str:
         summary_block = f"\nPREVIOUS BATCH SUMMARY:\n{previous_summary}\n"
 
     # Return a formatted prompt
-    return f"""You are {agent_name}, responsible for {agent_role}.
-
-Your task is to perform a deep analysis of the code files assigned to you in this project.
-
-TREE STRUCTURE:
+    return f"""TREE STRUCTURE:
 {tree_structure}
 
 ASSIGNED FILES:
@@ -62,11 +89,4 @@ FILE CONTENTS:
 {file_content_str}
 {summary_block}
 
-Analyze the code following these guidelines:
-1. Focus on understanding the purpose and functionality of each file
-2. Identify key patterns and design decisions
-3. Note any potential issues, optimizations, or improvements
-4. Pay attention to relationships between different components
-5. Summarize your findings in a clear, structured format
-
-Format your response as a structured report with clear sections and findings for each file."""
+Analyze this scope and return structured findings for the assigned files."""

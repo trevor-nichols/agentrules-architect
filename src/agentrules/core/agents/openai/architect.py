@@ -21,6 +21,7 @@ from agentrules.core.utils.structured_outputs import (
     resolve_phase_result_value,
     resolve_structured_output_mode,
 )
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_request, get_client
@@ -48,6 +49,7 @@ class OpenAIArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         tools_config: dict | None = None,
         text_verbosity: str | None = None,
         model_config: Any | None = None,
@@ -73,6 +75,7 @@ class OpenAIArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
 
         self.prompt_template = prompt_template or self._get_default_prompt_template()
@@ -86,16 +89,11 @@ class OpenAIArchitect(BaseArchitect):
     @staticmethod
     def _get_default_prompt_template() -> str:
         """Default prompt template applied when none is provided."""
-        return """You are {agent_name}, responsible for {agent_role}.
-
-Your specific responsibilities are:
-{agent_responsibilities}
-
-Analyze this project context and provide a detailed report focused on your domain:
-
-{context}
-
-Format your response as a structured report with clear sections and findings."""
+        return (
+            "Project context:\n"
+            "{context}\n\n"
+            "Complete the current analysis task using this context."
+        )
 
     def format_prompt(self, context: dict) -> str:
         """
@@ -119,6 +117,16 @@ Format your response as a structured report with clear sections and findings."""
             context=context_str,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "OpenAI Architect",
+                agent_role=self.role or "analyzing the project",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict, tools: list[Any] | None = None) -> dict:
         """
         Run analysis using the OpenAI model, potentially using tools.
@@ -133,9 +141,10 @@ Format your response as a structured report with clear sections and findings."""
         """
         try:
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
 
             final_tools = self._resolve_tools(tools)
-            prepared = self._prepare_request(content, final_tools)
+            prepared = self._prepare_request(content, final_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name
@@ -184,8 +193,9 @@ Format your response as a structured report with clear sections and findings."""
 
         async def _generator() -> AsyncIterator[StreamChunk]:
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             final_tools = self._resolve_tools(tools)
-            prepared = self._prepare_request(content, final_tools)
+            prepared = self._prepare_request(content, final_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name
@@ -258,13 +268,16 @@ Format your response as a structured report with clear sections and findings."""
         content: str,
         tools: list[Any] | None = None,
         *,
+        system_prompt: str | None = None,
         structured_text: dict[str, Any] | None = None,
         chat_response_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
         resolved_tools = self._resolve_tools(tools) if tools is not None else tools
+        resolved_system_prompt = system_prompt if system_prompt is not None else self._resolve_system_prompt(None)
         return prepare_request(
             model_name=self.model_name,
             content=content,
+            system_prompt=resolved_system_prompt,
             reasoning=self.reasoning,
             temperature=self.temperature,
             tools=resolved_tools,
@@ -318,6 +331,7 @@ Format your response as a structured report with clear sections and findings."""
                 )
             prepared = self._prepare_request(
                 content,
+                system_prompt=self._resolve_system_prompt(None),
                 structured_text=structured_text,
                 chat_response_format=chat_response_format,
             )

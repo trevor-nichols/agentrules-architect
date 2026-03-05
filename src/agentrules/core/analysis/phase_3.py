@@ -16,7 +16,10 @@ import os
 import time
 from pathlib import Path
 
-from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
+from agentrules.config.prompts.phase_3_prompts import (
+    format_phase3_prompt,
+    format_phase3_system_prompt,
+)
 from agentrules.core.agents import get_architect_for_phase
 from agentrules.core.analysis.events import AnalysisEvent, AnalysisEventSink, NullEventSink
 from agentrules.core.utils.token_packer import PackedBatch, pack_files_for_phase3
@@ -131,7 +134,12 @@ class Phase3Analysis:
                     "phase3",
                     name=agent_name,
                     role=agent_def.get("description", "Analyzing the project"),
-                    responsibilities=agent_def.get("responsibilities", [])
+                    responsibilities=agent_def.get("responsibilities", []),
+                    system_prompt=format_phase3_system_prompt(
+                        agent_name=agent_name,
+                        agent_role=agent_def.get("description", "Analyzing the project"),
+                        responsibilities=agent_def.get("responsibilities", []),
+                    ),
                 )
                 self.architects.append((architect, agent_def))
                 self._publish_agent_event(

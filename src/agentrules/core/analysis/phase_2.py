@@ -12,8 +12,11 @@ It defines the methods needed for creating a detailed analysis plan based on Pha
 import logging  # Used for logging messages
 from collections.abc import Sequence
 
+from agentrules.config.agents import MODEL_CONFIG
 from agentrules.config.prompts.phase_2_prompts import (  # Prompts for Phase 2
+    format_phase2_legacy_xml_system_prompt,
     format_phase2_legacy_prompt,
+    format_phase2_structured_system_prompt,
     format_phase2_structured_prompt,
 )
 from agentrules.core.agents import get_architect_for_phase  # Added import for dynamic model configuration
@@ -52,8 +55,25 @@ class Phase2Analysis:
         """
         Initialize the Phase 2 analysis with the architect from configuration.
         """
+        phase2_model = MODEL_CONFIG.get("phase2")
+        use_legacy_xml = bool(
+            phase2_model
+            and should_use_legacy_phase2_prompt(
+                provider=phase2_model.provider,
+                model_name=phase2_model.model_name,
+            )
+        )
+        system_prompt = (
+            format_phase2_legacy_xml_system_prompt()
+            if use_legacy_xml
+            else format_phase2_structured_system_prompt()
+        )
+
         # Use the factory function to get the appropriate architect based on configuration
-        self.architect = get_architect_for_phase("phase2")
+        self.architect = get_architect_for_phase(
+            "phase2",
+            system_prompt=system_prompt,
+        )
         self._events: AnalysisEventSink = events or NullEventSink()
 
     def set_event_sink(self, events: AnalysisEventSink | None) -> None:

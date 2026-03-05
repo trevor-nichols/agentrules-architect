@@ -9,17 +9,11 @@ from typing import Any
 
 def default_prompt_template() -> str:
     """Default analysis prompt applied when callers do not provide one."""
-    return """You are {agent_name}, a code architecture analyst with expertise in {agent_role}.
-
-Your responsibilities:
-{agent_responsibilities}
-
-Please analyze the following context and provide a detailed analysis:
-
-Context:
-{context}
-
-Provide your analysis in a structured format with clear sections and actionable insights."""
+    return (
+        "Project context:\n"
+        "{context}\n\n"
+        "Complete the current analysis task using this context."
+    )
 
 
 def _format_responsibilities(responsibilities: Iterable[str] | None) -> str:

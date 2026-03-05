@@ -7,8 +7,33 @@ It centralizes the instantiation logic for different types of agents.
 
 from agentrules.config.agents import MODEL_CONFIG
 from agentrules.core.types.models import ModelConfig, create_researcher_config
+from agentrules.core.utils.system_prompt import build_agent_system_prompt
 
 from ..base import BaseArchitect, ModelProvider
+
+
+def _clean_system_prompt(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _resolve_default_system_prompt(
+    *,
+    system_prompt: str | None,
+    name: str,
+    role: str,
+    responsibilities: list[str],
+) -> str | None:
+    explicit_prompt = _clean_system_prompt(system_prompt)
+    if explicit_prompt:
+        return explicit_prompt
+    return build_agent_system_prompt(
+        agent_name=name,
+        agent_role=role,
+        responsibilities=responsibilities,
+    )
 
 
 class ArchitectFactory:
@@ -21,12 +46,23 @@ class ArchitectFactory:
         name: str,
         role: str,
         responsibilities: list[str],
-        prompt_template: str
+        prompt_template: str,
+        system_prompt: str | None = None,
     ) -> BaseArchitect:
         """
         Create an architect instance based on the provided model configuration.
         """
         provider = model_config.provider
+        resolved_system_prompt = _resolve_default_system_prompt(
+            system_prompt=system_prompt,
+            name=name,
+            role=role,
+            responsibilities=responsibilities,
+        )
+        if not resolved_system_prompt:
+            raise ValueError(
+                f"No system prompt could be resolved for agent '{name}'."
+            )
 
         common_args = {
             "model_name": model_config.model_name,
@@ -35,6 +71,7 @@ class ArchitectFactory:
             "role": role,
             "responsibilities": responsibilities,
             "prompt_template": prompt_template,
+            "system_prompt": resolved_system_prompt,
             "tools_config": model_config.tools_config,
             "model_config": model_config,
         }
@@ -68,7 +105,8 @@ def get_architect_for_phase(
     name: str | None = None,
     role: str | None = None,
     responsibilities: list[str] | None = None,
-    prompt_template: str | None = None
+    prompt_template: str | None = None,
+    system_prompt: str | None = None,
 ) -> BaseArchitect:
     """
     Get the appropriate architect for a given phase based on the MODEL_CONFIG.
@@ -88,8 +126,9 @@ def get_architect_for_phase(
     default_prompt = (
         prompt_template
         or (
-            "You are {agent_name}, responsible for {agent_role}.\n\n"
-            "Analyze the following context and provide a clear, structured answer.\n\n{context}"
+            "Project context:\n"
+            "{context}\n\n"
+            "Complete the current analysis task using this context."
         )
     )
 
@@ -98,14 +137,16 @@ def get_architect_for_phase(
         name=default_name,
         role=default_role,
         responsibilities=default_responsibilities,
-        prompt_template=default_prompt
+        prompt_template=default_prompt,
+        system_prompt=system_prompt,
     )
 
 def get_researcher_architect(
     name: str,
     role: str,
     responsibilities: list[str],
-    prompt_template: str
+    prompt_template: str,
+    system_prompt: str | None = None,
 ) -> BaseArchitect:
     """
     Creates a specialized 'Researcher' architect with tool-using capabilities.
@@ -121,5 +162,6 @@ def get_researcher_architect(
         name=name,
         role=role,
         responsibilities=responsibilities,
-        prompt_template=prompt_template
+        prompt_template=prompt_template,
+        system_prompt=system_prompt,
     )

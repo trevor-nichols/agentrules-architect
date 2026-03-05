@@ -19,6 +19,22 @@ def test_prepare_request_sets_reasoning_effort_when_supported() -> None:
     assert payload["reasoning_effort"] == "high"
 
 
+def test_prepare_request_prepends_system_message() -> None:
+    defaults = resolve_model_defaults("grok-4-fast-reasoning")
+    prepared = prepare_request(
+        model_name="grok-4-fast-reasoning",
+        content="Analyze architecture",
+        system_prompt="You are a principal architect.",
+        reasoning=ReasoningMode.DISABLED,
+        defaults=defaults,
+        tools=None,
+    )
+
+    payload = prepared.payload
+    assert payload["messages"][0] == {"role": "system", "content": "You are a principal architect."}
+    assert payload["messages"][1] == {"role": "user", "content": "Analyze architecture"}
+
+
 def test_prepare_request_adds_response_format() -> None:
     defaults = resolve_model_defaults("grok-4-0709")
     prepared = prepare_request(

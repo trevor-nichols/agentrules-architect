@@ -43,6 +43,39 @@ class OpenAIConfigTests(unittest.TestCase):
 
 
 class OpenAIRequestBuilderTests(unittest.TestCase):
+    def test_prepare_request_for_responses_api_includes_instructions(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5-turbo",
+            content="Hello world",
+            system_prompt="You are a strict analyzer.",
+            reasoning=ReasoningMode.LOW,
+            temperature=None,
+            tools=None,
+            text_verbosity=None,
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["instructions"], "You are a strict analyzer.")
+
+    def test_prepare_request_for_chat_api_prepends_developer_message(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-4o-mini",
+            content="Analyze this",
+            system_prompt="Use concise bullet points.",
+            reasoning=ReasoningMode.DISABLED,
+            temperature=None,
+            tools=None,
+            text_verbosity=None,
+            use_responses_api=False,
+        )
+
+        self.assertEqual(prepared.api, "chat")
+        payload = prepared.payload
+        self.assertEqual(payload["messages"][0], {"role": "developer", "content": "Use concise bullet points."})
+        self.assertEqual(payload["messages"][1], {"role": "user", "content": "Analyze this"})
+
     def test_prepare_request_for_responses_api_gpt5(self) -> None:
         prepared = prepare_request(
             model_name="gpt-5-turbo",

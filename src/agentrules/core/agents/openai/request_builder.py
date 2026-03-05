@@ -26,6 +26,7 @@ def prepare_request(
     tools: list[Any] | None,
     text_verbosity: str | None,
     use_responses_api: bool,
+    system_prompt: str | None = None,
     structured_text: dict[str, Any] | None = None,
     chat_response_format: dict[str, Any] | None = None,
 ) -> PreparedRequest:
@@ -35,6 +36,8 @@ def prepare_request(
             "model": model_name,
             "input": content,
         }
+        if system_prompt:
+            payload["instructions"] = system_prompt
 
         reasoning_payload = _build_responses_reasoning_payload(reasoning)
         if reasoning_payload:
@@ -53,14 +56,24 @@ def prepare_request(
 
         return PreparedRequest(api="responses", payload=payload)
 
+    messages: list[dict[str, Any]] = []
+    if system_prompt:
+        messages.append(
+            {
+                "role": "developer",
+                "content": system_prompt,
+            }
+        )
+    messages.append(
+        {
+            "role": "user",
+            "content": content,
+        }
+    )
+
     payload = {
         "model": model_name,
-        "messages": [
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
+        "messages": messages,
     }
 
     reasoning_params = _build_chat_reasoning_params(model_name, reasoning)

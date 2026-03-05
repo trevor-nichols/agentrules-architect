@@ -22,6 +22,7 @@ class OpenAIResponsesTests(unittest.TestCase):
 
         self.assertEqual(prepared.api, "responses")
         self.assertEqual(params["model"], "gpt-5")
+        self.assertIn("instructions", params)
         self.assertEqual(params.get("reasoning"), {"effort": "minimal"})
         self.assertEqual(params.get("text"), {"verbosity": "low"})
 

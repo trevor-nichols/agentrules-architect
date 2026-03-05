@@ -44,6 +44,21 @@ class DeepSeekConfigTests(unittest.TestCase):
 
 
 class DeepSeekRequestBuilderTests(unittest.TestCase):
+    def test_prepare_request_prepends_system_message(self) -> None:
+        defaults = resolve_model_defaults("deepseek-chat")
+        prepared = prepare_request(
+            model_name="deepseek-chat",
+            content="Analyze this project",
+            system_prompt="You are a strict reviewer.",
+            reasoning=ReasoningMode.DISABLED,
+            defaults=defaults,
+            tools=None,
+        )
+
+        payload = prepared.payload
+        self.assertEqual(payload["messages"][0], {"role": "system", "content": "You are a strict reviewer."})
+        self.assertEqual(payload["messages"][1], {"role": "user", "content": "Analyze this project"})
+
     def test_prepare_request_includes_temperature_for_chat(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")
         prepared = prepare_request(

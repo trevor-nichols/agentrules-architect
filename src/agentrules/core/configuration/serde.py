@@ -100,7 +100,7 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
         researcher_mode=normalize_researcher_mode(
             features_payload.get("researcher_mode") if isinstance(features_payload, Mapping) else None,
             default="off",
-        )
+        ),
     )
 
     return CLIConfig(

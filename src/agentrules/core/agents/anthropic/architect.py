@@ -16,6 +16,7 @@ from agentrules.core.utils.structured_outputs import (
     resolve_phase_result_value,
     resolve_structured_output_mode,
 )
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_message_request, execute_message_stream, get_client
@@ -38,6 +39,7 @@ class AnthropicArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
     ) -> None:
@@ -50,6 +52,7 @@ class AnthropicArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
         self.prompt_template = prompt_template or default_prompt_template()
 
@@ -67,10 +70,21 @@ class AnthropicArchitect(BaseArchitect):
             context=context,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "Claude Architect",
+                agent_role=self.role or "analyzing the project",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict[str, Any], tools: list[Any] | None = None) -> dict[str, Any]:
         try:
             phase_name = context.get("_structured_output_phase")
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
             force_unstructured = bool(context.get("_force_unstructured_output"))
             mode = (
@@ -94,7 +108,12 @@ class AnthropicArchitect(BaseArchitect):
                     phase_name or "this phase",
                     self.model_name,
                 )
-            prepared = self._prepare_request(prompt, provider_tools, output_format=output_format)
+            prepared = self._prepare_request(
+                prompt,
+                provider_tools,
+                system_prompt=system_prompt,
+                output_format=output_format,
+            )
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -154,8 +173,9 @@ class AnthropicArchitect(BaseArchitect):
     ) -> AsyncIterator[StreamChunk]:
         async def _generator() -> AsyncIterator[StreamChunk]:
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
-            prepared = self._prepare_request(prompt, provider_tools)
+            prepared = self._prepare_request(prompt, provider_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -245,11 +265,13 @@ class AnthropicArchitect(BaseArchitect):
         prompt: str,
         tools: list[Any] | None,
         *,
+        system_prompt: str | None = None,
         output_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
         return prepare_request(
             model_name=self.model_name,
             prompt=prompt,
+            system_prompt=system_prompt if system_prompt is not None else self._resolve_system_prompt(None),
             reasoning=self.reasoning,
             tools=tools,
             effort=getattr(self._model_config, "anthropic_effort", None),

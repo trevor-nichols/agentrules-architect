@@ -18,7 +18,10 @@
 import json
 import logging
 
-from agentrules.config.prompts.phase_5_prompts import format_phase5_prompt
+from agentrules.config.prompts.phase_5_prompts import (
+    format_phase5_prompt,
+    format_phase5_system_prompt,
+)
 from agentrules.core.agents import get_architect_for_phase
 
 # =============================================================================
@@ -49,7 +52,10 @@ class Phase5Analysis:
         Initialize the Phase 5 analysis with the architect from configuration.
         """
         # Use the factory function to get the appropriate architect based on configuration
-        self.architect = get_architect_for_phase("phase5")
+        self.architect = get_architect_for_phase(
+            "phase5",
+            system_prompt=format_phase5_system_prompt(),
+        )
 
     # =========================================================================
     # Run Method

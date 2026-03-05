@@ -8,14 +8,7 @@ from typing import Any
 
 def default_prompt_template() -> str:
     """Return the default prompt template applied when none is provided."""
-    return (
-        "You are {agent_name}, responsible for {agent_role}.\n\n"
-        "Your specific responsibilities are:\n"
-        "{agent_responsibilities}\n\n"
-        "Analyze this project context and provide a detailed report focused on your domain:\n\n"
-        "{context}\n\n"
-        "Format your response as a structured report with clear sections and findings."
-    )
+    return "Project context:\n{context}\n\nComplete the current analysis task."
 
 
 def _format_responsibilities(responsibilities: Iterable[str] | None) -> str:

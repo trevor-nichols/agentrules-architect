@@ -20,6 +20,7 @@ from agentrules.core.utils.structured_outputs import (
     resolve_phase_result_value,
     resolve_structured_output_mode,
 )
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import build_gemini_client, generate_content_async
@@ -54,6 +55,7 @@ class GeminiArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         api_key: str | None = None,
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
@@ -67,6 +69,7 @@ class GeminiArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
         self.prompt_template = prompt_template or default_prompt_template()
         google_key = os.environ.get("GOOGLE_API_KEY")
@@ -105,6 +108,16 @@ class GeminiArchitect(BaseArchitect):
             context=context,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "Gemini Architect",
+                agent_role=self.role or "analyzing the project",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict[str, Any], tools: list[Any] | None = None) -> dict[str, Any]:
         client = self.client
         if client is None:
@@ -114,12 +127,11 @@ class GeminiArchitect(BaseArchitect):
         force_unstructured = bool(context.get("_force_unstructured_output"))
         disable_tools_for_request = bool(context.get("_disable_tools_for_request"))
         prompt = context.get("formatted_prompt") or self.format_prompt(context)
+        system_prompt = self._resolve_system_prompt(context)
 
         config_kwargs: dict[str, Any] = {}
-        if self.role:
-            config_kwargs["system_instruction"] = (
-                f"You are {self.name or 'an AI assistant'}, responsible for {self.role}."
-            )
+        if system_prompt:
+            config_kwargs["system_instruction"] = system_prompt
 
         api_tools = None if disable_tools_for_request else resolve_tool_config(tools, self.tools_config)
 
@@ -268,12 +280,11 @@ class GeminiArchitect(BaseArchitect):
                 raise RuntimeError(self._client_error_hint or "Gemini streaming unavailable.")
 
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
 
             config_kwargs: dict[str, Any] = {}
-            if self.role:
-                config_kwargs["system_instruction"] = (
-                    f"You are {self.name or 'an AI assistant'}, responsible for {self.role}."
-                )
+            if system_prompt:
+                config_kwargs["system_instruction"] = system_prompt
 
             api_tools = resolve_tool_config(tools, self.tools_config)
             if api_tools:

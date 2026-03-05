@@ -17,6 +17,18 @@ def test_prepare_request_without_reasoning_skips_thinking() -> None:
     assert "thinking" not in prepared.payload
 
 
+def test_prepare_request_sets_top_level_system_prompt() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-5",
+        prompt="hello",
+        system_prompt="You are a security auditor.",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+    )
+
+    assert prepared.payload["system"] == "You are a security auditor."
+
+
 def test_prepare_request_with_reasoning_includes_budget() -> None:
     prepared: PreparedRequest = prepare_request(
         model_name="claude-sonnet-4-5",

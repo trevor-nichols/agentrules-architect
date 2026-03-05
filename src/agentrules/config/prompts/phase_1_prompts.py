@@ -6,17 +6,48 @@ Centralizing prompts here makes it easier to edit and maintain them without
 modifying the core logic of the agents.
 """
 
-# Base prompt template for all Phase 1 agents
-PHASE_1_BASE_PROMPT = """You are a {agent_name}, responsible for {agent_role}.
+from __future__ import annotations
 
-Your specific responsibilities are:
-{agent_responsibilities}
+from collections.abc import Iterable
 
-Analyze this project context and provide a detailed report focused on your domain:
+# Phase 1 system prompt template (agent behavior/persona guidance).
+PHASE_1_SYSTEM_PROMPT = (
+    "You are {agent_name}, responsible for {agent_role}.\n\n"
+    "Responsibilities:\n"
+    "{agent_responsibilities}\n\n"
+    "Behavior requirements:\n"
+    "- Analyze only from evidence in provided project context and tool results.\n"
+    "- Keep findings concrete, technically precise, and actionable.\n"
+    "- Use clear section headers and concise bullet points when appropriate.\n"
+    "- Call out uncertainties explicitly instead of guessing.\n"
+)
 
+
+def _format_responsibilities(responsibilities: Iterable[str] | None) -> str:
+    cleaned = [item.strip() for item in (responsibilities or []) if item and item.strip()]
+    if not cleaned:
+        return "- (no specific responsibilities provided)"
+    return "\n".join(f"- {item}" for item in cleaned)
+
+
+def format_phase1_system_prompt(
+    *,
+    agent_name: str,
+    agent_role: str,
+    responsibilities: Iterable[str] | None,
+) -> str:
+    return PHASE_1_SYSTEM_PROMPT.format(
+        agent_name=agent_name,
+        agent_role=agent_role,
+        agent_responsibilities=_format_responsibilities(responsibilities),
+    )
+
+
+# Base prompt template for all Phase 1 agents (user/task payload only).
+PHASE_1_BASE_PROMPT = """Project context:
 {context}
 
-Format your response as a structured report with clear sections and findings."""
+Produce the requested phase-1 findings for your assigned scope."""
 
 # Specific prompts for each agent in Phase 1
 

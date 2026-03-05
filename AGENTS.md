@@ -93,6 +93,13 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Tool payloads from ToolManager must be dicts.
 - Providers must accept dicts and convert them to SDK objects only immediately prior to sending requests.
 - For unit tests, provider clients should expose set_client/get_client injection points for test doubles.
+- System/developer instructions must be resolved once per request and mapped to provider-native fields:
+  - OpenAI Responses: `instructions`; OpenAI Chat: developer role message
+  - Anthropic: top-level `system`
+  - Gemini: `system_instruction`
+  - DeepSeek/xAI: leading `system` message in OpenAI-compatible chat payloads
+- Keep behavioral guidance in phase system prompts (`config/prompts/system_prompts.py`) and keep user prompts focused on task payload/context.
+- Require a resolved system prompt for every agent request (no optional mode).
 
 # Token Estimation & Packing
 - Use local token encoder objects memoized per model. Avoid repetitive encoder creation.
