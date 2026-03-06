@@ -80,7 +80,10 @@ class TreeGeneratorTests(unittest.TestCase):
             (root / ".custom_cache" / "cache.txt").write_text("x", encoding="utf-8")
             (root / "pkg.egg-info").mkdir()
             (root / "pkg.egg-info" / "PKG-INFO").write_text("x", encoding="utf-8")
+            (root / "phases_output").mkdir()
+            (root / "phases_output" / "phase1_discovery.md").write_text("x", encoding="utf-8")
             (root / "AGENTS.md").write_text("x", encoding="utf-8")
+            (root / "SNAPSHOT.md").write_text("x", encoding="utf-8")
             (root / "diagram.svgz").write_text("x", encoding="utf-8")
 
             tree = get_project_tree(root, max_depth=4)
@@ -90,7 +93,9 @@ class TreeGeneratorTests(unittest.TestCase):
         self.assertNotIn(".claude", rendered)
         self.assertNotIn(".custom_cache", rendered)
         self.assertNotIn("pkg.egg-info", rendered)
+        self.assertNotIn("phases_output", rendered)
         self.assertNotIn("AGENTS.md", rendered)
+        self.assertNotIn("SNAPSHOT.md", rendered)
         self.assertNotIn("diagram.svgz", rendered)
 
     def test_get_project_tree_skips_symlink_entries_when_follow_symlinks_disabled(self) -> None:

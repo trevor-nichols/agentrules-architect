@@ -7,7 +7,7 @@ It defines functions to format prompts for the dynamic agents based on their ass
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from agentrules.core.utils.system_prompt import normalize_responsibilities
 
 
 PHASE_3_SYSTEM_PROMPT = (
@@ -22,8 +22,8 @@ PHASE_3_SYSTEM_PROMPT = (
 )
 
 
-def _format_responsibilities(responsibilities: Iterable[str] | None) -> str:
-    cleaned = [item.strip() for item in (responsibilities or []) if item and item.strip()]
+def _format_responsibilities(responsibilities: object) -> str:
+    cleaned = normalize_responsibilities(responsibilities)
     if not cleaned:
         return "- (no specific responsibilities provided)"
     return "\n".join(f"- {item}" for item in cleaned)
@@ -33,7 +33,7 @@ def format_phase3_system_prompt(
     *,
     agent_name: str,
     agent_role: str,
-    responsibilities: Iterable[str] | None,
+    responsibilities: object,
 ) -> str:
     return PHASE_3_SYSTEM_PROMPT.format(
         agent_name=agent_name,

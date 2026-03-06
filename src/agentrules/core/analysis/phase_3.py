@@ -22,6 +22,7 @@ from agentrules.config.prompts.phase_3_prompts import (
 )
 from agentrules.core.agents import get_architect_for_phase
 from agentrules.core.analysis.events import AnalysisEvent, AnalysisEventSink, NullEventSink
+from agentrules.core.utils.system_prompt import normalize_responsibilities
 from agentrules.core.utils.token_packer import PackedBatch, pack_files_for_phase3
 
 # ====================================================
@@ -120,11 +121,16 @@ class Phase3Analysis:
 
             logging.info(f"[bold]Phase 3:[/bold] Creating {len(agent_definitions)} specialized analysis agents")
             for agent_def in agent_definitions:
-                agent_name = agent_def.get("name", "Unknown Agent")
-                files_count = len(agent_def.get('file_assignments', []))
+                normalized_agent_def = dict(agent_def)
+                normalized_agent_def["responsibilities"] = normalize_responsibilities(
+                    normalized_agent_def.get("responsibilities")
+                )
+
+                agent_name = normalized_agent_def.get("name", "Unknown Agent")
+                files_count = len(normalized_agent_def.get('file_assignments', []))
                 logging.info(
                     "  [bold cyan]Agent %s:[/bold cyan] %s with %d files",
-                    agent_def["id"].split("_")[1],
+                    normalized_agent_def["id"].split("_")[1],
                     agent_name,
                     files_count,
                 )
@@ -133,19 +139,19 @@ class Phase3Analysis:
                 architect = get_architect_for_phase(
                     "phase3",
                     name=agent_name,
-                    role=agent_def.get("description", "Analyzing the project"),
-                    responsibilities=agent_def.get("responsibilities", []),
+                    role=normalized_agent_def.get("description", "Analyzing the project"),
+                    responsibilities=normalized_agent_def["responsibilities"],
                     system_prompt=format_phase3_system_prompt(
                         agent_name=agent_name,
-                        agent_role=agent_def.get("description", "Analyzing the project"),
-                        responsibilities=agent_def.get("responsibilities", []),
+                        agent_role=normalized_agent_def.get("description", "Analyzing the project"),
+                        responsibilities=normalized_agent_def["responsibilities"],
                     ),
                 )
-                self.architects.append((architect, agent_def))
+                self.architects.append((architect, normalized_agent_def))
                 self._publish_agent_event(
                     "agent_registered",
                     phase="phase3",
-                    agent=agent_def,
+                    agent=normalized_agent_def,
                     extra={"file_count": files_count},
                 )
 

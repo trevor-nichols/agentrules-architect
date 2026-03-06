@@ -125,6 +125,33 @@ async def test_phase3_fallback_when_no_agents(tmp_path: Path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_phase3_ignores_invalid_responsibility_items(tmp_path: Path, monkeypatch):
+    patch_factory_offline()
+    (tmp_path / "x.py").write_text("print('x')", encoding="utf-8")
+
+    p3 = Phase3Analysis()
+    out = await p3.run(
+        {
+            "agents": [
+                {
+                    "id": "agent_1",
+                    "name": "Architecture Agent",
+                    "description": "architecture review",
+                    "responsibilities": ["Inspect boundaries", 3, None, {"bad": True}],
+                    "file_assignments": ["x.py"],
+                }
+            ]
+        },
+        ["x.py"],
+        tmp_path,
+    )
+
+    assert out["phase"] == "Deep Analysis"
+    assert "error" not in out
+    assert isinstance(out.get("findings"), list)
+
+
+@pytest.mark.asyncio
 async def test_phase5_fallback_report_shaping(monkeypatch):
     patch_factory_offline()
 

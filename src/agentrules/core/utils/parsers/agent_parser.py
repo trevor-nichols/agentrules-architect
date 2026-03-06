@@ -19,6 +19,8 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Any
 
+from agentrules.core.utils.system_prompt import normalize_responsibilities
+
 # ====================================================
 # Initialize Logger
 # ====================================================
@@ -436,7 +438,7 @@ def parse_agents_from_phase2(input_data: dict[str, Any] | str) -> list[dict]:
             agents = input_data["agents"]
             if _is_valid_preparsed_agents(agents):
                 logger.info(f"[bold green]Agents:[/bold green] Found {len(agents)} pre-parsed agents")
-                return agents
+                return [_normalize_agent_definition(agent) for agent in agents]
             if agents:
                 logger.warning(
                     "[bold yellow]Warning:[/bold yellow] Ignoring invalid pre-parsed agents; "
@@ -484,8 +486,9 @@ def parse_agents_from_phase2(input_data: dict[str, Any] | str) -> list[dict]:
 
         if agents:
             logger.info(f"[bold green]Success:[/bold green] Extracted {len(agents)} agents via XML parsing")
-            _log_detailed_agent_info(agents, "XML")
-            return agents
+            normalized_agents = [_normalize_agent_definition(agent) for agent in agents]
+            _log_detailed_agent_info(normalized_agents, "XML")
+            return normalized_agents
     except ET.ParseError as e:
         logger.debug(f"XML parsing failed: {e}. Falling back to regex method.")
     except Exception as e:
@@ -497,12 +500,24 @@ def parse_agents_from_phase2(input_data: dict[str, Any] | str) -> list[dict]:
 
     # Report results
     if agents:
-        logger.info(f"[bold green]Success:[/bold green] Extracted {len(agents)} agents via fallback extraction")
-        _log_detailed_agent_info(agents, "fallback")
+        normalized_agents = [_normalize_agent_definition(agent) for agent in agents]
+        logger.info(
+            f"[bold green]Success:[/bold green] Extracted {len(normalized_agents)} agents via fallback extraction"
+        )
+        _log_detailed_agent_info(normalized_agents, "fallback")
+        return normalized_agents
     else:
         logger.error("[bold red]Error:[/bold red] Failed to extract any agents using all available methods")
 
-    return agents
+    return []
+
+
+def _normalize_agent_definition(agent: dict[str, Any]) -> dict[str, Any]:
+    """Normalize externally supplied agent payloads before Phase 3 consumes them."""
+
+    normalized = dict(agent)
+    normalized["responsibilities"] = normalize_responsibilities(agent.get("responsibilities"))
+    return normalized
 
 
 def _is_valid_preparsed_agents(raw_agents: list[Any]) -> bool:

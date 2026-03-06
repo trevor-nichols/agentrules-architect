@@ -12,11 +12,46 @@ _SYSTEM_PROMPT_KEYS: tuple[str, ...] = (
 )
 
 
+def normalize_responsibilities(responsibilities: object) -> list[str]:
+    """
+    Normalize model- or config-provided responsibility lists for prompt use.
+
+    Providers occasionally return mixed payloads in JSON fallback modes. Keep
+    meaningful scalar items, trim whitespace, and drop container values that
+    would only inject noisy representations into prompts.
+    """
+
+    if responsibilities is None:
+        return []
+
+    items: Iterable[object]
+    if isinstance(responsibilities, str):
+        items = [responsibilities]
+    elif isinstance(responsibilities, Mapping):
+        return []
+    elif isinstance(responsibilities, Iterable):
+        items = responsibilities
+    else:
+        items = [responsibilities]
+
+    cleaned: list[str] = []
+    for item in items:
+        if isinstance(item, str):
+            candidate = item.strip()
+        elif isinstance(item, (bool, int, float)):
+            candidate = str(item).strip()
+        else:
+            continue
+        if candidate:
+            cleaned.append(candidate)
+    return cleaned
+
+
 def build_agent_system_prompt(
     *,
     agent_name: str,
     agent_role: str,
-    responsibilities: Iterable[str] | None,
+    responsibilities: object,
 ) -> str:
     """
     Build a default system prompt for an architect request.
@@ -28,7 +63,7 @@ def build_agent_system_prompt(
         f"You are {agent_name}, responsible for {agent_role}.",
     ]
 
-    cleaned_responsibilities = [item.strip() for item in (responsibilities or []) if item and item.strip()]
+    cleaned_responsibilities = normalize_responsibilities(responsibilities)
     if cleaned_responsibilities:
         lines.append("")
         lines.append("Responsibilities:")
