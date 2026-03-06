@@ -19,6 +19,7 @@ def iter_manifest_files(
     gitignore_spec: PathSpec | None,
     *,
     max_depth: int,
+    exclude_relative_paths: set[str] | None = None,
 ) -> Iterator[Path]:
     """Yield manifest files within ``directory`` respecting exclusion rules."""
     include_files = MANIFEST_FILENAMES
@@ -36,6 +37,7 @@ def iter_manifest_files(
         max_depth=max_depth,
         gitignore_spec=gitignore_spec,
         root=directory,
+        exclude_relative_paths=exclude_relative_paths,
     ):
         name = path.name
         if name in include_files or _matches_any_pattern(name, include_patterns):

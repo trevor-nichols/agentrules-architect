@@ -152,7 +152,10 @@ def register(app: typer.Typer) -> None:
                 exclude_extensions=exclude_exts,
                 gitignore_spec=gitignore_spec,
                 include_file_contents=True,
-                additional_exclude_relative_paths=build_snapshot_additional_exclude_paths(rules_filename),
+                additional_exclude_relative_paths=build_snapshot_additional_exclude_paths(
+                    rules_filename,
+                    snapshot_filename,
+                ),
                 write=not dry_run,
             )
         except (OSError, ValueError) as error:

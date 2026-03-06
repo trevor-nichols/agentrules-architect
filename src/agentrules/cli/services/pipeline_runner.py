@@ -75,6 +75,10 @@ def run_pipeline(
 
     exclusion_overrides = config_manager.get_exclusion_overrides()
     effective_dirs, effective_files, effective_exts = config_manager.get_effective_exclusions()
+    managed_output_relative_paths = config_manager.get_managed_output_relative_paths(
+        rules_filename=resolved_rules_filename,
+        snapshot_filename=snapshot_filename,
+    )
     settings = PipelineSettings(
         target_directory=path,
         tree_max_depth=config_manager.get_tree_max_depth(),
@@ -84,6 +88,7 @@ def run_pipeline(
             files=frozenset(effective_files),
             extensions=frozenset(effective_exts),
         ),
+        exclude_relative_paths=frozenset(managed_output_relative_paths),
         exclusion_overrides=exclusion_overrides,
     )
 

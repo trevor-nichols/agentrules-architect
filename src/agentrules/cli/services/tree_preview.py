@@ -49,6 +49,7 @@ def generate_tree_snapshot(directory: Path, *, max_depth: int | None = None) -> 
 
     config_manager = get_config_manager()
     exclude_dirs, exclude_files, exclude_exts = config_manager.get_effective_exclusions()
+    exclude_relative_paths = config_manager.get_managed_output_relative_paths()
 
     gitignore_spec = None
     gitignore_path: Path | None = None
@@ -68,6 +69,7 @@ def generate_tree_snapshot(directory: Path, *, max_depth: int | None = None) -> 
         exclude_files=exclude_files,
         exclude_extensions=exclude_exts,
         gitignore_spec=gitignore_spec,
+        exclude_relative_paths=exclude_relative_paths,
     )
 
     return TreeSnapshot(

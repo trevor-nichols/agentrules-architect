@@ -127,6 +127,25 @@ def test_list_files_exclude_relative_paths_matches_case_insensitively(tmp_path: 
     assert "Snapshot.md" not in rels
 
 
+def test_list_files_exclude_relative_paths_only_affects_project_root(tmp_path: Path):
+    (tmp_path / "PROJECT_SNAPSHOT.md").write_text("root snapshot")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "PROJECT_SNAPSHOT.md").write_text("nested notes")
+
+    files = list(
+        list_files(
+            tmp_path,
+            max_depth=3,
+            exclude_relative_paths={"PROJECT_SNAPSHOT.md"},
+        )
+    )
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "PROJECT_SNAPSHOT.md" not in rels
+    assert "docs/PROJECT_SNAPSHOT.md" in rels
+
+
 def test_get_file_contents_respects_size_and_max_files(tmp_path: Path):
     small1 = tmp_path / "s1.py"
     small2 = tmp_path / "s2.txt"

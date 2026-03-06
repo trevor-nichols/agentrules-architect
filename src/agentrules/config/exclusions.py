@@ -6,9 +6,6 @@ It defines sets of directories, files, and extensions that should be
 excluded from the project tree structure and analysis.
 """
 
-from agentrules.core.utils.constants import DEFAULT_SNAPSHOT_FILENAME
-from agentrules.core.utils.file_creation.snapshot_policy import GENERATED_PHASE_OUTPUT_DIR
-
 # ----------------------------------------------------------------------
 # ---[ Excluded Files and Directories Configuration ]---
 # ----------------------------------------------------------------------
@@ -23,7 +20,6 @@ EXCLUDED_DIRS = {
     '.pytest_cache', '.mypy_cache', '.ruff_cache', '.tox',
     'env', '.env', '.venv', 'site-packages', '.egg-info',
     '.gradle', '.parcel-cache', 'buck-out', 'out', 'tmp', 'temp', '.agent',
-    GENERATED_PHASE_OUTPUT_DIR,
     'log', 'logs', 'logfile', 'logfiles', 'artifacts', 'target'
 }
 
@@ -32,7 +28,6 @@ EXCLUDED_FILES = {
     '.DS_Store', '.env', '.env.local', '.gitignore',
     '.python-version',
     'AGENTS.md', 'CLAUDE.md',
-    DEFAULT_SNAPSHOT_FILENAME,
     'README.md', 'LICENSE', '.eslintrc', '.prettierrc',
     'tsconfig.json', 'requirements.txt', 'poetry.lock',
     'Pipfile.lock', '.gitattributes', '.gitconfig', '.gitmodules',

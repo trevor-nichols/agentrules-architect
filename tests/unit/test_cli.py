@@ -290,7 +290,7 @@ class CLITestCase(unittest.TestCase):
         self.assertEqual(kwargs["output_path"], Path.cwd() / "SNAPSHOT.md")
         self.assertEqual(
             kwargs["additional_exclude_relative_paths"],
-            {"phases_output", "AGENTS.md"},
+            {".cursorignore", "phases_output", "AGENTS.md"},
         )
         self.assertFalse(kwargs["write"])
         printed = " ".join(

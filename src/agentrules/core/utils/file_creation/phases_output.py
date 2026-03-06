@@ -140,27 +140,27 @@ def save_phase_outputs(
     effective_exclude_dirs, effective_exclude_files, effective_exclude_exts = (
         config_manager.get_effective_exclusions()
     )
+    managed_output_relative_paths = config_manager.get_managed_output_relative_paths(
+        rules_filename=resolved_rules_filename,
+        snapshot_filename=snapshot_reference_filename,
+    )
     if rules_tree_max_depth is None:
         if tree_max_depth is not None:
             rules_tree_max_depth = tree_max_depth
         else:
             rules_tree_max_depth = config_manager.get_rules_tree_max_depth()
 
-    custom_exclude_dirs = set(effective_exclude_dirs)
-    custom_exclude_files = set(effective_exclude_files)
-    custom_exclude_files.add(resolved_rules_filename)
-    if snapshot_reference_filename:
-        custom_exclude_files.add(snapshot_reference_filename)
-    custom_exclude_patterns = set(custom_exclude_files)
+    custom_exclude_patterns = set(effective_exclude_files)
     custom_exclude_patterns.update(f"*{ext}" for ext in effective_exclude_exts)
 
     tree = generate_tree(
         directory,
         max_depth=rules_tree_max_depth,
-        exclude_dirs=custom_exclude_dirs,
+        exclude_dirs=set(effective_exclude_dirs),
         exclude_patterns=custom_exclude_patterns,
         gitignore_spec=gitignore_spec,
         root=directory,
+        exclude_relative_paths=managed_output_relative_paths,
     )
 
     # Add delimiters and format for inclusion in the AGENTS.md file

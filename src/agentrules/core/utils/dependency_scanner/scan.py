@@ -21,13 +21,19 @@ def collect_dependency_info(
     *,
     gitignore_spec: PathSpec | None = None,
     max_depth: int = 5,
+    exclude_relative_paths: set[str] | None = None,
     registry: ManifestParserRegistry | None = None,
 ) -> dict[str, Any]:
     """Collect dependency manifest data from the target directory."""
     active_registry = registry or _DEFAULT_REGISTRY
     records: list[ManifestRecord] = []
 
-    for manifest_path in iter_manifest_files(directory, gitignore_spec, max_depth=max_depth):
+    for manifest_path in iter_manifest_files(
+        directory,
+        gitignore_spec,
+        max_depth=max_depth,
+        exclude_relative_paths=exclude_relative_paths,
+    ):
         record = _parse_manifest(manifest_path, active_registry)
         records.append(record)
 

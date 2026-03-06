@@ -176,7 +176,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.config_manager.set_snapshot_filename("nested/SNAPSHOT.md")
         self.assertEqual(self.config_manager.get_snapshot_filename(), "SNAPSHOT.md")
 
-    def test_effective_exclusions_always_include_managed_outputs(self) -> None:
+    def test_managed_outputs_use_root_relative_paths(self) -> None:
         self.config_manager.set_rules_filename("CLAUDE.custom.md")
         self.config_manager.set_snapshot_filename("SNAPSHOT.custom.md")
         self.config_manager.remove_exclusion_entry("directories", "phases_output")
@@ -184,11 +184,15 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.config_manager.remove_exclusion_entry("files", "SNAPSHOT.custom.md")
 
         directories, files, _extensions = self.config_manager.get_effective_exclusions()
+        managed_paths = self.config_manager.get_managed_output_relative_paths()
 
-        self.assertIn("phases_output", directories)
-        self.assertIn(".cursorignore", files)
-        self.assertIn("CLAUDE.custom.md", files)
-        self.assertIn("SNAPSHOT.custom.md", files)
+        self.assertNotIn("phases_output", directories)
+        self.assertNotIn("CLAUDE.custom.md", files)
+        self.assertNotIn("SNAPSHOT.custom.md", files)
+        self.assertEqual(
+            managed_paths,
+            {".cursorignore", "CLAUDE.custom.md", "SNAPSHOT.custom.md", "phases_output"},
+        )
 
     def test_rules_tree_depth_defaults_set_and_normalizes(self) -> None:
         self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 3)

@@ -70,7 +70,7 @@ class TreeGeneratorTests(unittest.TestCase):
         self.assertIn("# Project Directory Structure", content)
         self.assertIn("└── app.py", content)
 
-    def test_get_project_tree_omits_newly_excluded_defaults(self) -> None:
+    def test_get_project_tree_omits_static_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             (root / "keep.py").write_text("print('ok')\n", encoding="utf-8")
@@ -93,9 +93,7 @@ class TreeGeneratorTests(unittest.TestCase):
         self.assertNotIn(".claude", rendered)
         self.assertNotIn(".custom_cache", rendered)
         self.assertNotIn("pkg.egg-info", rendered)
-        self.assertNotIn("phases_output", rendered)
         self.assertNotIn("AGENTS.md", rendered)
-        self.assertNotIn("SNAPSHOT.md", rendered)
         self.assertNotIn("diagram.svgz", rendered)
 
     def test_get_project_tree_skips_symlink_entries_when_follow_symlinks_disabled(self) -> None:

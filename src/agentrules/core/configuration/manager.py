@@ -235,6 +235,19 @@ class ConfigManager:
         config = self._repository.load()
         return exclusions.get_effective_exclusions(config)
 
+    def get_managed_output_relative_paths(
+        self,
+        *,
+        rules_filename: str | None = None,
+        snapshot_filename: str | None = None,
+    ) -> set[str]:
+        config = self._repository.load()
+        return exclusions.get_managed_output_relative_paths(
+            config,
+            rules_filename=rules_filename,
+            snapshot_filename=snapshot_filename,
+        )
+
     def add_exclusion_entry(self, kind: str, value: str) -> str | None:
         config = self._repository.load()
         normalized = exclusions.add_exclusion_entry(config, kind, value)

@@ -106,7 +106,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
         snapshot_kwargs = mock_sync_snapshot.call_args.kwargs
         self.assertEqual(
             snapshot_kwargs["additional_exclude_relative_paths"],
-            {"phases_output", "AGENTS.md"},
+            {".cursorignore", "phases_output", "AGENTS.md"},
         )
         mock_clean_agentrules.assert_called_once_with(
             str(settings.target_directory),
