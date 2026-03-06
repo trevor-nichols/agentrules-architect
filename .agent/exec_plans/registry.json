@@ -122,6 +122,37 @@
         "tests"
       ],
       "updated": "2026-03-06"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-06",
+      "depends_on": [],
+      "domain": "infra",
+      "id": "EP-20260306-003",
+      "kind": "infra",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/release-automation/EP-20260306-003_release-automation.md",
+      "risk": "low",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "github",
+        "releases",
+        "ci"
+      ],
+      "title": "Add tag-driven GitHub release automation",
+      "touches": [
+        "ops",
+        "docs",
+        "tests"
+      ],
+      "updated": "2026-03-06"
     }
   ],
   "schema_version": 1

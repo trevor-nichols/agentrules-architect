@@ -274,6 +274,7 @@ Toggle outputs with `agentrules configure --outputs` or via the config TOML.
 - Run targeted tests: `python tests/phase_3_test/run_test.py`
 - Deterministic smoke runs (CI/local without API calls): `agentrules analyze --offline tests/tests_input`
 - Full suite: `python -m unittest discover tests -v`
+- Releases are tag-driven: bump `[project].version` in `pyproject.toml`, commit it, create the matching `vX.Y.Z` tag, and push the tag to let GitHub Actions publish the GitHub Release automatically.
 - Keep docs and presets in sync when adding providers (`config/agents.py`, `config/tools.py`, `core/agents/*`).
 
 ## 🤝 Contributing
