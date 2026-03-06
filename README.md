@@ -3,11 +3,11 @@
 <div align="center">
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-o3%20%7C%20o4--mini%20%7C%20gpt--5%20%7C%20gpt--5.1%20%7C%20gpt--5.2-blue.svg)](https://openai.com/)
-[![Anthropic](https://img.shields.io/badge/Anthropic-claude--4.5%20family-purple.svg)](https://www.anthropic.com/)
-[![DeepSeek](https://img.shields.io/badge/DeepSeek-reasoner-red.svg)](https://deepseek.com/)
-[![Google](https://img.shields.io/badge/Google-gemini--3--pro--preview%20%7C%20gemini--2.5--flash%20%7C%20gemini--2.5--pro-green.svg)](https://ai.google.dev/)
-[![xAI](https://img.shields.io/badge/xAI-grok--4--family-black.svg)](https://x.ai/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-supported-blue.svg)](https://openai.com/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-supported-purple.svg)](https://www.anthropic.com/)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-supported-red.svg)](https://deepseek.com/)
+[![Google](https://img.shields.io/badge/Google-supported-green.svg)](https://ai.google.dev/)
+[![xAI](https://img.shields.io/badge/xAI-supported-black.svg)](https://x.ai/)
 [![Built By](https://img.shields.io/badge/Built%20By-trevor-nichols-orange.svg)](https://github.com/trevor-nichols)
 
 **Your multi-provider AI code analysis and AGENTS.md generator 🚀**
@@ -22,14 +22,14 @@
 
 ## Why AgentRules Architect?
 
-Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Architect** to match the standardized `AGENTS.md` contract used across modern AI coding agents. The rename comes with a fresh Typer-powered CLI, a persistent configuration service, broader provider support (including xAI Grok and OpenAI GPT‑5/5.1/5.2 presets), and a tooling layer that keeps the six-phase analysis reliably consistent yet flexibly extensible to your project's unique needs.
+Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Architect** to match the standardized `AGENTS.md` contract used across modern AI coding agents. The rename comes with a fresh Typer-powered CLI, a persistent configuration service, broader provider support across Anthropic, OpenAI, Google, DeepSeek, and xAI, and a tooling layer that keeps the six-phase analysis reliably consistent yet flexibly extensible to your project's unique needs.
 
 ## 🔥 v3 Highlights
 
 - ✨ **Rebrand & packaging** – ships with console-script and `python -m agentrules` entry points when installed from source.
 - 🧭 **Typer CLI overhaul** – `agentrules` launches an interactive main menu with subcommands for `analyze`, `configure`, and `keys`.
 - 🗂️ **Persistent settings** – API keys, model presets, logging, and output preferences live in `~/.config/agentrules/config.toml` (override with `AGENTRULES_CONFIG_DIR`).
-- 🧠 **Expanded provider matrix** – presets now cover Anthropic Claude 4.5, OpenAI o3/o4/GPT‑4.1/GPT‑5/GPT‑5.1/GPT‑5.2 (+ Codex), Google Gemini 3 Pro preview + 2.5 family, DeepSeek Reasoner & Chat, and xAI Grok 4 tiers.
+- 🧠 **Expanded provider matrix** – the preset catalog spans Anthropic, OpenAI, Google, DeepSeek, and xAI, with phase-by-phase model selection from the CLI or config file.
 - 🔌 **Unified tool management** – the new `ToolManager` adapts JSON tool schemas for each provider; Tavily web search is available to researcher agents with one toggle.
 - ✅ **Test & quality backbone** – 200+ unit/integration tests, Pyright, Ruff, and offline stubs provide confidence without hitting live APIs.
 
@@ -59,12 +59,13 @@ The pipeline captures metrics (elapsed time, agent counts) and hands them to the
 
 - Python **3.11.9+** (matches Pyright target and packaged metadata).
 - API key(s) for at least one provider:
-  - Anthropic (`claude-haiku-4.5`, `claude-sonnet-4.5`, `claude-opus-4-5-20251101`; `claude-opus-4-1` remains supported for legacy configs)
-  - OpenAI (`o3`, `o4-mini`, `gpt-4.1`, `gpt-5`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5.2`)
-  - DeepSeek (`deepseek-reasoner`, `deepseek-chat`)
-  - Google (`gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-2.5-pro`)
-  - xAI (`grok-4` family)
+  - Anthropic
+  - OpenAI
+  - DeepSeek
+  - Google
+  - xAI
   - Tavily (optional, enables live web search tooling)
+- Current preset IDs live in `src/agentrules/config/agents.py`.
 - Core dependencies: `anthropic`, `openai`, `google-genai>=1.51.0`, `tavily-python`, `tiktoken`, `rich`, `typer`, `questionary`, `platformdirs`, `pathspec`, `python-dotenv`, `protobuf`.
 - Dev tooling: `pytest`, `pytest-asyncio`, `pytest-mock`, `flask`, `ruff`, `pyright`.
 
@@ -216,30 +217,21 @@ Presets live in `config/agents.py` via the `MODEL_PRESETS` dictionary. Each pres
 - Model name plus reasoning/temperature configuration
 - Human-readable label and description for the CLI wizard
 
-Defaults favor `gemini-2.5-flash` for every phase, but you can mix providers. For example:
+The app currently exposes presets across these providers:
 
-```python
-MODEL_PRESET_DEFAULTS = {
-    "phase1": "gemini-flash",
-    "phase2": "claude-sonnet-reasoning",
-    "phase3": "o3-high",
-    "phase4": "deepseek-reasoner",
-    "phase5": "grok-4-fast-reasoning",
-    "final": "gpt5-high",
-    "researcher": "gemini-pro",
-}
-```
+- Anthropic
+- OpenAI
+- Google
+- DeepSeek
+- xAI
 
-Adjust presets through the CLI (`agentrules configure --models`) or by editing `config/agents.py`. At runtime the values populate `MODEL_CONFIG`, which the pipeline consumes while resolving phase architects (`src/agentrules/core/agents/factory/factory.py`).
-
-Need a coding-optimized OpenAI tier? Select the `gpt-5.1-codex` preset, which uses `gpt-5.1-codex` under the hood (same Responses API interface and reasoning controls as the rest of the GPT-5.x family, but tuned on code-heavy workloads).
-Looking for a cost-aware default? The new `gpt5-mini` preset pairs high reasoning with a generous context window and lower per-token cost—ideal for Phase 3 deep dives when budgets matter.
+Choose any available preset per phase through the CLI (`agentrules configure --models`) or by editing `config.toml` / `config/agents.py`. At runtime the values populate `MODEL_CONFIG`, which the pipeline consumes while resolving phase architects (`src/agentrules/core/agents/factory/factory.py`).
 
 > **Preset tip:** Legacy-friendly presets stay under the `gpt5-*` keys (backed by the `gpt-5` model name) so existing `config.toml` files continue to work, while the newer GPT‑5.1 presets live under the `gpt51-*` keys and GPT‑5.2 presets under `gpt52-*`. Mixing them per phase or per-agent is fully supported.
 
 ## 🧠 Reasoning & Advanced Configuration
 
-- **Reasoning modes:** Anthropic presets toggle `ReasoningMode.ENABLED`/`DISABLED`, Gemini Pro/Flash Thinking use `ReasoningMode.DYNAMIC`, OpenAI o3/o4-mini/GPT‑5/GPT‑5.1 expose `MINIMAL`→`HIGH` effort levels, GPT‑4.1 presets rely on `ReasoningMode.TEMPERATURE`, and DeepSeek Reasoner/xAI Grok fast reasoning ship with their baked-in reasoning defaults (`src/agentrules/core/types/models.py`).
+- **Reasoning modes:** Anthropic presets use fixed-budget or adaptive thinking depending on the Claude family, Gemini presets use provider-native thinking controls, OpenAI presets map to reasoning effort or temperature based on model family, and DeepSeek/xAI presets keep their provider-native reasoning behavior (`src/agentrules/core/types/models.py`).
 - **Agent planning:** Phase 2 generates agent manifests that Phase 3 converts into live architects; when parsing fails the fallback extractor and default agents keep the pipeline running (`core/analysis/phase_2.py`, `core/analysis/phase_3.py`).
 - **Provider-specific tools:** `create_researcher_config` enables Tavily-backed tool use for whichever preset you promote to the Researcher role, and the CLI’s Researcher row simply flips that on/off (`core/types/models.py`, `config/tools.py`).
 - **Prompt customization:** Fine-tune behaviour by editing the phase prompts under `src/agentrules/config/prompts/`—heavy modifications should stay aligned with the YAML/XML formats expected by the parser utilities.
