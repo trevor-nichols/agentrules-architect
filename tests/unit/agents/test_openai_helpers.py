@@ -29,6 +29,18 @@ class OpenAIConfigTests(unittest.TestCase):
         self.assertTrue(defaults.use_responses_api)
         self.assertIsNone(defaults.default_temperature)
 
+    def test_resolve_defaults_for_gpt53_codex_prefix(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.3-codex")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
+    def test_resolve_defaults_for_gpt54_snapshot(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.4-2026-03-05")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
     def test_resolve_defaults_for_known_model(self) -> None:
         defaults = resolve_model_defaults("gpt-4.1")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.TEMPERATURE)
@@ -114,6 +126,24 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["reasoning"], {"effort": "minimal"})
         self.assertEqual(payload["text"], {"verbosity": "low"})
         self.assertNotIn("tools", payload)
+
+    def test_prepare_request_for_responses_api_gpt53_codex(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5.3-codex",
+            content="Hello gpt-5.3-codex",
+            reasoning=ReasoningMode.MEDIUM,
+            temperature=None,
+            tools=None,
+            text_verbosity="medium",
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["model"], "gpt-5.3-codex")
+        self.assertEqual(payload["input"], "Hello gpt-5.3-codex")
+        self.assertEqual(payload["reasoning"], {"effort": "medium"})
+        self.assertEqual(payload["text"], {"verbosity": "medium"})
 
     def test_prepare_request_for_responses_api_gpt41_temperature(self) -> None:
         prepared = prepare_request(

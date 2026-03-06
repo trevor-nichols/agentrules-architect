@@ -54,6 +54,17 @@ def test_prepare_request_dynamic_reasoning_passthrough() -> None:
     assert prepared.payload["thinking"] == {"type": "adaptive"}
 
 
+def test_prepare_request_dynamic_reasoning_passthrough_for_sonnet46() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "adaptive"}
+
+
 def test_prepare_request_dynamic_reasoning_unsupported_model_raises() -> None:
     try:
         prepare_request(
@@ -71,6 +82,18 @@ def test_prepare_request_dynamic_reasoning_unsupported_model_raises() -> None:
 def test_prepare_request_effort_adds_output_config() -> None:
     prepared: PreparedRequest = prepare_request(
         model_name="claude-opus-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort="medium",
+    )
+
+    assert prepared.payload["output_config"] == {"effort": "medium"}
+
+
+def test_prepare_request_effort_adds_output_config_for_sonnet46() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-6",
         prompt="hello",
         reasoning=ReasoningMode.DYNAMIC,
         tools=None,
@@ -110,6 +133,21 @@ def test_prepare_request_effort_max_supported_for_opus_46() -> None:
 def test_prepare_request_effort_max_unsupported_model_raises() -> None:
     try:
         prepare_request(
+            model_name="claude-sonnet-4-6",
+            prompt="hello",
+            reasoning=ReasoningMode.DYNAMIC,
+            tools=None,
+            effort="max",
+        )
+    except ValueError as exc:
+        assert "Supported values for this model: high, low, medium" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for effort=max on unsupported model")
+
+
+def test_prepare_request_effort_max_unsupported_for_opus45_raises() -> None:
+    try:
+        prepare_request(
             model_name="claude-opus-4-5-20251101",
             prompt="hello",
             reasoning=ReasoningMode.DISABLED,
@@ -117,7 +155,7 @@ def test_prepare_request_effort_max_unsupported_model_raises() -> None:
             effort="max",
         )
     except ValueError as exc:
-        assert "Effort 'max'" in str(exc)
+        assert "Supported values for this model: high, low, medium" in str(exc)
     else:
         raise AssertionError("Expected ValueError for effort=max on unsupported model")
 

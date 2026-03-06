@@ -23,6 +23,13 @@ from agentrules.core.utils.structured_outputs import (
 from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
+from .capabilities import (
+    model_supports_disabling_thinking,
+    model_supports_structured_output_with_tools,
+    model_supports_thinking_level,
+    resolve_thinking_level,
+    stable_model_name,
+)
 from .client import build_gemini_client, generate_content_async
 from .prompting import default_prompt_template, format_prompt
 from .response_parser import (
@@ -455,41 +462,23 @@ class GeminiArchitect(BaseArchitect):
         self,
         reasoning_mode: ReasoningMode,
     ) -> Any | None:
-        if reasoning_mode in (ReasoningMode.DISABLED, ReasoningMode.MINIMAL, ReasoningMode.LOW):
-            return ThinkingLevel.LOW if ThinkingLevel else None
-        if reasoning_mode in (
-            ReasoningMode.ENABLED,
-            ReasoningMode.DYNAMIC,
-            ReasoningMode.MEDIUM,
-            ReasoningMode.HIGH,
-        ):
-            return ThinkingLevel.HIGH if ThinkingLevel else None
-        return None
+        return resolve_thinking_level(
+            model_name=self.model_name,
+            reasoning_mode=reasoning_mode,
+            thinking_level_enum=ThinkingLevel,
+        )
 
     def _model_supports_disabling_thinking(self) -> bool:
-        if self._model_supports_thinking_level():
-            return False
-        normalized = self.model_name.lower()
-        # Gemini 2.5 Pro does not allow disabling thinking according to the docs.
-        return "gemini-2.5-pro" not in normalized
+        return model_supports_disabling_thinking(self.model_name)
 
     def _model_supports_thinking_level(self) -> bool:
-        normalized = self.model_name.lower()
-        return "gemini-3" in normalized
+        return model_supports_thinking_level(self.model_name)
 
     def _supports_structured_output_with_tools(self) -> bool:
-        normalized = self.model_name.lower()
-        return "gemini-3" in normalized
+        return model_supports_structured_output_with_tools(self.model_name)
 
     def _stable_model_name(self) -> str:
-        normalized = self.model_name.lower()
-        if "gemini-2.5-flash" in normalized:
-            return "gemini-2.5-flash"
-        if "gemini-2.5-pro" in normalized:
-            return "gemini-2.5-pro"
-        if "gemini-3-pro" in normalized:
-            return "gemini-3-pro-preview"
-        return self.model_name
+        return stable_model_name(self.model_name)
 
     def _stream_content(
         self,

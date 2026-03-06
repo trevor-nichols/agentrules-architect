@@ -29,7 +29,7 @@ class ModelConfig(NamedTuple):
     max_input_tokens: int | None = None  # Provider-advertised or conservative context window (input side)
     safety_margin_tokens: int | None = None  # Margin to reserve within the context window
     estimator_family: str | None = None  # Which estimator to use (anthropic_api, gemini_api, tiktoken, heuristic)
-    anthropic_effort: AnthropicEffort | None = None  # output_config.effort (Opus 4.5/4.6 only)
+    anthropic_effort: AnthropicEffort | None = None  # output_config.effort for Claude families that support it
 
 # ====================================================
 # Predefined Model Configurations
@@ -48,6 +48,20 @@ CLAUDE_WITH_REASONING = ModelConfig(
     model_name="claude-sonnet-4-5",
     reasoning=ReasoningMode.ENABLED,
     tools_config={"enabled": False, "tools": None}
+)
+
+CLAUDE_SONNET_46 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-sonnet-4-6",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_SONNET_46_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-sonnet-4-6",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
 )
 
 CLAUDE_HAIKU = ModelConfig(
@@ -233,6 +247,20 @@ GROK_4_FAST_NON_REASONING = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
+GROK_4_1_FAST_REASONING = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4-1-fast-reasoning",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_4_1_FAST_NON_REASONING = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4-1-fast-non-reasoning",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GROK_CODE_FAST = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-code-fast-1",
@@ -262,13 +290,35 @@ GEMINI_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# GPT-5 configurations (Responses API only)
+GEMINI_3_FLASH_PREVIEW = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3-flash-preview",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GEMINI_3_PRO_PREVIEW = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3-pro-preview",
     reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None}
 )
+
+GEMINI_3_1_FLASH_LITE_PREVIEW = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.1-flash-lite-preview",
+    reasoning=ReasoningMode.MINIMAL,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GEMINI_3_1_PRO_PREVIEW = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.1-pro-preview",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None}
+)
+
+# GPT-5 configurations (Responses API only)
 
 GPT5_DEFAULT = ModelConfig(
     provider=ModelProvider.OPENAI,
@@ -369,6 +419,33 @@ GPT5_2_HIGH = ModelConfig(
     temperature=None,
     tools_config={"enabled": False, "tools": None},
     text_verbosity="high",
+)
+
+GPT5_2_CODEX = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.2-codex",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium",
+)
+
+GPT5_3_CODEX = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.3-codex",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium",
+)
+
+GPT5_4_2026_03_05 = ModelConfig(
+    provider=ModelProvider.OPENAI,
+    model_name="gpt-5.4-2026-03-05",
+    reasoning=ReasoningMode.MEDIUM,
+    temperature=None,
+    tools_config={"enabled": False, "tools": None},
+    text_verbosity="medium",
 )
 
 # -----------------------------------------------------------------------------

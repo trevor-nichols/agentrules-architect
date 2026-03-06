@@ -8,9 +8,10 @@ from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.types.models import AnthropicEffort
 
 from .capabilities import (
+    describe_profiles_with_adaptive_thinking,
+    describe_profiles_with_effort,
+    supported_effort_levels,
     supports_adaptive_thinking,
-    supports_effort,
-    supports_max_effort,
     supports_structured_output_format,
 )
 
@@ -73,15 +74,13 @@ def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dic
         return {"type": "enabled", "budget_tokens": DEFAULT_THINKING_BUDGET}
 
     if reasoning == ReasoningMode.DYNAMIC:
-        # Claude Opus 4.6 introduced "adaptive" thinking mode. Other models do not
-        # support it; fail fast so callers get an actionable error instead of a
-        # confusing API 400.
         if supports_adaptive_thinking(model_name):
             return {"type": "adaptive"}
         raise ValueError(
-            "Adaptive thinking (ReasoningMode.DYNAMIC) is only supported for Claude Opus 4.6 "
-            "(model 'claude-opus-4-6'). Use ReasoningMode.ENABLED for fixed-budget thinking "
-            "on other Claude models."
+            "Adaptive thinking (ReasoningMode.DYNAMIC) is only supported for "
+            f"{describe_profiles_with_adaptive_thinking()}; model '{model_name}' does not "
+            "support it. Use ReasoningMode.ENABLED for fixed-budget thinking on older Claude "
+            "models."
         )
 
     if reasoning == ReasoningMode.DISABLED:
@@ -102,10 +101,12 @@ def _build_output_config(
     output_config: dict[str, Any] = {}
 
     if effort is not None:
-        if not supports_effort(model_name):
+        allowed_effort_levels = supported_effort_levels(model_name)
+        if not allowed_effort_levels:
             raise ValueError(
-                f"Effort is only supported for Claude Opus 4.5/4.6; model '{model_name}' "
-                "does not support output_config.effort."
+                "Effort is only supported for "
+                f"{describe_profiles_with_effort()}; model '{model_name}' does not support "
+                "output_config.effort."
             )
 
         if not isinstance(effort, str):
@@ -116,10 +117,11 @@ def _build_output_config(
             supported = ", ".join(sorted(_SUPPORTED_EFFORT_LEVELS))
             raise ValueError(f"Invalid effort value '{effort}'. Supported values: {supported}.")
 
-        if normalized == "max" and not supports_max_effort(model_name):
+        if normalized not in allowed_effort_levels:
+            supported = ", ".join(sorted(allowed_effort_levels))
             raise ValueError(
-                "Effort 'max' is only supported for Claude Opus 4.6; "
-                f"model '{model_name}' does not support effort='max'."
+                f"Effort '{normalized}' is not supported for model '{model_name}'. "
+                f"Supported values for this model: {supported}."
             )
 
         output_config["effort"] = normalized

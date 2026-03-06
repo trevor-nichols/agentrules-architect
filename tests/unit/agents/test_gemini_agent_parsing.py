@@ -138,6 +138,38 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(config.thinking_config.thinking_level, thinking_level.LOW)
         self.assertIsNone(config.thinking_config.thinking_budget)
 
+    async def test_gemini31_flash_lite_disabled_maps_to_thinking_level_minimal(self):
+        arch = GeminiArchitect(model_name="gemini-3.1-flash-lite-preview", reasoning=ReasoningMode.DISABLED)
+        arch.client = _GeminiFakeClient()  # type: ignore
+        await arch.analyze({})
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        thinking_level = cast(Any, getattr(genai_types, "ThinkingLevel", None))
+        self.assertIsNotNone(thinking_level)
+        expected_level = getattr(thinking_level, "MINIMAL", thinking_level.LOW)
+        self.assertEqual(config.thinking_config.thinking_level, expected_level)
+        self.assertIsNone(config.thinking_config.thinking_budget)
+
+    async def test_gemini3_flash_medium_maps_to_thinking_level_medium(self):
+        arch = GeminiArchitect(model_name="gemini-3-flash-preview", reasoning=ReasoningMode.MEDIUM)
+        arch.client = _GeminiFakeClient()  # type: ignore
+        await arch.analyze({})
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        thinking_level = cast(Any, getattr(genai_types, "ThinkingLevel", None))
+        self.assertIsNotNone(thinking_level)
+        expected_level = getattr(thinking_level, "MEDIUM", thinking_level.HIGH)
+        self.assertEqual(config.thinking_config.thinking_level, expected_level)
+        self.assertIsNone(config.thinking_config.thinking_budget)
+
+    async def test_gemini31_pro_medium_maps_to_thinking_level_high(self):
+        arch = GeminiArchitect(model_name="gemini-3.1-pro-preview", reasoning=ReasoningMode.MEDIUM)
+        arch.client = _GeminiFakeClient()  # type: ignore
+        await arch.analyze({})
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        thinking_level = cast(Any, getattr(genai_types, "ThinkingLevel", None))
+        self.assertIsNotNone(thinking_level)
+        self.assertEqual(config.thinking_config.thinking_level, thinking_level.HIGH)
+        self.assertIsNone(config.thinking_config.thinking_budget)
+
     async def test_consolidation_disables_tools_even_when_configured(self):
         arch = GeminiArchitect(
             model_name="gemini-2.5-flash",
@@ -186,6 +218,27 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
     async def test_phase_schema_request_keeps_tools_for_gemini3_models(self):
         arch = GeminiArchitect(
             model_name="gemini-3-pro-preview",
+            tools_config={
+                "enabled": True,
+                "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],
+            },
+        )
+        arch.client = _GeminiToolSensitiveClient()  # type: ignore
+
+        with patch(
+            "agentrules.core.agents.gemini.architect.resolve_tool_config",
+            return_value=[{"function_declarations": [{"name": "lookup"}]}],
+        ):
+            _ = await arch.create_analysis_plan({"phase": "Initial Discovery"}, prompt="Return a plan")
+
+        config = arch.client.models.last_call["config"]  # type: ignore[index]
+        self.assertIsNotNone(config)
+        self.assertTrue(bool(getattr(config, "tools", None)))
+        self.assertIsNotNone(getattr(config, "response_json_schema", None))
+
+    async def test_phase_schema_request_keeps_tools_for_gemini31_flash_lite_models(self):
+        arch = GeminiArchitect(
+            model_name="gemini-3.1-flash-lite-preview",
             tools_config={
                 "enabled": True,
                 "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],

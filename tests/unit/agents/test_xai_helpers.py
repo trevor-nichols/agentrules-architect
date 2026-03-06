@@ -19,6 +19,20 @@ def test_prepare_request_sets_reasoning_effort_when_supported() -> None:
     assert payload["reasoning_effort"] == "high"
 
 
+def test_prepare_request_sets_reasoning_effort_for_grok41_when_supported() -> None:
+    defaults = resolve_model_defaults("grok-4-1-fast-reasoning")
+    prepared = prepare_request(
+        model_name="grok-4-1-fast-reasoning",
+        content="Analyze",
+        reasoning=ReasoningMode.HIGH,
+        defaults=defaults,
+        tools=None,
+    )
+
+    payload = prepared.payload
+    assert payload["reasoning_effort"] == "high"
+
+
 def test_prepare_request_prepends_system_message() -> None:
     defaults = resolve_model_defaults("grok-4-fast-reasoning")
     prepared = prepare_request(
@@ -48,3 +62,10 @@ def test_prepare_request_adds_response_format() -> None:
 
     payload = prepared.payload
     assert payload["response_format"] == {"type": "json_object"}
+
+
+def test_resolve_defaults_for_grok41_fast_non_reasoning() -> None:
+    defaults = resolve_model_defaults("grok-4-1-fast-non-reasoning")
+
+    assert defaults.default_reasoning == ReasoningMode.DISABLED
+    assert defaults.reasoning_effort_supported is False

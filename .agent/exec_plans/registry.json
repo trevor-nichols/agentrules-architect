@@ -47,13 +47,81 @@
       "migration": false,
       "owner": "@codex",
       "path": ".agent/exec_plans/active/snapshot-sync/EP-20260301-001_snapshot-sync.md",
-      "risk": "low",
-      "status": "planned",
+      "risk": "med",
+      "status": "done",
       "supersedes": [],
-      "tags": [],
+      "tags": [
+        "snapshot",
+        "cli",
+        "outputs"
+      ],
       "title": "Snapshot artifact generation and comment-preserving sync",
-      "touches": [],
+      "touches": [
+        "cli",
+        "docs",
+        "tests"
+      ],
       "updated": "2026-03-01"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-06",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260306-001",
+      "kind": "refactor",
+      "links": {
+        "docs": "https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-6",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/anthropic-sonnet-46/EP-20260306-001_anthropic-sonnet-46.md",
+      "risk": "low",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "anthropic",
+        "models",
+        "capabilities"
+      ],
+      "title": "Add Claude Sonnet 4.6 with extensible Anthropic capability metadata",
+      "touches": [
+        "agents",
+        "tests"
+      ],
+      "updated": "2026-03-06"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-06",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260306-002",
+      "kind": "refactor",
+      "links": {
+        "docs": "https://ai.google.dev/gemini-api/docs/gemini-3",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/gemini-3-family/EP-20260306-002_gemini-3-family.md",
+      "risk": "low",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "gemini",
+        "google",
+        "models"
+      ],
+      "title": "Add Gemini 3 family preview models with explicit capability profiles",
+      "touches": [
+        "agents",
+        "tests"
+      ],
+      "updated": "2026-03-06"
     }
   ],
   "schema_version": 1
