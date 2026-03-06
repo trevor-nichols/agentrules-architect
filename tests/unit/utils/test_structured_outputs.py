@@ -199,6 +199,11 @@ def test_extract_phase2_agents_filters_non_dict_entries() -> None:
     assert agents == [{"id": "agent_1"}]
 
 
+def test_extract_phase2_agents_preserves_explicit_empty_list() -> None:
+    agents = extract_phase2_agents({"agents": []})
+    assert agents == []
+
+
 def test_augment_prompt_for_json_mode_adds_json_instruction() -> None:
     prompt = augment_prompt_for_json_mode("Analyze project", "phase2")
     assert "Return valid JSON only" in prompt

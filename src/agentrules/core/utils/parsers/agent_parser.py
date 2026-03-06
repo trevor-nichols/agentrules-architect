@@ -436,6 +436,9 @@ def parse_agents_from_phase2(input_data: dict[str, Any] | str) -> list[dict]:
         # Direct access to pre-parsed agents if available
         if "agents" in input_data and isinstance(input_data["agents"], list):
             agents = input_data["agents"]
+            if not agents:
+                logger.info("[bold green]Agents:[/bold green] Found explicit empty pre-parsed agent list")
+                return []
             if _is_valid_preparsed_agents(agents):
                 logger.info(f"[bold green]Agents:[/bold green] Found {len(agents)} pre-parsed agents")
                 return [_normalize_agent_definition(agent) for agent in agents]
@@ -526,6 +529,7 @@ def _is_valid_preparsed_agents(raw_agents: list[Any]) -> bool:
 
     We fail closed on malformed payloads so the parser can fall back to plan/XML
     extraction instead of propagating partial agent definitions to Phase 3.
+    Explicit empty lists are handled by the caller and should not reach here.
     """
     if not raw_agents:
         return False

@@ -130,6 +130,20 @@ def test_parse_agents_from_phase2_accepts_empty_file_assignments_when_shape_vali
     assert out[0]["responsibilities"] == []
 
 
+def test_parse_agents_from_phase2_preserves_explicit_empty_agents_over_fallback_plan():
+    payload = {
+        "agents": [],
+        "plan": (
+            "<analysis_plan>"
+            "<file_assignments><file_path>a.py</file_path></file_assignments>"
+            "</analysis_plan>"
+        ),
+    }
+
+    out = parse_agents_from_phase2(payload)
+    assert out == []
+
+
 def test_parse_agents_from_phase2_normalizes_mixed_responsibilities():
     payload = {
         "agents": [

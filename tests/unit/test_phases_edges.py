@@ -97,6 +97,27 @@ async def test_phase2_invalid_preparsed_agents_falls_back_to_plan(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_phase2_preserves_explicit_empty_structured_agents(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            return {
+                "agents": [],
+                "plan": (
+                    "<analysis_plan>"
+                    "<file_assignments><file_path>a.py</file_path></file_assignments>"
+                    "</analysis_plan>"
+                ),
+            }
+
+    p2 = Phase2Analysis()
+    p2.architect = cast(Any, ArchStub())
+    out = await p2.run({"phase": 1}, ["a.py"])
+    assert out["agents"] == []
+
+
+@pytest.mark.asyncio
 async def test_phase2_non_string_plan_payload_does_not_fail(monkeypatch):
     patch_factory_offline()
 

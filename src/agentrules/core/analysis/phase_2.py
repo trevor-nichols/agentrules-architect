@@ -145,6 +145,11 @@ class Phase2Analysis:
             # back to plan text/XML recovery when structured agents are absent.
             logger.info("[bold]Phase 2:[/bold] Parsing agent definitions from plan")
             agents = parse_agents_from_phase2(analysis_plan_response)
+            explicit_empty_agents = (
+                isinstance(analysis_plan_response, dict)
+                and isinstance(analysis_plan_response.get("agents"), list)
+                and not analysis_plan_response["agents"]
+            )
 
             if agents:
                 logger.info(f"[bold green]Success:[/bold green] Found {len(agents)} agents in the analysis plan")
@@ -157,8 +162,9 @@ class Phase2Analysis:
                         files_count,
                     )
                 self._publish_agent_plan(phase="phase2", agents=agents)
-            # If no agents found, try the fallback approach directly
-            else:
+            # If no agents found, try the fallback approach directly unless the
+            # model explicitly returned an empty agent list.
+            elif not explicit_empty_agents:
                 logger.info(
                     "[bold yellow]Warning:[/bold yellow] No agents found from standard parsing, "
                     "trying fallback",
@@ -173,6 +179,11 @@ class Phase2Analysis:
                         logger.warning("[bold yellow]Warning:[/bold yellow] Fallback parsing couldn't find any agents")
                 except Exception as e:
                     logger.error(f"[bold red]Error:[/bold red] Fallback parsing failed: {str(e)}")
+            else:
+                logger.info(
+                    "[bold]Phase 2:[/bold] Preserving explicit empty structured agent list; "
+                    "skipping fallback parsing",
+                )
 
             # Add the agents to the response dictionary
             analysis_plan_response["agents"] = agents

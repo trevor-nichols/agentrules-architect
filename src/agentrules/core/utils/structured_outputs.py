@@ -523,13 +523,19 @@ def resolve_phase_result_value(
 
 
 def extract_phase2_agents(structured_payload: dict[str, Any] | None) -> list[dict[str, Any]] | None:
-    """Return Phase 2 agent assignments when present and valid."""
+    """Return Phase 2 agent assignments when present and valid.
+
+    An explicit empty list is meaningful for Phase 2 and must be preserved so
+    downstream parsing can distinguish "zero agents" from "agents missing".
+    """
     if not isinstance(structured_payload, dict):
         return None
 
     raw_agents = structured_payload.get("agents")
     if not isinstance(raw_agents, list):
         return None
+    if not raw_agents:
+        return []
 
     agents = [agent for agent in raw_agents if isinstance(agent, dict)]
     if not agents:
