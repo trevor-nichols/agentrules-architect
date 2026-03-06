@@ -5,13 +5,18 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, cast
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
+from agentrules.core.utils.constants import (
+    DEFAULT_RULES_FILENAME,
+    DEFAULT_RULES_TREE_MAX_DEPTH,
+    DEFAULT_SNAPSHOT_FILENAME,
+)
 
 from .models import CLIConfig, ExclusionOverrides, FeatureToggles, OutputPreferences, ProviderConfig
 from .utils import (
     coerce_bool,
     coerce_positive_int,
     coerce_string_list,
+    normalize_output_filename,
     normalize_researcher_mode,
     normalize_rules_filename,
     normalize_verbosity_label,
@@ -51,10 +56,24 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
             outputs_payload.get("generate_phase_outputs") if isinstance(outputs_payload, Mapping) else None,
             default=True,
         ),
+        generate_snapshot=coerce_bool(
+            outputs_payload.get("generate_snapshot") if isinstance(outputs_payload, Mapping) else None,
+            default=True,
+        ),
         rules_filename=normalize_rules_filename(
             outputs_payload.get("rules_filename") if isinstance(outputs_payload, Mapping) else None,
             default=DEFAULT_RULES_FILENAME,
         ),
+        snapshot_filename=normalize_output_filename(
+            outputs_payload.get("snapshot_filename") if isinstance(outputs_payload, Mapping) else None,
+            default=DEFAULT_SNAPSHOT_FILENAME,
+        ),
+        rules_tree_max_depth=coerce_positive_int(
+            outputs_payload.get("rules_tree_max_depth") if isinstance(outputs_payload, Mapping) else None,
+            minimum=1,
+            default=DEFAULT_RULES_TREE_MAX_DEPTH,
+        )
+        or DEFAULT_RULES_TREE_MAX_DEPTH,
     )
 
     exclusions_payload = payload.get("exclusions")
@@ -81,7 +100,7 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
         researcher_mode=normalize_researcher_mode(
             features_payload.get("researcher_mode") if isinstance(features_payload, Mapping) else None,
             default="off",
-        )
+        ),
     )
 
     return CLIConfig(
@@ -118,8 +137,14 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
         outputs_payload["generate_agent_scaffold"] = True
     if not config.outputs.generate_phase_outputs:
         outputs_payload["generate_phase_outputs"] = False
+    if not config.outputs.generate_snapshot:
+        outputs_payload["generate_snapshot"] = False
     if config.outputs.rules_filename != DEFAULT_RULES_FILENAME:
         outputs_payload["rules_filename"] = config.outputs.rules_filename
+    if config.outputs.snapshot_filename != DEFAULT_SNAPSHOT_FILENAME:
+        outputs_payload["snapshot_filename"] = config.outputs.snapshot_filename
+    if config.outputs.rules_tree_max_depth != DEFAULT_RULES_TREE_MAX_DEPTH:
+        outputs_payload["rules_tree_max_depth"] = config.outputs.rules_tree_max_depth
     if outputs_payload:
         payload["outputs"] = outputs_payload
 

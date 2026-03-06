@@ -13,7 +13,7 @@ class ModelDefaults:
 
     default_reasoning: ReasoningMode
     default_temperature: float | None = None
-    use_responses_api: bool = False
+    use_responses_api: bool = True
 
 
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {

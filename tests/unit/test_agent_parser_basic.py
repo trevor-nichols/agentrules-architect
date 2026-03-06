@@ -66,10 +66,12 @@ def test_parse_agent_definition_minimal():
 
 
 def test_parse_agents_from_phase2_preparsed_and_markdown_xml():
-    # Pre-parsed path returns as-is
+    # Pre-parsed path is normalized before returning.
     inp = {"agents": [{"id": "agent_1", "file_assignments": ["a.py"]}]}
     out = parse_agents_from_phase2(inp)
-    assert out == inp["agents"]
+    assert out[0]["id"] == "agent_1"
+    assert out[0]["file_assignments"] == ["a.py"]
+    assert out[0]["responsibilities"] == []
 
     # Markdown-wrapped XML
     md = (
@@ -86,3 +88,87 @@ def test_parse_agents_from_phase2_preparsed_and_markdown_xml():
     assert out2[0]["id"].startswith("agent_")
     assert out2[0]["file_assignments"] == ["a.py"]
 
+
+def test_parse_agents_from_phase2_invalid_preparsed_agents_falls_back_to_plan():
+    md = (
+        "```xml\n"
+        "<analysis_plan>\n"
+        "  <agent_1 name=\"A\">\n"
+        "    <file_assignments><file_path>a.py</file_path></file_assignments>\n"
+        "  </agent_1>\n"
+        "</analysis_plan>\n"
+        "```"
+    )
+
+    out = parse_agents_from_phase2(
+        {
+            "agents": [{"id": "agent_1"}],  # Invalid: missing file_assignments
+            "plan": md,
+        }
+    )
+
+    assert isinstance(out, list) and len(out) == 1
+    assert out[0]["id"] == "agent_1"
+    assert out[0]["file_assignments"] == ["a.py"]
+
+
+def test_parse_agents_from_phase2_accepts_empty_file_assignments_when_shape_valid():
+    payload = {
+        "agents": [
+            {
+                "id": "agent_1",
+                "name": "A",
+                "description": "desc",
+                "file_assignments": [],
+            }
+        ]
+    }
+
+    out = parse_agents_from_phase2(payload)
+    assert out[0]["id"] == "agent_1"
+    assert out[0]["file_assignments"] == []
+    assert out[0]["responsibilities"] == []
+
+
+def test_parse_agents_from_phase2_preserves_explicit_empty_agents_over_fallback_plan():
+    payload = {
+        "agents": [],
+        "plan": (
+            "<analysis_plan>"
+            "<file_assignments><file_path>a.py</file_path></file_assignments>"
+            "</analysis_plan>"
+        ),
+    }
+
+    out = parse_agents_from_phase2(payload)
+    assert out == []
+
+
+def test_parse_agents_from_phase2_normalizes_mixed_responsibilities():
+    payload = {
+        "agents": [
+            {
+                "id": "agent_1",
+                "name": "A",
+                "description": "desc",
+                "responsibilities": ["  keep  ", 7, None, {"skip": True}],
+                "file_assignments": ["a.py"],
+            }
+        ]
+    }
+
+    out = parse_agents_from_phase2(payload)
+    assert out[0]["responsibilities"] == ["keep", "7"]
+
+
+def test_parse_agents_from_phase2_handles_non_string_plan_payload_without_crashing():
+    out = parse_agents_from_phase2(
+        {
+            "plan": {
+                "kind": "json_plan",
+                "meta": {"version": 1},
+            }
+        }
+    )
+
+    assert out == []

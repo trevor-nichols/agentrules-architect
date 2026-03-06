@@ -17,6 +17,18 @@ def test_prepare_request_without_reasoning_skips_thinking() -> None:
     assert "thinking" not in prepared.payload
 
 
+def test_prepare_request_sets_top_level_system_prompt() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-5",
+        prompt="hello",
+        system_prompt="You are a security auditor.",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+    )
+
+    assert prepared.payload["system"] == "You are a security auditor."
+
+
 def test_prepare_request_with_reasoning_includes_budget() -> None:
     prepared: PreparedRequest = prepare_request(
         model_name="claude-sonnet-4-5",
@@ -42,6 +54,17 @@ def test_prepare_request_dynamic_reasoning_passthrough() -> None:
     assert prepared.payload["thinking"] == {"type": "adaptive"}
 
 
+def test_prepare_request_dynamic_reasoning_passthrough_for_sonnet46() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "adaptive"}
+
+
 def test_prepare_request_dynamic_reasoning_unsupported_model_raises() -> None:
     try:
         prepare_request(
@@ -59,6 +82,18 @@ def test_prepare_request_dynamic_reasoning_unsupported_model_raises() -> None:
 def test_prepare_request_effort_adds_output_config() -> None:
     prepared: PreparedRequest = prepare_request(
         model_name="claude-opus-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort="medium",
+    )
+
+    assert prepared.payload["output_config"] == {"effort": "medium"}
+
+
+def test_prepare_request_effort_adds_output_config_for_sonnet46() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-6",
         prompt="hello",
         reasoning=ReasoningMode.DYNAMIC,
         tools=None,
@@ -98,6 +133,21 @@ def test_prepare_request_effort_max_supported_for_opus_46() -> None:
 def test_prepare_request_effort_max_unsupported_model_raises() -> None:
     try:
         prepare_request(
+            model_name="claude-sonnet-4-6",
+            prompt="hello",
+            reasoning=ReasoningMode.DYNAMIC,
+            tools=None,
+            effort="max",
+        )
+    except ValueError as exc:
+        assert "Supported values for this model: high, low, medium" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for effort=max on unsupported model")
+
+
+def test_prepare_request_effort_max_unsupported_for_opus45_raises() -> None:
+    try:
+        prepare_request(
             model_name="claude-opus-4-5-20251101",
             prompt="hello",
             reasoning=ReasoningMode.DISABLED,
@@ -105,6 +155,49 @@ def test_prepare_request_effort_max_unsupported_model_raises() -> None:
             effort="max",
         )
     except ValueError as exc:
-        assert "Effort 'max'" in str(exc)
+        assert "Supported values for this model: high, low, medium" in str(exc)
     else:
         raise AssertionError("Expected ValueError for effort=max on unsupported model")
+
+
+def test_prepare_request_merges_effort_and_output_format() -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-opus-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        effort="low",
+        output_format=output_format,
+    )
+
+    assert prepared.payload["output_config"] == {
+        "effort": "low",
+        "format": output_format,
+    }
+
+
+def test_prepare_request_includes_output_format_for_supported_model() -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        output_format=output_format,
+    )
+
+    assert prepared.payload["output_config"] == {"format": output_format}
+
+
+def test_prepare_request_skips_output_format_for_unsupported_model() -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-opus-4-1",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        output_format=output_format,
+    )
+
+    assert "output_config" not in prepared.payload

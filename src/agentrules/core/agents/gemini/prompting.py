@@ -9,16 +9,11 @@ from typing import Any
 
 def default_prompt_template() -> str:
     """Return the default persona-aware prompt template."""
-    return """You are the {agent_name}, responsible for {agent_role}.
-
-Your specific responsibilities are:
-{agent_responsibilities}
-
-Analyze this project context and provide a detailed report focused on your domain:
-
-{context}
-
-Format your response as a structured report with clear sections and findings."""
+    return (
+        "Project context:\n"
+        "{context}\n\n"
+        "Complete the current analysis task using this context."
+    )
 
 
 def format_prompt(

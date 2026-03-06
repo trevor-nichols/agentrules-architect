@@ -156,6 +156,57 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertFalse(cfg.outputs.generate_agent_scaffold)
         self.assertFalse(self.config_manager.should_generate_agent_scaffold())
 
+    def test_generate_snapshot_preference_persists(self) -> None:
+        self.assertTrue(self.config_manager.should_generate_snapshot())
+
+        self.config_manager.set_generate_snapshot(True)
+        cfg = self.config_manager.load()
+        self.assertTrue(cfg.outputs.generate_snapshot)
+        self.assertTrue(self.config_manager.should_generate_snapshot())
+
+        self.config_manager.set_generate_snapshot(False)
+        cfg = self.config_manager.load()
+        self.assertFalse(cfg.outputs.generate_snapshot)
+        self.assertFalse(self.config_manager.should_generate_snapshot())
+
+    def test_snapshot_filename_persists_and_normalizes(self) -> None:
+        self.config_manager.set_snapshot_filename("SNAPSHOT.custom.md")
+        self.assertEqual(self.config_manager.get_snapshot_filename(), "SNAPSHOT.custom.md")
+
+        self.config_manager.set_snapshot_filename("nested/SNAPSHOT.md")
+        self.assertEqual(self.config_manager.get_snapshot_filename(), "SNAPSHOT.md")
+
+    def test_managed_outputs_use_root_relative_paths(self) -> None:
+        self.config_manager.set_rules_filename("CLAUDE.custom.md")
+        self.config_manager.set_snapshot_filename("SNAPSHOT.custom.md")
+        self.config_manager.remove_exclusion_entry("directories", "phases_output")
+        self.config_manager.remove_exclusion_entry("files", "CLAUDE.custom.md")
+        self.config_manager.remove_exclusion_entry("files", "SNAPSHOT.custom.md")
+
+        directories, files, _extensions = self.config_manager.get_effective_exclusions()
+        managed_paths = self.config_manager.get_managed_output_relative_paths()
+
+        self.assertNotIn("phases_output", directories)
+        self.assertNotIn("CLAUDE.custom.md", files)
+        self.assertNotIn("SNAPSHOT.custom.md", files)
+        self.assertEqual(
+            managed_paths,
+            {".cursorignore", "CLAUDE.custom.md", "SNAPSHOT.custom.md", "phases_output"},
+        )
+
+    def test_rules_tree_depth_defaults_set_and_normalizes(self) -> None:
+        self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 3)
+
+        self.config_manager.set_rules_tree_max_depth(6)
+        self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 6)
+        cfg = self.config_manager.load()
+        self.assertEqual(cfg.outputs.rules_tree_max_depth, 6)
+
+        self.config_manager.set_rules_tree_max_depth(0)
+        self.assertEqual(self.config_manager.get_rules_tree_max_depth(), 3)
+        cfg = self.config_manager.load()
+        self.assertEqual(cfg.outputs.rules_tree_max_depth, 3)
+
     def test_resolve_rules_filename_uses_config_by_default(self) -> None:
         self.config_manager.set_rules_filename("CLAUDE.md")
         self.assertEqual(self.config_manager.resolve_rules_filename(), "CLAUDE.md")

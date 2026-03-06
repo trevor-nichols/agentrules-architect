@@ -13,5 +13,7 @@ def register(app: typer.Typer) -> None:
 
     @app.command("keys")
     def show_keys() -> None:  # type: ignore[func-returns-value]
+        """Show configured provider key status without printing secret values."""
+
         context = bootstrap_runtime()
         show_provider_summary(context)

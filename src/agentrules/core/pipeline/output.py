@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from agentrules.core.pipeline.config import PipelineResult, PipelineSettings
 from agentrules.core.utils.file_creation.agent_scaffold import create_agent_scaffold
 from agentrules.core.utils.file_creation.cursorignore import create_cursorignore
 from agentrules.core.utils.file_creation.phases_output import save_phase_outputs
+from agentrules.core.utils.file_creation.snapshot_artifact import sync_snapshot_artifact
+from agentrules.core.utils.file_creation.snapshot_policy import build_snapshot_additional_exclude_paths
 from agentrules.core.utils.formatters.clean_agentrules import clean_agentrules, ensure_execplans_guidance
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -16,9 +21,12 @@ class PipelineOutputOptions:
     """Runtime flags that control which artifacts get materialized."""
 
     rules_filename: str
+    rules_tree_max_depth: int
+    snapshot_filename: str
     generate_phase_outputs: bool
     generate_cursorignore: bool
     generate_agent_scaffold: bool
+    generate_snapshot: bool
 
 
 @dataclass
@@ -58,6 +66,99 @@ class PipelineOutputWriter:
         if exclusion_summary is not None:
             exclusion_summary["gitignore"] = gitignore_info
 
+        cursorignore_messages: list[str] = []
+        if options.generate_cursorignore:
+            try:
+                success, message = create_cursorignore(str(settings.target_directory))
+            except Exception as error:
+                logger.warning(
+                    "Cursor ignore generation failed for %s: %s",
+                    settings.target_directory,
+                    error,
+                    exc_info=True,
+                )
+                cursorignore_messages.append(f"[yellow]Cursor ignore generation failed:[/] {error}")
+            else:
+                if success:
+                    cursorignore_messages.append(f"[green]{message}[/]")
+                    cursorignore_messages.append(
+                        f"[green]Cursor ignore created at:[/] {settings.target_directory / '.cursorignore'}"
+                    )
+                else:
+                    cursorignore_messages.append(f"[yellow]{message}[/]")
+        else:
+            cursorignore_messages.append("[dim]Skipped .cursorignore generation (disabled in settings).[/]")
+
+        agent_scaffold_messages: list[str] = []
+        if options.generate_agent_scaffold:
+            try:
+                success, scaffold_messages = create_agent_scaffold(settings.target_directory)
+            except Exception as error:
+                logger.warning(
+                    "Agent scaffold generation failed for %s: %s",
+                    settings.target_directory,
+                    error,
+                    exc_info=True,
+                )
+                agent_scaffold_messages.append(f"[yellow]Agent scaffold generation failed:[/] {error}")
+            else:
+                if success:
+                    for scaffold_message in scaffold_messages:
+                        style = "dim" if scaffold_message.startswith("Skipped ") else "green"
+                        agent_scaffold_messages.append(f"[{style}]{scaffold_message}[/]")
+                else:
+                    for scaffold_message in scaffold_messages:
+                        agent_scaffold_messages.append(f"[yellow]{scaffold_message}[/]")
+        else:
+            agent_scaffold_messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
+
+        snapshot_reference_filename: str | None = None
+        snapshot_messages: list[str] = []
+        snapshot_output_path = settings.target_directory / options.snapshot_filename
+        if options.generate_snapshot:
+            try:
+                snapshot_result = sync_snapshot_artifact(
+                    settings.target_directory,
+                    output_path=snapshot_output_path,
+                    tree_max_depth=settings.tree_max_depth,
+                    exclude_dirs=set(settings.effective_exclusions.directories),
+                    exclude_files=set(settings.effective_exclusions.files),
+                    exclude_extensions=set(settings.effective_exclusions.extensions),
+                    gitignore_spec=result.snapshot.gitignore.spec,
+                    include_file_contents=True,
+                    additional_exclude_relative_paths=build_snapshot_additional_exclude_paths(
+                        options.rules_filename,
+                        options.snapshot_filename,
+                    ),
+                    write=True,
+                )
+            except Exception as error:
+                logger.warning(
+                    "Snapshot artifact generation failed for %s: %s",
+                    settings.target_directory,
+                    error,
+                    exc_info=True,
+                )
+                if snapshot_output_path.is_file():
+                    snapshot_reference_filename = options.snapshot_filename
+                snapshot_messages.append(f"[yellow]Snapshot artifact generation failed:[/] {error}")
+            else:
+                snapshot_reference_filename = options.snapshot_filename
+                if snapshot_result.changed:
+                    snapshot_messages.append(
+                        "[green]Snapshot artifact written to:[/] "
+                        f"{snapshot_result.output_path} "
+                        f"([green]+{len(snapshot_result.added_paths)}[/], "
+                        f"[red]-{len(snapshot_result.removed_paths)}[/], "
+                        f"{snapshot_result.preserved_comments} comments preserved)"
+                    )
+                else:
+                    snapshot_messages.append(
+                        f"[dim]Snapshot artifact already up-to-date:[/] {snapshot_result.output_path}"
+                    )
+        else:
+            snapshot_messages.append("[dim]Skipped snapshot artifact generation (disabled in settings).[/]")
+
         save_phase_outputs(
             settings.target_directory,
             analysis_data,
@@ -67,6 +168,8 @@ class PipelineOutputWriter:
             gitignore_spec=result.snapshot.gitignore.spec,
             gitignore_info=gitignore_info,
             tree_max_depth=settings.tree_max_depth,
+            rules_tree_max_depth=options.rules_tree_max_depth,
+            snapshot_reference_filename=snapshot_reference_filename,
         )
 
         messages: list[str] = []
@@ -79,30 +182,9 @@ class PipelineOutputWriter:
 
         rules_path = settings.target_directory / options.rules_filename
         messages.append(f"[green]Agent rules created at:[/] {rules_path}")
-
-        if options.generate_cursorignore:
-            success, message = create_cursorignore(str(settings.target_directory))
-            if success:
-                messages.append(f"[green]{message}[/]")
-                messages.append(
-                    f"[green]Cursor ignore created at:[/] {settings.target_directory / '.cursorignore'}"
-                )
-            else:
-                messages.append(f"[yellow]{message}[/]")
-        else:
-            messages.append("[dim]Skipped .cursorignore generation (disabled in settings).[/]")
-
-        if options.generate_agent_scaffold:
-            success, scaffold_messages = create_agent_scaffold(settings.target_directory)
-            if success:
-                for scaffold_message in scaffold_messages:
-                    style = "dim" if scaffold_message.startswith("Skipped ") else "green"
-                    messages.append(f"[{style}]{scaffold_message}[/]")
-            else:
-                for scaffold_message in scaffold_messages:
-                    messages.append(f"[yellow]{scaffold_message}[/]")
-        else:
-            messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
+        messages.extend(cursorignore_messages)
+        messages.extend(agent_scaffold_messages)
+        messages.extend(snapshot_messages)
 
         success, message = clean_agentrules(
             str(settings.target_directory),

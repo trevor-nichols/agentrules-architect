@@ -56,6 +56,96 @@ def test_list_files_respects_exclusions_and_depth(tmp_path: Path):
     assert "deep/d1/d2/d3/deep.py" not in rels  # beyond max_depth
 
 
+def test_list_files_applies_new_default_exclusion_patterns(tmp_path: Path):
+    (tmp_path / "keep.py").write_text("print('keep')")
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "config.md").write_text("claude")
+    (tmp_path / ".codex").mkdir()
+    (tmp_path / ".codex" / "state.json").write_text("{}")
+    (tmp_path / ".cursor").mkdir()
+    (tmp_path / ".cursor" / "rules.mdc").write_text("x")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "workflow.yml").write_text("name: ci")
+    (tmp_path / ".custom_cache").mkdir()
+    (tmp_path / ".custom_cache" / "cached.py").write_text("cached")
+    (tmp_path / "pkg.egg-info").mkdir()
+    (tmp_path / "pkg.egg-info" / "PKG-INFO").write_text("metadata")
+    (tmp_path / "AGENTS.md").write_text("rules")
+    (tmp_path / "CLAUDE.md").write_text("rules")
+    (tmp_path / ".python-version").write_text("3.11.9")
+    (tmp_path / "diagram.svgz").write_text("svg")
+    (tmp_path / "animation.gifv").write_text("gif")
+    (tmp_path / "PHOTO.PNG").write_text("png")
+
+    files = list(list_files(tmp_path, max_depth=3))
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "keep.py" in rels
+    assert ".claude/config.md" not in rels
+    assert ".codex/state.json" not in rels
+    assert ".cursor/rules.mdc" not in rels
+    assert ".github/workflow.yml" not in rels
+    assert ".custom_cache/cached.py" not in rels
+    assert "pkg.egg-info/PKG-INFO" not in rels
+    assert "AGENTS.md" not in rels
+    assert "CLAUDE.md" not in rels
+    assert ".python-version" not in rels
+    assert "diagram.svgz" not in rels
+    assert "animation.gifv" not in rels
+    assert "PHOTO.PNG" not in rels
+
+
+def test_list_files_skips_symlink_entries_when_follow_symlinks_disabled(tmp_path: Path):
+    external = tmp_path / "external"
+    external.mkdir()
+    (external / "secret.txt").write_text("secret")
+
+    (tmp_path / "linked").symlink_to(external, target_is_directory=True)
+    (tmp_path / "keep.py").write_text("print('ok')")
+
+    files = list(list_files(tmp_path, max_depth=3, follow_symlinks=False))
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "keep.py" in rels
+    assert "linked/secret.txt" not in rels
+
+
+def test_list_files_exclude_relative_paths_matches_case_insensitively(tmp_path: Path):
+    (tmp_path / "Snapshot.md").write_text("snapshot")
+    (tmp_path / "keep.py").write_text("print('ok')")
+
+    files = list(
+        list_files(
+            tmp_path,
+            max_depth=3,
+            exclude_relative_paths={"snapshot.md"},
+        )
+    )
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "keep.py" in rels
+    assert "Snapshot.md" not in rels
+
+
+def test_list_files_exclude_relative_paths_only_affects_project_root(tmp_path: Path):
+    (tmp_path / "PROJECT_SNAPSHOT.md").write_text("root snapshot")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "PROJECT_SNAPSHOT.md").write_text("nested notes")
+
+    files = list(
+        list_files(
+            tmp_path,
+            max_depth=3,
+            exclude_relative_paths={"PROJECT_SNAPSHOT.md"},
+        )
+    )
+    rels = {f.relative_to(tmp_path).as_posix() for f in files}
+
+    assert "PROJECT_SNAPSHOT.md" not in rels
+    assert "docs/PROJECT_SNAPSHOT.md" in rels
+
+
 def test_get_file_contents_respects_size_and_max_files(tmp_path: Path):
     small1 = tmp_path / "s1.py"
     small2 = tmp_path / "s2.txt"

@@ -9,6 +9,15 @@ from typing import Any
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.structured_outputs import (
+    augment_prompt_for_json_mode,
+    build_chat_json_object_response_format,
+    extract_phase2_agents,
+    get_phase_model_response_schema,
+    resolve_phase_result_value,
+    resolve_structured_output_mode,
+)
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_chat_completion, get_client
@@ -34,6 +43,7 @@ class DeepSeekArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         base_url: str | None = None,
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
@@ -65,6 +75,7 @@ class DeepSeekArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
 
         self.prompt_template = prompt_template or default_prompt_template()
@@ -84,9 +95,48 @@ class DeepSeekArchitect(BaseArchitect):
             context=context,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "DeepSeek Architect",
+                agent_role=self.role or "code architecture analysis",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict[str, Any], tools: list[Any] | None = None) -> dict[str, Any]:
         try:
+            phase_name = context.get("_structured_output_phase")
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
+            force_unstructured = bool(context.get("_force_unstructured_output"))
+            mode = (
+                "disabled"
+                if force_unstructured
+                else resolve_structured_output_mode(
+                    provider=self.provider,
+                    model_name=self.model_name,
+                    phase=phase_name,
+                )
+            )
+            response_format = (
+                build_chat_json_object_response_format(self.provider, phase_name)
+                if mode == "json_object"
+                else None
+            )
+            if response_format is not None:
+                content = augment_prompt_for_json_mode(content, phase_name)
+            elif get_phase_model_response_schema(phase_name) is not None:
+                logger.info(
+                    (
+                        "[bold teal]%s:[/bold teal] Structured output disabled for %s on model %s; "
+                        "using plain-text fallback."
+                    ),
+                    self.name or "DeepSeek Architect",
+                    phase_name or "this phase",
+                    self.model_name,
+                )
 
             provider_tools = resolve_tool_config(
                 tools,
@@ -105,7 +155,12 @@ class DeepSeekArchitect(BaseArchitect):
                     self.model_name,
                 )
 
-            prepared = self._prepare_request(content, provider_tools)
+            prepared = self._prepare_request(
+                content,
+                provider_tools,
+                system_prompt=system_prompt,
+                response_format=response_format,
+            )
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -159,6 +214,7 @@ class DeepSeekArchitect(BaseArchitect):
     ) -> AsyncIterator[StreamChunk]:
         async def _generator() -> AsyncIterator[StreamChunk]:
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
 
             provider_tools = resolve_tool_config(
                 tools,
@@ -177,7 +233,7 @@ class DeepSeekArchitect(BaseArchitect):
                     self.model_name,
                 )
 
-            prepared = self._prepare_request(content, provider_tools)
+            prepared = self._prepare_request(content, provider_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -211,7 +267,12 @@ class DeepSeekArchitect(BaseArchitect):
         context: dict[str, Any] = {"phase1_results": phase1_results}
         if prompt:
             context["formatted_prompt"] = prompt
-        return await self._run_phase_request(context, result_key="plan", empty_value="No plan generated")
+        return await self._run_phase_request(
+            context,
+            phase_name="phase2",
+            result_key="plan",
+            empty_value="No plan generated",
+        )
 
     async def synthesize_findings(self, phase3_results: dict, prompt: str | None = None) -> dict[str, Any]:
         context: dict[str, Any] = {"phase3_results": phase3_results}
@@ -219,6 +280,7 @@ class DeepSeekArchitect(BaseArchitect):
             context["formatted_prompt"] = prompt
         return await self._run_phase_request(
             context,
+            phase_name="phase4",
             result_key="analysis",
             empty_value="No synthesis generated",
         )
@@ -229,6 +291,7 @@ class DeepSeekArchitect(BaseArchitect):
             context["formatted_prompt"] = prompt
         return await self._run_phase_request(
             context,
+            phase_name="final",
             result_key="analysis",
             empty_value="No final analysis generated",
         )
@@ -239,6 +302,7 @@ class DeepSeekArchitect(BaseArchitect):
             context["formatted_prompt"] = prompt
         response = await self._run_phase_request(
             context,
+            phase_name="phase5",
             result_key="report",
             empty_value="No report generated",
             include_phase=True,
@@ -268,14 +332,23 @@ class DeepSeekArchitect(BaseArchitect):
         return execute_chat_completion(prepared.payload, base_url=self.base_url)
 
     # Internal helpers -----------------------------------------------------------
-    def _prepare_request(self, content: str, tools: list[Any] | None) -> PreparedRequest:
+    def _prepare_request(
+        self,
+        content: str,
+        tools: list[Any] | None,
+        *,
+        system_prompt: str | None = None,
+        response_format: dict[str, Any] | None = None,
+    ) -> PreparedRequest:
         return prepare_request(
             model_name=self.model_name,
             content=content,
+            system_prompt=system_prompt if system_prompt is not None else self._resolve_system_prompt(None),
             reasoning=self.reasoning,
             defaults=self._defaults,
             tools=tools,
             temperature=self.temperature,
+            response_format=response_format,
         )
 
     def _log_token_estimate(self, prepared: PreparedRequest) -> None:
@@ -303,13 +376,24 @@ class DeepSeekArchitect(BaseArchitect):
         self,
         context: dict[str, Any],
         *,
+        phase_name: str,
         result_key: str,
         empty_value: str,
         include_phase: bool = False,
     ) -> dict[str, Any]:
-        result = await self.analyze(context)
+        request_context = dict(context)
+        request_context["_structured_output_phase"] = phase_name
+        result = await self.analyze(request_context)
+
+        value, structured_payload = resolve_phase_result_value(
+            phase=phase_name,
+            result_key=result_key,
+            findings=result.get("findings"),
+            empty_value=empty_value,
+        )
+
         response: dict[str, Any] = {
-            result_key: result.get("findings") or empty_value,
+            result_key: value,
             "reasoning": result.get("reasoning"),
         }
 
@@ -318,6 +402,12 @@ class DeepSeekArchitect(BaseArchitect):
 
         if result.get("tool_calls"):
             response["tool_calls"] = result["tool_calls"]
+        if structured_payload is not None:
+            response["structured_output"] = structured_payload
+            if phase_name == "phase2":
+                phase2_agents = extract_phase2_agents(structured_payload)
+                if phase2_agents is not None:
+                    response["agents"] = phase2_agents
         if result.get("error"):
             response["error"] = result["error"]
         return response

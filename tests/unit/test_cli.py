@@ -102,6 +102,43 @@ class CLITestCase(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Rules filename override must be a file name, not a path.", result.output)
 
+    def test_analyze_command_exits_nonzero_when_pipeline_reports_invalid_config(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.analyze.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.analyze.run_pipeline"
+        ) as mock_run_pipeline:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+            mock_run_pipeline.return_value = False
+            result = runner.invoke(
+                cli.app,
+                ["analyze", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 2, msg=result.output)
+        mock_run_pipeline.assert_called_once()
+
+    def test_root_help_includes_descriptions_for_core_commands(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.app,
+            ["--help"],
+            env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+        )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Analyze a project directory and generate rules artifacts.", result.output)
+        self.assertIn("Configure provider keys, model presets, logging, and", result.output)
+        self.assertIn("output settings.", result.output)
+        self.assertIn("Show configured provider key status without printing", result.output)
+        self.assertIn("secret values.", result.output)
+
     def test_scaffold_sync_check_exits_nonzero_when_drift_detected(self) -> None:
         from agentrules import cli
         from agentrules.core.utils.file_creation.agent_scaffold import AgentScaffoldSyncResult
@@ -143,3 +180,303 @@ class CLITestCase(unittest.TestCase):
 
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Choose either --check or --force, not both.", result.output)
+
+    def test_snapshot_find_searches_recursively_from_path(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "SNAPSHOT.md").write_text("root\n", encoding="utf-8")
+            nested = root / "services" / "payments"
+            nested.mkdir(parents=True)
+            (nested / "SNAPSHOT.md").write_text("nested\n", encoding="utf-8")
+            (nested / "notes.md").write_text("ignore\n", encoding="utf-8")
+
+            with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+                "agentrules.cli.commands.snapshot.get_config_manager"
+            ) as mock_get_config_manager:
+                context = MagicMock()
+                mock_bootstrap.return_value = context
+                mock_config = MagicMock()
+                mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+                mock_get_config_manager.return_value = mock_config
+
+                result = runner.invoke(
+                    cli.app,
+                    ["snapshot", "find", str(root)],
+                    env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+                )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("Found 2 SNAPSHOT.md files under:", printed)
+        self.assertIn("-[/] SNAPSHOT.md", printed)
+        self.assertIn("-[/] services/payments/SNAPSHOT.md", printed)
+
+    def test_snapshot_find_reports_when_no_matching_files_exist(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "README.md").write_text("hello\n", encoding="utf-8")
+
+            with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+                "agentrules.cli.commands.snapshot.get_config_manager"
+            ) as mock_get_config_manager:
+                context = MagicMock()
+                mock_bootstrap.return_value = context
+                mock_config = MagicMock()
+                mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+                mock_get_config_manager.return_value = mock_config
+
+                result = runner.invoke(
+                    cli.app,
+                    ["snapshot", "find", str(root)],
+                    env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+                )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("No SNAPSHOT.md files found under:", printed)
+
+    def test_snapshot_sync_dry_run_uses_config_filename(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            mock_sync_snapshot.return_value = MagicMock(
+                changed=True,
+                output_path=Path.cwd() / "SNAPSHOT.md",
+                tree_entries=3,
+                file_entries=2,
+                preserved_comments=1,
+                added_paths=("src/new.py",),
+                removed_paths=(),
+            )
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd()), "--dry-run"],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_sync_snapshot.assert_called_once()
+        kwargs = mock_sync_snapshot.call_args.kwargs
+        self.assertEqual(kwargs["output_path"], Path.cwd() / "SNAPSHOT.md")
+        self.assertEqual(
+            kwargs["additional_exclude_relative_paths"],
+            {".cursorignore", "phases_output", "AGENTS.md"},
+        )
+        self.assertFalse(kwargs["write"])
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("Snapshot would be updated:", printed)
+        self.assertIn("1[/] path changed", printed)
+        self.assertIn("Dry run only: no files were written.", printed)
+        self.assertNotIn("Added paths:", printed)
+        self.assertNotIn("Removed paths:", printed)
+
+    def test_snapshot_sync_reports_when_no_updates_are_needed(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            mock_sync_snapshot.return_value = MagicMock(
+                changed=False,
+                output_path=Path.cwd() / "SNAPSHOT.md",
+                tree_entries=3,
+                file_entries=2,
+                preserved_comments=1,
+                added_paths=(),
+                removed_paths=(),
+            )
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_sync_snapshot.assert_called_once()
+        printed = " ".join(
+            str(call.args[0]) for call in context.console.print.call_args_list if call.args
+        )
+        self.assertIn("No snapshot updates needed:", printed)
+        self.assertNotIn("path changed", printed)
+
+    def test_snapshot_sync_rejects_filename_paths(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        result = runner.invoke(
+            cli.app,
+            ["snapshot", "sync", str(Path.cwd()), "--filename", "nested/SNAPSHOT.md"],
+            env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+        )
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("must be a file name, not a path", result.output)
+
+    def test_snapshot_sync_rejects_filename_collision_with_rules_output(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = "AGENTS.md"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 2, msg=result.output)
+        mock_sync_snapshot.assert_not_called()
+
+    def test_snapshot_sync_rejects_cursorignore_filename(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = ".cursorignore"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 2, msg=result.output)
+        mock_sync_snapshot.assert_not_called()
+
+    def test_snapshot_sync_rejects_phases_output_filename(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = "phases_output"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 2, msg=result.output)
+        mock_sync_snapshot.assert_not_called()
+
+    def test_snapshot_sync_rejects_dot_segment_filename(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = ".."
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_tree_max_depth.return_value = 5
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd())],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 2, msg=result.output)
+        mock_sync_snapshot.assert_not_called()

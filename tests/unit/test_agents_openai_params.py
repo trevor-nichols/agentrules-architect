@@ -6,9 +6,9 @@ def test_openai_params_reasoning_effort_for_o3():
     arch = OpenAIArchitect(model_name="o3", reasoning=ReasoningMode.HIGH)
     prepared = arch._prepare_request("hello")
     params = prepared.payload
-    assert prepared.api == "chat"
+    assert prepared.api == "responses"
     assert params["model"] == "o3"
-    assert params["reasoning_effort"] == "high"
+    assert params["reasoning"] == {"effort": "high"}
 
 
 def test_openai_params_temperature_for_gpt41():
@@ -24,5 +24,12 @@ def test_openai_params_adds_tools_when_provided():
     tools = [{"type": "function", "function": {"name": "t", "parameters": {"type": "object", "properties": {}}}}]
     prepared = arch._prepare_request("hello", tools=tools)
     params = prepared.payload
-    assert params["tools"] == tools
+    assert params["tools"] == [
+        {
+            "type": "function",
+            "name": "t",
+            "description": "",
+            "parameters": {"type": "object", "properties": {}},
+        }
+    ]
     assert params["tool_choice"] == "auto"

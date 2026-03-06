@@ -9,6 +9,14 @@ from typing import Any
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.structured_outputs import (
+    build_anthropic_output_format,
+    extract_phase2_agents,
+    get_phase_model_response_schema,
+    resolve_phase_result_value,
+    resolve_structured_output_mode,
+)
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_message_request, execute_message_stream, get_client
@@ -31,6 +39,7 @@ class AnthropicArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
     ) -> None:
@@ -43,6 +52,7 @@ class AnthropicArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
         self.prompt_template = prompt_template or default_prompt_template()
 
@@ -60,11 +70,50 @@ class AnthropicArchitect(BaseArchitect):
             context=context,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "Claude Architect",
+                agent_role=self.role or "analyzing the project",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict[str, Any], tools: list[Any] | None = None) -> dict[str, Any]:
         try:
+            phase_name = context.get("_structured_output_phase")
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
-            prepared = self._prepare_request(prompt, provider_tools)
+            force_unstructured = bool(context.get("_force_unstructured_output"))
+            mode = (
+                "disabled"
+                if force_unstructured
+                else resolve_structured_output_mode(
+                    provider=self.provider,
+                    model_name=self.model_name,
+                    phase=phase_name,
+                )
+            )
+            output_format = build_anthropic_output_format(phase_name) if mode == "json_schema" else None
+            if output_format is None and get_phase_model_response_schema(phase_name) is not None:
+                logger.info(
+                    (
+                        "[bold purple]%s:[/bold purple] Structured output schema requested for %s, "
+                        "but model %s does not support structured schema mode. "
+                        "Falling back to plain-text output."
+                    ),
+                    self.name or "Claude Architect",
+                    phase_name or "this phase",
+                    self.model_name,
+                )
+            prepared = self._prepare_request(
+                prompt,
+                provider_tools,
+                system_prompt=system_prompt,
+                output_format=output_format,
+            )
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -124,8 +173,9 @@ class AnthropicArchitect(BaseArchitect):
     ) -> AsyncIterator[StreamChunk]:
         async def _generator() -> AsyncIterator[StreamChunk]:
             prompt = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
-            prepared = self._prepare_request(prompt, provider_tools)
+            prepared = self._prepare_request(prompt, provider_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
@@ -164,40 +214,34 @@ class AnthropicArchitect(BaseArchitect):
         context: dict[str, Any] = {"phase1_results": phase1_results}
         if prompt:
             context["formatted_prompt"] = prompt
-        result = await self.analyze(context)
-        response: dict[str, Any] = {
-            "plan": result.get("findings", "No plan generated"),
-            "error": result.get("error"),
-        }
-        if result.get("tool_calls"):
-            response["tool_calls"] = result["tool_calls"]
-        return response
+        return await self._run_phase_request(
+            context,
+            phase_name="phase2",
+            result_key="plan",
+            empty_value="No plan generated",
+        )
 
     async def synthesize_findings(self, phase3_results: dict, prompt: str | None = None) -> dict[str, Any]:
         context: dict[str, Any] = {"phase3_results": phase3_results}
         if prompt:
             context["formatted_prompt"] = prompt
-        result = await self.analyze(context)
-        response: dict[str, Any] = {
-            "analysis": result.get("findings", "No synthesis generated"),
-            "error": result.get("error"),
-        }
-        if result.get("tool_calls"):
-            response["tool_calls"] = result["tool_calls"]
-        return response
+        return await self._run_phase_request(
+            context,
+            phase_name="phase4",
+            result_key="analysis",
+            empty_value="No synthesis generated",
+        )
 
     async def final_analysis(self, consolidated_report: dict, prompt: str | None = None) -> dict[str, Any]:
         context: dict[str, Any] = {"consolidated_report": consolidated_report}
         if prompt:
             context["formatted_prompt"] = prompt
-        result = await self.analyze(context)
-        response: dict[str, Any] = {
-            "analysis": result.get("findings", "No final analysis generated"),
-            "error": result.get("error"),
-        }
-        if result.get("tool_calls"):
-            response["tool_calls"] = result["tool_calls"]
-        return response
+        return await self._run_phase_request(
+            context,
+            phase_name="final",
+            result_key="analysis",
+            empty_value="No final analysis generated",
+        )
 
     async def consolidate_results(self, all_results: dict, prompt: str | None = None) -> dict[str, Any]:
         content = prompt or (
@@ -205,15 +249,14 @@ class AnthropicArchitect(BaseArchitect):
             f"{json.dumps(all_results, indent=2)}"
         )
 
-        result = await self.analyze({"formatted_prompt": content})
-        response: dict[str, Any] = {
-            "phase": "Consolidation",
-            "report": result.get("findings", "No report generated"),
-        }
-        if result.get("error"):
-            response["error"] = result["error"]
-        if result.get("tool_calls"):
-            response["tool_calls"] = result["tool_calls"]
+        response = await self._run_phase_request(
+            {"formatted_prompt": content},
+            phase_name="phase5",
+            result_key="report",
+            empty_value="No report generated",
+            include_phase=True,
+        )
+        response.setdefault("phase", "Consolidation")
         return response
 
     # Internal helpers -----------------------------------------------------------
@@ -221,14 +264,55 @@ class AnthropicArchitect(BaseArchitect):
         self,
         prompt: str,
         tools: list[Any] | None,
+        *,
+        system_prompt: str | None = None,
+        output_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
         return prepare_request(
             model_name=self.model_name,
             prompt=prompt,
+            system_prompt=system_prompt if system_prompt is not None else self._resolve_system_prompt(None),
             reasoning=self.reasoning,
             tools=tools,
             effort=getattr(self._model_config, "anthropic_effort", None),
+            output_format=output_format,
         )
+
+    async def _run_phase_request(
+        self,
+        context: dict[str, Any],
+        *,
+        phase_name: str,
+        result_key: str,
+        empty_value: str,
+        include_phase: bool = False,
+    ) -> dict[str, Any]:
+        request_context = dict(context)
+        request_context["_structured_output_phase"] = phase_name
+        result = await self.analyze(request_context)
+
+        value, structured_payload = resolve_phase_result_value(
+            phase=phase_name,
+            result_key=result_key,
+            findings=result.get("findings"),
+            empty_value=empty_value,
+        )
+
+        response: dict[str, Any] = {
+            result_key: value,
+            "error": result.get("error"),
+        }
+        if result.get("tool_calls"):
+            response["tool_calls"] = result["tool_calls"]
+        if include_phase:
+            response["phase"] = "Consolidation"
+        if structured_payload is not None:
+            response["structured_output"] = structured_payload
+            if phase_name == "phase2":
+                phase2_agents = extract_phase2_agents(structured_payload)
+                if phase2_agents is not None:
+                    response["agents"] = phase2_agents
+        return response
 
     def _log_token_estimate(self, prepared: PreparedRequest) -> None:
         result = estimate_tokens(

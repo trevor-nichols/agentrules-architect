@@ -55,3 +55,23 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.config_manager.set_phase_model("phase1", None)
         self.model_config.apply_user_overrides()
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase1"], default_config)
+
+    def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
+        self.assertIn("gpt-5.2-codex", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt-5.3-codex", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt-5.4-2026-03-05", self.agents_module.MODEL_PRESETS)
+
+    def test_anthropic_registry_includes_claude_sonnet_46_presets(self) -> None:
+        self.assertIn("claude-sonnet-4.6", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-sonnet-4.6-reasoning-high", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-sonnet-4.6-reasoning-medium", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-sonnet-4.6-reasoning-low", self.agents_module.MODEL_PRESETS)
+
+    def test_xai_registry_includes_new_grok41_fast_presets(self) -> None:
+        self.assertIn("grok-4-1-fast-reasoning", self.agents_module.MODEL_PRESETS)
+        self.assertIn("grok-4-1-fast-non-reasoning", self.agents_module.MODEL_PRESETS)
+
+    def test_gemini_registry_includes_new_gemini3_preview_presets(self) -> None:
+        self.assertIn("gemini-3-flash-preview", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gemini-3.1-flash-lite-preview", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gemini-3.1-pro-preview", self.agents_module.MODEL_PRESETS)

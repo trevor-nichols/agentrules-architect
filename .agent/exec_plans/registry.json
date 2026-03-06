@@ -1,0 +1,159 @@
+{
+  "plans": [
+    {
+      "breaking": false,
+      "created": "2026-02-21",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260221-001",
+      "kind": "refactor",
+      "links": {
+        "docs": "internal-docs/integrations",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/structured-output-contracts/EP-20260221-001_structured-output-contracts.md",
+      "risk": "med",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "structured-outputs",
+        "schemas",
+        "providers"
+      ],
+      "title": "Structured outputs contracts across analysis phases",
+      "touches": [
+        "agents",
+        "cli",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-02-21"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-01",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260301-001",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/snapshot-sync/EP-20260301-001_snapshot-sync.md",
+      "risk": "med",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "snapshot",
+        "cli",
+        "outputs"
+      ],
+      "title": "Snapshot artifact generation and comment-preserving sync",
+      "touches": [
+        "cli",
+        "docs",
+        "tests"
+      ],
+      "updated": "2026-03-01"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-06",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260306-001",
+      "kind": "refactor",
+      "links": {
+        "docs": "https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-6",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/anthropic-sonnet-46/EP-20260306-001_anthropic-sonnet-46.md",
+      "risk": "low",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "anthropic",
+        "models",
+        "capabilities"
+      ],
+      "title": "Add Claude Sonnet 4.6 with extensible Anthropic capability metadata",
+      "touches": [
+        "agents",
+        "tests"
+      ],
+      "updated": "2026-03-06"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-06",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260306-002",
+      "kind": "refactor",
+      "links": {
+        "docs": "https://ai.google.dev/gemini-api/docs/gemini-3",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/gemini-3-family/EP-20260306-002_gemini-3-family.md",
+      "risk": "low",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "gemini",
+        "google",
+        "models"
+      ],
+      "title": "Add Gemini 3 family preview models with explicit capability profiles",
+      "touches": [
+        "agents",
+        "tests"
+      ],
+      "updated": "2026-03-06"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-06",
+      "depends_on": [],
+      "domain": "infra",
+      "id": "EP-20260306-003",
+      "kind": "infra",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/release-automation/EP-20260306-003_release-automation.md",
+      "risk": "low",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "github",
+        "releases",
+        "ci"
+      ],
+      "title": "Add tag-driven GitHub release automation",
+      "touches": [
+        "ops",
+        "docs",
+        "tests"
+      ],
+      "updated": "2026-03-06"
+    }
+  ],
+  "schema_version": 1
+}

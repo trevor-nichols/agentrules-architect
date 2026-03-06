@@ -32,12 +32,14 @@ def build_project_snapshot(settings: PipelineSettings) -> ProjectSnapshot:
         exclude_files=exclude_files,
         exclude_extensions=exclude_exts,
         gitignore_spec=gitignore_spec,
+        exclude_relative_paths=set(settings.exclude_relative_paths),
     )
     tree = _strip_tree_delimiters(tree_with_delimiters)
 
     dependency_info = collect_dependency_info(
         settings.target_directory,
         gitignore_spec=gitignore_spec,
+        exclude_relative_paths=set(settings.exclude_relative_paths),
     )
 
     return ProjectSnapshot(

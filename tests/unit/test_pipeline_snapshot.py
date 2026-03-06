@@ -33,6 +33,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
                     files=frozenset({"notes.txt"}),
                     extensions=frozenset({".log"}),
                 ),
+                exclude_relative_paths=frozenset({"AGENTS.custom.md", "SNAPSHOT.custom.md"}),
                 exclusion_overrides=None,
             )
 
@@ -56,11 +57,13 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         self.assertEqual(kwargs["exclude_dirs"], {"build"})
         self.assertEqual(kwargs["exclude_files"], {"notes.txt"})
         self.assertEqual(kwargs["exclude_extensions"], {".log"})
+        self.assertEqual(kwargs["exclude_relative_paths"], {"AGENTS.custom.md", "SNAPSHOT.custom.md"})
         self.assertIs(kwargs["gitignore_spec"], spec)
 
         mock_collect_dependency.assert_called_once_with(
             target_directory,
             gitignore_spec=spec,
+            exclude_relative_paths={"AGENTS.custom.md", "SNAPSHOT.custom.md"},
         )
 
         self.assertEqual(snapshot.tree_with_delimiters, ("<project_structure>", "src/", "</project_structure>"))
@@ -90,6 +93,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
                     files=frozenset(),
                     extensions=frozenset(),
                 ),
+                exclude_relative_paths=frozenset(),
                 exclusion_overrides=None,
             )
 
@@ -106,10 +110,12 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         self.assertEqual(kwargs["exclude_dirs"], set())
         self.assertEqual(kwargs["exclude_files"], set())
         self.assertEqual(kwargs["exclude_extensions"], set())
+        self.assertEqual(kwargs["exclude_relative_paths"], set())
 
         mock_collect_dependency.assert_called_once_with(
             target_directory,
             gitignore_spec=None,
+            exclude_relative_paths=set(),
         )
 
         self.assertEqual(snapshot.tree_with_delimiters, ("src/", "tests/"))

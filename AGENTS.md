@@ -9,6 +9,8 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 - Prioritize long-term maintainability and auditability.
 - Use type annotations and keep stubs (.pyi) in sync with implementation.
 - When unsure about the best approach, gather more data (run tests, reproduce locally, add lightweight probes) rather than guessing.
+- When writing complex features or significant refactors, use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.
+- Keep this AGENTS.md file up-to-date and update/edit for any significant changes.
 
 # 2. TEMPORAL FRAMEWORK
 
@@ -45,6 +47,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Concurrency defaults: AGENTRULES_IO_CONCURRENCY = 8 (configurable)
 - Token cache: in-memory per-run cache keyed by (model_name, sha256(content)); persisted caching optional but disabled by default.
 - Template validation: run template substitution checks in CI.
+- structured output documentation located in `internal-docs/integrations/`.
 
 # 4. IMPERATIVE DIRECTIVES
 
@@ -90,6 +93,13 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Tool payloads from ToolManager must be dicts.
 - Providers must accept dicts and convert them to SDK objects only immediately prior to sending requests.
 - For unit tests, provider clients should expose set_client/get_client injection points for test doubles.
+- System/developer instructions must be resolved once per request and mapped to provider-native fields:
+  - OpenAI Responses: `instructions`; OpenAI Chat: developer role message
+  - Anthropic: top-level `system`
+  - Gemini: `system_instruction`
+  - DeepSeek/xAI: leading `system` message in OpenAI-compatible chat payloads
+- Keep behavioral guidance in phase system prompts (`config/prompts/system_prompts.py`) and keep user prompts focused on task payload/context.
+- Require a resolved system prompt for every agent request (no optional mode).
 
 # Token Estimation & Packing
 - Use local token encoder objects memoized per model. Avoid repetitive encoder creation.

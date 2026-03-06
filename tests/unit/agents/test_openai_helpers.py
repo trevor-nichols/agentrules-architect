@@ -29,20 +29,65 @@ class OpenAIConfigTests(unittest.TestCase):
         self.assertTrue(defaults.use_responses_api)
         self.assertIsNone(defaults.default_temperature)
 
+    def test_resolve_defaults_for_gpt53_codex_prefix(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.3-codex")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
+    def test_resolve_defaults_for_gpt54_snapshot(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.4-2026-03-05")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
     def test_resolve_defaults_for_known_model(self) -> None:
         defaults = resolve_model_defaults("gpt-4.1")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.TEMPERATURE)
         self.assertEqual(defaults.default_temperature, 0.7)
-        self.assertFalse(defaults.use_responses_api)
+        self.assertTrue(defaults.use_responses_api)
 
     def test_resolve_defaults_for_unknown_model(self) -> None:
         defaults = resolve_model_defaults("custom-model")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.DISABLED)
         self.assertIsNone(defaults.default_temperature)
-        self.assertFalse(defaults.use_responses_api)
+        self.assertTrue(defaults.use_responses_api)
 
 
 class OpenAIRequestBuilderTests(unittest.TestCase):
+    def test_prepare_request_for_responses_api_includes_instructions(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5-turbo",
+            content="Hello world",
+            system_prompt="You are a strict analyzer.",
+            reasoning=ReasoningMode.LOW,
+            temperature=None,
+            tools=None,
+            text_verbosity=None,
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["instructions"], "You are a strict analyzer.")
+
+    def test_prepare_request_for_chat_api_prepends_developer_message(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-4o-mini",
+            content="Analyze this",
+            system_prompt="Use concise bullet points.",
+            reasoning=ReasoningMode.DISABLED,
+            temperature=None,
+            tools=None,
+            text_verbosity=None,
+            use_responses_api=False,
+        )
+
+        self.assertEqual(prepared.api, "chat")
+        payload = prepared.payload
+        self.assertEqual(payload["messages"][0], {"role": "developer", "content": "Use concise bullet points."})
+        self.assertEqual(payload["messages"][1], {"role": "user", "content": "Analyze this"})
+
     def test_prepare_request_for_responses_api_gpt5(self) -> None:
         prepared = prepare_request(
             model_name="gpt-5-turbo",
@@ -82,7 +127,25 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["text"], {"verbosity": "low"})
         self.assertNotIn("tools", payload)
 
-    def test_prepare_request_for_chat_api(self) -> None:
+    def test_prepare_request_for_responses_api_gpt53_codex(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5.3-codex",
+            content="Hello gpt-5.3-codex",
+            reasoning=ReasoningMode.MEDIUM,
+            temperature=None,
+            tools=None,
+            text_verbosity="medium",
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["model"], "gpt-5.3-codex")
+        self.assertEqual(payload["input"], "Hello gpt-5.3-codex")
+        self.assertEqual(payload["reasoning"], {"effort": "medium"})
+        self.assertEqual(payload["text"], {"verbosity": "medium"})
+
+    def test_prepare_request_for_responses_api_gpt41_temperature(self) -> None:
         prepared = prepare_request(
             model_name="gpt-4.1",
             content="Plan",
@@ -90,15 +153,61 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
             temperature=0.42,
             tools=None,
             text_verbosity=None,
-            use_responses_api=False,
+            use_responses_api=True,
         )
 
-        self.assertEqual(prepared.api, "chat")
+        self.assertEqual(prepared.api, "responses")
         payload = prepared.payload
         self.assertEqual(payload["model"], "gpt-4.1")
-        self.assertEqual(payload["messages"][0]["content"], "Plan")
+        self.assertEqual(payload["input"], "Plan")
         self.assertEqual(payload["temperature"], 0.42)
-        self.assertNotIn("reasoning_effort", payload)
+        self.assertNotIn("reasoning", payload)
+
+    def test_prepare_request_for_responses_api_merges_structured_text(self) -> None:
+        text_format = {
+            "format": {
+                "type": "json_schema",
+                "name": "phase2_response",
+                "schema": {"type": "object"},
+                "strict": True,
+            }
+        }
+        prepared = prepare_request(
+            model_name="gpt-5-turbo",
+            content="Hello world",
+            reasoning=ReasoningMode.LOW,
+            temperature=None,
+            tools=None,
+            text_verbosity="concise",
+            use_responses_api=True,
+            structured_text=text_format,
+        )
+
+        payload = prepared.payload
+        self.assertEqual(payload["text"]["verbosity"], "concise")
+        self.assertEqual(payload["text"]["format"], text_format["format"])
+
+    def test_prepare_request_for_responses_api_ignores_chat_response_format(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-4.1",
+            content="Plan",
+            reasoning=ReasoningMode.DISABLED,
+            temperature=None,
+            tools=None,
+            text_verbosity=None,
+            use_responses_api=True,
+            chat_response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "phase2_response",
+                    "schema": {"type": "object"},
+                    "strict": True,
+                },
+            },
+        )
+
+        payload = prepared.payload
+        self.assertNotIn("response_format", payload)
 
     def test_prepare_request_includes_reasoning_effort_for_o3(self) -> None:
         prepared = prepare_request(
@@ -108,12 +217,12 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
             temperature=None,
             tools=None,
             text_verbosity=None,
-            use_responses_api=False,
+            use_responses_api=True,
         )
 
         payload = prepared.payload
-        self.assertEqual(prepared.api, "chat")
-        self.assertEqual(payload["reasoning_effort"], "high")
+        self.assertEqual(prepared.api, "responses")
+        self.assertEqual(payload["reasoning"], {"effort": "high"})
 
 
 @dataclass

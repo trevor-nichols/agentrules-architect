@@ -23,6 +23,7 @@ from agentrules.core.pipeline import (
 )
 
 from ..context import CliContext
+from .output_validation import validate_pipeline_output_filenames
 
 
 def _activate_offline_mode(context: CliContext) -> None:
@@ -44,7 +45,7 @@ def run_pipeline(
     context: CliContext,
     *,
     rules_filename_override: str | None = None,
-) -> None:
+) -> bool:
     """Execute the analysis pipeline for the given path."""
 
     if offline:
@@ -54,8 +55,30 @@ def run_pipeline(
 
     config_manager = get_config_manager()
     resolved_rules_filename = config_manager.resolve_rules_filename(override=rules_filename_override)
+    rules_tree_max_depth = config_manager.get_rules_tree_max_depth()
+    snapshot_filename = config_manager.get_snapshot_filename()
+    generate_snapshot = config_manager.should_generate_snapshot()
+    generate_cursorignore = config_manager.should_generate_cursorignore()
+    try:
+        validate_pipeline_output_filenames(
+            target_directory=path,
+            rules_filename=resolved_rules_filename,
+            snapshot_filename=snapshot_filename,
+            generate_snapshot=generate_snapshot,
+        )
+    except ValueError as error:
+        context.console.print(f"[red]Invalid output configuration:[/] {error}")
+        context.console.print(
+            f"[dim]Current values: rules={resolved_rules_filename}, snapshot={snapshot_filename}[/]"
+        )
+        return False
+
     exclusion_overrides = config_manager.get_exclusion_overrides()
     effective_dirs, effective_files, effective_exts = config_manager.get_effective_exclusions()
+    managed_output_relative_paths = config_manager.get_managed_output_relative_paths(
+        rules_filename=resolved_rules_filename,
+        snapshot_filename=snapshot_filename,
+    )
     settings = PipelineSettings(
         target_directory=path,
         tree_max_depth=config_manager.get_tree_max_depth(),
@@ -65,6 +88,7 @@ def run_pipeline(
             files=frozenset(effective_files),
             extensions=frozenset(effective_exts),
         ),
+        exclude_relative_paths=frozenset(managed_output_relative_paths),
         exclusion_overrides=exclusion_overrides,
     )
 
@@ -200,12 +224,16 @@ def run_pipeline(
     output_writer = PipelineOutputWriter()
     output_options = PipelineOutputOptions(
         rules_filename=resolved_rules_filename,
+        rules_tree_max_depth=rules_tree_max_depth,
+        snapshot_filename=snapshot_filename,
         generate_phase_outputs=config_manager.should_generate_phase_outputs(),
-        generate_cursorignore=config_manager.should_generate_cursorignore(),
+        generate_cursorignore=generate_cursorignore,
         generate_agent_scaffold=config_manager.should_generate_agent_scaffold(),
+        generate_snapshot=generate_snapshot,
     )
     summary = output_writer.persist(result, settings, output_options)
     for message in summary.messages:
         context.console.print(message)
 
     context.console.print(f"\n[green]Analysis finished for:[/] {path}")
+    return True

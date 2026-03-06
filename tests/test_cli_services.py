@@ -51,12 +51,15 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_config.get_exclusion_overrides.return_value = MagicMock(is_empty=lambda: True)
         mock_config.get_effective_exclusions.return_value = (set(), set(), set())
         mock_config.get_tree_max_depth.return_value = 5
+        mock_config.get_rules_tree_max_depth.return_value = 3
         mock_config.should_respect_gitignore.return_value = True
         mock_config.is_researcher_enabled.return_value = False
         mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
         mock_config.should_generate_phase_outputs.return_value = True
         mock_config.should_generate_cursorignore.return_value = True
         mock_config.should_generate_agent_scaffold.return_value = True
+        mock_config.should_generate_snapshot.return_value = True
         mock_get_config_manager.return_value = mock_config
 
         mock_snapshot = MagicMock()
@@ -80,6 +83,9 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_writer_instance.persist.assert_called_once()
         output_options = mock_writer_instance.persist.call_args.args[2]
         self.assertTrue(output_options.generate_agent_scaffold)
+        self.assertTrue(output_options.generate_snapshot)
+        self.assertEqual(output_options.rules_tree_max_depth, 3)
+        self.assertEqual(output_options.snapshot_filename, "SNAPSHOT.md")
 
         output = buffer.getvalue()
         self.assertIn("Analysis finished for:", output)
@@ -106,12 +112,15 @@ class PipelineRunnerTests(unittest.TestCase):
         mock_config.get_exclusion_overrides.return_value = MagicMock(is_empty=lambda: True)
         mock_config.get_effective_exclusions.return_value = (set(), set(), set())
         mock_config.get_tree_max_depth.return_value = 5
+        mock_config.get_rules_tree_max_depth.return_value = 3
         mock_config.should_respect_gitignore.return_value = True
         mock_config.is_researcher_enabled.return_value = False
         mock_config.resolve_rules_filename.return_value = "CLAUDE.md"
+        mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
         mock_config.should_generate_phase_outputs.return_value = True
         mock_config.should_generate_cursorignore.return_value = True
         mock_config.should_generate_agent_scaffold.return_value = True
+        mock_config.should_generate_snapshot.return_value = True
         mock_get_config_manager.return_value = mock_config
 
         mock_build_snapshot.return_value = MagicMock()
@@ -125,6 +134,148 @@ class PipelineRunnerTests(unittest.TestCase):
         pipeline_runner.run_pipeline(target, offline=False, context=context, rules_filename_override="CLAUDE.md")
 
         mock_config.resolve_rules_filename.assert_called_once_with(override="CLAUDE.md")
+
+    @patch("agentrules.cli.services.pipeline_runner.PipelineOutputWriter")
+    @patch("agentrules.cli.services.pipeline_runner.asyncio.run")
+    @patch("agentrules.cli.services.pipeline_runner.build_project_snapshot")
+    @patch("agentrules.cli.services.pipeline_runner.create_default_pipeline")
+    @patch("agentrules.cli.services.pipeline_runner.get_config_manager")
+    def test_run_pipeline_rejects_snapshot_rules_filename_collision(
+        self,
+        mock_get_config_manager,
+        mock_create_pipeline,
+        mock_build_snapshot,
+        mock_asyncio_run,
+        mock_output_writer_cls,
+    ) -> None:
+        buffer = io.StringIO()
+        context = CliContext(console=Console(file=buffer, width=80))
+        target = Path.cwd()
+
+        mock_config = MagicMock()
+        mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = "AGENTS.md"
+        mock_config.should_generate_snapshot.return_value = True
+        mock_get_config_manager.return_value = mock_config
+
+        ok = pipeline_runner.run_pipeline(target, offline=False, context=context)
+
+        mock_build_snapshot.assert_not_called()
+        mock_create_pipeline.assert_not_called()
+        mock_asyncio_run.assert_not_called()
+        mock_output_writer_cls.assert_not_called()
+        self.assertFalse(ok)
+
+        rendered = buffer.getvalue()
+        self.assertIn("Invalid output configuration", rendered)
+        self.assertIn("Snapshot filename must differ from rules filename", rendered)
+
+    @patch("agentrules.cli.services.pipeline_runner.PipelineOutputWriter")
+    @patch("agentrules.cli.services.pipeline_runner.asyncio.run")
+    @patch("agentrules.cli.services.pipeline_runner.build_project_snapshot")
+    @patch("agentrules.cli.services.pipeline_runner.create_default_pipeline")
+    @patch("agentrules.cli.services.pipeline_runner.get_config_manager")
+    def test_run_pipeline_rejects_snapshot_cursorignore_collision(
+        self,
+        mock_get_config_manager,
+        mock_create_pipeline,
+        mock_build_snapshot,
+        mock_asyncio_run,
+        mock_output_writer_cls,
+    ) -> None:
+        buffer = io.StringIO()
+        context = CliContext(console=Console(file=buffer, width=80))
+        target = Path.cwd()
+
+        mock_config = MagicMock()
+        mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = ".cursorignore"
+        mock_config.should_generate_snapshot.return_value = True
+        mock_config.should_generate_cursorignore.return_value = False
+        mock_get_config_manager.return_value = mock_config
+
+        ok = pipeline_runner.run_pipeline(target, offline=False, context=context)
+
+        mock_build_snapshot.assert_not_called()
+        mock_create_pipeline.assert_not_called()
+        mock_asyncio_run.assert_not_called()
+        mock_output_writer_cls.assert_not_called()
+        self.assertFalse(ok)
+
+        rendered = buffer.getvalue()
+        self.assertIn("Invalid output configuration", rendered)
+        self.assertIn("Snapshot filename must not be .cursorignore.", rendered)
+
+    @patch("agentrules.cli.services.pipeline_runner.PipelineOutputWriter")
+    @patch("agentrules.cli.services.pipeline_runner.asyncio.run")
+    @patch("agentrules.cli.services.pipeline_runner.build_project_snapshot")
+    @patch("agentrules.cli.services.pipeline_runner.create_default_pipeline")
+    @patch("agentrules.cli.services.pipeline_runner.get_config_manager")
+    def test_run_pipeline_rejects_snapshot_phases_output_collision(
+        self,
+        mock_get_config_manager,
+        mock_create_pipeline,
+        mock_build_snapshot,
+        mock_asyncio_run,
+        mock_output_writer_cls,
+    ) -> None:
+        buffer = io.StringIO()
+        context = CliContext(console=Console(file=buffer, width=80))
+        target = Path.cwd()
+
+        mock_config = MagicMock()
+        mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = "phases_output"
+        mock_config.should_generate_snapshot.return_value = True
+        mock_config.should_generate_cursorignore.return_value = False
+        mock_get_config_manager.return_value = mock_config
+
+        ok = pipeline_runner.run_pipeline(target, offline=False, context=context)
+
+        mock_build_snapshot.assert_not_called()
+        mock_create_pipeline.assert_not_called()
+        mock_asyncio_run.assert_not_called()
+        mock_output_writer_cls.assert_not_called()
+        self.assertFalse(ok)
+
+        rendered = buffer.getvalue()
+        self.assertIn("Invalid output configuration", rendered)
+        self.assertIn("Snapshot filename must not be phases_output.", rendered)
+
+    @patch("agentrules.cli.services.pipeline_runner.PipelineOutputWriter")
+    @patch("agentrules.cli.services.pipeline_runner.asyncio.run")
+    @patch("agentrules.cli.services.pipeline_runner.build_project_snapshot")
+    @patch("agentrules.cli.services.pipeline_runner.create_default_pipeline")
+    @patch("agentrules.cli.services.pipeline_runner.get_config_manager")
+    def test_run_pipeline_rejects_snapshot_dot_segment_filename(
+        self,
+        mock_get_config_manager,
+        mock_create_pipeline,
+        mock_build_snapshot,
+        mock_asyncio_run,
+        mock_output_writer_cls,
+    ) -> None:
+        buffer = io.StringIO()
+        context = CliContext(console=Console(file=buffer, width=80))
+        target = Path.cwd()
+
+        mock_config = MagicMock()
+        mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = ".."
+        mock_config.should_generate_snapshot.return_value = True
+        mock_get_config_manager.return_value = mock_config
+
+        ok = pipeline_runner.run_pipeline(target, offline=False, context=context)
+
+        mock_build_snapshot.assert_not_called()
+        mock_create_pipeline.assert_not_called()
+        mock_asyncio_run.assert_not_called()
+        mock_output_writer_cls.assert_not_called()
+        self.assertFalse(ok)
+
+        rendered = buffer.getvalue()
+        self.assertIn("Invalid output configuration", rendered)
+        self.assertIn("Snapshot filename must not be . or ..", rendered)
 
 
 if __name__ == "__main__":

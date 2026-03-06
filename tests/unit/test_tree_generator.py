@@ -70,6 +70,63 @@ class TreeGeneratorTests(unittest.TestCase):
         self.assertIn("# Project Directory Structure", content)
         self.assertIn("└── app.py", content)
 
+    def test_get_project_tree_omits_static_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "keep.py").write_text("print('ok')\n", encoding="utf-8")
+            (root / ".claude").mkdir()
+            (root / ".claude" / "notes.md").write_text("x", encoding="utf-8")
+            (root / ".custom_cache").mkdir()
+            (root / ".custom_cache" / "cache.txt").write_text("x", encoding="utf-8")
+            (root / "pkg.egg-info").mkdir()
+            (root / "pkg.egg-info" / "PKG-INFO").write_text("x", encoding="utf-8")
+            (root / "phases_output").mkdir()
+            (root / "phases_output" / "phase1_discovery.md").write_text("x", encoding="utf-8")
+            (root / "AGENTS.md").write_text("x", encoding="utf-8")
+            (root / "SNAPSHOT.md").write_text("x", encoding="utf-8")
+            (root / "diagram.svgz").write_text("x", encoding="utf-8")
+
+            tree = get_project_tree(root, max_depth=4)
+            rendered = "\n".join(tree)
+
+        self.assertIn("keep.py", rendered)
+        self.assertNotIn(".claude", rendered)
+        self.assertNotIn(".custom_cache", rendered)
+        self.assertNotIn("pkg.egg-info", rendered)
+        self.assertNotIn("AGENTS.md", rendered)
+        self.assertNotIn("diagram.svgz", rendered)
+
+    def test_get_project_tree_skips_symlink_entries_when_follow_symlinks_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir, tempfile.TemporaryDirectory() as external_tmpdir:
+            root = Path(tmpdir)
+            external = Path(external_tmpdir)
+            (external / "secret.txt").write_text("secret", encoding="utf-8")
+            (root / "linked").symlink_to(external, target_is_directory=True)
+            (root / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+            tree = get_project_tree(root, max_depth=4, follow_symlinks=False)
+            rendered = "\n".join(tree)
+
+        self.assertIn("app.py", rendered)
+        self.assertNotIn("linked", rendered)
+        self.assertNotIn("secret.txt", rendered)
+
+    def test_get_project_tree_exclude_relative_paths_matches_case_insensitively(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "Snapshot.md").write_text("content", encoding="utf-8")
+            (root / "keep.py").write_text("print('ok')\n", encoding="utf-8")
+
+            tree = get_project_tree(
+                root,
+                max_depth=4,
+                exclude_relative_paths={"snapshot.md"},
+            )
+            rendered = "\n".join(tree)
+
+        self.assertIn("keep.py", rendered)
+        self.assertNotIn("Snapshot.md", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,7 @@ class PipelineSettings:
     tree_max_depth: int
     respect_gitignore: bool
     effective_exclusions: EffectiveExclusions
+    exclude_relative_paths: frozenset[str] = frozenset()
     exclusion_overrides: ExclusionOverrides | None = None
 
 

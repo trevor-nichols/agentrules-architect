@@ -3,11 +3,58 @@ from typing import Any, cast
 
 import pytest
 
+from agentrules.core.agents.base import ModelProvider
 from agentrules.core.analysis.final_analysis import FinalAnalysis
 from agentrules.core.analysis.phase_2 import Phase2Analysis
 from agentrules.core.analysis.phase_3 import Phase3Analysis
 from agentrules.core.analysis.phase_5 import Phase5Analysis
 from tests.utils.offline_stubs import patch_factory_offline
+
+
+@pytest.mark.asyncio
+async def test_phase2_uses_legacy_prompt_when_structured_outputs_unsupported(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        provider = ModelProvider.ANTHROPIC
+        model_name = "claude-opus-4-1"
+
+        def __init__(self) -> None:
+            self.seen_prompt = ""
+
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            self.seen_prompt = prompt or ""
+            return {"plan": "<analysis_plan></analysis_plan>"}
+
+    p2 = Phase2Analysis()
+    arch = ArchStub()
+    p2.architect = cast(Any, arch)
+    await p2.run({"phase": 1}, ["a.py"])
+    assert "## OUTPUT FORMAT" in arch.seen_prompt
+    assert "<analysis_plan>" in arch.seen_prompt
+
+
+@pytest.mark.asyncio
+async def test_phase2_uses_structured_prompt_when_supported(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        provider = ModelProvider.OPENAI
+        model_name = "gpt-5-mini"
+
+        def __init__(self) -> None:
+            self.seen_prompt = ""
+
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            self.seen_prompt = prompt or ""
+            return {"plan": "Structured plan", "agents": []}
+
+    p2 = Phase2Analysis()
+    arch = ArchStub()
+    p2.architect = cast(Any, arch)
+    await p2.run({"phase": 1}, ["a.py"])
+    assert "Output contract:" in arch.seen_prompt
+    assert "## OUTPUT FORMAT" not in arch.seen_prompt
 
 
 @pytest.mark.asyncio
@@ -27,6 +74,65 @@ async def test_phase2_fallback_agents_from_assignments(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_phase2_invalid_preparsed_agents_falls_back_to_plan(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            return {
+                "agents": [{"id": "agent_1"}],  # Invalid; missing file_assignments
+                "plan": (
+                    "<analysis_plan><agent_1 name='A'>"
+                    "<file_assignments><file_path>a.py</file_path></file_assignments>"
+                    "</agent_1></analysis_plan>"
+                ),
+            }
+
+    p2 = Phase2Analysis()
+    p2.architect = cast(Any, ArchStub())
+    out = await p2.run({"phase": 1}, ["a.py"])
+    assert "agents" in out and len(out["agents"]) == 1
+    assert out["agents"][0]["id"] == "agent_1"
+    assert out["agents"][0]["file_assignments"] == ["a.py"]
+
+
+@pytest.mark.asyncio
+async def test_phase2_preserves_explicit_empty_structured_agents(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            return {
+                "agents": [],
+                "plan": (
+                    "<analysis_plan>"
+                    "<file_assignments><file_path>a.py</file_path></file_assignments>"
+                    "</analysis_plan>"
+                ),
+            }
+
+    p2 = Phase2Analysis()
+    p2.architect = cast(Any, ArchStub())
+    out = await p2.run({"phase": 1}, ["a.py"])
+    assert out["agents"] == []
+
+
+@pytest.mark.asyncio
+async def test_phase2_non_string_plan_payload_does_not_fail(monkeypatch):
+    patch_factory_offline()
+
+    class ArchStub:
+        async def create_analysis_plan(self, phase1_results, prompt=None):
+            return {"plan": {"kind": "json_plan", "meta": {"x": 1}}}
+
+    p2 = Phase2Analysis()
+    p2.architect = cast(Any, ArchStub())
+    out = await p2.run({"phase": 1}, ["a.py"])
+    assert "error" not in out
+    assert out.get("agents") == []
+
+
+@pytest.mark.asyncio
 async def test_phase3_fallback_when_no_agents(tmp_path: Path, monkeypatch):
     patch_factory_offline()
     # Create a file; ensure tree includes it
@@ -36,6 +142,33 @@ async def test_phase3_fallback_when_no_agents(tmp_path: Path, monkeypatch):
     p3 = Phase3Analysis()
     out = await p3.run({}, tree, tmp_path)
     assert out["phase"] == "Deep Analysis"
+    assert isinstance(out.get("findings"), list)
+
+
+@pytest.mark.asyncio
+async def test_phase3_ignores_invalid_responsibility_items(tmp_path: Path, monkeypatch):
+    patch_factory_offline()
+    (tmp_path / "x.py").write_text("print('x')", encoding="utf-8")
+
+    p3 = Phase3Analysis()
+    out = await p3.run(
+        {
+            "agents": [
+                {
+                    "id": "agent_1",
+                    "name": "Architecture Agent",
+                    "description": "architecture review",
+                    "responsibilities": ["Inspect boundaries", 3, None, {"bad": True}],
+                    "file_assignments": ["x.py"],
+                }
+            ]
+        },
+        ["x.py"],
+        tmp_path,
+    )
+
+    assert out["phase"] == "Deep Analysis"
+    assert "error" not in out
     assert isinstance(out.get("findings"), list)
 
 

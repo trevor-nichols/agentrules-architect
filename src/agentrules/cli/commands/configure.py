@@ -44,6 +44,8 @@ def register(app: typer.Typer) -> None:
             help="Configure output generation preferences.",
         ),
     ) -> None:
+        """Configure provider keys, model presets, logging, and output settings."""
+
         context = bootstrap_runtime()
 
         option_count = sum(

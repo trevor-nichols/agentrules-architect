@@ -13,6 +13,7 @@ import logging  # Used for logging messages
 
 from agentrules.config.prompts.phase_4_prompts import (  # Prompts for Phase 4
     format_phase4_prompt,
+    format_phase4_system_prompt,
 )
 from agentrules.core.agents import get_architect_for_phase  # Added import for dynamic model configuration
 
@@ -46,7 +47,10 @@ class Phase4Analysis:
         Initialize the Phase 4 analysis with the architect from configuration.
         """
         # Use the factory function to get the appropriate architect based on configuration
-        self.architect = get_architect_for_phase("phase4")
+        self.architect = get_architect_for_phase(
+            "phase4",
+            system_prompt=format_phase4_system_prompt(),
+        )
 
     # ====================================================
     # Run Method

@@ -8,20 +8,31 @@ modifying the core logic of the agents.
 
 import json
 
-# Prompt template for Phase 4 (Synthesis)
-PHASE_4_PROMPT = """Your task is to write a detiled developer report based on the codebase <analysis_results> below.
+# Phase 4 system prompt (synthesis behavior guidance).
+PHASE_4_SYSTEM_PROMPT = (
+    "You are the synthesis architect for this analysis pipeline.\n\n"
+    "You are part of a team of agents working together to analyze and understand a software project.\n"
+    "You will be provided information about the project that prior agents on your team have curated. Your task is to produce a report that will be used when onboarding new developers in the project.\n\n"
+    "The report should provide an accurate picture of the project's structure, functionality, and anything else a new developer would find useful.\n\n"
+    "Note: You are NOT responsible for identifying security vulnerabilities or code quality issues. Your focus is on understanding the project's structure, dependencies, and tech stack to inform new developers working in this project.\n\n"
+    "Behavior requirements:\n"
+    "- Merge phase-3 findings into a coherent developer report.\n"
+    "- Prioritize high-impact architectural insights and risks.\n"
+    "- Preserve technical fidelity while reducing redundancy.\n"
+)
 
-The report must include:
-1. Deep understanding of all findings
-2. Methodical processing of new information
-3. Most critical areas within the codebase
-4. Overall objective of the codebase
-5. Additional details unique to the codebase
 
+def format_phase4_system_prompt() -> str:
+    return PHASE_4_SYSTEM_PROMPT
+
+
+# Prompt template for Phase 4 (Synthesis) user/task payload.
+PHASE_4_PROMPT = """Synthesis input:
 <analysis_results>
 {phase3_results}
 </analysis_results>
 
+Produce the phase-4 synthesis report.
 """
 
 def format_phase4_prompt(phase3_results: dict) -> str:

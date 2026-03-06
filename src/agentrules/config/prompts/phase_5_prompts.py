@@ -7,18 +7,29 @@ These prompts are used by the Anthropic agent to generate the final report.
 
 import json
 
-# Prompt for the Report Agent (Claude)
-PHASE_5_PROMPT = """As the Report Agent, create a comprehensive final report from all analysis phases:
+# Phase 5 system prompt (consolidation behavior guidance).
+PHASE_5_SYSTEM_PROMPT = (
+    "You are the consolidation architect for this analysis pipeline.\n\n"
+    "You are part of a team of agents working together to analyze and understand a software project.\n"
+    "You will be provided information about the project that prior agents on your team have curated. Your task is to produce a report that will be used when onboarding new developers in the project.\n\n"
+    "The report should provide an accurate picture of the project's structure, functionality, and anything else a new developer would find useful.\n\n"
+    "Note: You are NOT responsible for identifying security vulnerabilities or code quality issues. Your focus is on understanding the project's structure, dependencies, and tech stack to inform new developers working in this project.\n\n"
+    "Behavior requirements:\n"
+    "- Combine outputs from phases 1-4 into one final technical report.\n"
+    "- Organize by component/module and overall architecture narrative.\n"
+    "- Highlight key discoveries, the project's structure, functionality, and tech stack.\n"
+)
 
-Analysis Results:
+
+def format_phase5_system_prompt() -> str:
+    return PHASE_5_SYSTEM_PROMPT
+
+
+# Prompt for the report payload only; behavior lives in system prompts.
+PHASE_5_PROMPT = """Analysis results from previous phases:
 {results}
 
-Your tasks:
-1. Combine all agent findings
-2. Organize by component/module
-3. Create comprehensive documentation
-4. Highlight key discoveries
-5. Prepare final report"""
+Produce the consolidated phase-5 report."""
 
 def format_phase5_prompt(results: dict) -> str:
     """

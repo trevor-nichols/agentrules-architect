@@ -16,16 +16,18 @@ excluded from the project tree structure and analysis.
 
 EXCLUDED_DIRS = {
     'node_modules', '.next', '.git', 'venv', '__pycache__', '_pycache_',
-    'dist', 'build', '.vscode', '.idea', 'coverage',
+    'dist', 'build', '.vscode', '.idea', '.claude', '.codex', '.cursor', '.github', 'coverage',
     '.pytest_cache', '.mypy_cache', '.ruff_cache', '.tox',
     'env', '.env', '.venv', 'site-packages', '.egg-info',
     '.gradle', '.parcel-cache', 'buck-out', 'out', 'tmp', 'temp', '.agent',
-    'log', 'logs', 'artifacts', 'target'
+    'log', 'logs', 'logfile', 'logfiles', 'artifacts', 'target'
 }
 
 EXCLUDED_FILES = {
     'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
     '.DS_Store', '.env', '.env.local', '.gitignore',
+    '.python-version',
+    'AGENTS.md', 'CLAUDE.md',
     'README.md', 'LICENSE', '.eslintrc', '.prettierrc',
     'tsconfig.json', 'requirements.txt', 'poetry.lock',
     'Pipfile.lock', '.gitattributes', '.gitconfig', '.gitmodules',
@@ -34,7 +36,10 @@ EXCLUDED_FILES = {
 
 EXCLUDED_EXTENSIONS = {
     '.jpg', '.jpeg', '.png', '.gif', '.ico',
-    '.svg', '.mp4', '.mp3', '.pdf', '.zip',
+    '.jfif', '.pjp', '.pjpeg', '.apng', '.bmp',
+    '.tif', '.tiff', '.webp', '.avif', '.heic', '.heif',
+    '.gifv', '.svg', '.svgz',
+    '.mp4', '.mp3', '.pdf', '.zip',
     '.woff', '.woff2', '.ttf', '.eot',
     '.pyc', '.pyo', '.pyd', '.so', '.pkl', '.pickle',
     '.db', '.sqlite', '.log', '.cache', '.ini'

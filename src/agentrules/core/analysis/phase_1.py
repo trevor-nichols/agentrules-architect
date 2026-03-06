@@ -21,6 +21,7 @@ from agentrules.config.prompts.phase_1_prompts import (  # Prompts used for conf
     RESEARCHER_AGENT_PROMPT,
     STRUCTURE_AGENT_PROMPT,
     TECH_STACK_AGENT_PROMPT,
+    format_phase1_system_prompt,
     get_dependency_agent_prompt,
 )
 from agentrules.config.tools import TOOL_SETS
@@ -65,6 +66,11 @@ class Phase1Analysis:
             role=dependency_prompt["role"],
             responsibilities=dependency_prompt["responsibilities"],
             prompt_template=PHASE_1_BASE_PROMPT,
+            system_prompt=format_phase1_system_prompt(
+                agent_name=dependency_prompt["name"],
+                agent_role=dependency_prompt["role"],
+                responsibilities=dependency_prompt["responsibilities"],
+            ),
         )
         self.structure_architect = get_architect_for_phase(
             "phase1",
@@ -72,6 +78,11 @@ class Phase1Analysis:
             role=STRUCTURE_AGENT_PROMPT["role"],
             responsibilities=STRUCTURE_AGENT_PROMPT["responsibilities"],
             prompt_template=PHASE_1_BASE_PROMPT,
+            system_prompt=format_phase1_system_prompt(
+                agent_name=STRUCTURE_AGENT_PROMPT["name"],
+                agent_role=STRUCTURE_AGENT_PROMPT["role"],
+                responsibilities=STRUCTURE_AGENT_PROMPT["responsibilities"],
+            ),
         )
         self.tech_stack_architect = get_architect_for_phase(
             "phase1",
@@ -79,6 +90,11 @@ class Phase1Analysis:
             role=TECH_STACK_AGENT_PROMPT["role"],
             responsibilities=TECH_STACK_AGENT_PROMPT["responsibilities"],
             prompt_template=PHASE_1_BASE_PROMPT,
+            system_prompt=format_phase1_system_prompt(
+                agent_name=TECH_STACK_AGENT_PROMPT["name"],
+                agent_role=TECH_STACK_AGENT_PROMPT["role"],
+                responsibilities=TECH_STACK_AGENT_PROMPT["responsibilities"],
+            ),
         )
         self.initial_architects = [
             self.dependency_architect,
@@ -92,7 +108,12 @@ class Phase1Analysis:
                 name=RESEARCHER_AGENT_PROMPT["name"],
                 role=RESEARCHER_AGENT_PROMPT["role"],
                 responsibilities=RESEARCHER_AGENT_PROMPT["responsibilities"],
-                prompt_template=PHASE_1_BASE_PROMPT
+                prompt_template=PHASE_1_BASE_PROMPT,
+                system_prompt=format_phase1_system_prompt(
+                    agent_name=RESEARCHER_AGENT_PROMPT["name"],
+                    agent_role=RESEARCHER_AGENT_PROMPT["role"],
+                    responsibilities=RESEARCHER_AGENT_PROMPT["responsibilities"],
+                ),
             )
 
     # ----------------------------------------------------

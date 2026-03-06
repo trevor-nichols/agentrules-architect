@@ -68,13 +68,17 @@ def coerce_string_list(payload: object, key: str) -> list[str]:
     return result
 
 
-def normalize_rules_filename(value: object, *, default: str) -> str:
+def normalize_output_filename(value: object, *, default: str) -> str:
     if isinstance(value, str) and value.strip():
         candidate = value.strip()
         if "/" in candidate or "\\" in candidate:
             return default
         return candidate
     return default
+
+
+def normalize_rules_filename(value: object, *, default: str) -> str:
+    return normalize_output_filename(value, default=default)
 
 
 def apply_overrides(

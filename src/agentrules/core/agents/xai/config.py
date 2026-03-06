@@ -25,6 +25,14 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
         default_reasoning=ReasoningMode.ENABLED,
         reasoning_effort_supported=True,
     ),
+    "grok-4-1-fast-reasoning": ModelDefaults(
+        default_reasoning=ReasoningMode.ENABLED,
+        reasoning_effort_supported=True,
+    ),
+    "grok-4-1-fast-non-reasoning": ModelDefaults(
+        default_reasoning=ReasoningMode.DISABLED,
+        reasoning_effort_supported=False,
+    ),
     "grok-4-fast-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
         reasoning_effort_supported=True,

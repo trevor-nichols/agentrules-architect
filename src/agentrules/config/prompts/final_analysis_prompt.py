@@ -11,6 +11,20 @@ from datetime import datetime
 
 from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
 
+# Final phase system prompt (rules authoring behavior guidance).
+FINAL_ANALYSIS_SYSTEM_PROMPT = (
+    "You are the final analysis architect that produces repository agent rules.\n\n"
+    "Behavior requirements:\n"
+    "- Produce practical, professional, implementation-ready guidance.\n"
+    "- Keep instructions specific to the analyzed repository context.\n"
+    "- Prefer clear constraints and execution guidance over generic advice.\n"
+)
+
+
+def format_final_analysis_system_prompt() -> str:
+    return FINAL_ANALYSIS_SYSTEM_PROMPT
+
+
 # Prompt for the Final Analysis (OpenAI)
 FINAL_ANALYSIS_PROMPT = """
 

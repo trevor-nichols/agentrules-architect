@@ -22,6 +22,9 @@ class PhaseEventTests(unittest.TestCase):
     def test_phase2_emits_agent_plan_event(self) -> None:
         asyncio.run(self._run_phase2_plan_event())
 
+    def test_phase2_parser_receives_full_response_payload(self) -> None:
+        asyncio.run(self._run_phase2_parser_receives_full_payload())
+
     async def _run_phase2_plan_event(self) -> None:
         sink = _CollectingSink()
         analysis = Phase2Analysis(events=sink)
@@ -56,6 +59,26 @@ class PhaseEventTests(unittest.TestCase):
         payload_agents = plan_events[0].payload["agents"]
         self.assertEqual(len(payload_agents), 2)
         self.assertEqual(payload_agents[0]["name"], "Alpha")
+
+    async def _run_phase2_parser_receives_full_payload(self) -> None:
+        analysis = Phase2Analysis()
+        plan_response = {"plan": "legacy plan text", "agents": [{"id": "agent_1"}]}
+
+        class FakePlanner:
+            async def create_analysis_plan(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+                return plan_response
+
+        analysis.architect = cast(BaseArchitect, FakePlanner())
+
+        with patch(
+            "agentrules.core.analysis.phase_2.parse_agents_from_phase2",
+            return_value=[{"id": "agent_1", "name": "Alpha", "file_assignments": []}],
+        ) as parse_mock:
+            await analysis.run({}, [])
+
+        parse_mock.assert_called_once()
+        assert parse_mock.call_args.args
+        self.assertIs(parse_mock.call_args.args[0], plan_response)
 
     def test_phase3_emits_agent_lifecycle_events(self) -> None:
         asyncio.run(self._run_phase3_lifecycle_events())

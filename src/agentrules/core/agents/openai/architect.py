@@ -8,11 +8,20 @@ from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 from agentrules.config.prompts.final_analysis_prompt import format_final_analysis_prompt
-from agentrules.config.prompts.phase_2_prompts import format_phase2_prompt
+from agentrules.config.prompts.phase_2_prompts import format_phase2_structured_prompt
 from agentrules.config.prompts.phase_4_prompts import format_phase4_prompt
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
 from agentrules.core.utils.async_stream import iterate_in_thread
+from agentrules.core.utils.structured_outputs import (
+    build_openai_chat_response_format,
+    build_openai_text_format,
+    extract_phase2_agents,
+    get_phase_model_response_schema,
+    resolve_phase_result_value,
+    resolve_structured_output_mode,
+)
+from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_request, get_client
@@ -40,6 +49,7 @@ class OpenAIArchitect(BaseArchitect):
         role: str | None = None,
         responsibilities: list[str] | None = None,
         prompt_template: str | None = None,
+        system_prompt: str | None = None,
         tools_config: dict | None = None,
         text_verbosity: str | None = None,
         model_config: Any | None = None,
@@ -65,6 +75,7 @@ class OpenAIArchitect(BaseArchitect):
             responsibilities=responsibilities,
             tools_config=tools_config,
             model_config=model_config,
+            system_prompt=system_prompt,
         )
 
         self.prompt_template = prompt_template or self._get_default_prompt_template()
@@ -78,16 +89,11 @@ class OpenAIArchitect(BaseArchitect):
     @staticmethod
     def _get_default_prompt_template() -> str:
         """Default prompt template applied when none is provided."""
-        return """You are {agent_name}, responsible for {agent_role}.
-
-Your specific responsibilities are:
-{agent_responsibilities}
-
-Analyze this project context and provide a detailed report focused on your domain:
-
-{context}
-
-Format your response as a structured report with clear sections and findings."""
+        return (
+            "Project context:\n"
+            "{context}\n\n"
+            "Complete the current analysis task using this context."
+        )
 
     def format_prompt(self, context: dict) -> str:
         """
@@ -111,6 +117,16 @@ Format your response as a structured report with clear sections and findings."""
             context=context_str,
         )
 
+    def _resolve_system_prompt(self, context: dict[str, Any] | None = None) -> str | None:
+        default_prompt = self.system_prompt
+        if not default_prompt:
+            default_prompt = build_agent_system_prompt(
+                agent_name=self.name or "OpenAI Architect",
+                agent_role=self.role or "analyzing the project",
+                responsibilities=self.responsibilities,
+            )
+        return resolve_system_prompt(context=context, default_prompt=default_prompt)
+
     async def analyze(self, context: dict, tools: list[Any] | None = None) -> dict:
         """
         Run analysis using the OpenAI model, potentially using tools.
@@ -125,9 +141,10 @@ Format your response as a structured report with clear sections and findings."""
         """
         try:
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
 
             final_tools = self._resolve_tools(tools)
-            prepared = self._prepare_request(content, final_tools)
+            prepared = self._prepare_request(content, final_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name
@@ -176,8 +193,9 @@ Format your response as a structured report with clear sections and findings."""
 
         async def _generator() -> AsyncIterator[StreamChunk]:
             content = context.get("formatted_prompt") or self.format_prompt(context)
+            system_prompt = self._resolve_system_prompt(context)
             final_tools = self._resolve_tools(tools)
-            prepared = self._prepare_request(content, final_tools)
+            prepared = self._prepare_request(content, final_tools, system_prompt=system_prompt)
             self._log_token_estimate(prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name
@@ -204,7 +222,8 @@ Format your response as a structured report with clear sections and findings."""
     async def create_analysis_plan(self, phase1_results: dict, prompt: str | None = None) -> dict:
         """Create an analysis plan based on Phase 1 results."""
         return await self._run_simple_request(
-            prompt or format_phase2_prompt(phase1_results),
+            prompt or format_phase2_structured_prompt(phase1_results),
+            phase_name="phase2",
             result_key="plan",
             empty_value="No plan generated",
         )
@@ -213,6 +232,7 @@ Format your response as a structured report with clear sections and findings."""
         """Synthesize findings from Phase 3."""
         return await self._run_simple_request(
             prompt or format_phase4_prompt(phase3_results),
+            phase_name="phase4",
             result_key="analysis",
             empty_value="No synthesis generated",
         )
@@ -221,6 +241,7 @@ Format your response as a structured report with clear sections and findings."""
         """Perform final analysis on the consolidated report."""
         return await self._run_simple_request(
             prompt or format_final_analysis_prompt(consolidated_report),
+            phase_name="final",
             result_key="analysis",
             empty_value="No final analysis generated",
         )
@@ -234,6 +255,7 @@ Format your response as a structured report with clear sections and findings."""
 
         response = await self._run_simple_request(
             prompt or default_prompt,
+            phase_name="phase5",
             result_key="report",
             empty_value="No report generated",
             include_phase=True,
@@ -245,15 +267,24 @@ Format your response as a structured report with clear sections and findings."""
         self,
         content: str,
         tools: list[Any] | None = None,
+        *,
+        system_prompt: str | None = None,
+        structured_text: dict[str, Any] | None = None,
+        chat_response_format: dict[str, Any] | None = None,
     ) -> PreparedRequest:
+        resolved_tools = self._resolve_tools(tools) if tools is not None else tools
+        resolved_system_prompt = system_prompt if system_prompt is not None else self._resolve_system_prompt(None)
         return prepare_request(
             model_name=self.model_name,
             content=content,
+            system_prompt=resolved_system_prompt,
             reasoning=self.reasoning,
             temperature=self.temperature,
-            tools=tools,
+            tools=resolved_tools,
             text_verbosity=self.text_verbosity,
             use_responses_api=self._use_responses_api,
+            structured_text=structured_text,
+            chat_response_format=chat_response_format,
         )
 
     def _resolve_tools(self, tools: list[Any] | None) -> list[Any] | None:
@@ -272,19 +303,57 @@ Format your response as a structured report with clear sections and findings."""
         self,
         content: str,
         *,
+        phase_name: str | None = None,
         result_key: str,
         empty_value: str,
         include_phase: bool = False,
     ) -> dict:
         try:
-            prepared = self._prepare_request(content)
+            structured_text: dict[str, Any] | None = None
+            chat_response_format: dict[str, Any] | None = None
+            output_mode = resolve_structured_output_mode(
+                provider=self.provider,
+                model_name=self.model_name,
+                phase=phase_name,
+            )
+            if output_mode == "json_schema":
+                structured_text = build_openai_text_format(phase_name)
+                chat_response_format = build_openai_chat_response_format(phase_name)
+            elif phase_name and get_phase_model_response_schema(phase_name) is not None:
+                logger.info(
+                    (
+                        "[bold blue]%s:[/bold blue] Structured output disabled for %s on model %s; "
+                        "using plain-text fallback."
+                    ),
+                    self.name or "OpenAI Architect",
+                    phase_name,
+                    self.model_name,
+                )
+            prepared = self._prepare_request(
+                content,
+                system_prompt=self._resolve_system_prompt(None),
+                structured_text=structured_text,
+                chat_response_format=chat_response_format,
+            )
             self._log_token_estimate(prepared)
             response = execute_request(prepared)
             parsed = parse_response(response, prepared.api)
 
-            result: dict[str, Any] = {result_key: parsed.findings or empty_value}
+            value, structured_payload = resolve_phase_result_value(
+                phase=phase_name,
+                result_key=result_key,
+                findings=parsed.findings,
+                empty_value=empty_value,
+            )
+            result: dict[str, Any] = {result_key: value}
             if parsed.tool_calls:
                 result["tool_calls"] = parsed.tool_calls
+            if structured_payload is not None:
+                result["structured_output"] = structured_payload
+                if phase_name == "phase2":
+                    phase2_agents = extract_phase2_agents(structured_payload)
+                    if phase2_agents is not None:
+                        result["agents"] = phase2_agents
 
             if include_phase:
                 result["phase"] = "Consolidation"

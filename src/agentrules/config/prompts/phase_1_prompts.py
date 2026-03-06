@@ -6,17 +6,51 @@ Centralizing prompts here makes it easier to edit and maintain them without
 modifying the core logic of the agents.
 """
 
-# Base prompt template for all Phase 1 agents
-PHASE_1_BASE_PROMPT = """You are a {agent_name}, responsible for {agent_role}.
+from __future__ import annotations
 
-Your specific responsibilities are:
-{agent_responsibilities}
+from agentrules.core.utils.system_prompt import normalize_responsibilities
 
-Analyze this project context and provide a detailed report focused on your domain:
+# Phase 1 system prompt template (agent behavior/persona guidance).
+PHASE_1_SYSTEM_PROMPT = (
+    "You are {agent_name}, responsible for {agent_role}.\n\n"
+    "You are part of a team of agents working together to analyze and understand a software project.\n"
+    "You will be provided files and information about the project, and your task is to produce findings that will help the team build an accurate picture of the project to assist with onboarding.\n\n"
+    "Note: You are NOT responsible for identifying security vulnerabilities or code quality issues. Your focus is on understanding the project's structure, dependencies, and tech stack to inform new developers working in this project.\n\n"
+    "Responsibilities:\n"
+    "{agent_responsibilities}\n\n"
+    "Behavior requirements:\n"
+    "- Analyze only from evidence in provided project context and tool results.\n"
+    "- Keep findings concrete, technically precise, and actionable.\n"
+    "- Use clear section headers and concise bullet points when appropriate.\n"
+    "- Call out uncertainties explicitly instead of guessing.\n"
+)
 
+
+def _format_responsibilities(responsibilities: object) -> str:
+    cleaned = normalize_responsibilities(responsibilities)
+    if not cleaned:
+        return "- (no specific responsibilities provided)"
+    return "\n".join(f"- {item}" for item in cleaned)
+
+
+def format_phase1_system_prompt(
+    *,
+    agent_name: str,
+    agent_role: str,
+    responsibilities: object,
+) -> str:
+    return PHASE_1_SYSTEM_PROMPT.format(
+        agent_name=agent_name,
+        agent_role=agent_role,
+        agent_responsibilities=_format_responsibilities(responsibilities),
+    )
+
+
+# Base prompt template for all Phase 1 agents (user/task payload only).
+PHASE_1_BASE_PROMPT = """Project context:
 {context}
 
-Format your response as a structured report with clear sections and findings."""
+Produce the requested phase-1 findings for your assigned scope."""
 
 # Specific prompts for each agent in Phase 1
 
@@ -36,7 +70,7 @@ DEPENDENCY_CATALOG_PROMPT = {
     "role": "investigating packages and libraries",
     "responsibilities": [
         "Investigate all packages, libraries, and frameworks declared in manifest files",
-        "Determine version requirements and note any discrepancies or conflicts",
+        "Determine version requirements",
         "Summarize key runtime and build tooling so downstream agents have a complete reference"
     ]
 }

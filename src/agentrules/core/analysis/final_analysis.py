@@ -15,6 +15,7 @@ from collections.abc import Sequence
 
 from agentrules.config.prompts.final_analysis_prompt import (
     format_final_analysis_prompt,  # Function to format the final analysis prompt.
+    format_final_analysis_system_prompt,
 )
 from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
 
@@ -87,7 +88,14 @@ class FinalAnalysis:
             # Resolve architect at call time to allow test monkeypatches
             if self.architect is None:
                 from agentrules.core.agents.factory import factory as _factory
-                self.architect = _factory.get_architect_for_phase("final")
+                try:
+                    self.architect = _factory.get_architect_for_phase(
+                        "final",
+                        system_prompt=format_final_analysis_system_prompt(),
+                    )
+                except TypeError:
+                    # Backwards compatibility for patched test doubles that only accept phase.
+                    self.architect = _factory.get_architect_for_phase("final")
 
             # Use the architect to perform the final analysis with the formatted prompt.
             result = await self.architect.final_analysis(consolidated_report, prompt)

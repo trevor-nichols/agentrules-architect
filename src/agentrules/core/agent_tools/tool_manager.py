@@ -4,7 +4,7 @@ core/agent_tools/tool_manager.py
 Central manager for tool definitions and provider-specific conversions.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from agentrules.core.agents.base import ModelProvider
@@ -37,8 +37,14 @@ class ToolManager:
         normalized = list(tools)
 
         if provider == ModelProvider.OPENAI:
-            # OpenAI's format is very similar to our standard format
-            return list(normalized)
+            # OpenAI Responses API expects function tools to expose top-level
+            # `name`/`description`/`parameters` fields.
+            converted: list[dict[str, Any]] = []
+            for tool in normalized:
+                converted_tool = ToolManager._to_openai_responses_tool(tool)
+                if converted_tool:
+                    converted.append(converted_tool)
+            return converted
 
         elif provider == ModelProvider.ANTHROPIC:
             # Convert to Anthropic's tools format
@@ -114,6 +120,52 @@ class ToolManager:
             return list(normalized)
 
         return []
+
+    @staticmethod
+    def _to_openai_responses_tool(tool: Tool) -> dict[str, Any] | None:
+        """
+        Convert an internal `Tool` entry to OpenAI Responses function-tool shape.
+
+        Accepts either the legacy Chat Completions shape:
+        {"type":"function","function":{"name":...,"parameters":...}}
+        or an already-converted Responses shape.
+        """
+        if not isinstance(tool, Mapping):
+            return None
+
+        tool_type = tool.get("type")
+        if tool_type != "function":
+            return None
+
+        # Already in Responses shape (top-level name/parameters)
+        if isinstance(tool.get("name"), str):
+            normalized: dict[str, Any] = {
+                "type": "function",
+                "name": tool.get("name"),
+                "description": tool.get("description", ""),
+                "parameters": tool.get("parameters", {"type": "object", "properties": {}}),
+            }
+            if "strict" in tool:
+                normalized["strict"] = tool.get("strict")
+            return normalized
+
+        function_payload = tool.get("function")
+        if not isinstance(function_payload, Mapping):
+            return None
+
+        name = function_payload.get("name")
+        if not isinstance(name, str) or not name.strip():
+            return None
+
+        converted: dict[str, Any] = {
+            "type": "function",
+            "name": name,
+            "description": function_payload.get("description", ""),
+            "parameters": function_payload.get("parameters", {"type": "object", "properties": {}}),
+        }
+        if "strict" in function_payload:
+            converted["strict"] = function_payload.get("strict")
+        return converted
 
     @staticmethod
     def get_tools_for_phase(phase: str, tools_config: dict) -> list[Tool]:

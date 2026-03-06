@@ -154,9 +154,6 @@ class _AgentProgress:
         self.started = False
 
     def start(self, agents: Sequence[dict[str, Any]]) -> None:
-        if not self.started:
-            self.progress.start()
-            self.started = True
         for index, agent in enumerate(agents, start=1):
             agent_id = agent.get("id") or agent.get("name") or f"agent_{index}"
             if agent_id in self.tasks:
@@ -178,6 +175,9 @@ class _AgentProgress:
                 status=detail,
             )
             self.tasks[agent_id] = task_id
+        if not self.started:
+            self.progress.start()
+            self.started = True
 
     def update(self, agent_id: str, name: str, status: str, icon: str, icon_color: str) -> None:
         if not self.started:
@@ -188,7 +188,7 @@ class _AgentProgress:
             task_id = self.progress.add_task(
                 "",
                 total=None,
-                icon=f"[{icon_color}]{icon}[/]",
+                state_icon=f"[{icon_color}]{icon}[/]",
                 name=name,
                 status=status,
             )

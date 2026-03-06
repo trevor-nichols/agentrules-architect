@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 
-from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
+from agentrules.core.utils.constants import (
+    DEFAULT_RULES_FILENAME,
+    DEFAULT_RULES_TREE_MAX_DEPTH,
+    DEFAULT_SNAPSHOT_FILENAME,
+)
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
@@ -156,6 +160,16 @@ class ConfigManager:
         config = self._repository.load()
         return outputs.should_generate_phase_outputs(config, default)
 
+    def set_generate_snapshot(self, enabled: bool) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_generate_snapshot(config, enabled)
+        self._repository.save(config)
+        return config
+
+    def should_generate_snapshot(self, default: bool = True) -> bool:
+        config = self._repository.load()
+        return outputs.should_generate_snapshot(config, default)
+
     def get_rules_filename(self, default: str | None = None) -> str:
         config = self._repository.load()
         fallback = default if default is not None else DEFAULT_RULES_FILENAME
@@ -182,6 +196,34 @@ class ConfigManager:
         self._repository.save(config)
         return config
 
+    def get_snapshot_filename(self, default: str | None = None) -> str:
+        config = self._repository.load()
+        previous = config.outputs.snapshot_filename
+        normalized = outputs.get_snapshot_filename(config, default or DEFAULT_SNAPSHOT_FILENAME)
+        if normalized != previous:
+            self._repository.save(config)
+        return normalized
+
+    def set_snapshot_filename(self, name: str) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_snapshot_filename(config, name)
+        self._repository.save(config)
+        return config
+
+    def get_rules_tree_max_depth(self, default: int = DEFAULT_RULES_TREE_MAX_DEPTH) -> int:
+        config = self._repository.load()
+        previous = config.outputs.rules_tree_max_depth
+        normalized = outputs.get_rules_tree_max_depth(config, default)
+        if normalized != previous:
+            self._repository.save(config)
+        return normalized
+
+    def set_rules_tree_max_depth(self, value: int | None) -> CLIConfig:
+        config = self._repository.load()
+        outputs.set_rules_tree_max_depth(config, value)
+        self._repository.save(config)
+        return config
+
     # ------------------------------------------------------------------
     # Exclusions management
     # ------------------------------------------------------------------
@@ -192,6 +234,19 @@ class ConfigManager:
     def get_effective_exclusions(self) -> tuple[set[str], set[str], set[str]]:
         config = self._repository.load()
         return exclusions.get_effective_exclusions(config)
+
+    def get_managed_output_relative_paths(
+        self,
+        *,
+        rules_filename: str | None = None,
+        snapshot_filename: str | None = None,
+    ) -> set[str]:
+        config = self._repository.load()
+        return exclusions.get_managed_output_relative_paths(
+            config,
+            rules_filename=rules_filename,
+            snapshot_filename=snapshot_filename,
+        )
 
     def add_exclusion_entry(self, kind: str, value: str) -> str | None:
         config = self._repository.load()

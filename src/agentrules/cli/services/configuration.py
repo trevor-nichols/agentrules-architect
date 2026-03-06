@@ -112,12 +112,36 @@ def are_phase_outputs_enabled() -> bool:
     return CONFIG_MANAGER.should_generate_phase_outputs()
 
 
+def save_generate_snapshot_preference(enabled: bool) -> None:
+    CONFIG_MANAGER.set_generate_snapshot(enabled)
+
+
+def is_snapshot_generation_enabled() -> bool:
+    return CONFIG_MANAGER.should_generate_snapshot()
+
+
 def get_rules_file_name() -> str:
     return CONFIG_MANAGER.get_rules_filename()
 
 
 def save_rules_file_name(name: str) -> None:
     CONFIG_MANAGER.set_rules_filename(name)
+
+
+def get_snapshot_file_name() -> str:
+    return CONFIG_MANAGER.get_snapshot_filename()
+
+
+def save_snapshot_file_name(name: str) -> None:
+    CONFIG_MANAGER.set_snapshot_filename(name)
+
+
+def get_rules_tree_depth() -> int:
+    return CONFIG_MANAGER.get_rules_tree_max_depth()
+
+
+def save_rules_tree_depth(value: int | None) -> None:
+    CONFIG_MANAGER.set_rules_tree_max_depth(value)
 
 
 def get_exclusion_settings():

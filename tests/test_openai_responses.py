@@ -22,6 +22,7 @@ class OpenAIResponsesTests(unittest.TestCase):
 
         self.assertEqual(prepared.api, "responses")
         self.assertEqual(params["model"], "gpt-5")
+        self.assertIn("instructions", params)
         self.assertEqual(params.get("reasoning"), {"effort": "minimal"})
         self.assertEqual(params.get("text"), {"verbosity": "low"})
 
@@ -53,21 +54,47 @@ class OpenAIResponsesTests(unittest.TestCase):
         self.assertEqual(params.get("reasoning"), {"effort": "high"})
         self.assertEqual(params.get("text"), {"verbosity": "high"})
 
+    def test_prepare_request_uses_responses_api_for_gpt52_codex(self) -> None:
+        architect = OpenAIArchitect(
+            model_name="gpt-5.2-codex",
+            reasoning=ReasoningMode.MEDIUM,
+            text_verbosity="medium"
+        )
+        prepared = architect._prepare_request("Salut")
+        params = prepared.payload
+
+        self.assertEqual(prepared.api, "responses")
+        self.assertEqual(params["model"], "gpt-5.2-codex")
+        self.assertEqual(params.get("reasoning"), {"effort": "medium"})
+        self.assertEqual(params.get("text"), {"verbosity": "medium"})
+
+    def test_prepare_request_uses_responses_api_for_gpt54_snapshot(self) -> None:
+        architect = OpenAIArchitect(
+            model_name="gpt-5.4-2026-03-05",
+            reasoning=ReasoningMode.MEDIUM,
+            text_verbosity="medium"
+        )
+        prepared = architect._prepare_request("Ciao")
+        params = prepared.payload
+
+        self.assertEqual(prepared.api, "responses")
+        self.assertEqual(params["model"], "gpt-5.4-2026-03-05")
+        self.assertEqual(params.get("reasoning"), {"effort": "medium"})
+        self.assertEqual(params.get("text"), {"verbosity": "medium"})
+
     def test_parse_responses_output_normalizes_tool_calls(self) -> None:
         payload = {
             "output": [
                 {
                     "type": "message",
-                    "content": [
-                        {"type": "output_text", "text": "Result body"},
-                        {
-                            "type": "function_call",
-                            "id": "call_123",
-                            "name": "summarize",
-                            "arguments": '{"topic": "ai"}'
-                        }
-                    ]
-                }
+                    "content": [{"type": "output_text", "text": "Result body"}],
+                },
+                {
+                    "type": "function_call",
+                    "id": "call_123",
+                    "name": "summarize",
+                    "arguments": '{"topic": "ai"}'
+                },
             ]
         }
 

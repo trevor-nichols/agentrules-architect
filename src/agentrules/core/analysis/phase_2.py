@@ -12,15 +12,21 @@ It defines the methods needed for creating a detailed analysis plan based on Pha
 import logging  # Used for logging messages
 from collections.abc import Sequence
 
+from agentrules.config.agents import MODEL_CONFIG
 from agentrules.config.prompts.phase_2_prompts import (  # Prompts for Phase 2
-    format_phase2_prompt,
+    format_phase2_legacy_xml_system_prompt,
+    format_phase2_legacy_prompt,
+    format_phase2_structured_system_prompt,
+    format_phase2_structured_prompt,
 )
 from agentrules.core.agents import get_architect_for_phase  # Added import for dynamic model configuration
+from agentrules.core.agents.base import ModelProvider
 from agentrules.core.analysis.events import AnalysisEvent, AnalysisEventSink, NullEventSink
 from agentrules.core.utils.parsers.agent_parser import (  # Function to parse agent definitions
     extract_agent_fallback,
     parse_agents_from_phase2,
 )
+from agentrules.core.utils.structured_outputs import should_use_legacy_phase2_prompt
 
 # ====================================================
 # Logger Initialization
@@ -49,8 +55,25 @@ class Phase2Analysis:
         """
         Initialize the Phase 2 analysis with the architect from configuration.
         """
+        phase2_model = MODEL_CONFIG.get("phase2")
+        use_legacy_xml = bool(
+            phase2_model
+            and should_use_legacy_phase2_prompt(
+                provider=phase2_model.provider,
+                model_name=phase2_model.model_name,
+            )
+        )
+        system_prompt = (
+            format_phase2_legacy_xml_system_prompt()
+            if use_legacy_xml
+            else format_phase2_structured_system_prompt()
+        )
+
         # Use the factory function to get the appropriate architect based on configuration
-        self.architect = get_architect_for_phase("phase2")
+        self.architect = get_architect_for_phase(
+            "phase2",
+            system_prompt=system_prompt,
+        )
         self._events: AnalysisEventSink = events or NullEventSink()
 
     def set_event_sink(self, events: AnalysisEventSink | None) -> None:
@@ -78,7 +101,23 @@ class Phase2Analysis:
             # Prompt Formatting
             # Format the prompt using the template.
             # ====================================================
-            prompt = format_phase2_prompt(phase1_results, tree)
+            structured_prompt = format_phase2_structured_prompt(phase1_results, tree)
+            legacy_prompt = format_phase2_legacy_prompt(phase1_results, tree)
+            prompt = structured_prompt
+
+            provider = getattr(self.architect, "provider", None)
+            model_name = getattr(self.architect, "model_name", None)
+            if isinstance(provider, ModelProvider) and isinstance(model_name, str):
+                if should_use_legacy_phase2_prompt(provider=provider, model_name=model_name):
+                    prompt = legacy_prompt
+                    logger.info(
+                        (
+                            "[bold yellow]Phase 2:[/bold yellow] Structured outputs unavailable for %s/%s; "
+                            "using legacy XML prompt fallback."
+                        ),
+                        provider.value,
+                        model_name,
+                    )
 
             logger.info("[bold]Phase 2:[/bold] Creating analysis plan using configured model")
 
@@ -102,9 +141,15 @@ class Phase2Analysis:
             # ====================================================
             plan_text = analysis_plan_response.get("plan", "")  # Extract the raw plan text
 
-            # Try parsing agents from the plan text
+            # Prefer structured fields on the full response payload; parser falls
+            # back to plan text/XML recovery when structured agents are absent.
             logger.info("[bold]Phase 2:[/bold] Parsing agent definitions from plan")
-            agents = parse_agents_from_phase2(plan_text)  # Parse the agent definitions from plan text
+            agents = parse_agents_from_phase2(analysis_plan_response)
+            explicit_empty_agents = (
+                isinstance(analysis_plan_response, dict)
+                and isinstance(analysis_plan_response.get("agents"), list)
+                and not analysis_plan_response["agents"]
+            )
 
             if agents:
                 logger.info(f"[bold green]Success:[/bold green] Found {len(agents)} agents in the analysis plan")
@@ -117,8 +162,9 @@ class Phase2Analysis:
                         files_count,
                     )
                 self._publish_agent_plan(phase="phase2", agents=agents)
-            # If no agents found, try the fallback approach directly
-            else:
+            # If no agents found, try the fallback approach directly unless the
+            # model explicitly returned an empty agent list.
+            elif not explicit_empty_agents:
                 logger.info(
                     "[bold yellow]Warning:[/bold yellow] No agents found from standard parsing, "
                     "trying fallback",
@@ -133,6 +179,11 @@ class Phase2Analysis:
                         logger.warning("[bold yellow]Warning:[/bold yellow] Fallback parsing couldn't find any agents")
                 except Exception as e:
                     logger.error(f"[bold red]Error:[/bold red] Fallback parsing failed: {str(e)}")
+            else:
+                logger.info(
+                    "[bold]Phase 2:[/bold] Preserving explicit empty structured agent list; "
+                    "skipping fallback parsing",
+                )
 
             # Add the agents to the response dictionary
             analysis_plan_response["agents"] = agents
