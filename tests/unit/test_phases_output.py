@@ -56,3 +56,30 @@ def test_save_phase_outputs_omits_snapshot_reference_when_not_configured() -> No
         rendered = (root / "AGENTS.md").read_text(encoding="utf-8")
         assert "## Developer Notes" not in rendered
         assert "full project snapshot artifact" not in rendered
+
+
+def test_save_phase_outputs_excludes_custom_managed_files_from_tree() -> None:
+    with TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        (root / "src.py").write_text("print('ok')\n", encoding="utf-8")
+        (root / "PROJECT_SNAPSHOT.md").write_text("snapshot", encoding="utf-8")
+        (root / "CLAUDE.custom.md").write_text("stale rules", encoding="utf-8")
+
+        save_phase_outputs(
+            root,
+            _analysis_payload(),
+            rules_filename="CLAUDE.custom.md",
+            include_phase_files=False,
+            rules_tree_max_depth=2,
+            snapshot_reference_filename="PROJECT_SNAPSHOT.md",
+        )
+
+        rendered = (root / "CLAUDE.custom.md").read_text(encoding="utf-8")
+        tree_section = rendered.split("<project_structure>", maxsplit=1)[1].split(
+            "</project_structure>",
+            maxsplit=1,
+        )[0]
+
+        assert "PROJECT_SNAPSHOT.md" not in tree_section
+        assert "CLAUDE.custom.md" not in tree_section
+        assert "src.py" in tree_section

@@ -127,34 +127,38 @@ def save_phase_outputs(
             f.write(f"# Final Analysis (Config: {final_model})\n\n")
             f.write(ensure_string(final_analysis_data))
 
-    # Save to AGENTS.md file in project root directory with project tree
-    # Define directories to exclude from the tree
-    exclude_dirs = ["phases_output", "__pycache__", ".git", ".vscode", ".cursor"]
-
-    # Get the project tree without the excluded directories
+    # Save to AGENTS.md file in project root directory with project tree.
+    # Use the effective runtime exclusions, then explicitly add any filenames
+    # passed in for this invocation so CLI overrides do not leak into the tree.
     from agentrules.core.utils.file_system.tree_generator import (
-        DEFAULT_EXCLUDE_DIRS,
-        DEFAULT_EXCLUDE_PATTERNS,
         generate_tree,
     )
-
-    # Create a custom set of exclude directories by combining defaults with our additions
-    custom_exclude_dirs = DEFAULT_EXCLUDE_DIRS.union(set(exclude_dirs))
 
     # Generate a tree with our custom exclusions.
     # Keep AGENTS tree depth independent from analysis traversal depth.
     config_manager = get_config_manager()
+    effective_exclude_dirs, effective_exclude_files, effective_exclude_exts = (
+        config_manager.get_effective_exclusions()
+    )
     if rules_tree_max_depth is None:
         if tree_max_depth is not None:
             rules_tree_max_depth = tree_max_depth
         else:
             rules_tree_max_depth = config_manager.get_rules_tree_max_depth()
 
+    custom_exclude_dirs = set(effective_exclude_dirs)
+    custom_exclude_files = set(effective_exclude_files)
+    custom_exclude_files.add(resolved_rules_filename)
+    if snapshot_reference_filename:
+        custom_exclude_files.add(snapshot_reference_filename)
+    custom_exclude_patterns = set(custom_exclude_files)
+    custom_exclude_patterns.update(f"*{ext}" for ext in effective_exclude_exts)
+
     tree = generate_tree(
         directory,
         max_depth=rules_tree_max_depth,
         exclude_dirs=custom_exclude_dirs,
-        exclude_patterns=DEFAULT_EXCLUDE_PATTERNS,
+        exclude_patterns=custom_exclude_patterns,
         gitignore_spec=gitignore_spec,
         root=directory,
     )
