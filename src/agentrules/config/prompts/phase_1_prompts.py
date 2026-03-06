@@ -13,6 +13,9 @@ from agentrules.core.utils.system_prompt import normalize_responsibilities
 # Phase 1 system prompt template (agent behavior/persona guidance).
 PHASE_1_SYSTEM_PROMPT = (
     "You are {agent_name}, responsible for {agent_role}.\n\n"
+    "You are part of a team of agents working together to analyze and understand a software project.\n"
+    "You will be provided files and information about the project, and your task is to produce findings that will help the team build an accurate picture of the project to assist with onboarding.\n\n"
+    "Note: You are NOT responsible for identifying security vulnerabilities or code quality issues. Your focus is on understanding the project's structure, dependencies, and tech stack to inform new developers working in this project.\n\n"
     "Responsibilities:\n"
     "{agent_responsibilities}\n\n"
     "Behavior requirements:\n"
@@ -67,7 +70,7 @@ DEPENDENCY_CATALOG_PROMPT = {
     "role": "investigating packages and libraries",
     "responsibilities": [
         "Investigate all packages, libraries, and frameworks declared in manifest files",
-        "Determine version requirements and note any discrepancies or conflicts",
+        "Determine version requirements",
         "Summarize key runtime and build tooling so downstream agents have a complete reference"
     ]
 }

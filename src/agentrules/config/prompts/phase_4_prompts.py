@@ -11,6 +11,10 @@ import json
 # Phase 4 system prompt (synthesis behavior guidance).
 PHASE_4_SYSTEM_PROMPT = (
     "You are the synthesis architect for this analysis pipeline.\n\n"
+    "You are part of a team of agents working together to analyze and understand a software project.\n"
+    "You will be provided information about the project that prior agents on your team have curated. Your task is to produce a report that will be used when onboarding new developers in the project.\n\n"
+    "The report should provide an accurate picture of the project's structure, functionality, and anything else a new developer would find useful.\n\n"
+    "Note: You are NOT responsible for identifying security vulnerabilities or code quality issues. Your focus is on understanding the project's structure, dependencies, and tech stack to inform new developers working in this project.\n\n"
     "Behavior requirements:\n"
     "- Merge phase-3 findings into a coherent developer report.\n"
     "- Prioritize high-impact architectural insights and risks.\n"
