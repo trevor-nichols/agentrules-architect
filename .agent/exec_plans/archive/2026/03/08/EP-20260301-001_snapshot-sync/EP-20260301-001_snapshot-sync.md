@@ -1,21 +1,27 @@
 ---
 id: EP-20260301-001
-title: "Snapshot artifact generation and comment-preserving sync"
-status: done
+title: Snapshot artifact generation and comment-preserving sync
+status: archived
 kind: feature
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-03-01
-updated: 2026-03-01
-tags: [snapshot, cli, outputs]
-touches: [cli, docs, tests]
+updated: '2026-03-08'
+tags:
+- snapshot
+- cli
+- outputs
+touches:
+- cli
+- docs
+- tests
 risk: med
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: ""
+  issue: ''
+  pr: ''
+  docs: ''
 depends_on: []
 supersedes: []
 ---

@@ -1,21 +1,26 @@
 ---
 id: EP-20260306-002
-title: "Add Gemini 3 family preview models with explicit capability profiles"
-status: done
+title: Add Gemini 3 family preview models with explicit capability profiles
+status: archived
 kind: refactor
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-03-06
-updated: 2026-03-06
-tags: [gemini, google, models]
-touches: [agents, tests]
+updated: '2026-03-08'
+tags:
+- gemini
+- google
+- models
+touches:
+- agents
+- tests
 risk: low
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: "https://ai.google.dev/gemini-api/docs/gemini-3"
+  issue: ''
+  pr: ''
+  docs: https://ai.google.dev/gemini-api/docs/gemini-3
 depends_on: []
 supersedes: []
 ---

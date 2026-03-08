@@ -1,21 +1,28 @@
 ---
 id: EP-20260221-001
-title: "Structured outputs contracts across analysis phases"
-status: done
+title: Structured outputs contracts across analysis phases
+status: archived
 kind: refactor
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-02-21
-updated: 2026-02-21
-tags: [structured-outputs, schemas, providers]
-touches: [agents, cli, tests, docs]
+updated: '2026-03-08'
+tags:
+- structured-outputs
+- schemas
+- providers
+touches:
+- agents
+- cli
+- tests
+- docs
 risk: med
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: "internal-docs/integrations"
+  issue: ''
+  pr: ''
+  docs: internal-docs/integrations
 depends_on: []
 supersedes: []
 ---

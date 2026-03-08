@@ -1,21 +1,26 @@
 ---
 id: EP-20260306-001
-title: "Add Claude Sonnet 4.6 with extensible Anthropic capability metadata"
-status: done
+title: Add Claude Sonnet 4.6 with extensible Anthropic capability metadata
+status: archived
 kind: refactor
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-03-06
-updated: 2026-03-06
-tags: [anthropic, models, capabilities]
-touches: [agents, tests]
+updated: '2026-03-08'
+tags:
+- anthropic
+- models
+- capabilities
+touches:
+- agents
+- tests
 risk: low
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: "https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-6"
+  issue: ''
+  pr: ''
+  docs: https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-6
 depends_on: []
 supersedes: []
 ---
