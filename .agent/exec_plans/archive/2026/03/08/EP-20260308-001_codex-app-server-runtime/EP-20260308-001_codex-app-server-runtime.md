@@ -1,21 +1,29 @@
 ---
 id: EP-20260308-001
-title: "Integrate Codex app-server runtime"
-status: done
+title: Integrate Codex app-server runtime
+status: archived
 kind: feature
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-03-08
-updated: 2026-03-08
-tags: [codex, app-server, cli, providers]
-touches: [cli, agents, tests, docs]
+updated: '2026-03-08'
+tags:
+- codex
+- app-server
+- cli
+- providers
+touches:
+- cli
+- agents
+- tests
+- docs
 risk: med
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: "internal-docs/integrations/codex/app-server"
+  issue: ''
+  pr: ''
+  docs: internal-docs/integrations/codex/app-server
 depends_on: []
 supersedes: []
 ---

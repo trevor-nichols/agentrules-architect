@@ -168,9 +168,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/codex-app-server-runtime/EP-20260308-001_codex-app-server-runtime.md",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260308-001_codex-app-server-runtime/EP-20260308-001_codex-app-server-runtime.md",
       "risk": "med",
-      "status": "done",
+      "status": "archived",
       "supersedes": [],
       "tags": [
         "codex",
