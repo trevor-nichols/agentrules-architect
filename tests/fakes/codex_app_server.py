@@ -58,6 +58,10 @@ state: dict[str, Any] = {
     "initialized": False,
     "account": None,
     "login_counter": 0,
+    "thread_counter": 0,
+    "turn_counter": 0,
+    "item_counter": 0,
+    "threads": {},
 }
 
 
@@ -79,6 +83,168 @@ def current_account_payload() -> dict[str, Any]:
             "chatgpt" if isinstance(account, dict) and account.get("type") == "chatgpt" else None
         ),
     }
+
+
+def next_thread_id() -> str:
+    state["thread_counter"] += 1
+    return f"thr-{state['thread_counter']}"
+
+
+def next_turn_id() -> str:
+    state["turn_counter"] += 1
+    return f"turn-{state['turn_counter']}"
+
+
+def next_item_id() -> str:
+    state["item_counter"] += 1
+    return f"item-{state['item_counter']}"
+
+
+def _extract_text_input(params: dict[str, Any]) -> str:
+    inputs = params.get("input")
+    if not isinstance(inputs, list):
+        return ""
+    parts: list[str] = []
+    for item in inputs:
+        if isinstance(item, dict) and item.get("type") == "text" and isinstance(item.get("text"), str):
+            parts.append(item["text"])
+    return "\n".join(parts)
+
+
+def _build_structured_payload(output_schema: dict[str, Any]) -> dict[str, Any]:
+    properties = output_schema.get("properties") if isinstance(output_schema, dict) else None
+    if not isinstance(properties, dict):
+        return {"analysis": "Structured output from fake Codex"}
+
+    if "plan" in properties and "agents" in properties:
+        return {
+            "plan": "Analyze the repository in focused batches.",
+            "agents": [
+                {
+                    "id": "agent_1",
+                    "name": "Architecture Agent",
+                    "description": "Inspect core architecture boundaries.",
+                    "responsibilities": ["Review module boundaries"],
+                    "file_assignments": ["src/agentrules/core/agents/codex/architect.py"],
+                }
+            ],
+            "reasoning": "The fake runtime returned a deterministic phase 2 plan.",
+        }
+
+    if "report" in properties:
+        return {
+            "phase": "Consolidation",
+            "report": "Codex consolidated the prior phase outputs.",
+        }
+
+    if "analysis" in properties:
+        return {"analysis": "Codex produced a structured analysis response."}
+
+    return {key: f"value-for-{key}" for key in properties}
+
+
+def _build_agent_message(text_input: str, output_schema: Any) -> str:
+    if "TURN_FAIL" in text_input:
+        return ""
+    if output_schema is not None:
+        if "BAD_SCHEMA_JSON" in text_input:
+            return "this is not valid json"
+        return json.dumps(_build_structured_payload(output_schema), separators=(",", ":"))
+    prompt_excerpt = text_input.strip().splitlines()[0] if text_input.strip() else "empty prompt"
+    return f"Codex analyzed: {prompt_excerpt}"
+
+
+def _handle_thread_start(request_id: int | str | None, params: dict[str, Any]) -> None:
+    thread_id = next_thread_id()
+    thread = {
+        "id": thread_id,
+        "preview": "",
+        "modelProvider": "openai",
+        "createdAt": 1730910000,
+    }
+    state["threads"][thread_id] = {
+        "model": params.get("model"),
+        "cwd": params.get("cwd"),
+        "sandbox": params.get("sandbox"),
+    }
+    send({"method": "thread/started", "params": {"thread": {"id": thread_id}}})
+    send(
+        {
+            "id": request_id,
+            "result": {
+                "thread": thread,
+                "model": params.get("model") or "gpt-5.3-codex",
+                "cwd": params.get("cwd") or "/tmp/project",
+                "modelProvider": "openai",
+                "approvalPolicy": params.get("approvalPolicy") or "never",
+                "sandbox": {"type": "readOnly", "networkAccess": False},
+            },
+        }
+    )
+
+
+def _handle_turn_start(request_id: int | str | None, params: dict[str, Any]) -> None:
+    thread_id = params.get("threadId")
+    if not isinstance(thread_id, str) or thread_id not in state["threads"]:
+        send_error(request_id, f"Unknown thread: {thread_id}")
+        return
+
+    turn_id = next_turn_id()
+    item_id = next_item_id()
+    text_input = _extract_text_input(params)
+    output_schema = params.get("outputSchema") if isinstance(params.get("outputSchema"), dict) else None
+    agent_message = _build_agent_message(text_input, output_schema)
+
+    send({"id": request_id, "result": {"turn": {"id": turn_id, "status": "inProgress", "items": [], "error": None}}})
+    send({"method": "turn/started", "params": {"threadId": thread_id, "turn": {"id": turn_id, "status": "inProgress", "items": [], "error": None}}})
+    send({"method": "item/started", "params": {"threadId": thread_id, "turnId": turn_id, "item": {"id": item_id, "type": "agentMessage", "text": ""}}})
+
+    if "TURN_FAIL" in text_input:
+        send(
+            {
+                "method": "turn/completed",
+                "params": {
+                    "threadId": thread_id,
+                    "turn": {
+                        "id": turn_id,
+                        "status": "failed",
+                        "items": [],
+                        "error": {"message": "Fake Codex turn failure", "additionalDetails": "Simulated failure"},
+                    },
+                },
+            }
+        )
+        return
+
+    midpoint = max(len(agent_message) // 2, 1)
+    for delta in (agent_message[:midpoint], agent_message[midpoint:]):
+        if delta:
+            send(
+                {
+                    "method": "item/agentMessage/delta",
+                    "params": {"threadId": thread_id, "turnId": turn_id, "itemId": item_id, "delta": delta},
+                }
+            )
+
+    send(
+        {
+            "method": "item/completed",
+            "params": {
+                "threadId": thread_id,
+                "turnId": turn_id,
+                "item": {"id": item_id, "type": "agentMessage", "text": agent_message},
+            },
+        }
+    )
+    send(
+        {
+            "method": "turn/completed",
+            "params": {
+                "threadId": thread_id,
+                "turn": {"id": turn_id, "status": "completed", "items": [], "error": None},
+            },
+        }
+    )
 
 
 def handle_request(message: dict[str, Any]) -> None:
@@ -169,6 +335,14 @@ def handle_request(message: dict[str, Any]) -> None:
                 },
             }
         )
+        return
+
+    if method == "thread/start":
+        _handle_thread_start(request_id, params)
+        return
+
+    if method == "turn/start":
+        _handle_turn_start(request_id, params)
         return
 
     send_error(request_id, f"Unknown method: {method}", code=-32601)

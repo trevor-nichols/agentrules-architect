@@ -89,6 +89,82 @@ class CodexInitializeResult:
 
 
 @dataclass(frozen=True)
+class CodexThreadSummary:
+    id: str
+    raw: Mapping[str, Any]
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> CodexThreadSummary:
+        return cls(
+            id=_as_str(payload.get("id")) or "",
+            raw=dict(payload),
+        )
+
+
+@dataclass(frozen=True)
+class CodexThreadStartResult:
+    thread: CodexThreadSummary
+    model: str | None
+    cwd: str | None
+    raw: Mapping[str, Any]
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> CodexThreadStartResult:
+        return cls(
+            thread=CodexThreadSummary.from_payload(_as_mapping(payload.get("thread"))),
+            model=_as_str(payload.get("model")),
+            cwd=_as_str(payload.get("cwd")),
+            raw=dict(payload),
+        )
+
+
+@dataclass(frozen=True)
+class CodexTurnError:
+    message: str
+    additional_details: str | None
+    raw: Mapping[str, Any]
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> CodexTurnError:
+        return cls(
+            message=_as_str(payload.get("message")) or "Unknown Codex turn failure",
+            additional_details=_as_str(payload.get("additionalDetails")),
+            raw=dict(payload),
+        )
+
+
+@dataclass(frozen=True)
+class CodexTurnSummary:
+    id: str
+    status: str
+    error: CodexTurnError | None
+    raw: Mapping[str, Any]
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> CodexTurnSummary:
+        raw_error = _as_mapping(payload.get("error"))
+        return cls(
+            id=_as_str(payload.get("id")) or "",
+            status=_as_str(payload.get("status")) or "unknown",
+            error=CodexTurnError.from_payload(raw_error) if raw_error else None,
+            raw=dict(payload),
+        )
+
+
+@dataclass(frozen=True)
+class CodexTurnStartResult:
+    turn: CodexTurnSummary
+    raw: Mapping[str, Any]
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> CodexTurnStartResult:
+        return cls(
+            turn=CodexTurnSummary.from_payload(_as_mapping(payload.get("turn"))),
+            raw=dict(payload),
+        )
+
+
+@dataclass(frozen=True)
 class CodexAccountSummary:
     account_type: CodexAccountType
     auth_mode: CodexAuthMode

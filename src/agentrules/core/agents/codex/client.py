@@ -21,6 +21,8 @@ from .models import (
     CodexModelListPage,
     CodexNotification,
     CodexServerRequest,
+    CodexThreadStartResult,
+    CodexTurnStartResult,
     RequestId,
 )
 from .process import CodexAppServerProcess
@@ -182,6 +184,14 @@ class CodexAppServerClient:
         payload = await self.request("account/read", {"refreshToken": refresh_token})
         return CodexAccountSummary.from_payload(payload)
 
+    async def start_thread(self, params: Mapping[str, Any] | None = None) -> CodexThreadStartResult:
+        payload = await self.request("thread/start", params)
+        return CodexThreadStartResult.from_payload(payload)
+
+    async def start_turn(self, params: Mapping[str, Any]) -> CodexTurnStartResult:
+        payload = await self.request("turn/start", params)
+        return CodexTurnStartResult.from_payload(payload)
+
     async def start_chatgpt_login(self) -> CodexLoginStartResult:
         payload = await self.request("account/login/start", {"type": "chatgpt"})
         return CodexLoginStartResult.from_payload(payload)
@@ -249,6 +259,21 @@ class CodexAppServerClient:
                 self._notification_buffer,
                 self._notification_event,
                 matcher=lambda item: item.method == method and (predicate is None or predicate(item)),
+            ),
+            timeout=timeout,
+        )
+
+    async def wait_for_next_notification(
+        self,
+        *,
+        timeout_seconds: float | None = None,
+    ) -> CodexNotification:
+        timeout = self._request_timeout_seconds if timeout_seconds is None else timeout_seconds
+        return await asyncio.wait_for(
+            self._wait_for_buffered_message(
+                self._notification_buffer,
+                self._notification_event,
+                matcher=lambda _item: True,
             ),
             timeout=timeout,
         )

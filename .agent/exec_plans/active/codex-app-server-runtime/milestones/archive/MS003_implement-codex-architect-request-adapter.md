@@ -3,7 +3,7 @@ id: EP-20260308-001/MS003
 execplan_id: EP-20260308-001
 ms: 3
 title: "Implement Codex architect request adapter"
-status: planned
+status: done
 domain: cross-cutting
 owner: "@codex"
 created: 2026-03-08
@@ -48,10 +48,10 @@ Implement `CodexArchitect` so Codex can satisfy the same provider contract as th
 
 ## Workstreams & Tasks
 
-- [ ] Provider adapter: implement `CodexArchitect` and factory wiring.
-- [ ] Request policy: set sane defaults for read-only sandboxing, approval policy, model, effort, and `outputSchema`.
-- [ ] Response parsing: collect `item/agentMessage/*` plus `turn/completed` into the standard provider result shape.
-- [ ] Tests: add unit coverage for successful structured and unstructured runs plus failure mapping.
+- [x] Provider adapter: implemented `CodexArchitect`, `request_builder.py`, `response_parser.py`, and factory wiring for `ModelProvider.CODEX`.
+- [x] Request policy: set sane defaults for ephemeral threads, read-only sandboxing, approval policy `never`, model, effort, reasoning summary, and `outputSchema`.
+- [x] Response parsing: collect `item/agentMessage/*` plus `turn/completed` into the standard provider result shape with actionable turn-failure errors.
+- [x] Tests: added unit coverage for factory routing, launch override construction, successful structured and unstructured runs, invalid structured output, and failure mapping.
 
 ## Risks & Mitigations
 
@@ -69,3 +69,4 @@ Implement `CodexArchitect` so Codex can satisfy the same provider contract as th
 ## Changelog
 
 - 2026-03-08: Milestone created.
+- 2026-03-08: Implemented `CodexArchitect`, structured `outputSchema` handling, app-server turn parsing, factory routing, and Codex architect unit coverage; validated with targeted and full unit/lint/type checks plus a live unauthenticated architect smoke.

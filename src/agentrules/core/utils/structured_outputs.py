@@ -298,6 +298,14 @@ def build_anthropic_output_format(phase: str | None) -> dict[str, Any] | None:
     }
 
 
+def build_codex_output_schema(phase: str | None) -> dict[str, Any] | None:
+    """Build Codex app-server `outputSchema` payload."""
+    schema = get_phase_model_response_schema(phase)
+    if schema is None:
+        return None
+    return copy.deepcopy(schema)
+
+
 def build_gemini_response_schema(phase: str | None) -> dict[str, Any] | None:
     """Build Gemini response_json_schema."""
     schema = get_phase_model_response_schema(phase)

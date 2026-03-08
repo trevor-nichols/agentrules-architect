@@ -95,6 +95,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - For unit tests, provider clients should expose set_client/get_client injection points for test doubles.
 - Codex is a local runtime provider, not an API-key provider. Persist Codex settings in the dedicated `CLIConfig.codex` section and gate Codex presets on runtime readiness (`codex` executable plus resolved `CODEX_HOME` policy), not on `providers.<name>.api_key`.
 - The Codex app-server transport lives under `src/agentrules/core/agents/codex/`. All CLI and runtime callers must construct launch settings through `ConfigManager.build_codex_launch_config()` so executable resolution and `CODEX_HOME` policy stay centralized.
+- `CodexArchitect` must keep `developer_instructions` request-scoped by passing them through launch-config overrides to a short-lived app-server process, and structured phases must use app-server `outputSchema` rather than prompt-only JSON guidance.
 - System/developer instructions must be resolved once per request and mapped to provider-native fields:
   - OpenAI Responses: `instructions`; OpenAI Chat: developer role message
   - Anthropic: top-level `system`
