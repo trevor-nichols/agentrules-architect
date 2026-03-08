@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import os
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any
+
+from agentrules.core.agents.codex import CodexExecutableNotFoundError, CodexProcessLaunchConfig
 
 from .. import constants as configuration_constants
 from ..models import CLIConfig, CodexConfig, CodexHomeStrategy
@@ -88,3 +91,26 @@ def resolve_codex_executable(config: CLIConfig) -> str | None:
 
 def is_codex_available(config: CLIConfig) -> bool:
     return resolve_codex_executable(config) is not None
+
+
+def build_codex_launch_config(
+    config: CLIConfig,
+    getenv: Callable[[str], str | None],
+    *,
+    cwd: str | None = None,
+    config_overrides: Mapping[str, Any] | None = None,
+) -> CodexProcessLaunchConfig:
+    executable_path = resolve_codex_executable(config)
+    if executable_path is None:
+        configured = get_codex_config(config).cli_path
+        raise CodexExecutableNotFoundError(
+            f"Could not resolve the configured Codex executable: {configured}"
+        )
+
+    normalized_cwd = normalize_optional_string(cwd)
+    return CodexProcessLaunchConfig(
+        executable_path=executable_path,
+        codex_home=get_effective_codex_home(config, getenv),
+        cwd=str(Path(normalized_cwd).expanduser()) if normalized_cwd else None,
+        config_overrides=dict(config_overrides or {}),
+    )

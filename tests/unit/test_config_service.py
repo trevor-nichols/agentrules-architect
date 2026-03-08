@@ -102,6 +102,20 @@ class ConfigServiceTestCase(unittest.TestCase):
         availability = self.config_manager.get_provider_availability()
         self.assertTrue(availability["codex"])
 
+    def test_build_codex_launch_config_uses_resolved_executable_and_home(self) -> None:
+        self.config_manager.set_codex_cli_path(sys.executable)
+        self.config_manager.set_codex_managed_home("~/agentrules-codex-home")
+
+        launch = self.config_manager.build_codex_launch_config(
+            cwd=self.temp_dir.name,
+            config_overrides={"developer_instructions": "Test instructions"},
+        )
+
+        self.assertEqual(launch.executable_path, sys.executable)
+        self.assertEqual(launch.codex_home, os.path.expanduser("~/agentrules-codex-home"))
+        self.assertEqual(launch.cwd, self.temp_dir.name)
+        self.assertEqual(launch.config_overrides["developer_instructions"], "Test instructions")
+
     def test_set_phase_model_persists_override(self) -> None:
         self.config_manager.set_phase_model("phase1", "claude-sonnet-reasoning")
         cfg = self.config_manager.load()

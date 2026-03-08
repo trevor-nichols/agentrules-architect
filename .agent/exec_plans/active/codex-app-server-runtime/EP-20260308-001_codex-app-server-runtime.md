@@ -199,7 +199,7 @@ The following are intentionally excluded from this plan:
 - [x] (2026-03-08 18:39Z) Reviewed official OpenAI Codex docs for non-interactive mode and the Codex SDK to choose the primary integration surface.
 - [x] (2026-03-08 18:39Z) Created ExecPlan `EP-20260308-001` and milestone scaffolds `MS001` through `MS005`.
 - [x] (2026-03-08 20:02Z) Implemented `ModelProvider.CODEX`, derived `codex-*` presets, Codex runtime configuration persistence, provider-aware preset availability, managed/inherited `CODEX_HOME` handling, and the initial Codex settings UI.
-- [ ] Implement the app-server process/client/auth/model catalog layers with fake transport tests.
+- [x] (2026-03-08 22:10Z) Implemented the Codex app-server process/client/auth/model-catalog layer, added a configuration-backed runtime factory plus CLI diagnostics/login/logout service, and validated the flow against both a fake app-server and the locally installed `codex app-server`.
 - [ ] Implement `CodexArchitect` and structured-output request handling.
 - [ ] Apply Phase 1 and Phase 3 Codex-specific behavior changes.
 - [ ] Finish CLI UX, docs, smoke tests, and final validation.
@@ -210,6 +210,8 @@ The following are intentionally excluded from this plan:
 - The generated `codex app-server` JSON schema for `TurnStartParams` includes `outputSchema`, `approvalPolicy`, `sandboxPolicy`, and model overrides, but it does not expose a `collaborationMode` property even though the internal docs discuss that field. The implementation should therefore avoid depending on `collaborationMode` for critical behavior.
 - `codex exec` is good enough for one-shot automation and supports JSON output plus `--output-schema`, but it does not expose the account/auth/model-catalog flows that AgentRules needs for a clean runtime integration.
 - The first MS001 validation exposed a stale-import bug for the default managed `CODEX_HOME` path. The fix was to resolve `CONFIG_DIR` dynamically inside the Codex config service instead of binding the constant at import time.
+- While starting MS002, an unexpected untracked `src/agentrules/core/agents/codex/` directory was present in the worktree. After explicit user confirmation, the implementation treated it as incomplete prior work, audited it, and replaced it with a cleaned tracked version before proceeding.
+- A live smoke against the locally installed `codex` binary confirmed the new runtime diagnostics path can initialize app-server and fetch the model catalog even when no ChatGPT account is currently authenticated.
 
 ## Decision Log
 
@@ -222,3 +224,5 @@ The following are intentionally excluded from this plan:
 ## Outcomes & Retrospective
 
 MS001 is complete. AgentRules now has a first-class `ModelProvider.CODEX`, a derived `codex-*` preset family, a dedicated persisted `codex` runtime config section, managed versus inherited `CODEX_HOME` handling, provider-aware preset gating, and a minimal `Settings -> Codex runtime` flow. The remaining risk is intentionally scoped: Codex presets are now selectable, but running analysis with them still fails fast in the factory until the app-server client and `CodexArchitect` land in MS002 and MS003. Validation for MS001 is green with import smoke, `pytest tests/unit -q`, `ruff check src tests`, and `pyright`.
+
+MS002 is now complete as well. AgentRules has a typed `core/agents/codex` transport package, centralized launch-config construction through `ConfigManager.build_codex_launch_config()`, a synchronous CLI runtime service for diagnostics/login/logout/model discovery, and a richer `Settings -> Codex runtime` dashboard that shows live app-server, account, and model-catalog state. Validation is green with `PYTHONPATH=src pytest tests/unit -q -k codex`, `PYTHONPATH=src pytest tests/unit -q`, `PYTHONPATH=src python -c "import agentrules"`, `ruff check src tests`, `pyright`, and a live smoke that initialized the installed `codex app-server` and returned five models from the local runtime.

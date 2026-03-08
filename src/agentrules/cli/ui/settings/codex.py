@@ -3,10 +3,120 @@
 from __future__ import annotations
 
 import questionary
+from rich.table import Table
 
 from agentrules.cli.context import CliContext
-from agentrules.cli.services import configuration
+from agentrules.cli.services import codex_runtime, configuration
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice, value_choice
+
+
+def _format_home_strategy(strategy: str) -> str:
+    return "Managed by AgentRules" if strategy == "managed" else "Inherit existing"
+
+
+def _format_runtime_status(diagnostics: codex_runtime.CodexRuntimeDiagnostics) -> str:
+    if diagnostics.runtime_error:
+        return "[red]Unavailable[/]"
+    if diagnostics.can_connect:
+        return "[green]Connected[/]"
+    return "[yellow]Unknown[/]"
+
+
+def _format_account_status(diagnostics: codex_runtime.CodexRuntimeDiagnostics) -> str:
+    if diagnostics.account_error:
+        return f"[red]Unavailable[/] ({diagnostics.account_error})"
+    account = diagnostics.account
+    if account is None or not account.is_authenticated:
+        return "[yellow]Signed out[/]"
+
+    identity = account.email or account.account_type or "authenticated"
+    plan = account.plan_type or "unknown plan"
+    return f"[green]Signed in[/] ({identity}, {plan})"
+
+
+def _format_model_catalog_status(diagnostics: codex_runtime.CodexRuntimeDiagnostics) -> str:
+    if diagnostics.models_error:
+        return f"[red]Unavailable[/] ({diagnostics.models_error})"
+    count = len(diagnostics.models)
+    if count == 0:
+        return "[yellow]No models returned[/]"
+    return f"[green]{count} available[/]"
+
+
+def _render_runtime_summary(
+    context: CliContext,
+    state: configuration.CodexRuntimeState,
+    diagnostics: codex_runtime.CodexRuntimeDiagnostics,
+) -> None:
+    config_table = Table(title="[bold]Codex Runtime Configuration[/bold]", show_lines=False, pad_edge=False)
+    config_table.add_column("Setting", style="bold")
+    config_table.add_column("Value")
+    config_table.add_row("Configured executable", state.cli_path)
+    config_table.add_row("Resolved executable", state.executable_path or "[red]Not found[/]")
+    config_table.add_row("CODEX_HOME strategy", _format_home_strategy(state.home_strategy))
+    config_table.add_row(
+        "Managed CODEX_HOME override",
+        state.managed_home or "[dim](default AgentRules location)[/]",
+    )
+    config_table.add_row(
+        "Effective CODEX_HOME",
+        state.effective_home or "[dim]Inherited runtime value is currently unset[/]",
+    )
+
+    live_table = Table(title="[bold]Live App-Server Status[/bold]", show_lines=False, pad_edge=False)
+    live_table.add_column("Signal", style="bold")
+    live_table.add_column("Value")
+    live_table.add_row("Status", _format_runtime_status(diagnostics))
+    live_table.add_row("User agent", diagnostics.user_agent or "[dim]-[/]")
+    live_table.add_row("Account", _format_account_status(diagnostics))
+    live_table.add_row(
+        "Requires OpenAI auth",
+        (
+            "[yellow]-[/]"
+            if diagnostics.account is None
+            else ("[green]Yes[/]" if diagnostics.account.requires_openai_auth else "[green]No[/]")
+        ),
+    )
+    live_table.add_row("Model catalog", _format_model_catalog_status(diagnostics))
+
+    context.console.print("")
+    context.console.print(config_table)
+    context.console.print("")
+    context.console.print(live_table)
+    if diagnostics.runtime_error:
+        context.console.print(f"\n[red]Runtime error:[/] {diagnostics.runtime_error}")
+    if diagnostics.recent_stderr:
+        context.console.print(f"[dim]Recent stderr:[/] {diagnostics.recent_stderr[-1]}")
+    context.console.print("")
+
+
+def _render_models_table(context: CliContext, diagnostics: codex_runtime.CodexRuntimeDiagnostics) -> None:
+    if diagnostics.models_error:
+        context.console.print(f"[red]Could not load Codex models:[/] {diagnostics.models_error}")
+        return
+    if not diagnostics.models:
+        context.console.print("[yellow]Codex did not return any visible models.[/]")
+        return
+
+    table = Table(title="[bold]Codex Models[/bold]", show_lines=False, pad_edge=False)
+    table.add_column("Model", style="bold")
+    table.add_column("Default", no_wrap=True)
+    table.add_column("Reasoning", no_wrap=True)
+    table.add_column("Modalities", no_wrap=True)
+    table.add_column("Description")
+
+    for model in diagnostics.models:
+        table.add_row(
+            model.model,
+            "Yes" if model.is_default else "",
+            model.default_reasoning_effort or "-",
+            ", ".join(model.input_modalities),
+            model.description or model.availability_message or "-",
+        )
+
+    context.console.print("")
+    context.console.print(table)
+    context.console.print("")
 
 
 def configure_codex_runtime(context: CliContext) -> None:
@@ -15,22 +125,23 @@ def configure_codex_runtime(context: CliContext) -> None:
     console = context.console
     console.print("\n[bold]Configure Codex Runtime[/bold]")
     console.print(
-        "Codex uses the local CLI/app-server runtime. Configure the executable path and how "
-        "AgentRules should resolve [cyan]CODEX_HOME[/cyan].\n"
+        "Codex uses the local CLI/app-server runtime. Configure the executable path, "
+        "choose how AgentRules resolves [cyan]CODEX_HOME[/cyan], and inspect the live "
+        "runtime/account/model state.\n"
     )
 
     while True:
         state = configuration.get_codex_runtime_state()
-        effective_home = state.effective_home or "Inherited from environment/CLI"
-        executable_status = state.executable_path or "Not found"
+        diagnostics = codex_runtime.get_codex_runtime_diagnostics(include_models=True)
+        _render_runtime_summary(context, state, diagnostics)
 
         selection = questionary.select(
-            "Select Codex runtime setting:",
+            "Select Codex runtime action:",
             choices=[
                 value_choice("Codex executable path", state.cli_path, value="__CLI_PATH__"),
                 value_choice(
                     "CODEX_HOME strategy",
-                    "Managed by AgentRules" if state.home_strategy == "managed" else "Inherit existing",
+                    _format_home_strategy(state.home_strategy),
                     value="__HOME_STRATEGY__",
                 ),
                 value_choice(
@@ -38,8 +149,14 @@ def configure_codex_runtime(context: CliContext) -> None:
                     state.managed_home or "(default managed location)",
                     value="__MANAGED_HOME__",
                 ),
-                value_choice("Effective CODEX_HOME", effective_home, value="__EFFECTIVE_HOME__"),
-                value_choice("Resolved executable", executable_status, value="__RESOLVED_EXECUTABLE__"),
+                value_choice(
+                    "Refresh live runtime status",
+                    "Connected" if diagnostics.can_connect else "Retry",
+                    value="__REFRESH__",
+                ),
+                questionary.Choice(title="Sign in with ChatGPT", value="__LOGIN__"),
+                questionary.Choice(title="Sign out of Codex", value="__LOGOUT__"),
+                questionary.Choice(title="Show available models", value="__MODELS__"),
                 navigation_choice("Back", value="__BACK__"),
             ],
             qmark="🧰",
@@ -110,15 +227,49 @@ def configure_codex_runtime(context: CliContext) -> None:
                 console.print("[green]Managed CODEX_HOME reset to the default AgentRules location.[/]")
             continue
 
-        if selection == "__EFFECTIVE_HOME__":
-            console.print(f"[cyan]Effective CODEX_HOME:[/] {effective_home}")
+        if selection == "__REFRESH__":
+            console.print("[green]Live Codex runtime status refreshed.[/]")
             continue
 
-        if selection == "__RESOLVED_EXECUTABLE__":
-            if state.executable_path:
-                console.print(f"[cyan]Resolved executable:[/] {state.executable_path}")
-            else:
+        if selection == "__LOGIN__":
+            try:
+                result = codex_runtime.start_codex_chatgpt_login()
+            except Exception as error:
+                console.print(f"[red]Codex login failed:[/] {error}")
+                continue
+
+            if result.browser_error:
+                console.print(f"[yellow]Browser open failed:[/] {result.browser_error}")
+            if result.login.auth_url and (result.browser_error or not result.opened_browser):
+                console.print(f"[cyan]Open this ChatGPT login URL manually:[/] {result.login.auth_url}")
+            if result.waiting_timed_out:
                 console.print(
-                    "[yellow]The configured Codex executable could not be resolved. "
-                    "Install Codex or update the executable path before enabling Codex presets.[/]"
+                    "[yellow]ChatGPT login was started, but AgentRules timed out waiting for completion. "
+                    "Finish the browser flow, then use refresh to verify the account state.[/]"
                 )
+                continue
+            if result.completion is None:
+                console.print(
+                    "[yellow]ChatGPT login was started. Complete the browser flow, then refresh the status.[/]"
+                )
+                continue
+            if result.completion.success:
+                console.print("[green]ChatGPT login completed successfully.[/]")
+            else:
+                console.print(f"[red]ChatGPT login failed:[/] {result.completion.error or 'Unknown error'}")
+            continue
+
+        if selection == "__LOGOUT__":
+            try:
+                account = codex_runtime.logout_codex_runtime()
+            except Exception as error:
+                console.print(f"[red]Codex logout failed:[/] {error}")
+                continue
+            if account.is_authenticated:
+                console.print("[yellow]Codex still reports an authenticated account after logout.[/]")
+            else:
+                console.print("[green]Codex runtime signed out successfully.[/]")
+            continue
+
+        if selection == "__MODELS__":
+            _render_models_table(context, diagnostics)

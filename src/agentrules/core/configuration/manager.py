@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
+from agentrules.core.agents.codex import CodexProcessLaunchConfig
 from agentrules.core.utils.constants import (
     DEFAULT_RULES_FILENAME,
     DEFAULT_RULES_TREE_MAX_DEPTH,
@@ -124,6 +126,20 @@ class ConfigManager:
     def is_codex_available(self) -> bool:
         config = self._repository.load()
         return codex.is_codex_available(config)
+
+    def build_codex_launch_config(
+        self,
+        *,
+        cwd: str | None = None,
+        config_overrides: Mapping[str, Any] | None = None,
+    ) -> CodexProcessLaunchConfig:
+        config = self._repository.load()
+        return codex.build_codex_launch_config(
+            config,
+            self._environment.getenv,
+            cwd=cwd,
+            config_overrides=config_overrides,
+        )
 
     # ------------------------------------------------------------------
     # Phase model overrides

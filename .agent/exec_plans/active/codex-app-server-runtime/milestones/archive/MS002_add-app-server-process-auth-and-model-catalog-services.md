@@ -3,7 +3,7 @@ id: EP-20260308-001/MS002
 execplan_id: EP-20260308-001
 ms: 2
 title: "Add app-server process, auth, and model catalog services"
-status: planned
+status: done
 domain: cross-cutting
 owner: "@codex"
 created: 2026-03-08
@@ -47,10 +47,10 @@ Build the reusable JSON-RPC transport and service layer for Codex app-server so 
 
 ## Workstreams & Tasks
 
-- [ ] Transport: create process and protocol helpers under `src/agentrules/core/agents/codex/`.
-- [ ] Services: implement account and model catalog methods on top of the transport.
-- [ ] Settings UX: surface install/account/model status in the CLI.
-- [ ] Tests: build a fake app-server script/fixture that can emit responses and notifications deterministically.
+- [x] Transport: created process/protocol/client helpers under `src/agentrules/core/agents/codex/` with initialize/initialized lifecycle, request correlation, notification buffering, and clean shutdown behavior.
+- [x] Services: implemented account/login/logout/model-catalog helpers plus centralized launch-config construction through `ConfigManager.build_codex_launch_config()`.
+- [x] Settings UX: surfaced install/account/model status in the CLI and added ChatGPT sign-in/sign-out actions via `src/agentrules/cli/ui/settings/codex.py`.
+- [x] Tests: added `tests/fakes/codex_app_server.py` and Codex-focused unit coverage for transport, auth, pagination, and runtime diagnostics.
 
 ## Risks & Mitigations
 
@@ -68,3 +68,4 @@ Build the reusable JSON-RPC transport and service layer for Codex app-server so 
 ## Changelog
 
 - 2026-03-08: Milestone created.
+- 2026-03-08: Implemented the Codex app-server process/auth/model-catalog layer, validated it with fake-server unit tests plus the full unit/lint/type suite, and smoke-checked the installed `codex app-server`.
