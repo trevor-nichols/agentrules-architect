@@ -71,6 +71,28 @@ def get_preset_info(key: str) -> PresetInfo | None:
     return PRESET_INFOS.get(key)
 
 
+def get_active_preset_key(phase: str, overrides: Mapping[str, str] | None = None) -> str | None:
+    overrides = overrides or CONFIG_MANAGER.get_model_overrides()
+    override = overrides.get(phase)
+    if override is not None:
+        return override
+    return get_default_preset_key(phase)
+
+
+def get_model_config_for_phase(
+    phase: str,
+    overrides: Mapping[str, str] | None = None,
+):
+    preset_key = get_active_preset_key(phase, overrides)
+    if preset_key is None:
+        return None
+
+    preset = agent_settings.MODEL_PRESETS.get(preset_key)
+    if preset is None:
+        return None
+    return preset["config"]
+
+
 def get_available_presets_for_phase(
     phase: str,
     provider_availability: Mapping[str, bool] | None = None,

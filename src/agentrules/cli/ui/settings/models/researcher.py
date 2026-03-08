@@ -8,6 +8,7 @@ from agentrules.cli.context import CliContext
 from agentrules.cli.services import configuration
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice
 from agentrules.core.configuration import model_presets
+from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_search
 
 from .utils import (
     build_model_choice_state,
@@ -28,8 +29,9 @@ def configure_researcher_phase(
     """Handle interactive configuration for the researcher agent."""
 
     console = context.console
+    runtime_native_available = any(uses_runtime_native_web_search(preset) for preset in presets)
 
-    if not tavily_available and not offline_mode:
+    if not tavily_available and not offline_mode and not runtime_native_available:
         console.print(
             "[yellow]Add a Tavily API key under Settings → Provider API keys to enable the researcher agent.[/]"
         )
@@ -115,6 +117,13 @@ def configure_researcher_phase(
     if selection == "__KEEP__":
         if mode_changed:
             configuration.save_researcher_mode(desired_mode)
+            _render_researcher_requirements_notice(
+                console.print,
+                desired_mode=desired_mode,
+                offline_mode=offline_mode,
+                tavily_available=tavily_available,
+                selected_key=current_key,
+            )
             _render_mode_message(console.print, desired_mode)
             return True
         console.print("[dim]No changes made to researcher settings.[/]")
@@ -138,6 +147,14 @@ def configure_researcher_phase(
 
     if mode_changed:
         configuration.save_researcher_mode(desired_mode)
+        selected_key = default_key if selection == "__RESET__" else selection
+        _render_researcher_requirements_notice(
+            console.print,
+            desired_mode=desired_mode,
+            offline_mode=offline_mode,
+            tavily_available=tavily_available,
+            selected_key=selected_key,
+        )
         _render_mode_message(console.print, desired_mode)
 
     return preset_changed or mode_changed
@@ -150,3 +167,26 @@ def _render_mode_message(printer, mode: str) -> None:
         printer("[green]Researcher agent enabled.[/]")
     else:
         printer("[yellow]Researcher agent disabled for Phase 1.[/]")
+
+
+def _render_researcher_requirements_notice(
+    printer,
+    *,
+    desired_mode: str,
+    offline_mode: bool,
+    tavily_available: bool,
+    selected_key: str | None,
+) -> None:
+    """Explain when the selected researcher preset still needs Tavily."""
+
+    if desired_mode != "on" or offline_mode or tavily_available:
+        return
+
+    preset_info = model_presets.get_preset_info(selected_key) if selected_key else None
+    if uses_runtime_native_web_search(preset_info):
+        return
+
+    printer(
+        "[yellow]This researcher preset still needs Tavily web search. "
+        "Add a Tavily API key or choose a Codex preset to activate runtime-native research.[/]"
+    )

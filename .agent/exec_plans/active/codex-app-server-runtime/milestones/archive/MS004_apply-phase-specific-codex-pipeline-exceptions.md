@@ -3,7 +3,7 @@ id: EP-20260308-001/MS004
 execplan_id: EP-20260308-001
 ms: 4
 title: "Apply phase-specific Codex pipeline exceptions"
-status: planned
+status: completed
 domain: cross-cutting
 owner: "@codex"
 created: 2026-03-08
@@ -47,10 +47,10 @@ Teach AgentRules to use Codex as a repository-aware coding runtime instead of a 
 
 ## Workstreams & Tasks
 
-- [ ] Phase 3: add a Codex-specific prompt builder and bypass file embedding/token packing.
-- [ ] Phase 1: make researcher enablement and execution provider-aware.
-- [ ] Shared helpers: centralize capability checks such as "uses repo runtime" or "needs external research tool loop".
-- [ ] Tests: cover no-file-embedding behavior and no-Tavily-required researcher behavior.
+- [x] Phase 3: add a Codex-specific prompt builder and bypass file embedding/token packing.
+- [x] Phase 1: make researcher enablement and execution provider-aware.
+- [x] Shared helpers: centralize capability checks such as "uses repo runtime" or "needs external research tool loop".
+- [x] Tests: cover no-file-embedding behavior and no-Tavily-required researcher behavior.
 
 ## Risks & Mitigations
 
@@ -68,3 +68,4 @@ Teach AgentRules to use Codex as a repository-aware coding runtime instead of a 
 ## Changelog
 
 - 2026-03-08: Milestone created.
+- 2026-03-08: Completed provider-aware Codex runtime branching for Phase 1 and Phase 3, added shared capability helpers, and validated the new behavior with targeted plus milestone-level test runs.

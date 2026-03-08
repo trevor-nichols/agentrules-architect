@@ -11,6 +11,7 @@ from agentrules.core.utils.constants import (
     DEFAULT_RULES_TREE_MAX_DEPTH,
     DEFAULT_SNAPSHOT_FILENAME,
 )
+from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_search
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
@@ -56,7 +57,11 @@ class ConfigManager:
             if api_key:
                 features.set_researcher_mode(config, "on")
             else:
-                features.set_researcher_mode(config, "off")
+                from . import model_presets
+
+                researcher_config = model_presets.get_model_config_for_phase("researcher", config.models)
+                if not uses_runtime_native_web_search(researcher_config):
+                    features.set_researcher_mode(config, "off")
         self._repository.save(config)
         self._environment.apply_provider_credentials(config)
         return config
@@ -172,13 +177,17 @@ class ConfigManager:
         return normalized
 
     def is_researcher_enabled(self) -> bool:
+        from . import model_presets
+
         config = self._repository.load()
         has_credentials = self.has_tavily_credentials(config)
         offline_mode = self._environment.is_truthy("OFFLINE")
+        researcher_config = model_presets.get_model_config_for_phase("researcher", config.models)
         return features.is_researcher_enabled(
             config,
             offline_mode=offline_mode,
             has_tavily_credentials=has_credentials,
+            supports_runtime_native_research=uses_runtime_native_web_search(researcher_config),
         )
 
     # ------------------------------------------------------------------

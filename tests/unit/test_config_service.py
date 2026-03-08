@@ -179,6 +179,23 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.config_manager.set_provider_key("tavily", "tavily-test-key")
         self.assertTrue(self.config_manager.is_researcher_enabled())
 
+    def test_codex_researcher_enabled_without_tavily_credentials(self) -> None:
+        self.config_manager.set_phase_model("researcher", "codex-gpt-5.3-codex")
+        self.config_manager.set_researcher_mode("on")
+
+        self.assertFalse(self.config_manager.has_tavily_credentials())
+        self.assertEqual(self.config_manager.get_researcher_mode(), "on")
+        self.assertTrue(self.config_manager.is_researcher_enabled())
+
+    def test_removing_tavily_key_does_not_disable_codex_researcher_mode(self) -> None:
+        self.config_manager.set_phase_model("researcher", "codex-gpt-5.3-codex")
+        self.config_manager.set_researcher_mode("on")
+
+        self.config_manager.set_provider_key("tavily", None)
+
+        self.assertEqual(self.config_manager.get_researcher_mode(), "on")
+        self.assertTrue(self.config_manager.is_researcher_enabled())
+
     def test_tree_depth_defaults_set_and_reset(self) -> None:
         self.assertEqual(self.config_manager.get_tree_max_depth(), 5)
 

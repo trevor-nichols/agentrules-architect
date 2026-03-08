@@ -93,3 +93,39 @@ FILE CONTENTS:
 {summary_block}
 
 Analyze this scope and return structured findings for the assigned files."""
+
+
+def format_phase3_repo_runtime_prompt(context: dict) -> str:
+    """Format the Phase 3 prompt for repository-aware runtimes like Codex."""
+
+    tree_structure = context.get("tree_structure", [])
+    if isinstance(tree_structure, list):
+        tree_structure = "\n".join(tree_structure)
+
+    assigned_files = context.get("assigned_files", [])
+    if isinstance(assigned_files, list):
+        assigned_files = "\n".join(f"- {file}" for file in assigned_files)
+
+    cwd = str(context.get("cwd") or "").strip() or "(not provided)"
+
+    previous_summary = context.get("previous_summary")
+    summary_block = ""
+    if previous_summary:
+        summary_block = f"\nPREVIOUS BATCH SUMMARY:\n{previous_summary}\n"
+
+    return f"""TREE STRUCTURE:
+{tree_structure}
+
+WORKING DIRECTORY:
+{cwd}
+
+ASSIGNED FILES:
+{assigned_files}
+{summary_block}
+
+RUNTIME INSTRUCTIONS:
+- Use your repository navigation, file reading, and search tools to inspect the assigned files directly from the working directory.
+- Start with the assigned files, then inspect adjacent files only when needed to explain behavior and cross-file interactions.
+- Base findings on files you actually inspected and call out any uncertainty you could not verify from the repository.
+
+Analyze this scope and return structured findings for the assigned files."""

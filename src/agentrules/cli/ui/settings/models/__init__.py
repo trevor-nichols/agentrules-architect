@@ -10,7 +10,9 @@ import questionary
 from agentrules.cli.context import CliContext
 from agentrules.cli.services import configuration
 from agentrules.cli.ui.styles import CLI_STYLE, model_display_choice, navigation_choice
+from agentrules.core.agents.base import ModelProvider
 from agentrules.core.configuration import model_presets
+from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_search
 
 from .researcher import configure_researcher_phase
 from .utils import build_model_choice_state, current_labels, select_variant
@@ -35,7 +37,13 @@ def configure_models(context: CliContext) -> None:
 
         offline_mode = bool(os.getenv("OFFLINE"))
 
-        phase_choices = _build_phase_choices(active, researcher_mode, tavily_available, offline_mode)
+        phase_choices = _build_phase_choices(
+            active,
+            researcher_mode,
+            tavily_available,
+            offline_mode,
+            provider_availability,
+        )
         phase_choices.append(navigation_choice("Done", value="__DONE__"))
 
         phase_selection = questionary.select(
@@ -102,6 +110,7 @@ def _build_phase_choices(
     researcher_mode: str,
     tavily_available: bool,
     offline_mode: bool,
+    provider_availability: Mapping[str, bool],
 ) -> list[questionary.Choice | questionary.Separator]:
     phase_choices: list[questionary.Choice | questionary.Separator] = []
     handled_phases: set[str] = set()
@@ -122,8 +131,14 @@ def _build_phase_choices(
 
             researcher_key = active.get("researcher", model_presets.get_default_preset_key("researcher"))
             researcher_model, researcher_provider = current_labels(researcher_key)
-            if not tavily_available and not offline_mode:
-                researcher_model = "Add Tavily API key to enable"
+            researcher_info = model_presets.get_preset_info(researcher_key) if researcher_key else None
+            researcher_uses_native_search = uses_runtime_native_web_search(researcher_info)
+            codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
+            if not tavily_available and not offline_mode and not researcher_uses_native_search:
+                if codex_available:
+                    researcher_model = "Requires Tavily or Codex preset"
+                else:
+                    researcher_model = "Add Tavily API key to enable"
                 researcher_provider = ""
             else:
                 status_label = "On" if researcher_mode == "on" else "Off"

@@ -18,10 +18,12 @@ from pathlib import Path
 
 from agentrules.config.prompts.phase_3_prompts import (
     format_phase3_prompt,
+    format_phase3_repo_runtime_prompt,
     format_phase3_system_prompt,
 )
 from agentrules.core.agents import get_architect_for_phase
 from agentrules.core.analysis.events import AnalysisEvent, AnalysisEventSink, NullEventSink
+from agentrules.core.utils.provider_capabilities import should_embed_phase3_file_contents
 from agentrules.core.utils.system_prompt import normalize_responsibilities
 from agentrules.core.utils.token_packer import PackedBatch, pack_files_for_phase3
 
@@ -171,8 +173,9 @@ class Phase3Analysis:
                     )
                     continue
 
-                # Get the content of assigned files
-                file_contents = await self._get_file_contents(directory, assigned_files)
+                file_contents = {}
+                if self._should_embed_file_contents(architect):
+                    file_contents = await self._get_file_contents(directory, assigned_files)
 
                 # Pack into batches respecting model limits
                 batches = self._pack_batches(
@@ -183,7 +186,9 @@ class Phase3Analysis:
                 )
 
                 # Queue execution (sequential inside)
-                analysis_tasks.append(self._execute_agent_batches(architect, agent_def, batches, tree))
+                analysis_tasks.append(
+                    self._execute_agent_batches(architect, agent_def, batches, tree, directory)
+                )
 
             # Run all analysis tasks in parallel
             results = await asyncio.gather(*analysis_tasks)
@@ -208,6 +213,7 @@ class Phase3Analysis:
         agent_def: dict,
         batches: list[PackedBatch],
         tree: list[str],
+        directory: Path,
     ) -> dict:
         """Run an individual agent across one or more batches while emitting lifecycle events."""
 
@@ -223,6 +229,7 @@ class Phase3Analysis:
         )
 
         started = time.perf_counter()
+        resolved_cwd = str(directory.resolve())
         try:
             for batch_index, batch in enumerate(batches, start=1):
                 self._publish_agent_event(
@@ -242,8 +249,10 @@ class Phase3Analysis:
                     "file_contents": batch.file_contents,
                     "tree_structure": tree,
                     "previous_summary": prior_summary,
+                    "cwd": resolved_cwd,
+                    "_codex_cwd": resolved_cwd,
                 }
-                formatted_prompt = format_phase3_prompt(context)
+                formatted_prompt = self._format_batch_prompt(architect, context)
                 context["formatted_prompt"] = formatted_prompt
 
                 result = await architect.analyze(context)
@@ -360,6 +369,14 @@ class Phase3Analysis:
         """
         Split file_contents into batches that fit within the architect's effective limit.
         """
+        if not self._should_embed_file_contents(architect):
+            return [
+                PackedBatch(
+                    assigned_files=list(agent_def.get("file_assignments", []) or []),
+                    file_contents={},
+                )
+            ]
+
         model_config = getattr(architect, "_model_config", None)
         if model_config is None:
             from agentrules.core.utils.token_packer import resolve_model_config
@@ -374,6 +391,14 @@ class Phase3Analysis:
             tree=tree,
             model_config=model_config,
         )
+
+    def _should_embed_file_contents(self, architect) -> bool:
+        return should_embed_phase3_file_contents(architect)
+
+    def _format_batch_prompt(self, architect, context: dict[str, object]) -> str:
+        if self._should_embed_file_contents(architect):
+            return format_phase3_prompt(context)
+        return format_phase3_repo_runtime_prompt(context)
 
     def _local_summary_from_result(self, result: dict | str | None) -> str:
         if result is None:

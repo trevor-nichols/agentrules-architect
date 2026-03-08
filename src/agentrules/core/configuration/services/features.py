@@ -21,11 +21,12 @@ def is_researcher_enabled(
     *,
     offline_mode: bool,
     has_tavily_credentials: bool,
+    supports_runtime_native_research: bool = False,
 ) -> bool:
     mode = normalize_researcher_mode(config.features.researcher_mode, default="off")
 
     if mode != "on":
         return False
-    if offline_mode:
+    if offline_mode or supports_runtime_native_research:
         return True
     return has_tavily_credentials
