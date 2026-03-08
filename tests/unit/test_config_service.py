@@ -1,10 +1,13 @@
 import logging
 import os
+import stat
 import sys
 import tempfile
 import unittest
 from importlib import reload
 from pathlib import Path
+
+from agentrules.core.configuration.repository import TomlConfigRepository
 
 
 class ConfigServiceTestCase(unittest.TestCase):
@@ -107,6 +110,26 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.config_manager.apply_config_to_environment()
         self.assertEqual(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR), inherited_home)
 
+    def test_codex_inherit_home_restores_original_value_after_managed_override(self) -> None:
+        inherited_home = str(Path(self.temp_dir.name) / "existing-codex-home")
+        managed_home = str(Path(self.temp_dir.name) / "managed-codex-home")
+        env = {self.configuration.CODEX_HOME_ENV_VAR: inherited_home}
+        repository = TomlConfigRepository(Path(self.temp_dir.name) / "isolated-config.toml")
+        manager = self.configuration.ConfigManager(repository=repository, environ=env)
+
+        manager.set_codex_cli_path(sys.executable)
+        manager.set_codex_managed_home(managed_home)
+        self.assertEqual(env.get(self.configuration.CODEX_HOME_ENV_VAR), managed_home)
+        self.assertEqual(manager.get_effective_codex_home(), managed_home)
+
+        manager.set_codex_home_strategy("inherit")
+
+        self.assertEqual(manager.get_effective_codex_home(), inherited_home)
+        self.assertEqual(env.get(self.configuration.CODEX_HOME_ENV_VAR), inherited_home)
+
+        launch = manager.build_codex_launch_config(cwd=self.temp_dir.name)
+        self.assertEqual(launch.codex_home, inherited_home)
+
     def test_codex_inherit_home_allows_unset_environment_value(self) -> None:
         self.config_manager.set_codex_home_strategy("inherit")
 
@@ -124,6 +147,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         executable = Path(self.temp_dir.name) / "bin" / "codex"
         executable.parent.mkdir(parents=True, exist_ok=True)
         executable.write_text("#!/bin/sh\n", encoding="utf-8")
+        executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
 
         previous_cwd = os.getcwd()
         try:
@@ -134,6 +158,27 @@ class ConfigServiceTestCase(unittest.TestCase):
             os.chdir(previous_cwd)
 
         self.assertEqual(resolved, str(executable.resolve()))
+
+    @unittest.skipIf(os.name == "nt", "Executable-bit validation is platform-specific on Windows")
+    def test_codex_non_executable_cli_path_is_unavailable(self) -> None:
+        candidate = Path(self.temp_dir.name) / "bin" / "codex"
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_text("#!/bin/sh\n", encoding="utf-8")
+        candidate.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            self.config_manager.set_codex_cli_path("bin/codex")
+            resolved = self.config_manager.resolve_codex_executable()
+            is_available = self.config_manager.is_codex_available()
+            provider_availability = self.config_manager.get_provider_availability()
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertIsNone(resolved)
+        self.assertFalse(is_available)
+        self.assertFalse(provider_availability["codex"])
 
     def test_build_codex_launch_config_uses_resolved_executable_and_home(self) -> None:
         self.config_manager.set_codex_cli_path(sys.executable)

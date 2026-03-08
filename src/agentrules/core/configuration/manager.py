@@ -122,7 +122,7 @@ class ConfigManager:
 
     def get_effective_codex_home(self) -> str | None:
         config = self._repository.load()
-        return codex.get_effective_codex_home(config, self._environment.getenv)
+        return codex.get_effective_codex_home(config, self._environment.getenv_for_codex_runtime)
 
     def resolve_codex_executable(self) -> str | None:
         config = self._repository.load()
@@ -141,7 +141,7 @@ class ConfigManager:
         config = self._repository.load()
         return codex.build_codex_launch_config(
             config,
-            self._environment.getenv,
+            self._environment.getenv_for_codex_runtime,
             cwd=cwd,
             config_overrides=config_overrides,
         )

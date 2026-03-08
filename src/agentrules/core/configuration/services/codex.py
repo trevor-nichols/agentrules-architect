@@ -78,12 +78,16 @@ def get_effective_codex_home(
     return get_managed_codex_home(config)
 
 
+def _is_executable_file(candidate: Path) -> bool:
+    return candidate.exists() and candidate.is_file() and os.access(candidate, os.X_OK)
+
+
 def resolve_codex_executable(config: CLIConfig) -> str | None:
     cli_path = get_codex_config(config).cli_path
     expanded = os.path.expanduser(cli_path)
     if os.path.sep in expanded or (os.path.altsep and os.path.altsep in expanded):
         candidate = Path(expanded)
-        if candidate.exists() and candidate.is_file():
+        if _is_executable_file(candidate):
             return str(candidate.resolve())
         return None
     return shutil.which(expanded)
