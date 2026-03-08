@@ -3,7 +3,7 @@ id: EP-20260308-001/MS005
 execplan_id: EP-20260308-001
 ms: 5
 title: "Finish CLI workflows, tests, and rollout validation"
-status: planned
+status: completed
 domain: cross-cutting
 owner: "@codex"
 created: 2026-03-08
@@ -46,10 +46,10 @@ Close the implementation with coherent CLI workflows, durable documentation, and
 
 ## Workstreams & Tasks
 
-- [ ] UX polish: finish settings copy and menu integration.
-- [ ] Docs: explain login flow, `CODEX_HOME` modes, and model-preset selection.
-- [ ] Tests: add any missing unit/offline/live smoke coverage.
-- [ ] Validation: run import smoke, ruff, pyright, targeted pytest, and the new smoke instructions.
+- [x] UX polish: finish settings copy and menu integration.
+- [x] Docs: explain login flow, `CODEX_HOME` modes, and model-preset selection.
+- [x] Tests: add any missing unit/offline/live smoke coverage.
+- [x] Validation: run import smoke, ruff, pyright, targeted pytest, and the new smoke instructions.
 
 ## Risks & Mitigations
 
@@ -69,3 +69,4 @@ Close the implementation with coherent CLI workflows, durable documentation, and
 ## Changelog
 
 - 2026-03-08: Milestone created.
+- 2026-03-08: Completed Codex CLI polish, documented runtime operations, added gated live smoke coverage, and validated the final rollout matrix.

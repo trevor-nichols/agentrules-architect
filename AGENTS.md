@@ -97,6 +97,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - The Codex app-server transport lives under `src/agentrules/core/agents/codex/`. All CLI and runtime callers must construct launch settings through `ConfigManager.build_codex_launch_config()` so executable resolution and `CODEX_HOME` policy stay centralized.
 - `CodexArchitect` must keep `developer_instructions` request-scoped by passing them through launch-config overrides to a short-lived app-server process, and structured phases must use app-server `outputSchema` rather than prompt-only JSON guidance.
 - Provider-specific Codex pipeline exceptions must route through shared capability helpers in `src/agentrules/core/utils/provider_capabilities.py`. Use those helpers for Phase 1 researcher/tool-loop decisions and Phase 3 repo-runtime prompting so Codex special cases stay centralized.
+- Operator guidance for Codex belongs in `docs/codex-runtime.md`. Keep the documented live-smoke path aligned with `tests/live/test_codex_live_smoke.py` and gate it behind `AGENTRULES_RUN_CODEX_LIVE=1` plus `pytest --run-live`.
 - System/developer instructions must be resolved once per request and mapped to provider-native fields:
   - OpenAI Responses: `instructions`; OpenAI Chat: developer role message
   - Anthropic: top-level `system`

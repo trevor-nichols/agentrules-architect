@@ -14,23 +14,34 @@ from .models import configure_models
 from .outputs import configure_output_preferences
 from .providers import configure_provider_keys
 
+SETTINGS_CATEGORY_ENTRIES: tuple[tuple[str, str], ...] = (
+    ("Provider API keys", "providers"),
+    ("Codex runtime", "codex"),
+    ("Model presets per phase", "models"),
+    ("Logging verbosity", "logging"),
+    ("Output preferences", "outputs"),
+    ("Exclusion rules", "exclusions"),
+)
+
+
+def build_settings_category_choices() -> list[questionary.Choice]:
+    """Build the top-level settings category list."""
+
+    return [questionary.Choice(title=title, value=value) for title, value in SETTINGS_CATEGORY_ENTRIES]
+
 
 def configure_settings(context: CliContext) -> None:
     """Run the interactive settings menu."""
 
     console = context.console
     console.print("\n[bold]Settings[/bold]")
+    console.print("[dim]Provider API keys and the local Codex runtime are configured separately.[/]")
 
     while True:
         selection = questionary.select(
             "Select a settings category:",
             choices=[
-                questionary.Choice(title="Provider API keys", value="providers"),
-                questionary.Choice(title="Codex runtime", value="codex"),
-                questionary.Choice(title="Model presets per phase", value="models"),
-                questionary.Choice(title="Logging verbosity", value="logging"),
-                questionary.Choice(title="Output preferences", value="outputs"),
-                questionary.Choice(title="Exclusion rules", value="exclusions"),
+                *build_settings_category_choices(),
                 navigation_choice("Back", value="__BACK__"),
             ],
             qmark="⚙️",

@@ -170,7 +170,7 @@
       "owner": "@codex",
       "path": ".agent/exec_plans/active/codex-app-server-runtime/EP-20260308-001_codex-app-server-runtime.md",
       "risk": "med",
-      "status": "active",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "codex",

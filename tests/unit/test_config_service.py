@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from importlib import reload
+from pathlib import Path
 
 
 class ConfigServiceTestCase(unittest.TestCase):
@@ -95,6 +96,23 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(self.config_manager.get_effective_codex_home(), expected)
         self.config_manager.apply_config_to_environment()
         self.assertEqual(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR), expected)
+
+    def test_codex_inherit_home_uses_existing_environment_value(self) -> None:
+        inherited_home = str(Path(self.temp_dir.name) / "existing-codex-home")
+        os.environ[self.configuration.CODEX_HOME_ENV_VAR] = inherited_home
+
+        self.config_manager.set_codex_home_strategy("inherit")
+
+        self.assertEqual(self.config_manager.get_effective_codex_home(), inherited_home)
+        self.config_manager.apply_config_to_environment()
+        self.assertEqual(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR), inherited_home)
+
+    def test_codex_inherit_home_allows_unset_environment_value(self) -> None:
+        self.config_manager.set_codex_home_strategy("inherit")
+
+        self.assertIsNone(self.config_manager.get_effective_codex_home())
+        self.config_manager.apply_config_to_environment()
+        self.assertIsNone(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR))
 
     def test_codex_availability_uses_resolved_executable(self) -> None:
         self.config_manager.set_codex_cli_path(sys.executable)

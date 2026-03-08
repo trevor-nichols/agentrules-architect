@@ -130,22 +130,13 @@ def _build_phase_choices(
             )
 
             researcher_key = active.get("researcher", model_presets.get_default_preset_key("researcher"))
-            researcher_model, researcher_provider = current_labels(researcher_key)
-            researcher_info = model_presets.get_preset_info(researcher_key) if researcher_key else None
-            researcher_uses_native_search = uses_runtime_native_web_search(researcher_info)
-            codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
-            if not tavily_available and not offline_mode and not researcher_uses_native_search:
-                if codex_available:
-                    researcher_model = "Requires Tavily or Codex preset"
-                else:
-                    researcher_model = "Add Tavily API key to enable"
-                researcher_provider = ""
-            else:
-                status_label = "On" if researcher_mode == "on" else "Off"
-                if researcher_model == "Not configured":
-                    researcher_model = status_label
-                else:
-                    researcher_model = f"{researcher_model} ({status_label})"
+            researcher_model, researcher_provider = describe_researcher_phase_status(
+                researcher_key=researcher_key,
+                researcher_mode=researcher_mode,
+                tavily_available=tavily_available,
+                offline_mode=offline_mode,
+                provider_availability=provider_availability,
+            )
             researcher_title = model_presets.get_phase_title("researcher")
             phase_choices.append(
                 model_display_choice(
@@ -166,6 +157,32 @@ def _build_phase_choices(
         handled_phases.add(phase)
 
     return phase_choices
+
+
+def describe_researcher_phase_status(
+    *,
+    researcher_key: str | None,
+    researcher_mode: str,
+    tavily_available: bool,
+    offline_mode: bool,
+    provider_availability: Mapping[str, bool],
+) -> tuple[str, str]:
+    """Return the researcher row labels for the model-settings menu."""
+
+    researcher_model, researcher_provider = current_labels(researcher_key)
+    researcher_info = model_presets.get_preset_info(researcher_key) if researcher_key else None
+    researcher_uses_native_search = uses_runtime_native_web_search(researcher_info)
+    codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
+
+    if not tavily_available and not offline_mode and not researcher_uses_native_search:
+        if codex_available:
+            return "Needs Tavily or Codex preset", ""
+        return "Add Tavily API key to enable", ""
+
+    status_label = "On" if researcher_mode == "on" else "Off"
+    if researcher_model == "Not configured":
+        return status_label, researcher_provider
+    return f"{researcher_model} ({status_label})", researcher_provider
 
 
 def _configure_general_phase(

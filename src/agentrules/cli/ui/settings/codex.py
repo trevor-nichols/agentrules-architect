@@ -87,7 +87,42 @@ def _render_runtime_summary(
         context.console.print(f"\n[red]Runtime error:[/] {diagnostics.runtime_error}")
     if diagnostics.recent_stderr:
         context.console.print(f"[dim]Recent stderr:[/] {diagnostics.recent_stderr[-1]}")
+    for note in build_runtime_guidance(state, diagnostics):
+        context.console.print(note)
     context.console.print("")
+
+
+def build_runtime_guidance(
+    state: configuration.CodexRuntimeState,
+    diagnostics: codex_runtime.CodexRuntimeDiagnostics,
+) -> list[str]:
+    """Render operator notes for the current Codex runtime state."""
+
+    notes: list[str] = []
+    if state.home_strategy == "managed":
+        notes.append(
+            "[dim]Managed mode keeps a separate AgentRules-owned CODEX_HOME. "
+            "Use this when you want an isolated login/config state for AgentRules.[/]"
+        )
+    else:
+        notes.append(
+            "[dim]Inherit mode reuses your existing Codex CLI state from CODEX_HOME. "
+            "Use this to share your current ChatGPT login, config, and skills.[/]"
+        )
+
+    if diagnostics.account is None or not diagnostics.account.is_authenticated:
+        if diagnostics.account_error is None:
+            notes.append(
+                "[dim]Sign in with ChatGPT here to enable Codex-backed presets without storing "
+                "OpenAI API keys in AgentRules.[/]"
+            )
+    elif diagnostics.models:
+        notes.append(
+            "[dim]Next step: choose a `codex-*` preset under Settings -> Model presets per phase "
+            "to route analysis phases through this runtime.[/]"
+        )
+
+    return notes
 
 
 def _render_models_table(context: CliContext, diagnostics: codex_runtime.CodexRuntimeDiagnostics) -> None:

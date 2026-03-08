@@ -1,7 +1,7 @@
 ---
 id: EP-20260308-001
 title: "Integrate Codex app-server runtime"
-status: active
+status: done
 kind: feature
 domain: cross-cutting
 owner: "@codex"
@@ -202,7 +202,7 @@ The following are intentionally excluded from this plan:
 - [x] (2026-03-08 22:10Z) Implemented the Codex app-server process/client/auth/model-catalog layer, added a configuration-backed runtime factory plus CLI diagnostics/login/logout service, and validated the flow against both a fake app-server and the locally installed `codex app-server`.
 - [x] (2026-03-09 00:08Z) Implemented `CodexArchitect`, Codex-specific request/response helpers, factory wiring, and structured `outputSchema` handling for phase2/phase4/phase5/final.
 - [x] (2026-03-08) Applied provider-aware Phase 1/Phase 3 Codex exceptions, including runtime-native researcher handling, Codex Phase 3 repo prompts, and shared capability helpers.
-- [ ] Finish CLI UX, docs, smoke tests, and final validation.
+- [x] (2026-03-08) Finished Codex CLI workflow polish, added operator docs and gated live smoke coverage, and completed the milestone validation matrix.
 
 ## Surprises & Discoveries
 
@@ -215,6 +215,7 @@ The following are intentionally excluded from this plan:
 - The generated `codex app-server` schema on this machine does expose `turn/start.outputSchema` and `CollaborationMode`, but keeping `developer_instructions` request-scoped still required a short-lived process strategy because the stable, explicit override surface is the process launch config.
 - A live `CodexArchitect.analyze()` smoke against the installed runtime reached the upstream Responses API but failed with `401 Unauthorized` because the local Codex runtime was not authenticated. That confirms the adapter path is wired correctly through the runtime even though a fully authenticated live turn could not be validated on this machine.
 - Researcher gating had a second dependency on Tavily beyond runtime execution: the config manager auto-disabled researcher mode when the Tavily key was removed, and the model settings UI blocked entry to the researcher flow when Tavily was absent. Both code paths needed to become provider-aware for Codex to be a real replacement instead of just a hidden runtime path.
+- The generic `tests/live/test_live_smoke.py` still assumed API-key providers only. Once Codex became a selectable final-phase preset, that test needed an explicit Codex skip path and xAI env-key coverage to avoid false failures during manual live runs.
 
 ## Decision Log
 
@@ -233,3 +234,5 @@ MS002 is now complete as well. AgentRules has a typed `core/agents/codex` transp
 MS003 is complete. AgentRules can now construct `CodexArchitect` instances from the factory, launch a short-lived Codex app-server per request with request-scoped `developer_instructions`, start ephemeral threads/turns, collect streamed `item/*` and `turn/completed` events, and enforce structured outputs through `turn/start.outputSchema` for the structured phases. Validation is green with `PYTHONPATH=src pytest tests/unit -q -k "codex or architect"`, `PYTHONPATH=src pytest tests/unit -q`, `PYTHONPATH=src python -c "import agentrules"`, `ruff check src tests`, and `pyright`. A live architect smoke reached the installed runtime and failed only because the local Codex account was unauthenticated, which is consistent with the current environment.
 
 MS004 is complete. AgentRules now centralizes Codex-specific runtime branching through shared provider capability helpers, bypasses the Tavily tool loop for Codex-backed researchers, treats Codex researcher presets as valid without Tavily credentials, and routes Phase 3 Codex agents through a repository-runtime prompt path that references assigned files and `cwd` instead of embedding file bodies or invoking the token packer. Validation is green with `PYTHONPATH=src pytest tests/phase_1_test tests/phase_3_test tests/unit -q`, `PYTHONPATH=src pytest tests/phase_1_test/test_phase1_researcher_guards.py tests/unit/analysis/test_phase3_packing.py tests/unit/test_config_service.py tests/unit/utils/test_provider_capabilities.py -q`, `PYTHONPATH=src python -c "import agentrules"`, `ruff check src tests`, and `pyright`.
+
+MS005 is complete. The CLI now exposes testable settings/menu copy that keeps API-key providers separate from the Codex runtime, the researcher status text accurately explains Tavily versus Codex runtime requirements, and the Codex runtime screen includes operator guidance for managed versus inherited `CODEX_HOME` plus next-step hints after sign-in. Operator-facing rollout instructions now live in `docs/codex-runtime.md`, and the repository has a gated live Codex smoke in `tests/live/test_codex_live_smoke.py` that requires both `pytest --run-live` and `AGENTRULES_RUN_CODEX_LIVE=1`. Final validation is green with `PYTHONPATH=src python -c "import agentrules"`, `ruff check src tests`, `pyright`, `PYTHONPATH=src pytest tests/unit tests/offline tests/phase_1_test tests/phase_3_test -q`, `PYTHONPATH=src pytest tests/unit/test_cli_codex_settings.py tests/unit/test_config_service.py tests/unit/test_codex_runtime_service.py tests/live/test_codex_live_smoke.py -q`, `PYTHONPATH=src pytest tests/live/test_codex_live_smoke.py -q --run-live`, and `PYTHONPATH=src python -m agentrules execplan-registry update`.
