@@ -49,6 +49,7 @@ class ModelProvider(Enum):
     """Enum for specifying the model provider."""
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    CODEX = "codex"
     DEEPSEEK = "deepseek"
     GEMINI = "gemini"
     XAI = "xai"

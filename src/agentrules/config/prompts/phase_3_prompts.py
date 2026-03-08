@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from agentrules.core.utils.system_prompt import normalize_responsibilities
 
-
 PHASE_3_SYSTEM_PROMPT = (
     "You are {agent_name}, responsible for {agent_role}.\n\n"
     "You are part of a team of agents working together to analyze and understand a software project.\n"

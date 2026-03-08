@@ -12,9 +12,9 @@ from agentrules.core.utils.constants import (
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
-from .models import CLIConfig, ExclusionOverrides, OutputPreferences, ResearcherMode
+from .models import CLIConfig, CodexConfig, CodexHomeStrategy, ExclusionOverrides, OutputPreferences, ResearcherMode
 from .repository import ConfigRepository, TomlConfigRepository
-from .services import exclusions, features, outputs, phase_models, providers
+from .services import codex, exclusions, features, outputs, phase_models, providers
 from .services import logging as logging_service
 from .utils import normalize_rules_filename
 
@@ -42,6 +42,7 @@ class ConfigManager:
     def apply_config_to_environment(self, config: CLIConfig | None = None) -> None:
         cfg = config or self._repository.load()
         self._environment.apply_provider_credentials(cfg)
+        self._environment.apply_codex_runtime(cfg)
 
     # ------------------------------------------------------------------
     # Provider credentials
@@ -62,9 +63,67 @@ class ConfigManager:
         config = self._repository.load()
         return providers.current_provider_keys(config)
 
+    def get_provider_availability(self) -> dict[str, bool]:
+        config = self._repository.load()
+        return providers.current_provider_availability(config, self._environment.getenv)
+
     def has_tavily_credentials(self, config: CLIConfig | None = None) -> bool:
         cfg = config or self._repository.load()
         return providers.has_tavily_credentials(cfg, self._environment.getenv)
+
+    # ------------------------------------------------------------------
+    # Codex runtime settings
+    # ------------------------------------------------------------------
+    def get_codex_config(self) -> CodexConfig:
+        config = self._repository.load()
+        normalized = codex.get_codex_config(config)
+        self._repository.save(config)
+        return normalized
+
+    def set_codex_cli_path(self, cli_path: str | None) -> CLIConfig:
+        config = self._repository.load()
+        codex.set_codex_cli_path(config, cli_path)
+        self._repository.save(config)
+        self._environment.apply_codex_runtime(config)
+        return config
+
+    def set_codex_home_strategy(self, strategy: str | None) -> CLIConfig:
+        config = self._repository.load()
+        codex.set_codex_home_strategy(config, strategy)
+        self._repository.save(config)
+        self._environment.apply_codex_runtime(config)
+        return config
+
+    def set_codex_managed_home(self, managed_home: str | None) -> CLIConfig:
+        config = self._repository.load()
+        codex.set_codex_managed_home(config, managed_home)
+        self._repository.save(config)
+        self._environment.apply_codex_runtime(config)
+        return config
+
+    def get_codex_home_strategy(self) -> CodexHomeStrategy:
+        config = self._repository.load()
+        normalized = codex.get_codex_home_strategy(config)
+        self._repository.save(config)
+        return normalized
+
+    def get_managed_codex_home(self) -> str:
+        config = self._repository.load()
+        normalized = codex.get_managed_codex_home(config)
+        self._repository.save(config)
+        return normalized
+
+    def get_effective_codex_home(self) -> str | None:
+        config = self._repository.load()
+        return codex.get_effective_codex_home(config, self._environment.getenv)
+
+    def resolve_codex_executable(self) -> str | None:
+        config = self._repository.load()
+        return codex.resolve_codex_executable(config)
+
+    def is_codex_available(self) -> bool:
+        config = self._repository.load()
+        return codex.is_codex_available(config)
 
     # ------------------------------------------------------------------
     # Phase model overrides

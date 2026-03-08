@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
@@ -11,7 +10,6 @@ from agentrules.config.agents import PresetDefinition
 from agentrules.core.agents.base import ModelProvider
 
 from . import get_config_manager
-from .constants import PROVIDER_ENV_MAP
 
 PHASE_TITLES: dict[str, str] = {
     "phase1": "Phase 1 – Initial Discovery",
@@ -75,14 +73,15 @@ def get_preset_info(key: str) -> PresetInfo | None:
 
 def get_available_presets_for_phase(
     phase: str,
-    provider_keys: Mapping[str, str | None] | None = None,
+    provider_availability: Mapping[str, bool] | None = None,
 ) -> list[PresetInfo]:
-    provider_keys = provider_keys or CONFIG_MANAGER.get_current_provider_keys()
+    if provider_availability is None:
+        provider_availability = CONFIG_MANAGER.get_provider_availability()
     default_key = get_default_preset_key(phase)
     available: list[PresetInfo] = []
 
     for key, info in PRESET_INFOS.items():
-        if key != default_key and not _provider_available(info.provider_slug, provider_keys):
+        if key != default_key and not provider_availability.get(info.provider_slug, False):
             continue
         available.append(info)
 
@@ -136,22 +135,10 @@ def apply_user_overrides(overrides: Mapping[str, str] | None = None) -> dict[str
 
     return applied
 
-
-def _provider_available(provider_slug: str, provider_keys: Mapping[str, str | None]) -> bool:
-    # first check persisted keys
-    if provider_keys.get(provider_slug):
-        return True
-
-    env_var = PROVIDER_ENV_MAP.get(provider_slug)
-    if env_var and os.getenv(env_var):
-        return True
-
-    return False
-
-
 def _provider_display_name(provider: ModelProvider) -> str:
     mapping = {
         ModelProvider.OPENAI: "OpenAI",
+        ModelProvider.CODEX: "Codex App Server",
         ModelProvider.ANTHROPIC: "Anthropic",
         ModelProvider.GEMINI: "Google Gemini",
         ModelProvider.DEEPSEEK: "DeepSeek",

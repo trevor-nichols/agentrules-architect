@@ -144,6 +144,13 @@ PROVIDER_STRUCTURED_OUTPUT_SPECS: dict[ModelProvider, ProviderStructuredOutputSp
         schema_guarantee="strong",
         notes="Responses API uses text.format with strict json_schema.",
     ),
+    ModelProvider.CODEX: ProviderStructuredOutputSpec(
+        provider=ModelProvider.CODEX,
+        doc_path="internal-docs/integrations/codex/app-server/reference/turns.md",
+        request_mode="json_schema",
+        schema_guarantee="strong",
+        notes="Codex app-server accepts a per-turn outputSchema on turn/start.",
+    ),
     ModelProvider.ANTHROPIC: ProviderStructuredOutputSpec(
         provider=ModelProvider.ANTHROPIC,
         doc_path="internal-docs/integrations/anthropic/structured-outputs.md",
@@ -222,7 +229,7 @@ def resolve_structured_output_mode(
             return "disabled"
         return "json_schema"
 
-    if provider in {ModelProvider.OPENAI, ModelProvider.GEMINI}:
+    if provider in {ModelProvider.OPENAI, ModelProvider.CODEX, ModelProvider.GEMINI}:
         return "json_schema"
 
     if provider in {ModelProvider.DEEPSEEK, ModelProvider.XAI}:

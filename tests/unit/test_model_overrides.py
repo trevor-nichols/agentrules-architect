@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from importlib import reload
 
+from agentrules.core.agents.base import ModelProvider
+
 
 class ModelOverrideTestCase(unittest.TestCase):
     def setUp(self) -> None:
@@ -60,6 +62,47 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("gpt-5.2-codex", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.3-codex", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.4-2026-03-05", self.agents_module.MODEL_PRESETS)
+
+    def test_codex_registry_includes_derived_runtime_presets(self) -> None:
+        self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)
+        self.assertIn("codex-gpt-5.2-codex", self.agents_module.MODEL_PRESETS)
+        self.assertIn("codex-gpt-5.3-codex", self.agents_module.MODEL_PRESETS)
+        self.assertIn("codex-gpt-5.4", self.agents_module.MODEL_PRESETS)
+
+        preset = self.agents_module.MODEL_PRESETS["codex-gpt-5.3-codex"]
+        self.assertEqual(preset["provider"], ModelProvider.CODEX)
+        self.assertEqual(preset["config"].provider, ModelProvider.CODEX)
+        self.assertEqual(preset["config"].model_name, "gpt-5.3-codex")
+
+    def test_codex_presets_are_gated_by_runtime_availability(self) -> None:
+        unavailable = self.model_config.get_available_presets_for_phase(
+            "phase3",
+            provider_availability={
+                "anthropic": False,
+                "openai": False,
+                "codex": False,
+                "deepseek": False,
+                "gemini": False,
+                "xai": False,
+            },
+        )
+        unavailable_keys = {preset.key for preset in unavailable}
+        self.assertIn(self.agents_module.MODEL_PRESET_DEFAULTS["phase3"], unavailable_keys)
+        self.assertNotIn("codex-gpt-5.3-codex", unavailable_keys)
+
+        available = self.model_config.get_available_presets_for_phase(
+            "phase3",
+            provider_availability={
+                "anthropic": False,
+                "openai": False,
+                "codex": True,
+                "deepseek": False,
+                "gemini": False,
+                "xai": False,
+            },
+        )
+        available_keys = {preset.key for preset in available}
+        self.assertIn("codex-gpt-5.3-codex", available_keys)
 
     def test_anthropic_registry_includes_claude_sonnet_46_presets(self) -> None:
         self.assertIn("claude-sonnet-4.6", self.agents_module.MODEL_PRESETS)

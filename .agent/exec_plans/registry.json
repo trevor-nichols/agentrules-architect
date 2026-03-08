@@ -153,6 +153,39 @@
         "tests"
       ],
       "updated": "2026-03-08"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-08",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260308-001",
+      "kind": "feature",
+      "links": {
+        "docs": "internal-docs/integrations/codex/app-server",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/codex-app-server-runtime/EP-20260308-001_codex-app-server-runtime.md",
+      "risk": "med",
+      "status": "active",
+      "supersedes": [],
+      "tags": [
+        "codex",
+        "app-server",
+        "cli",
+        "providers"
+      ],
+      "title": "Integrate Codex app-server runtime",
+      "touches": [
+        "cli",
+        "agents",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-03-08"
     }
   ],
   "schema_version": 1

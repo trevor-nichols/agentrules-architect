@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import tempfile
 import unittest
 from importlib import reload
@@ -9,6 +10,7 @@ class ConfigServiceTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         os.environ["AGENTRULES_CONFIG_DIR"] = self.temp_dir.name
+        self._codex_home_backup = os.environ.pop("CODEX_HOME", None)
 
         import agentrules.core.configuration as configuration_package
         import agentrules.core.configuration.constants as configuration_constants
@@ -47,6 +49,10 @@ class ConfigServiceTestCase(unittest.TestCase):
             os.environ.pop(self.configuration.RULES_FILENAME_ENV_VAR, None)
         else:
             os.environ[self.configuration.RULES_FILENAME_ENV_VAR] = self._rules_filename_backup
+        if self._codex_home_backup is None:
+            os.environ.pop(self.configuration.CODEX_HOME_ENV_VAR, None)
+        else:
+            os.environ[self.configuration.CODEX_HOME_ENV_VAR] = self._codex_home_backup
         if self._offline_backup is None:
             os.environ.pop("OFFLINE", None)
         else:
@@ -65,6 +71,36 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertIsInstance(keys, dict)
         self.assertIn("openai", keys)
         self.assertIsNone(keys.get("openai"))
+
+    def test_codex_runtime_config_persists_and_serializes_dedicated_section(self) -> None:
+        self.config_manager.set_codex_cli_path("/usr/local/bin/codex")
+        self.config_manager.set_codex_managed_home("~/agentrules-codex-home")
+
+        config = self.config_manager.load()
+        self.assertEqual(config.codex.cli_path, "/usr/local/bin/codex")
+        self.assertEqual(config.codex.home_strategy, "managed")
+        self.assertEqual(config.codex.managed_home, "~/agentrules-codex-home")
+        self.assertEqual(
+            os.environ.get(self.configuration.CODEX_HOME_ENV_VAR),
+            os.path.expanduser("~/agentrules-codex-home"),
+        )
+
+        persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertIn("[codex]", persisted)
+        self.assertIn('cli_path = "/usr/local/bin/codex"', persisted)
+        self.assertIn('managed_home = "~/agentrules-codex-home"', persisted)
+
+    def test_codex_effective_home_defaults_to_managed_config_dir(self) -> None:
+        expected = str(self.configuration.CONFIG_DIR / self.configuration.DEFAULT_CODEX_HOME_DIRNAME)
+        self.assertEqual(self.config_manager.get_effective_codex_home(), expected)
+        self.config_manager.apply_config_to_environment()
+        self.assertEqual(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR), expected)
+
+    def test_codex_availability_uses_resolved_executable(self) -> None:
+        self.config_manager.set_codex_cli_path(sys.executable)
+        self.assertTrue(self.config_manager.is_codex_available())
+        availability = self.config_manager.get_provider_availability()
+        self.assertTrue(availability["codex"])
 
     def test_set_phase_model_persists_override(self) -> None:
         self.config_manager.set_phase_model("phase1", "claude-sonnet-reasoning")

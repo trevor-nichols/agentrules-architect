@@ -12,11 +12,22 @@ from agentrules.core.utils.constants import (
 )
 
 ResearcherMode = Literal["on", "off"]
+CodexHomeStrategy = Literal["managed", "inherit"]
 
 
 @dataclass
 class ProviderConfig:
     api_key: str | None = None
+
+
+@dataclass
+class CodexConfig:
+    cli_path: str = "codex"
+    home_strategy: CodexHomeStrategy = "managed"
+    managed_home: str | None = None
+
+    def is_default(self) -> bool:
+        return self.cli_path == "codex" and self.home_strategy == "managed" and self.managed_home is None
 
 
 @dataclass
@@ -65,6 +76,7 @@ class FeatureToggles:
 @dataclass
 class CLIConfig:
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
+    codex: CodexConfig = field(default_factory=CodexConfig)
     models: dict[str, str] = field(default_factory=dict)
     verbosity: str | None = None
     outputs: OutputPreferences = field(default_factory=OutputPreferences)

@@ -93,6 +93,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Tool payloads from ToolManager must be dicts.
 - Providers must accept dicts and convert them to SDK objects only immediately prior to sending requests.
 - For unit tests, provider clients should expose set_client/get_client injection points for test doubles.
+- Codex is a local runtime provider, not an API-key provider. Persist Codex settings in the dedicated `CLIConfig.codex` section and gate Codex presets on runtime readiness (`codex` executable plus resolved `CODEX_HOME` policy), not on `providers.<name>.api_key`.
 - System/developer instructions must be resolved once per request and mapped to provider-native fields:
   - OpenAI Responses: `instructions`; OpenAI Chat: developer role message
   - Anthropic: top-level `system`

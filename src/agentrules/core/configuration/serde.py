@@ -11,11 +11,14 @@ from agentrules.core.utils.constants import (
     DEFAULT_SNAPSHOT_FILENAME,
 )
 
-from .models import CLIConfig, ExclusionOverrides, FeatureToggles, OutputPreferences, ProviderConfig
+from .constants import DEFAULT_CODEX_CLI_PATH
+from .models import CLIConfig, CodexConfig, ExclusionOverrides, FeatureToggles, OutputPreferences, ProviderConfig
 from .utils import (
     coerce_bool,
     coerce_positive_int,
     coerce_string_list,
+    normalize_codex_home_strategy,
+    normalize_optional_string,
     normalize_output_filename,
     normalize_researcher_mode,
     normalize_rules_filename,
@@ -38,6 +41,21 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
         for phase, preset in payload.get("models", {}).items()
         if isinstance(phase, str) and isinstance(preset, str)
     }
+
+    codex_payload = payload.get("codex")
+    codex = CodexConfig(
+        cli_path=normalize_optional_string(
+            codex_payload.get("cli_path") if isinstance(codex_payload, Mapping) else None
+        )
+        or DEFAULT_CODEX_CLI_PATH,
+        home_strategy=normalize_codex_home_strategy(
+            codex_payload.get("home_strategy") if isinstance(codex_payload, Mapping) else None,
+            default="managed",
+        ),
+        managed_home=normalize_optional_string(
+            codex_payload.get("managed_home") if isinstance(codex_payload, Mapping) else None
+        ),
+    )
 
     raw_verbosity = payload.get("verbosity")
     verbosity = cast(str | None, raw_verbosity if isinstance(raw_verbosity, str) else None)
@@ -105,6 +123,7 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
 
     return CLIConfig(
         providers=providers,
+        codex=codex,
         models=models,
         verbosity=verbosity,
         outputs=outputs,
@@ -124,6 +143,17 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
 
     if config.models:
         payload["models"] = dict(config.models)
+
+    if not config.codex.is_default():
+        codex_payload: dict[str, Any] = {}
+        if config.codex.cli_path != DEFAULT_CODEX_CLI_PATH:
+            codex_payload["cli_path"] = config.codex.cli_path
+        if config.codex.home_strategy != "managed":
+            codex_payload["home_strategy"] = config.codex.home_strategy
+        if config.codex.managed_home:
+            codex_payload["managed_home"] = config.codex.managed_home
+        if codex_payload:
+            payload["codex"] = codex_payload
 
     if config.verbosity:
         normalized = normalize_verbosity_label(config.verbosity)

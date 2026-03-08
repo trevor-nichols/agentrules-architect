@@ -141,6 +141,17 @@ def create_researcher_config(base_config: ModelConfig) -> ModelConfig:
         tools_config={"enabled": True, "tools": None},
     )
 
+
+def create_codex_config(base_config: ModelConfig) -> ModelConfig:
+    """
+    Re-target an existing model configuration to the Codex app-server runtime.
+
+    Codex reuses the same model identifiers and reasoning controls as the
+    corresponding OpenAI variants, so the only behavior change at this layer is
+    the provider identity.
+    """
+    return base_config._replace(provider=ModelProvider.CODEX)
+
 # O1 configurations with different reasoning levels
 O3_HIGH = ModelConfig(
     provider=ModelProvider.OPENAI,

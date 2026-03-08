@@ -28,7 +28,7 @@ def configure_models(context: CliContext) -> None:
     updated = False
 
     while True:
-        provider_keys = configuration.get_provider_keys()
+        provider_availability = configuration.get_provider_availability()
         active = configuration.get_active_presets()
         researcher_mode = configuration.get_researcher_mode()
         tavily_available = configuration.has_tavily_credentials()
@@ -53,9 +53,9 @@ def configure_models(context: CliContext) -> None:
 
         phase = phase_selection
         title = model_presets.get_phase_title(phase)
-        presets = configuration.get_available_presets_for_phase(phase, provider_keys)
+        presets = configuration.get_available_presets_for_phase(phase, provider_availability)
         if not presets:
-            console.print(f"[yellow]No presets available for {title}; configure provider keys first.[/]")
+            console.print(f"[yellow]No presets available for {title}; configure provider access first.[/]")
             continue
 
         default_key = model_presets.get_default_preset_key(phase)

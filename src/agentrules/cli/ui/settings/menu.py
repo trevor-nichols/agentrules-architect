@@ -7,6 +7,7 @@ import questionary
 from agentrules.cli.context import CliContext
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice
 
+from .codex import configure_codex_runtime
 from .exclusions import configure_exclusions
 from .logging import configure_logging
 from .models import configure_models
@@ -25,6 +26,7 @@ def configure_settings(context: CliContext) -> None:
             "Select a settings category:",
             choices=[
                 questionary.Choice(title="Provider API keys", value="providers"),
+                questionary.Choice(title="Codex runtime", value="codex"),
                 questionary.Choice(title="Model presets per phase", value="models"),
                 questionary.Choice(title="Logging verbosity", value="logging"),
                 questionary.Choice(title="Output preferences", value="outputs"),
@@ -40,6 +42,8 @@ def configure_settings(context: CliContext) -> None:
             return
         if selection == "providers":
             configure_provider_keys(context)
+        elif selection == "codex":
+            configure_codex_runtime(context)
         elif selection == "models":
             configure_models(context)
         elif selection == "logging":

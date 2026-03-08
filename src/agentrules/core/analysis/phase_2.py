@@ -14,10 +14,10 @@ from collections.abc import Sequence
 
 from agentrules.config.agents import MODEL_CONFIG
 from agentrules.config.prompts.phase_2_prompts import (  # Prompts for Phase 2
-    format_phase2_legacy_xml_system_prompt,
     format_phase2_legacy_prompt,
-    format_phase2_structured_system_prompt,
+    format_phase2_legacy_xml_system_prompt,
     format_phase2_structured_prompt,
+    format_phase2_structured_system_prompt,
 )
 from agentrules.core.agents import get_architect_for_phase  # Added import for dynamic model configuration
 from agentrules.core.agents.base import ModelProvider

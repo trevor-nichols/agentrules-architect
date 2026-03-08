@@ -42,6 +42,14 @@ def test_resolve_structured_output_mode_for_phase_and_provider() -> None:
     )
     assert (
         resolve_structured_output_mode(
+            provider=ModelProvider.CODEX,
+            model_name="gpt-5.3-codex",
+            phase="phase2",
+        )
+        == "json_schema"
+    )
+    assert (
+        resolve_structured_output_mode(
             provider=ModelProvider.DEEPSEEK,
             model_name="deepseek-chat",
             phase="phase4",
@@ -80,6 +88,9 @@ def test_should_use_legacy_phase2_prompt_for_unsupported_model() -> None:
 def test_provider_mapping_uses_expected_docs_and_modes() -> None:
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.OPENAI].doc_path.endswith(
         "integrations/openai/structured-outputs.md"
+    )
+    assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.CODEX].doc_path.endswith(
+        "integrations/codex/app-server/reference/turns.md"
     )
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.ANTHROPIC].request_mode == "json_schema"
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.DEEPSEEK].request_mode == "json_object"

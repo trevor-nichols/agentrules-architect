@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import cast
 
-from .models import ResearcherMode
+from .models import CodexHomeStrategy, ResearcherMode
 
 
 def coerce_bool(value: object, default: bool = False) -> bool:
@@ -79,6 +79,25 @@ def normalize_output_filename(value: object, *, default: str) -> str:
 
 def normalize_rules_filename(value: object, *, default: str) -> str:
     return normalize_output_filename(value, default=default)
+
+
+def normalize_optional_string(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def normalize_codex_home_strategy(
+    value: object,
+    *,
+    default: CodexHomeStrategy,
+) -> CodexHomeStrategy:
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"managed", "inherit"}:
+            return cast(CodexHomeStrategy, normalized)
+    return default
 
 
 def apply_overrides(

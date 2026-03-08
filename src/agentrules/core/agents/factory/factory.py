@@ -97,6 +97,12 @@ class ArchitectFactory:
         elif provider == ModelProvider.XAI:
             from ..xai import XaiArchitect  # noqa: E402
             return XaiArchitect(**common_args)
+        elif provider == ModelProvider.CODEX:
+            raise NotImplementedError(
+                "Codex runtime presets are configured, but the Codex architect runtime "
+                "has not been wired yet. Complete the Codex app-server integration milestones "
+                "before running analysis with a Codex preset."
+            )
         else:
             raise ValueError(f"Unknown model provider: {provider}")
 

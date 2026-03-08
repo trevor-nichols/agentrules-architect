@@ -1,8 +1,9 @@
 """Domain-specific helpers for configuration management."""
 
-from . import exclusions, features, logging, outputs, phase_models, providers
+from . import codex, exclusions, features, logging, outputs, phase_models, providers
 
 __all__ = [
+    "codex",
     "exclusions",
     "features",
     "logging",
@@ -10,4 +11,3 @@ __all__ = [
     "phase_models",
     "providers",
 ]
-
