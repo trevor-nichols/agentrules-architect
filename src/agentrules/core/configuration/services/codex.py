@@ -84,7 +84,7 @@ def resolve_codex_executable(config: CLIConfig) -> str | None:
     if os.path.sep in expanded or (os.path.altsep and os.path.altsep in expanded):
         candidate = Path(expanded)
         if candidate.exists() and candidate.is_file():
-            return str(candidate)
+            return str(candidate.resolve())
         return None
     return shutil.which(expanded)
 

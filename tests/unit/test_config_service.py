@@ -120,6 +120,21 @@ class ConfigServiceTestCase(unittest.TestCase):
         availability = self.config_manager.get_provider_availability()
         self.assertTrue(availability["codex"])
 
+    def test_codex_relative_cli_path_resolves_to_absolute_path(self) -> None:
+        executable = Path(self.temp_dir.name) / "bin" / "codex"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text("#!/bin/sh\n", encoding="utf-8")
+
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            self.config_manager.set_codex_cli_path("bin/codex")
+            resolved = self.config_manager.resolve_codex_executable()
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertEqual(resolved, str(executable.resolve()))
+
     def test_build_codex_launch_config_uses_resolved_executable_and_home(self) -> None:
         self.config_manager.set_codex_cli_path(sys.executable)
         self.config_manager.set_codex_managed_home("~/agentrules-codex-home")
@@ -129,7 +144,7 @@ class ConfigServiceTestCase(unittest.TestCase):
             config_overrides={"developer_instructions": "Test instructions"},
         )
 
-        self.assertEqual(launch.executable_path, sys.executable)
+        self.assertEqual(launch.executable_path, str(Path(sys.executable).resolve()))
         self.assertEqual(launch.codex_home, os.path.expanduser("~/agentrules-codex-home"))
         self.assertEqual(launch.cwd, self.temp_dir.name)
         self.assertEqual(launch.config_overrides["developer_instructions"], "Test instructions")

@@ -323,6 +323,10 @@ class CodexAppServerClient:
                     if not buffer:
                         event.clear()
                     return matched
+            # Treat the event as "new message arrived since the last scan"
+            # rather than "buffer is non-empty" so unrelated buffered items do
+            # not cause a tight wait loop.
+            event.clear()
             await event.wait()
 
     async def _send_message(self, payload: dict[str, Any]) -> None:

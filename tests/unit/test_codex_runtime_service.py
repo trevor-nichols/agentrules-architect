@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 from agentrules.cli.services.codex_runtime import (
+    _run_sync,
     get_codex_runtime_diagnostics,
     logout_codex_runtime,
     start_codex_chatgpt_login,
 )
+from agentrules.core.agents.codex import CodexError
 from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.repository import TomlConfigRepository
 
@@ -62,3 +67,20 @@ def test_codex_runtime_login_and_logout_flow(tmp_path: Path) -> None:
         command=_fake_command(),
     )
     assert account_after_logout.is_authenticated is False
+
+
+def test_run_sync_preserves_runtime_failures() -> None:
+    async def raise_runtime_error() -> None:
+        raise CodexError("boom")
+
+    with pytest.raises(CodexError, match="boom"):
+        _run_sync(raise_runtime_error())
+
+
+@pytest.mark.asyncio
+async def test_run_sync_supports_callers_with_existing_event_loop() -> None:
+    async def succeed() -> str:
+        await asyncio.sleep(0)
+        return "ok"
+
+    assert _run_sync(succeed()) == "ok"

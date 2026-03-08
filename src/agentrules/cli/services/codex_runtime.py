@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import webbrowser
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar, cast
 
 from agentrules.core.agents.codex import (
     CodexAccountSummary,
@@ -20,6 +22,7 @@ from agentrules.core.agents.codex import (
 from agentrules.core.configuration import ConfigManager, get_config_manager
 
 BrowserOpener = Callable[[str], bool]
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -50,15 +53,19 @@ class CodexLoginFlowResult:
     waiting_timed_out: bool = False
 
 
-def _run_sync(awaitable: Any) -> Any:
+def _run_sync(awaitable: Coroutine[Any, Any, T]) -> T:
     try:
-        return asyncio.run(awaitable)
+        asyncio.get_running_loop()
     except RuntimeError:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(awaitable)
-        finally:
-            loop.close()
+        return asyncio.run(awaitable)
+
+    # CLI helpers may be invoked from environments that already own the current
+    # thread's event loop. Execute the coroutine in a worker thread so runtime
+    # failures propagate unchanged instead of retrying an already-awaited coroutine.
+    context = copy_context()
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="codex-runtime-sync") as executor:
+        future = executor.submit(context.run, asyncio.run, awaitable)
+        return cast(T, future.result())
 
 
 async def _collect_runtime_diagnostics(

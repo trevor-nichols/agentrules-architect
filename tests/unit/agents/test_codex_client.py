@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 import sys
+from collections import deque
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
-from agentrules.core.agents.codex import CodexAppServerClient, CodexAppServerProcess, CodexProcessLaunchConfig
+from agentrules.core.agents.codex import (
+    CodexAppServerClient,
+    CodexAppServerProcess,
+    CodexNotification,
+    CodexProcessLaunchConfig,
+)
 
 FAKE_SERVER = Path(__file__).resolve().parents[2] / "fakes" / "codex_app_server.py"
 
@@ -21,6 +29,16 @@ def _build_client(tmp_path: Path, *, timeout: float = 2.0) -> CodexAppServerClie
         command=(sys.executable, "-u", str(FAKE_SERVER)),
     )
     return CodexAppServerClient(process, request_timeout_seconds=timeout)
+
+
+class _RecordingEvent(asyncio.Event):
+    def __init__(self) -> None:
+        super().__init__()
+        self.wait_calls = 0
+
+    async def wait(self) -> Literal[True]:
+        self.wait_calls += 1
+        return await super().wait()
 
 
 @pytest.mark.asyncio
@@ -81,3 +99,45 @@ async def test_codex_client_chatgpt_login_and_logout(tmp_path: Path) -> None:
 
         account_after_logout = await client.read_account()
         assert account_after_logout.is_authenticated is False
+
+
+@pytest.mark.asyncio
+async def test_wait_for_buffered_message_ignores_unmatched_buffer_without_spinning(
+    tmp_path: Path,
+) -> None:
+    client = _build_client(tmp_path)
+    reader_task = asyncio.create_task(asyncio.sleep(1))
+    stderr_task = asyncio.create_task(asyncio.sleep(1))
+    client._reader_task = reader_task
+    client._stderr_task = stderr_task
+
+    event = _RecordingEvent()
+    event.set()
+    buffer = deque(
+        [CodexNotification(method="server/heartbeat", params={"count": 1})]
+    )
+
+    async def deliver_match() -> None:
+        await asyncio.sleep(0.01)
+        buffer.append(CodexNotification(method="account/updated", params={"count": 2}))
+        event.set()
+
+    producer = asyncio.create_task(deliver_match())
+    try:
+        matched = await asyncio.wait_for(
+            client._wait_for_buffered_message(
+                buffer,
+                event,
+                matcher=lambda item: item.method == "account/updated",
+            ),
+            timeout=1.0,
+        )
+        await producer
+
+        assert matched.method == "account/updated"
+        assert event.wait_calls == 1
+        assert [item.method for item in buffer] == ["server/heartbeat"]
+    finally:
+        for task in (producer, reader_task, stderr_task):
+            task.cancel()
+        await asyncio.gather(producer, reader_task, stderr_task, return_exceptions=True)
