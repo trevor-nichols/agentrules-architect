@@ -28,7 +28,7 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 
 # 2. TEMPORAL FRAMEWORK
 
-It is February 2026 and you are developing using Python 3.11+ with modern provider SDKs (Anthropic, OpenAI, Gemini, xAI, DeepSeek). Local tokenization/counting (tiktoken-style encoders) is available and should be preferred for cost and determinism. Pyright lints and ruff style checks are enforced in CI.
+It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (Anthropic, OpenAI, Gemini, xAI, DeepSeek). Local tokenization/counting (tiktoken-style encoders) is available and should be preferred for cost and determinism. Pyright lints and ruff style checks are enforced in CI.
 
 # 3. TECHNICAL CONSTRAINTS
 
@@ -38,7 +38,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - CI enforced: pyright, ruff, pytest; import-smoke and template validation jobs must run.
 - Async model: asyncio-based pipeline; avoid blocking the event loop.
 
-# Dependencies (recommended)
+# Dependencies
 - tiktoken (or provider of local token counting)
 - aiofiles
 - lxml
@@ -67,36 +67,23 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 # 4. IMPERATIVE DIRECTIVES
 
 # Your Requirements:
-1. FIX PACKAGE IMPORT MISMATCH IMMEDIATELY: Ensure pyproject.toml name and package import path are consistent with the source tree. The CI import-smoke test must pass (python -c "import agentrules" or equivalent). DO NOT merge changes that break importability.
-2. PHASE 3 MUST NOT BLOCK THE EVENT LOOP:
-   - Replace synchronous file reads inside async functions with asyncio.to_thread or aiofiles.
-   - Bound concurrency using an asyncio.Semaphore defaulting to 8.
-3. TOKEN PACKER MUST BE O(N):
+1. Ensure pyproject.toml name and package import path are consistent with the source tree. The CI import-smoke test must pass (python -c "import agentrules" or equivalent). DO NOT merge changes that break importability.
+2. TOKEN PACKER MUST BE O(N):
    - Precompute per-file token counts and memoize encodings.
    - Cache keyed by (model_name, sha256(content)).
    - Compute prompt skeleton overhead ONCE per packaging run.
-4. ATOMICALLY WRITE CRITICAL ARTIFACTS (AGENTS.md and phase outputs):
+3. ATOMICALLY WRITE CRITICAL ARTIFACTS (AGENTS.md and phase outputs):
    - Use tempfile.NamedTemporaryFile or tempfile.mkstemp + os.replace for final write.
    - Ensure on crash the file is either old content or fully replaced (no partial files).
-5. CANONICALIZE TOOL MANAGER OUTPUTS:
+4. CANONICALIZE TOOL MANAGER OUTPUTS:
    - ToolManager MUST return plain serializable dicts (name, args, schema).
    - Convert to SDK-specific objects only at provider request-time.
-6. CONSOLIDATE PROVIDER COERCION:
-   - Extract object→dict and dict→object logic into a single shared util module and use it across all providers.
-7. PROMPT SAFETY:
+5. PROMPT SAFETY:
    - NEVER embed raw file contents without escaping. Use base64 or JSON-escaped content to avoid sentinel collisions. Update token estimation logic accordingly.
-8. PARSER ROBUSTNESS:
+6. PARSER ROBUSTNESS:
    - Prefer structured JSON/dict outputs from Phase 2. Use tolerant XML parser (lxml.recover) as a fallback. Validate that parsed file paths exist.
-9. TEST & CI:
+7. TEST & CI:
    - Add CI jobs: import_smoke_test, prompt_template_validation (mock safely), parser_corpus unit tests, token_packer benchmark anti-regression (lightweight), offline pipeline smoke with DummyArchitect.
-10. SECURITY:
-   - NEVER log API keys or secrets. Apply logging filters and redact env var dumps.
-
-!!! PROHIBITIONS:
-- !!!DO NOT perform O(n^2) token estimation in production code.
-- !!!NEVER write AGENTS.md or other critical outputs with plain non-atomic writes.
-- !!!DO NOT embed un-escaped raw file content into prompts using naive str.format.
-- !!!DO NOT mix SDK objects across subsystem boundaries (ToolManager ↔ provider clients).
 
 # 5. KNOWLEDGE FRAMEWORK
 
@@ -350,7 +337,6 @@ output = template.format(items="x")  # can raise KeyError / ValueError
 
 # 8. KNOWLEDGE EVOLUTION MECHANISM
 
-
 # Validation Checklist (before merging PRs)
 - [ ] Identity statement present in AGENTS.md
 - [ ] Import smoke test passes (python -c 'import agentrules')
@@ -373,21 +359,7 @@ output = template.format(items="x")  # can raise KeyError / ValueError
 4. Repeat critical constraints in top of changed files as comments for future maintainers (e.g., token cache usage).
 5. When editing prompt templates, add a unit test to format the template with mock safe data.
 
-# PRIORITY TASKS (quick map)
-- P0:
-  - Fix package/import mismatch: pyproject.toml or rename src package.
-  - Phase 3 non-blocking I/O: src/agentrules/core/analysis/phase_3.py and file_retriever.py
-  - Token packer O(n) rewrite: token_packer.py, token_estimator.py
-  - Phase 2 parser robustness: agent_parser.py, config/prompts/phase_2_prompts.py
-- P1:
-  - Extract provider_utils.py and replace duplicated code in core/agents/*
-  - ToolManager canonicalization: core/agent_tools/tool_manager.py
-  - Atomic write helper: core/utils/file_creation/phases_output.py
-  - Remove pathlib backport from tests/tests_input/requirements.txt
-- P2:
-  - Template validation CI, CLI UX polish, DummyArchitect offline smoke test.
-
-# Closing behavior guidance (for the AI agent)
+# Closing behavior guidance
 - When making changes: run unit tests locally, run import smoke, and push a PR with descriptive title and the validation checklist ticked.
 - If a requested change impacts importability or test baseline heavily, first open a draft PR and request a human review.
 - When in doubt about model behavior or format, prefer conservative parsing (fail closed) and log a clear warning.
