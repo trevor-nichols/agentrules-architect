@@ -1,9 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from agentrules.core.execplan import locks as lock_module
 from agentrules.core.execplan import milestones as milestone_module
 from agentrules.core.execplan.creator import archive_execplan, create_execplan
 from agentrules.core.execplan.milestones import (
@@ -45,42 +43,6 @@ def _write_execplan(path: Path, *, plan_id: str, title: str, domain: str = "back
 
 
 class ExecPlanMilestonesTests(unittest.TestCase):
-    def test_plan_milestone_lock_uses_windows_fallback_when_fcntl_missing(self) -> None:
-        class FakeMsvcrt:
-            LK_NBLCK = 1
-            LK_UNLCK = 2
-
-            def __init__(self) -> None:
-                self.modes: list[int] = []
-
-            def locking(self, _fd: int, mode: int, _nbytes: int) -> None:
-                self.modes.append(mode)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            lock_path = Path(tmpdir) / ".agent" / "exec_plans" / ".locks" / "EP-20260207-001.lock"
-            fake_msvcrt = FakeMsvcrt()
-
-            with (
-                mock.patch.object(lock_module, "fcntl", None),
-                mock.patch.object(lock_module, "msvcrt", fake_msvcrt),
-                mock.patch.object(lock_module, "_WINDOWS_LOCK_RETRY_DELAY_SECONDS", 0),
-            ):
-                with lock_module.file_lock(lock_path):
-                    self.assertTrue(lock_path.exists())
-
-        self.assertEqual(fake_msvcrt.modes, [FakeMsvcrt.LK_NBLCK, FakeMsvcrt.LK_UNLCK])
-
-    def test_plan_milestone_lock_fails_when_no_backend_available(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            lock_path = Path(tmpdir) / ".agent" / "exec_plans" / ".locks" / "EP-20260207-001.lock"
-            with (
-                mock.patch.object(lock_module, "fcntl", None),
-                mock.patch.object(lock_module, "msvcrt", None),
-            ):
-                with self.assertRaisesRegex(RuntimeError, "No supported file-locking backend"):
-                    with lock_module.file_lock(lock_path):
-                        self.fail("Lock context should not succeed without a backend.")
-
     def test_create_milestone_uses_parent_and_title_codification(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -113,6 +75,7 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertIn('title: "Implement OAuth callback flow"', content)
             self.assertIn("domain: frontend", content)
             self.assertIn('owner: "@backend-team"', content)
+            self.assertFalse((execplans_dir / ".locks").exists())
 
     def test_create_milestone_respects_owner_and_domain_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -177,6 +140,7 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             )
 
             self.assertEqual(second.milestone_id, "EP-20260207-001/MS002")
+            self.assertFalse((execplans_dir / ".locks").exists())
 
     def test_next_milestone_sequence_counts_malformed_active_ms_filenames(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -3,9 +3,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from agentrules.core.execplan import locks as lock_module
 from agentrules.core.execplan.creator import archive_execplan, create_execplan
 
 
@@ -416,7 +414,7 @@ class ExecPlanCreatorTests(unittest.TestCase):
             self.assertIn("status: archived", content)
             self.assertRegex(content, r"updated:\s*'?2026-02-12'?")
 
-    def test_archive_execplan_uses_shared_execplan_mutation_lock(self) -> None:
+    def test_archive_execplan_does_not_create_locks_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
@@ -430,21 +428,15 @@ class ExecPlanCreatorTests(unittest.TestCase):
                 update_registry=False,
             )
 
-            with mock.patch(
-                "agentrules.core.execplan.creator.execplan_mutation_lock",
-                wraps=lock_module.execplan_mutation_lock,
-            ) as mocked_lock:
-                archive_execplan(
-                    root=root,
-                    execplan_id=created.plan_id,
-                    execplans_dir=execplans_dir,
-                    archive_date_yyyymmdd="20260212",
-                    update_registry=False,
-                )
+            archive_execplan(
+                root=root,
+                execplan_id=created.plan_id,
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+                update_registry=False,
+            )
 
-            mocked_lock.assert_called_once()
-            self.assertEqual(mocked_lock.call_args.kwargs["execplan_id"], created.plan_id)
-            self.assertEqual(mocked_lock.call_args.kwargs["execplans_dir"], execplans_dir.resolve())
+            self.assertFalse((execplans_dir / ".locks").exists())
 
     def test_archive_execplan_rejects_non_utf8_active_milestone_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
