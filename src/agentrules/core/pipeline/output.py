@@ -120,12 +120,11 @@ class PipelineOutputWriter:
                 snapshot_result = sync_snapshot_artifact(
                     settings.target_directory,
                     output_path=snapshot_output_path,
-                    tree_max_depth=settings.tree_max_depth,
+                    tree_max_depth=None,
                     exclude_dirs=set(settings.effective_exclusions.directories),
                     exclude_files=set(settings.effective_exclusions.files),
                     exclude_extensions=set(settings.effective_exclusions.extensions),
                     gitignore_spec=result.snapshot.gitignore.spec,
-                    include_file_contents=True,
                     additional_exclude_relative_paths=build_snapshot_additional_exclude_paths(
                         options.rules_filename,
                         options.snapshot_filename,

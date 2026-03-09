@@ -286,7 +286,6 @@ class CLITestCase(unittest.TestCase):
                 changed=True,
                 output_path=Path.cwd() / "SNAPSHOT.md",
                 tree_entries=3,
-                file_entries=2,
                 preserved_comments=1,
                 added_paths=("src/new.py",),
                 removed_paths=(),
@@ -302,6 +301,7 @@ class CLITestCase(unittest.TestCase):
         mock_sync_snapshot.assert_called_once()
         kwargs = mock_sync_snapshot.call_args.kwargs
         self.assertEqual(kwargs["output_path"], Path.cwd() / "SNAPSHOT.md")
+        self.assertIsNone(kwargs["tree_max_depth"])
         self.assertEqual(
             kwargs["additional_exclude_relative_paths"],
             {".cursorignore", "phases_output", "AGENTS.md"},
@@ -341,7 +341,6 @@ class CLITestCase(unittest.TestCase):
                 changed=True,
                 output_path=Path.cwd() / "SNAPSHOT.md",
                 tree_entries=3,
-                file_entries=2,
                 preserved_comments=1,
                 added_paths=("src/new.py",),
                 removed_paths=(),
@@ -357,6 +356,7 @@ class CLITestCase(unittest.TestCase):
         mock_sync_snapshot.assert_called_once()
         kwargs = mock_sync_snapshot.call_args.kwargs
         self.assertEqual(kwargs["output_path"], Path.cwd() / "SNAPSHOT.md")
+        self.assertIsNone(kwargs["tree_max_depth"])
         self.assertEqual(
             kwargs["additional_exclude_relative_paths"],
             {".cursorignore", "phases_output", "AGENTS.md"},
@@ -394,7 +394,6 @@ class CLITestCase(unittest.TestCase):
                 changed=False,
                 output_path=Path.cwd() / "SNAPSHOT.md",
                 tree_entries=3,
-                file_entries=2,
                 preserved_comments=1,
                 added_paths=(),
                 removed_paths=(),
@@ -408,11 +407,53 @@ class CLITestCase(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         mock_sync_snapshot.assert_called_once()
+        kwargs = mock_sync_snapshot.call_args.kwargs
+        self.assertIsNone(kwargs["tree_max_depth"])
         printed = " ".join(
             str(call.args[0]) for call in context.console.print.call_args_list if call.args
         )
         self.assertIn("No snapshot updates needed:", printed)
         self.assertNotIn("path changed", printed)
+
+    def test_snapshot_sync_honors_explicit_max_depth(self) -> None:
+        from agentrules import cli
+
+        runner = CliRunner()
+
+        with patch("agentrules.cli.commands.snapshot.bootstrap_runtime") as mock_bootstrap, patch(
+            "agentrules.cli.commands.snapshot.get_config_manager"
+        ) as mock_get_config_manager, patch(
+            "agentrules.cli.commands.snapshot.sync_snapshot_artifact"
+        ) as mock_sync_snapshot:
+            context = MagicMock()
+            mock_bootstrap.return_value = context
+
+            mock_config = MagicMock()
+            mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+            mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+            mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+            mock_config.should_respect_gitignore.return_value = False
+            mock_get_config_manager.return_value = mock_config
+
+            mock_sync_snapshot.return_value = MagicMock(
+                changed=True,
+                output_path=Path.cwd() / "SNAPSHOT.md",
+                tree_entries=3,
+                preserved_comments=1,
+                added_paths=("src/new.py",),
+                removed_paths=(),
+            )
+
+            result = runner.invoke(
+                cli.app,
+                ["snapshot", "sync", str(Path.cwd()), "--dry-run", "--max-depth", "2"],
+                env={"AGENTRULES_CONFIG_DIR": self.temp_dir.name},
+            )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_sync_snapshot.assert_called_once()
+        kwargs = mock_sync_snapshot.call_args.kwargs
+        self.assertEqual(kwargs["tree_max_depth"], 2)
 
     def test_snapshot_sync_rejects_filename_paths(self) -> None:
         from agentrules import cli

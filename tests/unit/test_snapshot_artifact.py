@@ -1,9 +1,14 @@
-import base64
-import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from agentrules.core.utils.file_creation.snapshot_artifact import sync_snapshot_artifact
+
+
+def _extract_tree_lines(snapshot_content: str) -> list[str]:
+    lines = snapshot_content.splitlines()
+    start = lines.index("<project_structure>")
+    end = lines.index("</project_structure>")
+    return lines[start + 1: end]
 
 
 def test_sync_snapshot_artifact_preserves_comments_and_tracks_deltas() -> None:
@@ -36,7 +41,6 @@ def test_sync_snapshot_artifact_preserves_comments_and_tracks_deltas() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
 
@@ -50,9 +54,8 @@ def test_sync_snapshot_artifact_preserves_comments_and_tracks_deltas() -> None:
         assert "└── src  # source package" in content
         assert "keep.py  # keep this comment" in content
         assert "new.py  # " not in content
-        assert '<file path="src/keep.py">' in content
-        assert '<file path="src/new.py">' in content
-        assert '<file path="SNAPSHOT.md">' not in content
+        assert "<file path=" not in content
+        assert "<content encoding=" not in content
 
 
 def test_sync_snapshot_artifact_preserves_comment_for_paths_with_hashes() -> None:
@@ -79,7 +82,6 @@ def test_sync_snapshot_artifact_preserves_comment_for_paths_with_hashes() -> Non
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=False,
             write=True,
         )
 
@@ -112,7 +114,6 @@ def test_sync_snapshot_artifact_does_not_split_delimiter_text_in_file_name() -> 
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=False,
             write=False,
         )
 
@@ -146,7 +147,6 @@ def test_sync_snapshot_artifact_treats_ambiguous_delimiter_names_as_literal_entr
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=False,
             write=False,
         )
 
@@ -178,7 +178,6 @@ def test_sync_snapshot_artifact_preserves_trailing_slash_for_empty_directory() -
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=False,
             write=True,
         )
 
@@ -217,7 +216,6 @@ def test_sync_snapshot_artifact_excludes_max_depth_marker_from_path_deltas() -> 
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=False,
             write=False,
         )
 
@@ -238,7 +236,6 @@ def test_sync_snapshot_artifact_dry_run_does_not_write() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=False,
         )
 
@@ -260,7 +257,6 @@ def test_sync_snapshot_artifact_no_change_is_idempotent() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
         second = sync_snapshot_artifact(
@@ -270,7 +266,6 @@ def test_sync_snapshot_artifact_no_change_is_idempotent() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
 
@@ -278,62 +273,6 @@ def test_sync_snapshot_artifact_no_change_is_idempotent() -> None:
         assert first.wrote is True
         assert second.changed is False
         assert second.wrote is False
-
-
-def test_sync_snapshot_artifact_base64_encodes_embedded_content() -> None:
-    with TemporaryDirectory() as tmpdir:
-        root = Path(tmpdir)
-        source = "line1\n```python\nprint('ok')\n```\n</file>\nline2\n"
-        (root / "doc.md").write_text(source, encoding="utf-8")
-        snapshot_path = root / "SNAPSHOT.md"
-
-        sync_snapshot_artifact(
-            root,
-            output_path=snapshot_path,
-            tree_max_depth=3,
-            exclude_dirs=set(),
-            exclude_files=set(),
-            exclude_extensions=set(),
-            include_file_contents=True,
-            write=True,
-        )
-
-        rendered = snapshot_path.read_text(encoding="utf-8")
-        assert "<content encoding=\"base64\" language=\"markdown\">" in rendered
-        match = re.search(
-            r"<file path=\"doc\.md\">\n<content encoding=\"base64\" language=\"markdown\">\n(.*?)\n</content>\n</file>",
-            rendered,
-            re.DOTALL,
-        )
-        assert match is not None
-        encoded_payload = "".join(match.group(1).splitlines())
-        decoded = base64.b64decode(encoded_payload.encode("ascii")).decode("utf-8")
-        assert decoded == source
-
-
-def test_sync_snapshot_artifact_escapes_xml_attribute_sensitive_paths() -> None:
-    with TemporaryDirectory() as tmpdir:
-        root = Path(tmpdir)
-        src = root / "src"
-        src.mkdir()
-        special_name = 'a"b & c.py'
-        (src / special_name).write_text("print('ok')\n", encoding="utf-8")
-        snapshot_path = root / "SNAPSHOT.md"
-
-        sync_snapshot_artifact(
-            root,
-            output_path=snapshot_path,
-            tree_max_depth=4,
-            exclude_dirs=set(),
-            exclude_files=set(),
-            exclude_extensions=set(),
-            include_file_contents=True,
-            write=True,
-        )
-
-        rendered = snapshot_path.read_text(encoding="utf-8")
-        assert '<file path="src/a&quot;b &amp; c.py">' in rendered
-        assert '<file path="src/a"b & c.py">' not in rendered
 
 
 def test_sync_snapshot_artifact_excludes_only_output_path() -> None:
@@ -352,14 +291,15 @@ def test_sync_snapshot_artifact_excludes_only_output_path() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
 
         rendered = output_path.read_text(encoding="utf-8")
-        assert "docs/SNAPSHOT.md" in rendered
-        assert '<file path="docs/SNAPSHOT.md">' in rendered
-        assert '<file path="SNAPSHOT.md">' not in rendered
+        tree_lines = _extract_tree_lines(rendered)
+        assert any("docs" in line for line in tree_lines)
+        assert any("guide.md" in line for line in tree_lines)
+        assert any("SNAPSHOT.md" in line for line in tree_lines)
+        assert not any(line.startswith(("├── SNAPSHOT.md", "└── SNAPSHOT.md")) for line in tree_lines)
 
 
 def test_sync_snapshot_artifact_honors_additional_excluded_paths() -> None:
@@ -378,18 +318,16 @@ def test_sync_snapshot_artifact_honors_additional_excluded_paths() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             additional_exclude_relative_paths={"phases_output"},
             write=True,
         )
 
         rendered = snapshot_path.read_text(encoding="utf-8")
         assert "phases_output" not in rendered
-        assert '<file path="phases_output/metrics.md">' not in rendered
-        assert '<file path="main.py">' in rendered
+        assert "main.py" in rendered
 
 
-def test_sync_snapshot_artifact_file_blocks_match_tree_depth_limit() -> None:
+def test_sync_snapshot_artifact_respects_tree_depth_limit() -> None:
     with TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
         nested = root / "src" / "nested"
@@ -405,14 +343,36 @@ def test_sync_snapshot_artifact_file_blocks_match_tree_depth_limit() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
 
         rendered = snapshot_path.read_text(encoding="utf-8")
         assert "... (max depth reached)" in rendered
-        assert '<file path="src/top.py">' in rendered
-        assert '<file path="src/nested/deep.py">' not in rendered
+        assert "top.py" in rendered
+        assert "deep.py" not in rendered
+
+
+def test_sync_snapshot_artifact_has_no_depth_limit_when_unspecified() -> None:
+    with TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        nested = root / "src" / "nested" / "deeper"
+        nested.mkdir(parents=True)
+        (nested / "deep.py").write_text("print('deep')\n", encoding="utf-8")
+        snapshot_path = root / "SNAPSHOT.md"
+
+        sync_snapshot_artifact(
+            root,
+            output_path=snapshot_path,
+            tree_max_depth=None,
+            exclude_dirs=set(),
+            exclude_files=set(),
+            exclude_extensions=set(),
+            write=True,
+        )
+
+        rendered = snapshot_path.read_text(encoding="utf-8")
+        assert "deep.py" in rendered
+        assert "... (max depth reached)" not in rendered
 
 
 def test_sync_snapshot_artifact_replaces_symlink_output_without_touching_target() -> None:
@@ -431,7 +391,6 @@ def test_sync_snapshot_artifact_replaces_symlink_output_without_touching_target(
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
 
@@ -440,7 +399,8 @@ def test_sync_snapshot_artifact_replaces_symlink_output_without_touching_target(
         assert not output_path.is_symlink()
         assert external_target.read_text(encoding="utf-8") == "do not overwrite\n"
         rendered = output_path.read_text(encoding="utf-8")
-        assert '<file path="SNAPSHOT.md">' not in rendered
+        tree_lines = _extract_tree_lines(rendered)
+        assert not any(line.startswith(("├── SNAPSHOT.md", "└── SNAPSHOT.md")) for line in tree_lines)
 
 
 def test_sync_snapshot_artifact_rejects_output_path_outside_directory() -> None:
@@ -457,7 +417,6 @@ def test_sync_snapshot_artifact_rejects_output_path_outside_directory() -> None:
                 exclude_dirs=set(),
                 exclude_files=set(),
                 exclude_extensions=set(),
-                include_file_contents=True,
                 write=True,
             )
         except ValueError as error:
@@ -480,7 +439,6 @@ def test_sync_snapshot_artifact_rejects_parent_traversal_output_path() -> None:
                 exclude_dirs=set(),
                 exclude_files=set(),
                 exclude_extensions=set(),
-                include_file_contents=True,
                 write=True,
             )
         except ValueError as error:
@@ -503,7 +461,6 @@ def test_sync_snapshot_artifact_recovers_from_non_utf8_existing_snapshot() -> No
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=False,
             write=True,
         )
 
@@ -537,14 +494,13 @@ def test_sync_snapshot_artifact_skips_symlinked_files_and_dirs() -> None:
             exclude_dirs=set(),
             exclude_files=set(),
             exclude_extensions=set(),
-            include_file_contents=True,
             write=True,
         )
 
         rendered = snapshot_path.read_text(encoding="utf-8")
-        assert '<file path="src/safe.py">' in rendered
-        assert '<file path="src/secret_link.txt">' not in rendered
-        assert '<file path="linked_dir/inside.txt">' not in rendered
+        assert "safe.py" in rendered
+        assert "secret_link.txt" not in rendered
+        assert "linked_dir" not in rendered
         assert "inside.txt" not in rendered
         assert "super-secret" not in rendered
         assert "external-data" not in rendered

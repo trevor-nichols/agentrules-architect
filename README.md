@@ -262,7 +262,7 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 By default the pipeline produces:
 
 - `AGENTS.md` (or your custom rules filename) – cleaned, standardized agent instructions.
-- `SNAPSHOT.md` – project tree + base64-encoded file snapshots generated at the project root after the pipeline finishes.
+- `SNAPSHOT.md` – full project tree snapshot (no depth limit by default) generated at the project root after the pipeline finishes.
 - `.cursorignore` – generated when enabled to keep editor agents focused on relevant files.
 - `.agent/` scaffold – generated when enabled (`.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md`).
 - `phases_output/` – per-phase markdown/JSON snapshots for auditing and downstream automation.

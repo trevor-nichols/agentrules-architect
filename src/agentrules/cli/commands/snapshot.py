@@ -55,7 +55,7 @@ MAX_DEPTH_OPTION = typer.Option(
     None,
     "--max-depth",
     "-d",
-    help="Maximum directory depth to include in the snapshot tree.",
+    help="Maximum directory depth to include in the snapshot tree (omit for no limit).",
     callback=_validate_positive,
 )
 DRY_RUN_OPTION = typer.Option(
@@ -87,7 +87,7 @@ def _run_snapshot_generation(
 
     snapshot_filename = filename or config_manager.get_snapshot_filename()
     rules_filename = config_manager.resolve_rules_filename()
-    tree_depth = max_depth if max_depth is not None else config_manager.get_tree_max_depth()
+    tree_depth = max_depth
 
     try:
         validate_pipeline_output_filenames(
@@ -119,7 +119,6 @@ def _run_snapshot_generation(
             exclude_files=exclude_files,
             exclude_extensions=exclude_exts,
             gitignore_spec=gitignore_spec,
-            include_file_contents=True,
             additional_exclude_relative_paths=build_snapshot_additional_exclude_paths(
                 rules_filename,
                 snapshot_filename,
