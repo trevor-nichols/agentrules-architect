@@ -90,6 +90,42 @@ def test_sync_snapshot_artifact_preserves_comment_for_paths_with_hashes() -> Non
         assert result.preserved_comments >= 1
 
 
+def test_sync_snapshot_artifact_preserves_single_space_comment_delimiter() -> None:
+    with TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        src = root / "src"
+        src.mkdir()
+        (src / "keep.py").write_text("print('keep')\n", encoding="utf-8")
+        snapshot_path = root / "SNAPSHOT.md"
+        snapshot_path.write_text(
+            "\n".join(
+                [
+                    "<project_structure>",
+                    "└── src # source package",
+                    "    └── keep.py # keep this comment",
+                    "</project_structure>",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = sync_snapshot_artifact(
+            root,
+            output_path=snapshot_path,
+            tree_max_depth=4,
+            exclude_dirs=set(),
+            exclude_files=set(),
+            exclude_extensions=set(),
+            write=True,
+        )
+
+        rendered = snapshot_path.read_text(encoding="utf-8")
+        assert "└── src  # source package" in rendered
+        assert "└── keep.py  # keep this comment" in rendered
+        assert result.preserved_comments >= 2
+
+
 def test_sync_snapshot_artifact_does_not_split_delimiter_text_in_file_name() -> None:
     with TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)

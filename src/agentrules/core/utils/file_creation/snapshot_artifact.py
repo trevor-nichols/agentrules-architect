@@ -19,6 +19,7 @@ _TREE_BLOCK_PATTERN = re.compile(
 )
 _TREE_LINE_PATTERN = re.compile(r"^((?:[│ ]{4})*)(├── |└── )(.*)$")
 _TREE_COMMENT_DELIMITER = "  # "
+_TREE_COMMENT_PATTERN = re.compile(r"^(?P<name>.+)\s+#\s+(?P<comment>\S.*)$")
 _TREE_MAX_DEPTH_MARKER = "... (max depth reached)"
 
 
@@ -203,12 +204,12 @@ def _split_name_and_comment(
     parent_parts: list[str] | None = None,
 ) -> tuple[str, str | None]:
     raw_name = name_with_comment.rstrip()
-    name, delimiter, comment = name_with_comment.rpartition(_TREE_COMMENT_DELIMITER)
-    if not delimiter:
+    match = _TREE_COMMENT_PATTERN.match(raw_name)
+    if match is None:
         return raw_name, None
 
-    stripped_name = name.rstrip()
-    stripped_comment = comment.strip()
+    stripped_name = match.group("name").rstrip()
+    stripped_comment = match.group("comment").strip()
     if not stripped_name or not stripped_comment:
         return raw_name, None
 
@@ -353,7 +354,7 @@ def _annotate_tree_lines(
         if is_directory and rel_path in trailing_slash_dirs:
             display_name = f"{display_name}/"
 
-        comment_suffix = f"  # {comment}" if comment else ""
+        comment_suffix = f"{_TREE_COMMENT_DELIMITER}{comment}" if comment else ""
         rendered.append(f"{prefix}{connector}{display_name}{comment_suffix}")
 
     return rendered, new_paths, preserved_comments
