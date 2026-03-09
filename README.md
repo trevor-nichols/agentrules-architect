@@ -128,6 +128,8 @@ agentrules keys
 - `agentrules` – interactive main menu (analyze, configure models/outputs, check keys).
 - `agentrules analyze /path/to/project` – full six-phase analysis.
 - `agentrules analyze /path/to/project --rules-filename CLAUDE.md` – one-run override for output rules filename.
+- `agentrules snapshot generate [path]` – create (or refresh) `SNAPSHOT.md` in the current directory by default.
+- `agentrules snapshot sync [path]` – sync an existing snapshot as project files evolve (also creates if missing).
 - `agentrules execplan new \"Title\"` – create a new ExecPlan markdown file under `.agent/exec_plans/active/<slug>/`.
 - `agentrules execplan archive EP-YYYYMMDD-NNN [--date YYYYMMDD]` – archive a full ExecPlan directory under `.agent/exec_plans/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/`.
 - `agentrules execplan list [--path]` – list active ExecPlans with compact milestone progress (`completed/total`).
