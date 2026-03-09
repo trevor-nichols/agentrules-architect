@@ -9,8 +9,22 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 - Prioritize long-term maintainability and auditability.
 - Use type annotations and keep stubs (.pyi) in sync with implementation.
 - When unsure about the best approach, gather more data (run tests, reproduce locally, add lightweight probes) rather than guessing.
-- When writing complex features or significant refactors, use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.
 - Keep this AGENTS.md file up-to-date and update/edit for any significant changes.
+- Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments. Refer to them to understand and navigate the project efficiently. When files are added/removed/moved, update SNAPSHOT.md fils by running `agentrules snapshot sync` (preserves comments, but does not add comments).
+
+## ExecPlans
+- When writing complex features or refactors, use an ExecPlan (as described in `.agent/PLANS.md`) from design to implementation.
+
+### Milestones
+- When the feature or refactor your writing is significantly complex, disaggregate the ExecPlan into milestones (as described in `.agent/templates/MILESTONE_TEMPLATE.md`)
+
+### Prefer CLI creation over manual file creation:
+* ExecPlan:
+  * Create: `agentrules execplan new "<title>" --slug <short-slug> --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
+  * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`
+* Milestones:
+  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
 
 # 2. TEMPORAL FRAMEWORK
 
