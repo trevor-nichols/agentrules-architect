@@ -48,6 +48,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Token cache: in-memory per-run cache keyed by (model_name, sha256(content)); persisted caching optional but disabled by default.
 - Template validation: run template substitution checks in CI.
 - structured output documentation located in `internal-docs/integrations/`.
+- Refer to `internal-docs/integrations/codex/app-server` for codex app-server documentation.
 
 # 4. IMPERATIVE DIRECTIVES
 
