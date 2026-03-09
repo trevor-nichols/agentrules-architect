@@ -10,8 +10,11 @@ from __future__ import annotations
 from functools import lru_cache
 
 from .constants import (
+    CODEX_HOME_ENV_VAR,
     CONFIG_DIR,
     CONFIG_FILE,
+    DEFAULT_CODEX_CLI_PATH,
+    DEFAULT_CODEX_HOME_DIRNAME,
     DEFAULT_VERBOSITY,
     PROVIDER_ENV_MAP,
     RULES_FILENAME_ENV_VAR,
@@ -22,6 +25,8 @@ from .constants import (
 from .manager import ConfigManager
 from .models import (
     CLIConfig,
+    CodexConfig,
+    CodexHomeStrategy,
     ExclusionOverrides,
     FeatureToggles,
     OutputPreferences,
@@ -31,9 +36,14 @@ from .models import (
 
 __all__ = [
     "CLIConfig",
+    "CODEX_HOME_ENV_VAR",
     "ConfigManager",
     "CONFIG_DIR",
     "CONFIG_FILE",
+    "CodexConfig",
+    "CodexHomeStrategy",
+    "DEFAULT_CODEX_CLI_PATH",
+    "DEFAULT_CODEX_HOME_DIRNAME",
     "DEFAULT_VERBOSITY",
     "ExclusionOverrides",
     "FeatureToggles",

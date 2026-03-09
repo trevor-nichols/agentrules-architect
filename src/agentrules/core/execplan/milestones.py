@@ -465,6 +465,34 @@ def _next_milestone_sequence(*, plan_root: Path, execplan_id: str) -> int:
     return max_sequence + 1
 
 
+def _validate_requested_sequence(
+    *,
+    requested_sequence: int,
+    plan_root: Path,
+    execplan_id: str,
+) -> None:
+    if requested_sequence < 1 or requested_sequence > 999:
+        raise ValueError("Milestone sequence must be between 1 and 999.")
+
+    collisions: list[Path] = []
+    for scanned in scan_plan_milestone_files(plan_root=plan_root):
+        if scanned.sequence != requested_sequence:
+            continue
+        if scanned.execplan_id == execplan_id:
+            collisions.append(scanned.path)
+            continue
+        # For malformed active files we cannot trust ownership metadata.
+        if scanned.location == "active" and scanned.parse_error is not None:
+            collisions.append(scanned.path)
+
+    if collisions:
+        joined = ", ".join(path.as_posix() for path in sorted(collisions))
+        raise ValueError(
+            f"Milestone {execplan_id}/MS{requested_sequence:03d} already exists or is blocked by "
+            f"invalid active metadata: {joined}"
+        )
+
+
 def _normalize_domain(domain: str | None, *, parent_metadata: dict[str, Any]) -> str:
     fallback = str(parent_metadata.get("domain", "")).strip()
     normalized = (domain if domain is not None else fallback or "backend").strip()
@@ -496,6 +524,7 @@ def create_execplan_milestone(
     domain: str | None = None,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
     created_yyyymmdd: str | None = None,
+    sequence: int | None = None,
 ) -> MilestoneCreateResult:
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
@@ -543,6 +572,48 @@ def create_execplan_milestone(
             plan_root=plan_root,
             execplans_dir=resolved_execplans_dir,
         )
+        if sequence is not None:
+            _validate_requested_sequence(
+                requested_sequence=sequence,
+                plan_root=plan_root,
+                execplan_id=execplan_id,
+            )
+            milestone_id = _milestone_id(execplan_id, sequence=sequence)
+            if uses_legacy_filename:
+                filename = f"{execplan_id}_MS{sequence:03d}_{milestone_slug}.md"
+            else:
+                filename = f"MS{sequence:03d}_{milestone_slug}.md"
+            milestone_path = active_dir / filename
+            content = template.substitute(
+                {
+                    "milestone_id": milestone_id,
+                    "execplan_id": execplan_id,
+                    "ms": str(sequence),
+                    "title_yaml": _yaml_dquote(normalized_title),
+                    "title_text": normalized_title,
+                    "domain": normalized_domain,
+                    "owner_yaml": _yaml_dquote(normalized_owner),
+                    "created": created_updated,
+                    "updated": created_updated,
+                }
+            )
+            try:
+                with milestone_path.open("x", encoding="utf-8") as handle:
+                    handle.write(content)
+            except FileExistsError as error:
+                raise ValueError(
+                    f"Milestone {execplan_id}/MS{sequence:03d} already exists at {milestone_path.as_posix()}."
+                ) from error
+
+            return MilestoneCreateResult(
+                milestone_id=milestone_id,
+                sequence=sequence,
+                milestone_path=milestone_path.resolve(),
+                execplan_id=execplan_id,
+                plan_path=plan_path,
+                title=normalized_title,
+            )
+
         for _ in range(_MILESTONE_CREATE_RETRIES):
             sequence = _next_milestone_sequence(plan_root=plan_root, execplan_id=execplan_id)
             if sequence > 999:

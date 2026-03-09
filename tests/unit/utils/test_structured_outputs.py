@@ -6,6 +6,7 @@ from agentrules.core.utils.structured_outputs import (
     augment_prompt_for_json_mode,
     build_anthropic_output_format,
     build_chat_json_object_response_format,
+    build_codex_output_schema,
     build_openai_chat_response_format,
     build_openai_strict_schema,
     build_openai_text_format,
@@ -36,6 +37,14 @@ def test_resolve_structured_output_mode_for_phase_and_provider() -> None:
         resolve_structured_output_mode(
             provider=ModelProvider.OPENAI,
             model_name="gpt-5-mini",
+            phase="phase2",
+        )
+        == "json_schema"
+    )
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.CODEX,
+            model_name="gpt-5.3-codex",
             phase="phase2",
         )
         == "json_schema"
@@ -81,6 +90,9 @@ def test_provider_mapping_uses_expected_docs_and_modes() -> None:
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.OPENAI].doc_path.endswith(
         "integrations/openai/structured-outputs.md"
     )
+    assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.CODEX].doc_path.endswith(
+        "integrations/codex/app-server/reference/turns.md"
+    )
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.ANTHROPIC].request_mode == "json_schema"
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.DEEPSEEK].request_mode == "json_object"
     assert PROVIDER_STRUCTURED_OUTPUT_SPECS[ModelProvider.XAI].request_mode == "sdk_parse"
@@ -116,6 +128,25 @@ def test_anthropic_output_format_does_not_mutate_base_phase_schema() -> None:
     assert phase_schema["additionalProperties"] is True
     build_anthropic_output_format("phase4")
     assert phase_schema["additionalProperties"] is True
+
+
+def test_codex_output_schema_is_strict_for_phase2() -> None:
+    schema = build_codex_output_schema("phase2")
+    assert schema is not None
+    assert schema["additionalProperties"] is False
+    assert "reasoning" in schema["required"]
+
+    agent_schema = schema["properties"]["agents"]["items"]
+    assert agent_schema["additionalProperties"] is False
+    assert "responsibilities" in agent_schema["required"]
+
+
+def test_codex_output_schema_makes_optional_phase4_error_required_with_null() -> None:
+    schema = build_codex_output_schema("phase4")
+    assert schema is not None
+    assert schema["additionalProperties"] is False
+    assert schema["required"] == ["analysis", "error"]
+    assert schema["properties"]["error"]["type"] == ["string", "null"]
 
 
 def test_build_openai_strict_schema_requires_all_object_keys() -> None:

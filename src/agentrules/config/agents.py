@@ -62,6 +62,7 @@ from agentrules.core.types.models import (
     O4_MINI_LOW,
     O4_MINI_MEDIUM,
     ModelConfig,
+    create_codex_config,
 )
 
 # ====================================================
@@ -99,7 +100,7 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
                 limit = 1_000_000
             else:
                 limit = 1_048_576
-    elif provider == ModelProvider.OPENAI:
+    elif provider in {ModelProvider.OPENAI, ModelProvider.CODEX}:
         estimator_family = estimator_family or "tiktoken"
         if limit is None:
             if "o3" in name or "o4-mini" in name:
@@ -138,7 +139,23 @@ def _preset(
     )
 
 
-MODEL_PRESETS: dict[str, PresetDefinition] = {
+def _derive_codex_runtime_preset(
+    base_preset: PresetDefinition,
+    *,
+    label: str | None = None,
+    description: str | None = None,
+) -> PresetDefinition:
+    base_label = base_preset["label"]
+    base_description = base_preset["description"]
+    return _preset(
+        config=create_codex_config(base_preset["config"]),
+        label=label or f"Codex {base_label}",
+        description=description or f"{base_description} Routed through the Codex app-server runtime.",
+        provider=ModelProvider.CODEX,
+    )
+
+
+BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     "gemini-3-pro-preview": _preset(
         config=GEMINI_3_PRO_PREVIEW,
         label="Gemini 3 Pro (Preview)",
@@ -472,6 +489,27 @@ MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Grok code assistant tuned for reasoning over codebases.",
         provider=ModelProvider.XAI,
     ),
+}
+
+
+def _build_codex_runtime_presets() -> dict[str, PresetDefinition]:
+    return {
+        "codex-gpt-5.1-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.1-codex"]),
+        "codex-gpt-5.2-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.2-codex"]),
+        "codex-gpt-5.3-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.3-codex"]),
+        "codex-gpt-5.4": _derive_codex_runtime_preset(
+            BASE_MODEL_PRESETS["gpt-5.4-2026-03-05"],
+            label="Codex GPT-5.4",
+            description=(
+                "GPT-5.4 pinned March 5 2026 snapshot routed through the Codex app-server runtime."
+            ),
+        ),
+    }
+
+
+MODEL_PRESETS: dict[str, PresetDefinition] = {
+    **BASE_MODEL_PRESETS,
+    **_build_codex_runtime_presets(),
 }
 
 MODEL_PRESET_DEFAULTS: dict[str, str] = {

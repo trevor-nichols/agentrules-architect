@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
+from agentrules.core.agents.codex import CodexProcessLaunchConfig
 from agentrules.core.utils.constants import (
     DEFAULT_RULES_FILENAME,
     DEFAULT_RULES_TREE_MAX_DEPTH,
     DEFAULT_SNAPSHOT_FILENAME,
 )
+from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_search
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
-from .models import CLIConfig, ExclusionOverrides, OutputPreferences, ResearcherMode
+from .models import CLIConfig, CodexConfig, CodexHomeStrategy, ExclusionOverrides, OutputPreferences, ResearcherMode
 from .repository import ConfigRepository, TomlConfigRepository
-from .services import exclusions, features, outputs, phase_models, providers
+from .services import codex, exclusions, features, outputs, phase_models, providers
 from .services import logging as logging_service
 from .utils import normalize_rules_filename
 
@@ -42,6 +45,7 @@ class ConfigManager:
     def apply_config_to_environment(self, config: CLIConfig | None = None) -> None:
         cfg = config or self._repository.load()
         self._environment.apply_provider_credentials(cfg)
+        self._environment.apply_codex_runtime(cfg)
 
     # ------------------------------------------------------------------
     # Provider credentials
@@ -53,7 +57,11 @@ class ConfigManager:
             if api_key:
                 features.set_researcher_mode(config, "on")
             else:
-                features.set_researcher_mode(config, "off")
+                from . import model_presets
+
+                researcher_config = model_presets.get_model_config_for_phase("researcher", config.models)
+                if not uses_runtime_native_web_search(researcher_config):
+                    features.set_researcher_mode(config, "off")
         self._repository.save(config)
         self._environment.apply_provider_credentials(config)
         return config
@@ -62,9 +70,81 @@ class ConfigManager:
         config = self._repository.load()
         return providers.current_provider_keys(config)
 
+    def get_provider_availability(self) -> dict[str, bool]:
+        config = self._repository.load()
+        return providers.current_provider_availability(config, self._environment.getenv)
+
     def has_tavily_credentials(self, config: CLIConfig | None = None) -> bool:
         cfg = config or self._repository.load()
         return providers.has_tavily_credentials(cfg, self._environment.getenv)
+
+    # ------------------------------------------------------------------
+    # Codex runtime settings
+    # ------------------------------------------------------------------
+    def get_codex_config(self) -> CodexConfig:
+        config = self._repository.load()
+        normalized = codex.get_codex_config(config)
+        self._repository.save(config)
+        return normalized
+
+    def set_codex_cli_path(self, cli_path: str | None) -> CLIConfig:
+        config = self._repository.load()
+        codex.set_codex_cli_path(config, cli_path)
+        self._repository.save(config)
+        self._environment.apply_codex_runtime(config)
+        return config
+
+    def set_codex_home_strategy(self, strategy: str | None) -> CLIConfig:
+        config = self._repository.load()
+        codex.set_codex_home_strategy(config, strategy)
+        self._repository.save(config)
+        self._environment.apply_codex_runtime(config)
+        return config
+
+    def set_codex_managed_home(self, managed_home: str | None) -> CLIConfig:
+        config = self._repository.load()
+        codex.set_codex_managed_home(config, managed_home)
+        self._repository.save(config)
+        self._environment.apply_codex_runtime(config)
+        return config
+
+    def get_codex_home_strategy(self) -> CodexHomeStrategy:
+        config = self._repository.load()
+        normalized = codex.get_codex_home_strategy(config)
+        self._repository.save(config)
+        return normalized
+
+    def get_managed_codex_home(self) -> str:
+        config = self._repository.load()
+        normalized = codex.get_managed_codex_home(config)
+        self._repository.save(config)
+        return normalized
+
+    def get_effective_codex_home(self) -> str | None:
+        config = self._repository.load()
+        return codex.get_effective_codex_home(config, self._environment.getenv_for_codex_runtime)
+
+    def resolve_codex_executable(self) -> str | None:
+        config = self._repository.load()
+        return codex.resolve_codex_executable(config)
+
+    def is_codex_available(self) -> bool:
+        config = self._repository.load()
+        return codex.is_codex_available(config)
+
+    def build_codex_launch_config(
+        self,
+        *,
+        cwd: str | None = None,
+        config_overrides: Mapping[str, Any] | None = None,
+    ) -> CodexProcessLaunchConfig:
+        config = self._repository.load()
+        return codex.build_codex_launch_config(
+            config,
+            self._environment.getenv_for_codex_runtime,
+            cwd=cwd,
+            config_overrides=config_overrides,
+        )
 
     # ------------------------------------------------------------------
     # Phase model overrides
@@ -97,13 +177,17 @@ class ConfigManager:
         return normalized
 
     def is_researcher_enabled(self) -> bool:
+        from . import model_presets
+
         config = self._repository.load()
         has_credentials = self.has_tavily_credentials(config)
         offline_mode = self._environment.is_truthy("OFFLINE")
+        researcher_config = model_presets.get_model_config_for_phase("researcher", config.models)
         return features.is_researcher_enabled(
             config,
             offline_mode=offline_mode,
             has_tavily_credentials=has_credentials,
+            supports_runtime_native_research=uses_runtime_native_web_search(researcher_config),
         )
 
     # ------------------------------------------------------------------

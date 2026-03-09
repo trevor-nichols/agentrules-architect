@@ -13,11 +13,15 @@ async def test_live_final_analysis_smoke():
 
     # Ensure the appropriate API key is present; skip if not configured
     provider = model_cfg.provider.value
+    if provider == "codex":
+        pytest.skip("Use tests/live/test_codex_live_smoke.py for Codex runtime validation")
+
     env_needed = {
         "openai": "OPENAI_API_KEY",
         "anthropic": "ANTHROPIC_API_KEY",
         "gemini": "GOOGLE_API_KEY",  # google-genai
         "deepseek": "DEEPSEEK_API_KEY",
+        "xai": "XAI_API_KEY",
     }.get(provider)
 
     if env_needed and not os.getenv(env_needed):

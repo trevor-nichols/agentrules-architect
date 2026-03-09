@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .codex import configure_codex_runtime
 from .exclusions import configure_exclusions
 from .logging import configure_logging
 from .menu import configure_settings
@@ -11,6 +12,7 @@ from .providers import configure_provider_keys, show_provider_summary
 
 __all__ = [
     "configure_settings",
+    "configure_codex_runtime",
     "configure_logging",
     "configure_output_preferences",
     "configure_provider_keys",

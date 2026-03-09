@@ -14,9 +14,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/structured-output-contracts/EP-20260221-001_structured-output-contracts.md",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260221-001_structured-output-contracts/EP-20260221-001_structured-output-contracts.md",
       "risk": "med",
-      "status": "done",
+      "status": "archived",
       "supersedes": [],
       "tags": [
         "structured-outputs",
@@ -30,7 +30,7 @@
         "tests",
         "docs"
       ],
-      "updated": "2026-02-21"
+      "updated": "2026-03-08"
     },
     {
       "breaking": false,
@@ -46,9 +46,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/snapshot-sync/EP-20260301-001_snapshot-sync.md",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260301-001_snapshot-sync/EP-20260301-001_snapshot-sync.md",
       "risk": "med",
-      "status": "done",
+      "status": "archived",
       "supersedes": [],
       "tags": [
         "snapshot",
@@ -61,7 +61,7 @@
         "docs",
         "tests"
       ],
-      "updated": "2026-03-01"
+      "updated": "2026-03-08"
     },
     {
       "breaking": false,
@@ -77,9 +77,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/anthropic-sonnet-46/EP-20260306-001_anthropic-sonnet-46.md",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260306-001_anthropic-sonnet-46/EP-20260306-001_anthropic-sonnet-46.md",
       "risk": "low",
-      "status": "done",
+      "status": "archived",
       "supersedes": [],
       "tags": [
         "anthropic",
@@ -91,7 +91,7 @@
         "agents",
         "tests"
       ],
-      "updated": "2026-03-06"
+      "updated": "2026-03-08"
     },
     {
       "breaking": false,
@@ -107,9 +107,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/gemini-3-family/EP-20260306-002_gemini-3-family.md",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260306-002_gemini-3-family/EP-20260306-002_gemini-3-family.md",
       "risk": "low",
-      "status": "done",
+      "status": "archived",
       "supersedes": [],
       "tags": [
         "gemini",
@@ -121,7 +121,7 @@
         "agents",
         "tests"
       ],
-      "updated": "2026-03-06"
+      "updated": "2026-03-08"
     },
     {
       "breaking": false,
@@ -137,9 +137,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/release-automation/EP-20260306-003_release-automation.md",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260306-003_release-automation/EP-20260306-003_release-automation.md",
       "risk": "low",
-      "status": "done",
+      "status": "archived",
       "supersedes": [],
       "tags": [
         "github",
@@ -152,7 +152,72 @@
         "docs",
         "tests"
       ],
-      "updated": "2026-03-06"
+      "updated": "2026-03-08"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-08",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260308-001",
+      "kind": "feature",
+      "links": {
+        "docs": "internal-docs/integrations/codex/app-server",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/archive/2026/03/08/EP-20260308-001_codex-app-server-runtime/EP-20260308-001_codex-app-server-runtime.md",
+      "risk": "med",
+      "status": "archived",
+      "supersedes": [],
+      "tags": [
+        "codex",
+        "app-server",
+        "cli",
+        "providers"
+      ],
+      "title": "Integrate Codex app-server runtime",
+      "touches": [
+        "cli",
+        "agents",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-03-08"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-09",
+      "depends_on": [],
+      "domain": "console",
+      "id": "EP-20260309-001",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/archive/2026/03/09/EP-20260309-001_codex-runtime-model-presets/EP-20260309-001_codex-runtime-model-presets.md",
+      "risk": "med",
+      "status": "archived",
+      "supersedes": [],
+      "tags": [
+        "codex",
+        "model-presets",
+        "cli"
+      ],
+      "title": "Enable dynamic Codex runtime model presets",
+      "touches": [
+        "cli",
+        "agents",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-03-09"
     }
   ],
   "schema_version": 1

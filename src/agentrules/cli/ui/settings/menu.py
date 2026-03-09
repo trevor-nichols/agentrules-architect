@@ -7,11 +7,27 @@ import questionary
 from agentrules.cli.context import CliContext
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice
 
+from .codex import configure_codex_runtime
 from .exclusions import configure_exclusions
 from .logging import configure_logging
 from .models import configure_models
 from .outputs import configure_output_preferences
 from .providers import configure_provider_keys
+
+SETTINGS_CATEGORY_ENTRIES: tuple[tuple[str, str], ...] = (
+    ("Provider API keys", "providers"),
+    ("Codex runtime", "codex"),
+    ("Model presets per phase", "models"),
+    ("Logging verbosity", "logging"),
+    ("Output preferences", "outputs"),
+    ("Exclusion rules", "exclusions"),
+)
+
+
+def build_settings_category_choices() -> list[questionary.Choice]:
+    """Build the top-level settings category list."""
+
+    return [questionary.Choice(title=title, value=value) for title, value in SETTINGS_CATEGORY_ENTRIES]
 
 
 def configure_settings(context: CliContext) -> None:
@@ -19,16 +35,13 @@ def configure_settings(context: CliContext) -> None:
 
     console = context.console
     console.print("\n[bold]Settings[/bold]")
+    console.print("[dim]Provider API keys and the local Codex runtime are configured separately.[/]")
 
     while True:
         selection = questionary.select(
             "Select a settings category:",
             choices=[
-                questionary.Choice(title="Provider API keys", value="providers"),
-                questionary.Choice(title="Model presets per phase", value="models"),
-                questionary.Choice(title="Logging verbosity", value="logging"),
-                questionary.Choice(title="Output preferences", value="outputs"),
-                questionary.Choice(title="Exclusion rules", value="exclusions"),
+                *build_settings_category_choices(),
                 navigation_choice("Back", value="__BACK__"),
             ],
             qmark="⚙️",
@@ -40,6 +53,8 @@ def configure_settings(context: CliContext) -> None:
             return
         if selection == "providers":
             configure_provider_keys(context)
+        elif selection == "codex":
+            configure_codex_runtime(context)
         elif selection == "models":
             configure_models(context)
         elif selection == "logging":

@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-import base64
 import os
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from html import escape as html_escape
 from pathlib import Path
 
 from pathspec import PathSpec
 
 from agentrules.core.utils.file_creation.atomic_write import atomic_write_text
-from agentrules.core.utils.file_system.file_retriever import list_files, read_file_with_fallback
 from agentrules.core.utils.file_system.tree_generator import get_project_tree
 
 _TREE_BLOCK_PATTERN = re.compile(
@@ -22,27 +19,8 @@ _TREE_BLOCK_PATTERN = re.compile(
 )
 _TREE_LINE_PATTERN = re.compile(r"^((?:[│ ]{4})*)(├── |└── )(.*)$")
 _TREE_COMMENT_DELIMITER = "  # "
+_TREE_COMMENT_PATTERN = re.compile(r"^(?P<name>.+)\s+#\s+(?P<comment>\S.*)$")
 _TREE_MAX_DEPTH_MARKER = "... (max depth reached)"
-
-_LANGUAGE_BY_SUFFIX: dict[str, str] = {
-    ".py": "python",
-    ".js": "javascript",
-    ".ts": "typescript",
-    ".jsx": "jsx",
-    ".tsx": "tsx",
-    ".json": "json",
-    ".yml": "yaml",
-    ".yaml": "yaml",
-    ".toml": "toml",
-    ".md": "markdown",
-    ".html": "html",
-    ".css": "css",
-    ".xml": "xml",
-    ".sh": "bash",
-    ".sql": "sql",
-}
-
-DEFAULT_MAX_FILE_SIZE_KB = 1024
 
 
 @dataclass(frozen=True)
@@ -53,7 +31,6 @@ class SnapshotSyncResult:
     changed: bool
     wrote: bool
     tree_entries: int
-    file_entries: int
     preserved_comments: int
     added_paths: tuple[str, ...]
     removed_paths: tuple[str, ...]
@@ -63,19 +40,17 @@ def sync_snapshot_artifact(
     directory: Path,
     *,
     output_path: Path,
-    tree_max_depth: int,
+    tree_max_depth: int | None,
     exclude_dirs: set[str],
     exclude_files: set[str],
     exclude_extensions: set[str],
     gitignore_spec: PathSpec | None = None,
-    include_file_contents: bool = True,
-    max_file_size_kb: int = DEFAULT_MAX_FILE_SIZE_KB,
     additional_exclude_relative_paths: set[str] | None = None,
     write: bool = True,
 ) -> SnapshotSyncResult:
     """Generate or sync a snapshot file while preserving inline tree comments."""
 
-    if tree_max_depth < 1:
+    if tree_max_depth is not None and tree_max_depth < 1:
         raise ValueError("tree_max_depth must be at least 1")
 
     directory, output_path, output_relative_path = _normalize_snapshot_output_path(
@@ -117,25 +92,7 @@ def sync_snapshot_artifact(
     added_paths = tuple(sorted(new_paths - old_paths))
     removed_paths = tuple(sorted(old_paths - new_paths))
 
-    file_entries = 0
-    file_blocks: list[str] = []
-    if include_file_contents:
-        file_blocks, file_entries = _build_file_blocks(
-            directory,
-            exclude_dirs=exclude_dirs,
-            exclude_files=effective_exclude_files,
-            exclude_extensions=exclude_extensions,
-            gitignore_spec=gitignore_spec,
-            tree_max_depth=tree_max_depth,
-            max_file_size_kb=max_file_size_kb,
-            exclude_relative_paths=exclude_relative_paths,
-        )
-
-    rendered_content = _render_snapshot_content(
-        annotated_tree_lines,
-        file_blocks,
-        include_file_contents=include_file_contents,
-    )
+    rendered_content = _render_snapshot_content(annotated_tree_lines)
 
     changed = existing_content != rendered_content
     wrote = False
@@ -148,101 +105,10 @@ def sync_snapshot_artifact(
         changed=changed,
         wrote=wrote,
         tree_entries=len(annotated_tree_lines),
-        file_entries=file_entries,
         preserved_comments=preserved_comments,
         added_paths=added_paths,
         removed_paths=removed_paths,
     )
-
-
-def _build_exclude_patterns(files: Iterable[str], extensions: Iterable[str]) -> set[str]:
-    patterns = {entry for entry in files if entry}
-    for extension in extensions:
-        if extension:
-            patterns.add(f"*{extension}")
-    return patterns
-
-
-def _build_file_blocks(
-    directory: Path,
-    *,
-    exclude_dirs: set[str],
-    exclude_files: set[str],
-    exclude_extensions: set[str],
-    gitignore_spec: PathSpec | None,
-    tree_max_depth: int,
-    max_file_size_kb: int,
-    exclude_relative_paths: set[str],
-) -> tuple[list[str], int]:
-    max_file_size_bytes = max(1, max_file_size_kb) * 1024
-    file_traversal_depth = max(0, tree_max_depth - 1)
-    directory_real_path = directory.resolve(strict=False)
-    exclude_patterns = _build_exclude_patterns(exclude_files, exclude_extensions)
-    files = sorted(
-        list_files(
-            directory,
-            exclude_dirs=exclude_dirs,
-            exclude_patterns=exclude_patterns,
-            max_depth=file_traversal_depth,
-            gitignore_spec=gitignore_spec,
-            root=directory,
-            exclude_relative_paths=exclude_relative_paths,
-            follow_symlinks=False,
-        ),
-        key=lambda entry: entry.relative_to(directory).as_posix(),
-    )
-
-    blocks: list[str] = []
-    files_written = 0
-    for file_path in files:
-        if _path_contains_symlink_component(file_path, root=directory):
-            continue
-        if not _is_relative_to(file_path.resolve(strict=False), directory_real_path):
-            continue
-
-        relative = file_path.relative_to(directory).as_posix()
-        escaped_relative = _escape_xml_attribute(relative)
-        blocks.append(f'<file path="{escaped_relative}">')
-
-        try:
-            size_bytes = file_path.stat().st_size
-        except OSError as error:
-            blocks.append(f"[Unreadable file: {error}]")
-            blocks.append("</file>")
-            blocks.append("")
-            continue
-
-        if size_bytes > max_file_size_bytes:
-            size_mb = size_bytes / 1024 / 1024
-            blocks.append(f"[File too large: {size_mb:.2f}MB]")
-            blocks.append("</file>")
-            blocks.append("")
-            continue
-
-        try:
-            content, _encoding = read_file_with_fallback(file_path)
-        except OSError as error:
-            blocks.append(f"[Unreadable file: {error}]")
-            blocks.append("</file>")
-            blocks.append("")
-            continue
-
-        language = _language_for_path(file_path)
-        language_attribute = f' language="{_escape_xml_attribute(language)}"' if language else ""
-        blocks.append(f"<content encoding=\"base64\"{language_attribute}>")
-        blocks.extend(_encode_content_base64_lines(content))
-        blocks.append("</content>")
-        blocks.append("</file>")
-        blocks.append("")
-        files_written += 1
-
-    if blocks and not blocks[-1]:
-        blocks.pop()
-    return blocks, files_written
-
-
-def _language_for_path(path: Path) -> str:
-    return _LANGUAGE_BY_SUFFIX.get(path.suffix.lower(), "")
 
 
 def _normalize_snapshot_output_path(*, directory: Path, output_path: Path) -> tuple[Path, Path, str]:
@@ -309,31 +175,6 @@ def _normalize_relative_paths(paths: Iterable[str] | None) -> set[str]:
     return normalized
 
 
-def _path_contains_symlink_component(path: Path, *, root: Path) -> bool:
-    if path.is_symlink():
-        return True
-
-    current = path.parent
-    while _is_relative_to(current, root):
-        if current == root:
-            return False
-        if current.is_symlink():
-            return True
-        current = current.parent
-    return False
-
-
-def _encode_content_base64_lines(content: str, *, line_width: int = 120) -> list[str]:
-    encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
-    if not encoded:
-        return []
-    return [encoded[index: index + line_width] for index in range(0, len(encoded), line_width)]
-
-
-def _escape_xml_attribute(value: str) -> str:
-    return html_escape(value, quote=True)
-
-
 def _unwrap_tree_lines(lines: Iterable[str]) -> list[str]:
     tree_lines = list(lines)
     if (
@@ -363,12 +204,12 @@ def _split_name_and_comment(
     parent_parts: list[str] | None = None,
 ) -> tuple[str, str | None]:
     raw_name = name_with_comment.rstrip()
-    name, delimiter, comment = name_with_comment.rpartition(_TREE_COMMENT_DELIMITER)
-    if not delimiter:
+    match = _TREE_COMMENT_PATTERN.match(raw_name)
+    if match is None:
         return raw_name, None
 
-    stripped_name = name.rstrip()
-    stripped_comment = comment.strip()
+    stripped_name = match.group("name").rstrip()
+    stripped_comment = match.group("comment").strip()
     if not stripped_name or not stripped_comment:
         return raw_name, None
 
@@ -513,7 +354,7 @@ def _annotate_tree_lines(
         if is_directory and rel_path in trailing_slash_dirs:
             display_name = f"{display_name}/"
 
-        comment_suffix = f"  # {comment}" if comment else ""
+        comment_suffix = f"{_TREE_COMMENT_DELIMITER}{comment}" if comment else ""
         rendered.append(f"{prefix}{connector}{display_name}{comment_suffix}")
 
     return rendered, new_paths, preserved_comments
@@ -534,14 +375,8 @@ def _parse_tree_line(line: str) -> tuple[int, str, str, str] | None:
 
 def _render_snapshot_content(
     tree_lines: list[str],
-    file_blocks: list[str],
-    *,
-    include_file_contents: bool,
 ) -> str:
     sections: list[str] = ["<project_structure>"]
     sections.extend(tree_lines)
     sections.append("</project_structure>")
-    if include_file_contents:
-        sections.append("")
-        sections.extend(file_blocks)
     return "\n".join(sections).rstrip() + "\n"

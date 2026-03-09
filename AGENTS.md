@@ -9,12 +9,26 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 - Prioritize long-term maintainability and auditability.
 - Use type annotations and keep stubs (.pyi) in sync with implementation.
 - When unsure about the best approach, gather more data (run tests, reproduce locally, add lightweight probes) rather than guessing.
-- When writing complex features or significant refactors, use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.
 - Keep this AGENTS.md file up-to-date and update/edit for any significant changes.
+- Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments. Refer to them to understand and navigate the project efficiently. When files are added/removed/moved, update SNAPSHOT.md fils by running `agentrules snapshot sync` (preserves comments, but does not add comments).
+
+## ExecPlans
+- When writing complex features or refactors, use an ExecPlan (as described in `.agent/PLANS.md`) from design to implementation.
+
+### Milestones
+- When the feature or refactor your writing is significantly complex, disaggregate the ExecPlan into milestones (as described in `.agent/templates/MILESTONE_TEMPLATE.md`)
+
+### Prefer CLI creation over manual file creation:
+* ExecPlan:
+  * Create: `agentrules execplan new "<title>" --slug <short-slug> --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
+  * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`
+* Milestones:
+  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
 
 # 2. TEMPORAL FRAMEWORK
 
-It is February 2026 and you are developing using Python 3.11+ with modern provider SDKs (Anthropic, OpenAI, Gemini, xAI, DeepSeek). Local tokenization/counting (tiktoken-style encoders) is available and should be preferred for cost and determinism. Pyright lints and ruff style checks are enforced in CI.
+It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (Anthropic, OpenAI, Gemini, xAI, DeepSeek). Local tokenization/counting (tiktoken-style encoders) is available and should be preferred for cost and determinism. Pyright lints and ruff style checks are enforced in CI.
 
 # 3. TECHNICAL CONSTRAINTS
 
@@ -24,7 +38,7 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - CI enforced: pyright, ruff, pytest; import-smoke and template validation jobs must run.
 - Async model: asyncio-based pipeline; avoid blocking the event loop.
 
-# Dependencies (recommended)
+# Dependencies
 - tiktoken (or provider of local token counting)
 - aiofiles
 - lxml
@@ -48,40 +62,28 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Token cache: in-memory per-run cache keyed by (model_name, sha256(content)); persisted caching optional but disabled by default.
 - Template validation: run template substitution checks in CI.
 - structured output documentation located in `internal-docs/integrations/`.
+- Refer to `internal-docs/integrations/codex/app-server` for codex app-server documentation.
 
 # 4. IMPERATIVE DIRECTIVES
 
 # Your Requirements:
-1. FIX PACKAGE IMPORT MISMATCH IMMEDIATELY: Ensure pyproject.toml name and package import path are consistent with the source tree. The CI import-smoke test must pass (python -c "import agentrules" or equivalent). DO NOT merge changes that break importability.
-2. PHASE 3 MUST NOT BLOCK THE EVENT LOOP:
-   - Replace synchronous file reads inside async functions with asyncio.to_thread or aiofiles.
-   - Bound concurrency using an asyncio.Semaphore defaulting to 8.
-3. TOKEN PACKER MUST BE O(N):
+1. Ensure pyproject.toml name and package import path are consistent with the source tree. The CI import-smoke test must pass (python -c "import agentrules" or equivalent). DO NOT merge changes that break importability.
+2. TOKEN PACKER MUST BE O(N):
    - Precompute per-file token counts and memoize encodings.
    - Cache keyed by (model_name, sha256(content)).
    - Compute prompt skeleton overhead ONCE per packaging run.
-4. ATOMICALLY WRITE CRITICAL ARTIFACTS (AGENTS.md and phase outputs):
+3. ATOMICALLY WRITE CRITICAL ARTIFACTS (AGENTS.md and phase outputs):
    - Use tempfile.NamedTemporaryFile or tempfile.mkstemp + os.replace for final write.
    - Ensure on crash the file is either old content or fully replaced (no partial files).
-5. CANONICALIZE TOOL MANAGER OUTPUTS:
+4. CANONICALIZE TOOL MANAGER OUTPUTS:
    - ToolManager MUST return plain serializable dicts (name, args, schema).
    - Convert to SDK-specific objects only at provider request-time.
-6. CONSOLIDATE PROVIDER COERCION:
-   - Extract object→dict and dict→object logic into a single shared util module and use it across all providers.
-7. PROMPT SAFETY:
+5. PROMPT SAFETY:
    - NEVER embed raw file contents without escaping. Use base64 or JSON-escaped content to avoid sentinel collisions. Update token estimation logic accordingly.
-8. PARSER ROBUSTNESS:
+6. PARSER ROBUSTNESS:
    - Prefer structured JSON/dict outputs from Phase 2. Use tolerant XML parser (lxml.recover) as a fallback. Validate that parsed file paths exist.
-9. TEST & CI:
+7. TEST & CI:
    - Add CI jobs: import_smoke_test, prompt_template_validation (mock safely), parser_corpus unit tests, token_packer benchmark anti-regression (lightweight), offline pipeline smoke with DummyArchitect.
-10. SECURITY:
-   - NEVER log API keys or secrets. Apply logging filters and redact env var dumps.
-
-!!! PROHIBITIONS:
-- !!!DO NOT perform O(n^2) token estimation in production code.
-- !!!NEVER write AGENTS.md or other critical outputs with plain non-atomic writes.
-- !!!DO NOT embed un-escaped raw file content into prompts using naive str.format.
-- !!!DO NOT mix SDK objects across subsystem boundaries (ToolManager ↔ provider clients).
 
 # 5. KNOWLEDGE FRAMEWORK
 
@@ -93,6 +95,11 @@ It is February 2026 and you are developing using Python 3.11+ with modern provid
 - Tool payloads from ToolManager must be dicts.
 - Providers must accept dicts and convert them to SDK objects only immediately prior to sending requests.
 - For unit tests, provider clients should expose set_client/get_client injection points for test doubles.
+- Codex is a local runtime provider, not an API-key provider. Persist Codex settings in the dedicated `CLIConfig.codex` section and gate Codex presets on runtime readiness (`codex` executable plus resolved `CODEX_HOME` policy), not on `providers.<name>.api_key`.
+- The Codex app-server transport lives under `src/agentrules/core/agents/codex/`. All CLI and runtime callers must construct launch settings through `ConfigManager.build_codex_launch_config()` so executable resolution and `CODEX_HOME` policy stay centralized.
+- `CodexArchitect` must keep `developer_instructions` request-scoped by passing them through launch-config overrides to a short-lived app-server process, and structured phases must use app-server `outputSchema` rather than prompt-only JSON guidance.
+- Provider-specific Codex pipeline exceptions must route through shared capability helpers in `src/agentrules/core/utils/provider_capabilities.py`. Use those helpers for Phase 1 researcher/tool-loop decisions and Phase 3 repo-runtime prompting so Codex special cases stay centralized.
+- Operator guidance for Codex belongs in `docs/codex-runtime.md`. Keep the documented live-smoke path aligned with `tests/live/test_codex_live_smoke.py` and gate it behind `AGENTRULES_RUN_CODEX_LIVE=1` plus `pytest --run-live`.
 - System/developer instructions must be resolved once per request and mapped to provider-native fields:
   - OpenAI Responses: `instructions`; OpenAI Chat: developer role message
   - Anthropic: top-level `system`
@@ -330,7 +337,6 @@ output = template.format(items="x")  # can raise KeyError / ValueError
 
 # 8. KNOWLEDGE EVOLUTION MECHANISM
 
-
 # Validation Checklist (before merging PRs)
 - [ ] Identity statement present in AGENTS.md
 - [ ] Import smoke test passes (python -c 'import agentrules')
@@ -353,379 +359,7 @@ output = template.format(items="x")  # can raise KeyError / ValueError
 4. Repeat critical constraints in top of changed files as comments for future maintainers (e.g., token cache usage).
 5. When editing prompt templates, add a unit test to format the template with mock safe data.
 
-# PRIORITY TASKS (quick map)
-- P0:
-  - Fix package/import mismatch: pyproject.toml or rename src package.
-  - Phase 3 non-blocking I/O: src/agentrules/core/analysis/phase_3.py and file_retriever.py
-  - Token packer O(n) rewrite: token_packer.py, token_estimator.py
-  - Phase 2 parser robustness: agent_parser.py, config/prompts/phase_2_prompts.py
-- P1:
-  - Extract provider_utils.py and replace duplicated code in core/agents/*
-  - ToolManager canonicalization: core/agent_tools/tool_manager.py
-  - Atomic write helper: core/utils/file_creation/phases_output.py
-  - Remove pathlib backport from tests/tests_input/requirements.txt
-- P2:
-  - Template validation CI, CLI UX polish, DummyArchitect offline smoke test.
-
-# Closing behavior guidance (for the AI agent)
+# Closing behavior guidance
 - When making changes: run unit tests locally, run import smoke, and push a PR with descriptive title and the validation checklist ticked.
 - If a requested change impacts importability or test baseline heavily, first open a draft PR and request a human review.
 - When in doubt about model behavior or format, prefer conservative parsing (fail closed) and log a clear warning.
-
----
-
-This AGS-1-compliant agent rules file is the canonical system prompt for the AgentRules Architect agent. Persist it as AGENTS.md at repository root (or in .cursor/rules/AGENTS.md) so the development agent uses stable, project-specific context for all subsequent changes.
-
-# Project Directory Structure
----
-
-
-<project_structure>
-├── 📁 .claude
-├── 📁 docs
-│   └── 📁 assets
-│       └── 📁 media
-├── 📁 internal-docs
-├── 📁 scripts
-│   └── 💻 bootstrap_env.sh
-├── 📁 src
-│   └── 📁 agentrules
-│       ├── 📁 cli
-│       │   ├── 📁 commands
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 analyze.py
-│       │   │   ├── 🐍 configure.py
-│       │   │   ├── 🐍 keys.py
-│       │   │   └── 🐍 tree.py
-│       │   ├── 📁 services
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 configuration.py
-│       │   │   ├── 🐍 pipeline_runner.py
-│       │   │   └── 🐍 tree_preview.py
-│       │   ├── 📁 ui
-│       │   │   ├── 📁 settings
-│       │   │   │   ├── 📁 exclusions
-│       │   │   │   │   ├── 🐍 __init__.py
-│       │   │   │   │   ├── 🐍 editor.py
-│       │   │   │   │   ├── 🐍 preview.py
-│       │   │   │   │   └── 🐍 summary.py
-│       │   │   │   ├── 📁 models
-│       │   │   │   │   ├── 🐍 __init__.py
-│       │   │   │   │   ├── 🐍 researcher.py
-│       │   │   │   │   └── 🐍 utils.py
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 logging.py
-│       │   │   │   ├── 🐍 menu.py
-│       │   │   │   ├── 🐍 outputs.py
-│       │   │   │   └── 🐍 providers.py
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 analysis_view.py
-│       │   │   ├── 🐍 event_sink.py
-│       │   │   ├── 🐍 main_menu.py
-│       │   │   └── 🐍 styles.py
-│       │   ├── 🐍 __init__.py
-│       │   ├── 🐍 app.py
-│       │   ├── 🐍 bootstrap.py
-│       │   └── 🐍 context.py
-│       ├── 📁 config
-│       │   ├── 📁 prompts
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 final_analysis_prompt.py
-│       │   │   ├── 🐍 phase_1_prompts.py
-│       │   │   ├── 🐍 phase_2_prompts.py
-│       │   │   ├── 🐍 phase_3_prompts.py
-│       │   │   ├── 🐍 phase_4_prompts.py
-│       │   │   └── 🐍 phase_5_prompts.py
-│       │   ├── 🐍 __init__.py
-│       │   ├── 🐍 agents.py
-│       │   ├── 🐍 exclusions.py
-│       │   └── 🐍 tools.py
-│       ├── 📁 core
-│       │   ├── 📁 agent_tools
-│       │   │   ├── 📁 web_search
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   └── 🐍 tavily.py
-│       │   │   └── 🐍 tool_manager.py
-│       │   ├── 📁 agents
-│       │   │   ├── 📁 anthropic
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 architect.py
-│       │   │   │   ├── 🐍 client.py
-│       │   │   │   ├── 🐍 prompting.py
-│       │   │   │   ├── 🐍 request_builder.py
-│       │   │   │   ├── 🐍 response_parser.py
-│       │   │   │   └── 🐍 tooling.py
-│       │   │   ├── 📁 deepseek
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 architect.py
-│       │   │   │   ├── 🐍 client.py
-│       │   │   │   ├── 🐍 compat.py
-│       │   │   │   ├── 🐍 config.py
-│       │   │   │   ├── 🐍 prompting.py
-│       │   │   │   ├── 🐍 request_builder.py
-│       │   │   │   ├── 🐍 response_parser.py
-│       │   │   │   └── 🐍 tooling.py
-│       │   │   ├── 📁 factory
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   └── 🐍 factory.py
-│       │   │   ├── 📁 gemini
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 architect.py
-│       │   │   │   ├── 🐍 client.py
-│       │   │   │   ├── 🐍 errors.py
-│       │   │   │   ├── 🐍 legacy.py
-│       │   │   │   ├── 🐍 prompting.py
-│       │   │   │   ├── 🐍 response_parser.py
-│       │   │   │   └── 🐍 tooling.py
-│       │   │   ├── 📁 openai
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 architect.py
-│       │   │   │   ├── 🐍 client.py
-│       │   │   │   ├── 🐍 compat.py
-│       │   │   │   ├── 🐍 config.py
-│       │   │   │   ├── 🐍 request_builder.py
-│       │   │   │   └── 🐍 response_parser.py
-│       │   │   ├── 📁 xai
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 architect.py
-│       │   │   │   ├── 🐍 client.py
-│       │   │   │   ├── 🐍 config.py
-│       │   │   │   ├── 🐍 prompting.py
-│       │   │   │   ├── 🐍 request_builder.py
-│       │   │   │   ├── 🐍 response_parser.py
-│       │   │   │   └── 🐍 tooling.py
-│       │   │   ├── 🐍 __init__.py
-│       │   │   └── 🐍 base.py
-│       │   ├── 📁 analysis
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 events.py
-│       │   │   ├── 🐍 final_analysis.py
-│       │   │   ├── 🐍 phase_1.py
-│       │   │   ├── 🐍 phase_2.py
-│       │   │   ├── 🐍 phase_3.py
-│       │   │   ├── 🐍 phase_4.py
-│       │   │   └── 🐍 phase_5.py
-│       │   ├── 📁 configuration
-│       │   │   ├── 📁 services
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 exclusions.py
-│       │   │   │   ├── 🐍 features.py
-│       │   │   │   ├── 🐍 logging.py
-│       │   │   │   ├── 🐍 outputs.py
-│       │   │   │   ├── 🐍 phase_models.py
-│       │   │   │   └── 🐍 providers.py
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 constants.py
-│       │   │   ├── 🐍 environment.py
-│       │   │   ├── 🐍 manager.py
-│       │   │   ├── 🐍 model_presets.py
-│       │   │   ├── 🐍 models.py
-│       │   │   ├── 🐍 repository.py
-│       │   │   ├── 🐍 serde.py
-│       │   │   └── 🐍 utils.py
-│       │   ├── 📁 logging
-│       │   │   ├── 🐍 __init__.py
-│       │   │   └── 🐍 config.py
-│       │   ├── 📁 pipeline
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 config.py
-│       │   │   ├── 🐍 factory.py
-│       │   │   ├── 🐍 orchestrator.py
-│       │   │   ├── 🐍 output.py
-│       │   │   └── 🐍 snapshot.py
-│       │   ├── 📁 streaming
-│       │   │   ├── 🐍 __init__.py
-│       │   │   └── 🐍 types.py
-│       │   ├── 📁 types
-│       │   │   ├── 🐍 __init__.py
-│       │   │   ├── 🐍 agent_config.py
-│       │   │   ├── 🐍 models.py
-│       │   │   └── 🐍 tool_config.py
-│       │   ├── 📁 utils
-│       │   │   ├── 📁 dependency_scanner
-│       │   │   │   ├── 📁 parsers
-│       │   │   │   │   ├── 🐍 __init__.py
-│       │   │   │   │   ├── 🐍 clojure.py
-│       │   │   │   │   ├── 🐍 dart.py
-│       │   │   │   │   ├── 🐍 dotnet.py
-│       │   │   │   │   ├── 🐍 elixir.py
-│       │   │   │   │   ├── 🐍 generic.py
-│       │   │   │   │   ├── 🐍 go.py
-│       │   │   │   │   ├── 🐍 helpers.py
-│       │   │   │   │   ├── 🐍 java.py
-│       │   │   │   │   ├── 🐍 javascript.py
-│       │   │   │   │   ├── 🐍 php.py
-│       │   │   │   │   ├── 🐍 python.py
-│       │   │   │   │   ├── 🐍 ruby.py
-│       │   │   │   │   ├── 🐍 swift.py
-│       │   │   │   │   └── 🐍 toml_based.py
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 constants.py
-│       │   │   │   ├── 🐍 discovery.py
-│       │   │   │   ├── 🐍 metadata.py
-│       │   │   │   ├── 🐍 models.py
-│       │   │   │   ├── 🐍 registry.py
-│       │   │   │   └── 🐍 scan.py
-│       │   │   ├── 📁 file_creation
-│       │   │   │   ├── 🐍 agent_scaffold.py
-│       │   │   │   ├── 🐍 cursorignore.py
-│       │   │   │   ├── 🐍 phases_output.py
-│       │   │   │   └── 📁 templates
-│       │   │   │       ├── 📝 MILESTONE_TEMPLATE.md
-│       │   │   │       └── 📝 PLANS.md
-│       │   │   ├── 📁 file_system
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   ├── 🐍 file_retriever.py
-│       │   │   │   ├── 🐍 gitignore.py
-│       │   │   │   └── 🐍 tree_generator.py
-│       │   │   ├── 📁 formatters
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   └── 🐍 clean_agentrules.py
-│       │   │   ├── 📁 parsers
-│       │   │   │   ├── 🐍 __init__.py
-│       │   │   │   └── 🐍 agent_parser.py
-│       │   │   ├── 🐍 async_stream.py
-│       │   │   ├── 🐍 constants.py
-│       │   │   ├── 🐍 model_config_helper.py
-│       │   │   ├── 🐍 offline.py
-│       │   │   ├── 🐍 token_estimator.py
-│       │   │   └── 🐍 token_packer.py
-│       │   └── 🐍 __init__.py
-│       ├── 🐍 __init__.py
-│       └── 🐍 __main__.py
-├── 📁 tests
-│   ├── 📁 fakes
-│   │   └── 🐍 vendor_responses.py
-│   ├── 📁 final_analysis_test
-│   │   ├── 📁 output
-│   │   │   ├── 📝 cursor_rules.md
-│   │   │   └── 📋 final_analysis_results.json
-│   │   ├── 🐍 __init__.py
-│   │   ├── 📋 fa_test_input.json
-│   │   ├── 🐍 run_test.py
-│   │   ├── 🐍 test_date.py
-│   │   ├── 🐍 test_final_analysis.py
-│   │   └── 🐍 test_final_offline.py
-│   ├── 📁 live
-│   │   └── 🐍 test_live_smoke.py
-│   ├── 📁 manual
-│   │   └── 📁 core
-│   │       └── 📁 utils
-│   │           └── 📁 file_system
-│   ├── 📁 offline
-│   │   ├── 🐍 __init__.py
-│   │   └── 🐍 test_offline_smoke.py
-│   ├── 📁 phase_1_test
-│   │   ├── 📁 output
-│   │   │   └── 📋 phase1_results.json
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 run_test.py
-│   │   ├── 🐍 test_phase1_offline.py
-│   │   └── 🐍 test_phase1_researcher_guards.py
-│   ├── 📁 phase_2_test
-│   │   ├── 📁 output
-│   │   │   ├── 📋 analysis_plan.xml
-│   │   │   └── 📋 phase2_results.json
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 run_test.py
-│   │   ├── 📋 test2_input.json
-│   │   └── 🐍 test_phase2_offline.py
-│   ├── 📁 phase_3_test
-│   │   ├── 📁 output
-│   │   │   └── 📋 phase3_results.json
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 debug_parser.py
-│   │   ├── 🐍 run_test.py
-│   │   ├── 📋 test3_input.json
-│   │   ├── 📋 test3_input.xml
-│   │   └── 🐍 test_phase3_offline.py
-│   ├── 📁 phase_4_test
-│   │   ├── 📁 output
-│   │   │   ├── 📝 analysis.md
-│   │   │   └── 📋 phase4_results.json
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 run_test.py
-│   │   ├── 📋 test4_input.json
-│   │   └── 🐍 test_phase4_offline.py
-│   ├── 📁 phase_5_test
-│   │   ├── 📁 output
-│   │   │   ├── 📝 consolidated_report.md
-│   │   │   └── 📋 phase5_results.json
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 run_test.py
-│   │   ├── 📋 test5_input.json
-│   │   └── 🐍 test_phase5_offline.py
-│   ├── 📁 tests_input
-│   │   ├── 📝 AGENTS.md
-│   │   ├── 🌐 index.html
-│   │   └── 🐍 main.py
-│   ├── 📁 unit
-│   │   ├── 📁 agents
-│   │   │   ├── 🐍 __init__.py
-│   │   │   ├── 🐍 test_anthropic_agent_parsing.py
-│   │   │   ├── 🐍 test_anthropic_request_builder.py
-│   │   │   ├── 🐍 test_deepseek_agent_parsing.py
-│   │   │   ├── 🐍 test_deepseek_helpers.py
-│   │   │   ├── 🐍 test_gemini_agent_parsing.py
-│   │   │   ├── 🐍 test_openai_agent_parsing.py
-│   │   │   ├── 🐍 test_openai_helpers.py
-│   │   │   └── 🐍 test_token_logging.py
-│   │   ├── 📁 analysis
-│   │   │   └── 🐍 test_phase3_packing.py
-│   │   ├── 📁 utils
-│   │   │   ├── 🐍 test_token_estimator.py
-│   │   │   └── 🐍 test_token_packer.py
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 test_agent_parser_basic.py
-│   │   ├── 🐍 test_agents_anthropic_parse.py
-│   │   ├── 🐍 test_agents_deepseek.py
-│   │   ├── 🐍 test_agents_gemini_error.py
-│   │   ├── 🐍 test_agents_openai_params.py
-│   │   ├── 🐍 test_cli.py
-│   │   ├── 🐍 test_config_service.py
-│   │   ├── 🐍 test_dependency_scanner.py
-│   │   ├── 🐍 test_dependency_scanner_registry.py
-│   │   ├── 🐍 test_file_retriever.py
-│   │   ├── 🐍 test_model_config_helper.py
-│   │   ├── 🐍 test_model_overrides.py
-│   │   ├── 🐍 test_phase_events.py
-│   │   ├── 🐍 test_phases_edges.py
-│   │   ├── 🐍 test_pipeline_output_writer.py
-│   │   ├── 🐍 test_pipeline_snapshot.py
-│   │   ├── 🐍 test_streaming_support.py
-│   │   ├── 🐍 test_tavily_tool.py
-│   │   ├── 🐍 test_tool_manager.py
-│   │   └── 🐍 test_agent_scaffold.py
-│   ├── 📁 utils
-│   │   ├── 📁 inputs
-│   │   │   └── 📄 .cursorrules
-│   │   ├── 📁 outputs
-│   │   │   └── 📝 AGENTS.md
-│   │   ├── 🐍 __init__.py
-│   │   ├── 🐍 clean_cr_test.py
-│   │   ├── 🐍 offline_stubs.py
-│   │   └── 🐍 run_tree_generator.py
-│   ├── 🐍 __init__.py
-│   ├── 🐍 test_cli_services.py
-│   ├── 🐍 test_env.py
-│   ├── 🐍 test_openai_responses.py
-│   └── 🐍 test_smoke_discovery.py
-├── 📁 typings
-│   ├── 📁 google
-│   │   ├── 📁 genai
-│   │   │   ├── 📄 __init__.pyi
-│   │   │   └── 📄 types.pyi
-│   │   ├── 📁 protobuf
-│   │   │   ├── 📄 __init__.pyi
-│   │   │   └── 📄 struct_pb2.pyi
-│   │   └── 📄 __init__.pyi
-│   ├── 📁 tavily
-│   │   └── 📄 __init__.pyi
-│   └── 📁 tomli_w
-│       └── 📄 __init__.pyi
-├── 📝 AGENTS.md
-├── 🐍 conftest.py
-├── 📝 CONTRIBUTING.md
-├── 📄 pyproject.toml
-└── 📄 requirements-dev.txt
-</project_structure>

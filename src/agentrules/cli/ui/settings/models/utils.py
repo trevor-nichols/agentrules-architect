@@ -8,7 +8,12 @@ from typing import cast
 
 import questionary
 
-from agentrules.cli.ui.styles import CLI_STYLE, model_display_choice, model_variant_choice
+from agentrules.cli.ui.styles import (
+    CLI_STYLE,
+    model_display_choice,
+    model_variant_choice,
+    provider_section_separator,
+)
 from agentrules.core.configuration import model_presets
 
 
@@ -23,6 +28,7 @@ class VariantOption:
 @dataclass
 class GroupSelection:
     base_label: str
+    provider_slug: str
     provider_display: str
     variants: list[VariantOption]
     current_key: str | None
@@ -80,6 +86,7 @@ def build_model_choice_state(
         if group_key not in grouped_lookup:
             grouped_lookup[group_key] = GroupSelection(
                 base_label=base_label,
+                provider_slug=preset.provider_slug,
                 provider_display=preset.provider_display,
                 variants=[],
                 current_key=current_key,
@@ -96,48 +103,62 @@ def build_model_choice_state(
         )
 
     group_selection_map: dict[str, GroupSelection] = {}
+    active_provider_slug: str | None = None
+
     for idx, entry in enumerate(grouped_entries):
+        if entry.provider_slug != active_provider_slug:
+            model_choices.append(provider_section_separator(entry.provider_display))
+            active_provider_slug = entry.provider_slug
+
         variants = entry.variants
         if len(variants) == 1:
             variant = variants[0]
-            title_label = f"{entry.base_label} [{entry.provider_display}]"
+            title_label = compact_model_label(variant.preset.label, entry.provider_slug, entry.provider_display)
+            detail_labels: list[str] = []
             if variant.preset_key == default_key:
-                title_label += " (default)"
+                detail_labels.append("default")
             if variant.preset_key == current_key:
-                title_label += " [current]"
+                detail_labels.append("current")
+            details = f"({', '.join(detail_labels)})" if detail_labels else ""
             model_choices.append(
                 model_display_choice(
                     title_label,
-                    variant.preset.label,
+                    details,
                     variant.preset.provider_display,
+                    provider_slug=entry.provider_slug,
+                    detail_style="status.variant",
                     value=variant.preset_key,
                 )
             )
         else:
             current_variant = next((v for v in variants if v.preset_key == current_key), None)
             default_variant = next((v for v in variants if v.preset_key == default_key), None)
-            summary = f"{entry.base_label} — {len(variants)} options"
+            summary = compact_model_label(entry.base_label, entry.provider_slug, entry.provider_display)
+            detail_parts = [f"{len(variants)} options"]
             if current_variant:
-                summary += f" (current: {current_variant.variant_display})"
+                detail_parts.append(f"current: {current_variant.variant_display}")
             elif default_variant:
-                summary += f" (default: {default_variant.variant_display})"
+                detail_parts.append(f"default: {default_variant.variant_display}")
             group_value = f"__GROUP__{idx}"
             model_choices.append(
                 model_display_choice(
                     summary,
-                    entry.base_label,
+                    " | ".join(detail_parts),
                     entry.provider_display,
+                    provider_slug=entry.provider_slug,
+                    detail_style="status.variant",
                     value=group_value,
                 )
             )
             group_selection_map[group_value] = entry
 
     fallback_value = "__RESET__"
-    if model_choices:
-        fallback_value = cast(str, model_choices[0].value)
+    selectable_choices = [choice for choice in model_choices if not _is_separator(choice)]
+    if selectable_choices:
+        fallback_value = cast(str, selectable_choices[0].value)
 
     default_value = fallback_value
-    if current_key and any(choice.value == current_key for choice in model_choices):
+    if current_key and any(choice.value == current_key for choice in selectable_choices):
         default_value = current_key
     else:
         for group_value, entry in group_selection_map.items():
@@ -145,7 +166,7 @@ def build_model_choice_state(
                 default_value = group_value
                 break
         else:
-            if default_key and any(choice.value == default_key for choice in model_choices):
+            if default_key and any(choice.value == default_key for choice in selectable_choices):
                 default_value = default_key
             else:
                 for group_value, entry in group_selection_map.items():
@@ -175,6 +196,7 @@ def select_variant(group_selection: GroupSelection) -> str | None:
                 variant_title,
                 variant.variant_display,
                 group_selection.provider_display,
+                provider_slug=group_selection.provider_slug,
                 value=variant.preset_key,
             )
         )
@@ -186,10 +208,33 @@ def select_variant(group_selection: GroupSelection) -> str | None:
     if not variant_choices or preferred_default is None:
         return None
 
+    normalized_group_label = compact_model_label(
+        group_selection.base_label,
+        group_selection.provider_slug,
+        group_selection.provider_display,
+    )
+
     return questionary.select(
-        f"{group_selection.base_label} [{group_selection.provider_display}] – choose variant:",
+        f"{normalized_group_label} ({group_selection.provider_display}) - choose variant:",
         choices=variant_choices,
         default=preferred_default,
         qmark="🧠",
         style=CLI_STYLE,
     ).ask()
+
+
+def compact_model_label(label: str, provider_slug: str, provider_display: str) -> str:
+    """Normalize display labels to avoid repeating provider names in every row."""
+
+    normalized = label.strip()
+    if normalized.endswith(f"[{provider_display}]"):
+        normalized = normalized[: -len(f"[{provider_display}]")].rstrip()
+    if provider_slug == "codex" and normalized.lower().startswith("codex:"):
+        return normalized.split(":", 1)[1].strip()
+    if provider_slug == "openai" and normalized.lower().startswith("openai "):
+        return normalized[len("openai ") :].strip()
+    return normalized
+
+
+def _is_separator(choice: questionary.Choice) -> bool:
+    return isinstance(choice, questionary.Separator)

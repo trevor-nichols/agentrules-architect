@@ -6,7 +6,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from agentrules.core.configuration import (
+    CODEX_HOME_ENV_VAR,
     PROVIDER_ENV_MAP,
+    CodexHomeStrategy,
     OutputPreferences,
     get_config_manager,
     model_presets,
@@ -22,6 +24,17 @@ class ProviderState:
     name: str
     env_var: str
     api_key: str | None
+
+
+@dataclass(frozen=True)
+class CodexRuntimeState:
+    cli_path: str
+    home_strategy: CodexHomeStrategy
+    managed_home: str | None
+    effective_home: str | None
+    env_var: str = CODEX_HOME_ENV_VAR
+    executable_path: str | None = None
+    is_available: bool = False
 
 
 def list_provider_states() -> list[ProviderState]:
@@ -41,15 +54,19 @@ def get_provider_keys() -> dict[str, str | None]:
     return CONFIG_MANAGER.get_current_provider_keys()
 
 
+def get_provider_availability() -> dict[str, bool]:
+    return CONFIG_MANAGER.get_provider_availability()
+
+
 def get_active_presets(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
     return model_presets.get_active_presets(overrides)
 
 
 def get_available_presets_for_phase(
     phase: str,
-    provider_keys: Mapping[str, str | None] | None = None,
+    provider_availability: Mapping[str, bool] | None = None,
 ):
-    return model_presets.get_available_presets_for_phase(phase, provider_keys)
+    return model_presets.get_available_presets_for_phase(phase, provider_availability)
 
 
 def save_phase_model(phase: str, preset_key: str | None) -> None:
@@ -74,6 +91,30 @@ def is_researcher_active() -> bool:
 
 def apply_model_overrides(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
     return model_presets.apply_user_overrides(overrides)
+
+
+def get_codex_runtime_state() -> CodexRuntimeState:
+    codex_config = CONFIG_MANAGER.get_codex_config()
+    return CodexRuntimeState(
+        cli_path=codex_config.cli_path,
+        home_strategy=codex_config.home_strategy,
+        managed_home=codex_config.managed_home,
+        effective_home=CONFIG_MANAGER.get_effective_codex_home(),
+        executable_path=CONFIG_MANAGER.resolve_codex_executable(),
+        is_available=CONFIG_MANAGER.is_codex_available(),
+    )
+
+
+def save_codex_cli_path(cli_path: str | None) -> None:
+    CONFIG_MANAGER.set_codex_cli_path(cli_path)
+
+
+def save_codex_home_strategy(strategy: str | None) -> None:
+    CONFIG_MANAGER.set_codex_home_strategy(strategy)
+
+
+def save_codex_managed_home(managed_home: str | None) -> None:
+    CONFIG_MANAGER.set_codex_managed_home(managed_home)
 
 
 def get_logging_preference() -> str | None:

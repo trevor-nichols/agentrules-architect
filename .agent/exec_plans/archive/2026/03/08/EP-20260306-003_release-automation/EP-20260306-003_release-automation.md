@@ -1,21 +1,27 @@
 ---
 id: EP-20260306-003
-title: "Add tag-driven GitHub release automation"
-status: done
+title: Add tag-driven GitHub release automation
+status: archived
 kind: infra
 domain: infra
-owner: "@codex"
+owner: '@codex'
 created: 2026-03-06
-updated: 2026-03-06
-tags: [github, releases, ci]
-touches: [ops, docs, tests]
+updated: '2026-03-08'
+tags:
+- github
+- releases
+- ci
+touches:
+- ops
+- docs
+- tests
 risk: low
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: ""
+  issue: ''
+  pr: ''
+  docs: ''
 depends_on: []
 supersedes: []
 ---

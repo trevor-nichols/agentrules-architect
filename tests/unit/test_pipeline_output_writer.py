@@ -48,7 +48,6 @@ class PipelineOutputWriterTests(unittest.TestCase):
             removed_paths=("src/old.py",),
             preserved_comments=2,
             tree_entries=3,
-            file_entries=1,
         )
 
         settings = PipelineSettings(
@@ -168,7 +167,6 @@ class PipelineOutputWriterTests(unittest.TestCase):
                     removed_paths=(),
                     preserved_comments=0,
                     tree_entries=0,
-                    file_entries=0,
                 )
 
             mock_create_cursorignore.side_effect = _create_cursorignore

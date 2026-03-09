@@ -27,6 +27,7 @@ from agentrules.config.prompts.phase_1_prompts import (  # Prompts used for conf
 from agentrules.config.tools import TOOL_SETS
 from agentrules.core.agents.factory.factory import get_architect_for_phase, get_researcher_architect
 from agentrules.core.types.tool_config import Tool
+from agentrules.core.utils.provider_capabilities import requires_external_research_tool_loop
 
 try:
     from agentrules.core.agent_tools.web_search.tavily import run_tavily_search as _run_tavily_search
@@ -167,11 +168,14 @@ class Phase1Analysis:
                 "tree_structure": tree,
             }
 
-            researcher_tools = TOOL_SETS.get("RESEARCHER_TOOLS", [])
-            research_findings = await self._run_researcher_with_tools(
-                research_context,
-                researcher_tools
-            )
+            if requires_external_research_tool_loop(self.researcher_architect):
+                researcher_tools = TOOL_SETS.get("RESEARCHER_TOOLS", [])
+                research_findings = await self._run_researcher_with_tools(
+                    research_context,
+                    researcher_tools,
+                )
+            else:
+                research_findings = await self._run_researcher_with_runtime(research_context)
 
             logging.info("[bold green]Phase 1, Part 2:[/bold green] Documentation research complete")
 
@@ -306,6 +310,31 @@ class Phase1Analysis:
             "status": "skipped",
             "reason": "researcher-no-tools",
             "executed_tools": executed_tools,
+        }
+
+    async def _run_researcher_with_runtime(
+        self,
+        research_context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute a researcher backed by a runtime-native search environment."""
+
+        if not self.researcher_architect:
+            raise RuntimeError("Researcher architect is not initialized")
+
+        result = await self.researcher_architect.analyze(dict(research_context))
+        result.setdefault("executed_tools", [])
+
+        if result.get("findings"):
+            return result
+
+        logging.warning(
+            "[bold yellow]Phase 1, Part 2:[/bold yellow] "
+            "Skipping documentation research (runtime returned no findings)."
+        )
+        return {
+            "status": "skipped",
+            "reason": "researcher-no-findings",
+            "executed_tools": [],
         }
 
     async def _handle_anthropic_tool_calls(self, tool_calls: Any) -> list[dict[str, Any]]:

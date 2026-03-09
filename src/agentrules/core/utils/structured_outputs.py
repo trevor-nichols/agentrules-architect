@@ -144,6 +144,13 @@ PROVIDER_STRUCTURED_OUTPUT_SPECS: dict[ModelProvider, ProviderStructuredOutputSp
         schema_guarantee="strong",
         notes="Responses API uses text.format with strict json_schema.",
     ),
+    ModelProvider.CODEX: ProviderStructuredOutputSpec(
+        provider=ModelProvider.CODEX,
+        doc_path="internal-docs/integrations/codex/app-server/reference/turns.md",
+        request_mode="json_schema",
+        schema_guarantee="strong",
+        notes="Codex app-server accepts a per-turn outputSchema on turn/start.",
+    ),
     ModelProvider.ANTHROPIC: ProviderStructuredOutputSpec(
         provider=ModelProvider.ANTHROPIC,
         doc_path="internal-docs/integrations/anthropic/structured-outputs.md",
@@ -222,7 +229,7 @@ def resolve_structured_output_mode(
             return "disabled"
         return "json_schema"
 
-    if provider in {ModelProvider.OPENAI, ModelProvider.GEMINI}:
+    if provider in {ModelProvider.OPENAI, ModelProvider.CODEX, ModelProvider.GEMINI}:
         return "json_schema"
 
     if provider in {ModelProvider.DEEPSEEK, ModelProvider.XAI}:
@@ -289,6 +296,17 @@ def build_anthropic_output_format(phase: str | None) -> dict[str, Any] | None:
         "type": "json_schema",
         "schema": anthropic_schema,
     }
+
+
+def build_codex_output_schema(phase: str | None) -> dict[str, Any] | None:
+    """Build Codex app-server `outputSchema` payload."""
+    schema = get_phase_model_response_schema(phase)
+    if schema is None:
+        return None
+    # Codex app-server forwards JSON schema constraints to model providers that
+    # enforce strict required/additionalProperties rules (mirroring OpenAI
+    # strict structured outputs semantics).
+    return build_openai_strict_schema(schema)
 
 
 def build_gemini_response_schema(phase: str | None) -> dict[str, Any] | None:

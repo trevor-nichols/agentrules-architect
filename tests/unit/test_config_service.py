@@ -1,14 +1,20 @@
 import logging
 import os
+import stat
+import sys
 import tempfile
 import unittest
 from importlib import reload
+from pathlib import Path
+
+from agentrules.core.configuration.repository import TomlConfigRepository
 
 
 class ConfigServiceTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         os.environ["AGENTRULES_CONFIG_DIR"] = self.temp_dir.name
+        self._codex_home_backup = os.environ.pop("CODEX_HOME", None)
 
         import agentrules.core.configuration as configuration_package
         import agentrules.core.configuration.constants as configuration_constants
@@ -47,6 +53,10 @@ class ConfigServiceTestCase(unittest.TestCase):
             os.environ.pop(self.configuration.RULES_FILENAME_ENV_VAR, None)
         else:
             os.environ[self.configuration.RULES_FILENAME_ENV_VAR] = self._rules_filename_backup
+        if self._codex_home_backup is None:
+            os.environ.pop(self.configuration.CODEX_HOME_ENV_VAR, None)
+        else:
+            os.environ[self.configuration.CODEX_HOME_ENV_VAR] = self._codex_home_backup
         if self._offline_backup is None:
             os.environ.pop("OFFLINE", None)
         else:
@@ -65,6 +75,124 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertIsInstance(keys, dict)
         self.assertIn("openai", keys)
         self.assertIsNone(keys.get("openai"))
+
+    def test_codex_runtime_config_persists_and_serializes_dedicated_section(self) -> None:
+        self.config_manager.set_codex_cli_path("/usr/local/bin/codex")
+        self.config_manager.set_codex_managed_home("~/agentrules-codex-home")
+
+        config = self.config_manager.load()
+        self.assertEqual(config.codex.cli_path, "/usr/local/bin/codex")
+        self.assertEqual(config.codex.home_strategy, "managed")
+        self.assertEqual(config.codex.managed_home, "~/agentrules-codex-home")
+        self.assertEqual(
+            os.environ.get(self.configuration.CODEX_HOME_ENV_VAR),
+            os.path.expanduser("~/agentrules-codex-home"),
+        )
+
+        persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertIn("[codex]", persisted)
+        self.assertIn('cli_path = "/usr/local/bin/codex"', persisted)
+        self.assertIn('managed_home = "~/agentrules-codex-home"', persisted)
+
+    def test_codex_effective_home_defaults_to_managed_config_dir(self) -> None:
+        expected = str(self.configuration.CONFIG_DIR / self.configuration.DEFAULT_CODEX_HOME_DIRNAME)
+        self.assertEqual(self.config_manager.get_effective_codex_home(), expected)
+        self.config_manager.apply_config_to_environment()
+        self.assertEqual(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR), expected)
+
+    def test_codex_inherit_home_uses_existing_environment_value(self) -> None:
+        inherited_home = str(Path(self.temp_dir.name) / "existing-codex-home")
+        os.environ[self.configuration.CODEX_HOME_ENV_VAR] = inherited_home
+
+        self.config_manager.set_codex_home_strategy("inherit")
+
+        self.assertEqual(self.config_manager.get_effective_codex_home(), inherited_home)
+        self.config_manager.apply_config_to_environment()
+        self.assertEqual(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR), inherited_home)
+
+    def test_codex_inherit_home_restores_original_value_after_managed_override(self) -> None:
+        inherited_home = str(Path(self.temp_dir.name) / "existing-codex-home")
+        managed_home = str(Path(self.temp_dir.name) / "managed-codex-home")
+        env = {self.configuration.CODEX_HOME_ENV_VAR: inherited_home}
+        repository = TomlConfigRepository(Path(self.temp_dir.name) / "isolated-config.toml")
+        manager = self.configuration.ConfigManager(repository=repository, environ=env)
+
+        manager.set_codex_cli_path(sys.executable)
+        manager.set_codex_managed_home(managed_home)
+        self.assertEqual(env.get(self.configuration.CODEX_HOME_ENV_VAR), managed_home)
+        self.assertEqual(manager.get_effective_codex_home(), managed_home)
+
+        manager.set_codex_home_strategy("inherit")
+
+        self.assertEqual(manager.get_effective_codex_home(), inherited_home)
+        self.assertEqual(env.get(self.configuration.CODEX_HOME_ENV_VAR), inherited_home)
+
+        launch = manager.build_codex_launch_config(cwd=self.temp_dir.name)
+        self.assertEqual(launch.codex_home, inherited_home)
+
+    def test_codex_inherit_home_allows_unset_environment_value(self) -> None:
+        self.config_manager.set_codex_home_strategy("inherit")
+
+        self.assertIsNone(self.config_manager.get_effective_codex_home())
+        self.config_manager.apply_config_to_environment()
+        self.assertIsNone(os.environ.get(self.configuration.CODEX_HOME_ENV_VAR))
+
+    def test_codex_availability_uses_resolved_executable(self) -> None:
+        self.config_manager.set_codex_cli_path(sys.executable)
+        self.assertTrue(self.config_manager.is_codex_available())
+        availability = self.config_manager.get_provider_availability()
+        self.assertTrue(availability["codex"])
+
+    def test_codex_relative_cli_path_resolves_to_absolute_path(self) -> None:
+        executable = Path(self.temp_dir.name) / "bin" / "codex"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text("#!/bin/sh\n", encoding="utf-8")
+        executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            self.config_manager.set_codex_cli_path("bin/codex")
+            resolved = self.config_manager.resolve_codex_executable()
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertEqual(resolved, str(executable.resolve()))
+
+    @unittest.skipIf(os.name == "nt", "Executable-bit validation is platform-specific on Windows")
+    def test_codex_non_executable_cli_path_is_unavailable(self) -> None:
+        candidate = Path(self.temp_dir.name) / "bin" / "codex"
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_text("#!/bin/sh\n", encoding="utf-8")
+        candidate.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            self.config_manager.set_codex_cli_path("bin/codex")
+            resolved = self.config_manager.resolve_codex_executable()
+            is_available = self.config_manager.is_codex_available()
+            provider_availability = self.config_manager.get_provider_availability()
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertIsNone(resolved)
+        self.assertFalse(is_available)
+        self.assertFalse(provider_availability["codex"])
+
+    def test_build_codex_launch_config_uses_resolved_executable_and_home(self) -> None:
+        self.config_manager.set_codex_cli_path(sys.executable)
+        self.config_manager.set_codex_managed_home("~/agentrules-codex-home")
+
+        launch = self.config_manager.build_codex_launch_config(
+            cwd=self.temp_dir.name,
+            config_overrides={"developer_instructions": "Test instructions"},
+        )
+
+        self.assertEqual(launch.executable_path, str(Path(sys.executable).resolve()))
+        self.assertEqual(launch.codex_home, os.path.expanduser("~/agentrules-codex-home"))
+        self.assertEqual(launch.cwd, self.temp_dir.name)
+        self.assertEqual(launch.config_overrides["developer_instructions"], "Test instructions")
 
     def test_set_phase_model_persists_override(self) -> None:
         self.config_manager.set_phase_model("phase1", "claude-sonnet-reasoning")
@@ -127,6 +255,23 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertFalse(self.config_manager.is_researcher_enabled())
 
         self.config_manager.set_provider_key("tavily", "tavily-test-key")
+        self.assertTrue(self.config_manager.is_researcher_enabled())
+
+    def test_codex_researcher_enabled_without_tavily_credentials(self) -> None:
+        self.config_manager.set_phase_model("researcher", "codex-gpt-5.3-codex")
+        self.config_manager.set_researcher_mode("on")
+
+        self.assertFalse(self.config_manager.has_tavily_credentials())
+        self.assertEqual(self.config_manager.get_researcher_mode(), "on")
+        self.assertTrue(self.config_manager.is_researcher_enabled())
+
+    def test_removing_tavily_key_does_not_disable_codex_researcher_mode(self) -> None:
+        self.config_manager.set_phase_model("researcher", "codex-gpt-5.3-codex")
+        self.config_manager.set_researcher_mode("on")
+
+        self.config_manager.set_provider_key("tavily", None)
+
+        self.assertEqual(self.config_manager.get_researcher_mode(), "on")
         self.assertTrue(self.config_manager.is_researcher_enabled())
 
     def test_tree_depth_defaults_set_and_reset(self) -> None:

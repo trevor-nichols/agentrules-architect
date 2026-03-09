@@ -12,6 +12,7 @@ from agentrules.config.prompts.phase_1_prompts import (
     DEPENDENCY_CATALOG_PROMPT,
     DEPENDENCY_KNOWLEDGE_GAP_PROMPT,
 )
+from agentrules.core.agents.base import ModelProvider
 from agentrules.core.analysis.phase_1 import Phase1Analysis
 
 
@@ -53,6 +54,17 @@ class _FailingToolResearcher:
                 }
             ],
         }
+
+
+class _CodexResearcher:
+    provider = ModelProvider.CODEX
+
+    def __init__(self) -> None:
+        self.calls: list[Sequence[Any] | None] = []
+
+    async def analyze(self, context: dict[str, Any], tools: Sequence[Any] | None = None) -> dict[str, Any]:
+        self.calls.append(tools)
+        return {"agent": "Researcher Agent", "findings": "runtime research summary"}
 
 
 def _stub_architect_factory(phase: str, **kwargs: Any) -> _StaticAgent:  # pragma: no cover - helper
@@ -123,6 +135,23 @@ class Phase1ResearcherGuardrailsTests(unittest.IsolatedAsyncioTestCase):
         executed_tools = research_output.get("executed_tools", [])
         self.assertTrue(executed_tools)
         self.assertTrue(all("error" in record for record in executed_tools))
+
+    async def test_codex_researcher_bypasses_external_tool_loop(self) -> None:
+        researcher = _CodexResearcher()
+
+        async def _unexpected_tool_loop(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            raise AssertionError("external tool loop should be bypassed for Codex researcher")
+
+        with patch("agentrules.core.analysis.phase_1.get_architect_for_phase", side_effect=_stub_architect_factory), \
+                patch("agentrules.core.analysis.phase_1.get_researcher_architect", return_value=researcher), \
+                patch.object(Phase1Analysis, "_run_researcher_with_tools", side_effect=_unexpected_tool_loop):
+            analyzer = Phase1Analysis(researcher_enabled=True)
+            result = await analyzer.run([], {})
+
+        research_output = result["documentation_research"]
+        self.assertEqual(research_output.get("findings"), "runtime research summary")
+        self.assertEqual(research_output.get("executed_tools"), [])
+        self.assertEqual(researcher.calls, [None])
 
 
 if __name__ == "__main__":  # pragma: no cover

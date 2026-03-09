@@ -96,7 +96,7 @@ def generate_tree(
     prefix: str = "",
     exclude_dirs: set[str] | None = None,
     exclude_patterns: set[str] | None = None,
-    max_depth: int = 5,
+    max_depth: int | None = 5,
     current_depth: int = 0,
     *,
     gitignore_spec: PathSpec | None = None,
@@ -112,7 +112,7 @@ def generate_tree(
         prefix: Current prefix for the tree line (used for recursion)
         exclude_dirs: Set of directory names to exclude
         exclude_patterns: Set of patterns to exclude (e.g., "*.pyc")
-        max_depth: Maximum depth to traverse
+        max_depth: Maximum depth to traverse, or ``None`` for unlimited depth
         current_depth: Current depth in the traversal
 
     Returns:
@@ -137,7 +137,7 @@ def generate_tree(
     folded_exclude_relative_paths = {entry.casefold() for entry in normalized_exclude_relative_paths}
 
     # If we've reached max depth, indicate there's more
-    if current_depth >= max_depth:
+    if max_depth is not None and current_depth >= max_depth:
         return [f"{prefix}└── ... (max depth reached)"]
 
     tree = []
@@ -256,7 +256,7 @@ def save_tree_to_file(tree_content: list[str], path: Path, *, rules_filename: st
 
 def get_project_tree(
     directory: Path,
-    max_depth: int = 5,
+    max_depth: int | None = 5,
     *,
     exclude_dirs: set[str] | None = None,
     exclude_files: set[str] | None = None,
@@ -271,7 +271,7 @@ def get_project_tree(
 
     Args:
         directory: The project directory path
-        max_depth: Maximum depth to traverse
+        max_depth: Maximum depth to traverse, or ``None`` for unlimited depth
 
     Returns:
         List of strings representing the tree structure with delimiters

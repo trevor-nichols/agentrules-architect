@@ -5,8 +5,16 @@ from __future__ import annotations
 import os
 from collections.abc import MutableMapping
 
-from .constants import DEFAULT_VERBOSITY, PROVIDER_ENV_MAP, TRUTHY_ENV_VALUES, VERBOSITY_ENV_VAR, VERBOSITY_PRESETS
+from .constants import (
+    CODEX_HOME_ENV_VAR,
+    DEFAULT_VERBOSITY,
+    PROVIDER_ENV_MAP,
+    TRUTHY_ENV_VALUES,
+    VERBOSITY_ENV_VAR,
+    VERBOSITY_PRESETS,
+)
 from .models import CLIConfig
+from .services import codex as codex_service
 from .utils import normalize_verbosity_label
 
 
@@ -15,9 +23,18 @@ class EnvironmentManager:
 
     def __init__(self, environ: MutableMapping[str, str] | None = None) -> None:
         self._environ = environ if environ is not None else os.environ
+        self._initial_codex_home = self._environ.get(CODEX_HOME_ENV_VAR)
+        self._codex_home_override_active = False
 
     def getenv(self, key: str) -> str | None:
         return self._environ.get(key)
+
+    def getenv_for_codex_runtime(self, key: str) -> str | None:
+        if key != CODEX_HOME_ENV_VAR:
+            return self.getenv(key)
+        if self._codex_home_override_active:
+            return self._initial_codex_home
+        return self.getenv(key)
 
     def apply_provider_credentials(self, config: CLIConfig) -> None:
         for provider, env_var in PROVIDER_ENV_MAP.items():
@@ -31,6 +48,14 @@ class EnvironmentManager:
             if provider == "gemini":
                 self._environ.pop("GEMINI_API_KEY", None)
             self._environ[env_var] = api_key
+
+    def apply_codex_runtime(self, config: CLIConfig) -> None:
+        effective_home = codex_service.get_effective_codex_home(config, self.getenv_for_codex_runtime)
+        if effective_home is not None:
+            self._environ[CODEX_HOME_ENV_VAR] = effective_home
+        else:
+            self._environ.pop(CODEX_HOME_ENV_VAR, None)
+        self._codex_home_override_active = codex_service.get_codex_home_strategy(config) == "managed"
 
     def resolve_log_level(self, config: CLIConfig, default: int | None = None) -> int:
         env_value = self.getenv(VERBOSITY_ENV_VAR)
