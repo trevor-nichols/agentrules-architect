@@ -91,6 +91,13 @@ MILESTONE_DOMAIN_OPTION = typer.Option(
     "--domain",
     help="Override milestone domain metadata. Defaults to parent ExecPlan domain.",
 )
+MILESTONE_NEW_MS_OPTION = typer.Option(
+    None,
+    "--ms",
+    min=1,
+    max=999,
+    help="Optional milestone sequence number (MS###). Defaults to automatic assignment.",
+)
 MILESTONE_MS_OPTION = typer.Option(
     ...,
     "--ms",
@@ -389,6 +396,7 @@ def register(app: typer.Typer) -> None:
         slug: str | None = MILESTONE_SLUG_OPTION,
         owner: str | None = MILESTONE_OWNER_OPTION,
         domain: str | None = MILESTONE_DOMAIN_OPTION,
+        ms: int | None = MILESTONE_NEW_MS_OPTION,
     ) -> None:
         context = bootstrap_runtime()
         console = context.console
@@ -405,6 +413,7 @@ def register(app: typer.Typer) -> None:
                 owner=owner,
                 domain=domain,
                 execplans_dir=resolved_execplans_dir,
+                sequence=ms,
             )
         except (ValueError, FileNotFoundError) as error:
             raise typer.BadParameter(str(error)) from error

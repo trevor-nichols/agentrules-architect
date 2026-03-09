@@ -61,6 +61,92 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         self.assertEqual(listed.exit_code, 0, msg=listed.output)
         self.assertIn("EP-20260207-001/MS001", listed.output)
 
+    def test_milestone_new_accepts_explicit_ms(self) -> None:
+        from agentrules import cli
+
+        create_plan = self.runner.invoke(
+            cli.app,
+            [
+                "execplan",
+                "new",
+                "Pinned Milestone",
+                "--root",
+                str(self.root),
+                "--date",
+                "20260207",
+                "--no-update-registry",
+            ],
+        )
+        self.assertEqual(create_plan.exit_code, 0, msg=create_plan.output)
+
+        create_milestone = self.runner.invoke(
+            cli.app,
+            [
+                "execplan",
+                "milestone",
+                "new",
+                "EP-20260207-001",
+                "Pinned sequence",
+                "--ms",
+                "5",
+                "--root",
+                str(self.root),
+            ],
+        )
+        self.assertEqual(create_milestone.exit_code, 0, msg=create_milestone.output)
+        self.assertIn("EP-20260207-001/MS005", create_milestone.output)
+
+    def test_milestone_new_rejects_duplicate_explicit_ms(self) -> None:
+        from agentrules import cli
+
+        create_plan = self.runner.invoke(
+            cli.app,
+            [
+                "execplan",
+                "new",
+                "Duplicate Milestone",
+                "--root",
+                str(self.root),
+                "--date",
+                "20260207",
+                "--no-update-registry",
+            ],
+        )
+        self.assertEqual(create_plan.exit_code, 0, msg=create_plan.output)
+
+        first = self.runner.invoke(
+            cli.app,
+            [
+                "execplan",
+                "milestone",
+                "new",
+                "EP-20260207-001",
+                "First",
+                "--ms",
+                "2",
+                "--root",
+                str(self.root),
+            ],
+        )
+        self.assertEqual(first.exit_code, 0, msg=first.output)
+
+        second = self.runner.invoke(
+            cli.app,
+            [
+                "execplan",
+                "milestone",
+                "new",
+                "EP-20260207-001",
+                "Second",
+                "--ms",
+                "2",
+                "--root",
+                str(self.root),
+            ],
+        )
+        self.assertEqual(second.exit_code, 2, msg=second.output)
+        self.assertIn("already exists", second.output.lower())
+
     def test_milestone_archive_moves_file(self) -> None:
         from agentrules import cli
 

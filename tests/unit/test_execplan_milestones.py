@@ -142,6 +142,95 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertEqual(second.milestone_id, "EP-20260207-001/MS002")
             self.assertFalse((execplans_dir / ".locks").exists())
 
+    def test_create_milestone_accepts_explicit_sequence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Explicit Sequence",
+                slug="explicit-sequence",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            created_milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Pinned sequence",
+                sequence=5,
+                execplans_dir=execplans_dir,
+            )
+
+            self.assertEqual(created_milestone.milestone_id, "EP-20260207-001/MS005")
+            self.assertEqual(created_milestone.sequence, 5)
+            self.assertEqual(created_milestone.milestone_path.name, "MS005_pinned-sequence.md")
+
+    def test_create_milestone_rejects_explicit_sequence_when_taken(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Explicit Sequence Collision",
+                slug="explicit-sequence-collision",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            first = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="First",
+                execplans_dir=execplans_dir,
+            )
+            self.assertEqual(first.sequence, 1)
+
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                create_execplan_milestone(
+                    root=root,
+                    execplan_id=created_plan.plan_id,
+                    title="Should fail",
+                    sequence=1,
+                    execplans_dir=execplans_dir,
+                )
+
+    def test_create_milestone_rejects_explicit_sequence_when_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Archived Sequence Collision",
+                slug="archived-sequence-collision",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            first = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="First",
+                execplans_dir=execplans_dir,
+            )
+            archive_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                sequence=first.sequence,
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+            )
+
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                create_execplan_milestone(
+                    root=root,
+                    execplan_id=created_plan.plan_id,
+                    title="Should fail",
+                    sequence=1,
+                    execplans_dir=execplans_dir,
+                )
+
     def test_next_milestone_sequence_counts_malformed_active_ms_filenames(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

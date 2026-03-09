@@ -171,10 +171,9 @@ Milestone filename format:
 - Create your milestone within `.agent/exec_plans/active/<short-slug>/milestones/active/`.
 - When your milestone is complete, archive it in `.agent/exec_plans/active/<short-slug>/milestones/archive/`.
 - Prefer CLI milestone workflow over manual file creation:
-  - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
   - List: `agentrules execplan milestone list EP-YYYYMMDD-NNN` (or `--active-only`)
   - Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
-- Do not hand-pick `MS###` during creation. The CLI assigns the next monotonic sequence for that ExecPlan.
 
 ## Living plans and design decisions
 

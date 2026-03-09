@@ -131,7 +131,7 @@ agentrules keys
 - `agentrules execplan new \"Title\"` – create a new ExecPlan markdown file under `.agent/exec_plans/active/<slug>/`.
 - `agentrules execplan archive EP-YYYYMMDD-NNN [--date YYYYMMDD]` – archive a full ExecPlan directory under `.agent/exec_plans/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/`.
 - `agentrules execplan list [--path]` – list active ExecPlans with compact milestone progress (`completed/total`).
-- `agentrules execplan milestone new EP-YYYYMMDD-NNN \"Title\"` – create a milestone under a specific ExecPlan.
+- `agentrules execplan milestone new EP-YYYYMMDD-NNN \"Title\" [--ms N]` – create a milestone under a specific ExecPlan (auto sequence by default, or explicit `MS###` when provided).
 - `agentrules execplan milestone list EP-YYYYMMDD-NNN [--active-only]` – list milestones for one ExecPlan.
 - `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>` – archive an active milestone sequence.
 - `agentrules execplan milestone remaining EP-YYYYMMDD-NNN [--path]` – show active milestones left for one ExecPlan.
@@ -155,7 +155,7 @@ ExecPlans and milestones use canonical IDs and deterministic file locations:
 Milestone creation is parent-first and sequence-safe:
 
 - Users provide parent ExecPlan ID + milestone title.
-- CLI/API assign `MS###` automatically.
+- CLI/API assign `MS###` automatically, or accept `--ms N` to request a specific sequence.
 - Sequence is monotonic per plan across active and archived milestones (`MS001`, `MS002`, ...).
 - `.agent/templates/MILESTONE_TEMPLATE.md` is a guidance scaffold for authors.
   Generated milestone files come from an internal file template used by `execplan milestone new`.
@@ -169,6 +169,9 @@ agentrules execplan new "Auth Refresh" --date 20260207
 # 2) Create milestones for that plan (auto-assigns MS001, then MS002, ...)
 agentrules execplan milestone new EP-20260207-001 "Design callback flow"
 agentrules execplan milestone new EP-20260207-001 "Implement callback flow"
+
+# Optional: request an explicit sequence (must be unused)
+agentrules execplan milestone new EP-20260207-001 "Backfill docs" --ms 5
 
 # 3) List milestones (all or active-only)
 agentrules execplan milestone list EP-20260207-001
