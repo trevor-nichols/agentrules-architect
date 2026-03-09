@@ -118,7 +118,7 @@ def build_runtime_guidance(
             )
     elif diagnostics.models:
         notes.append(
-            "[dim]Next step: choose a `codex-*` preset under Settings -> Model presets per phase "
+            "[dim]Next step: choose a Codex preset under Settings -> Model presets per phase "
             "to route analysis phases through this runtime.[/]"
         )
 
@@ -152,6 +152,16 @@ def _render_models_table(context: CliContext, diagnostics: codex_runtime.CodexRu
     context.console.print("")
     context.console.print(table)
     context.console.print("")
+
+
+def _await_models_acknowledgement() -> None:
+    """Keep the model table visible until the operator confirms."""
+    questionary.text(
+        "Press Enter to return to Codex runtime actions:",
+        default="",
+        qmark="🧰",
+        style=CLI_STYLE,
+    ).ask()
 
 
 def configure_codex_runtime(context: CliContext) -> None:
@@ -308,3 +318,5 @@ def configure_codex_runtime(context: CliContext) -> None:
 
         if selection == "__MODELS__":
             _render_models_table(context, diagnostics)
+            _await_models_acknowledgement()
+            continue

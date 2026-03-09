@@ -186,6 +186,38 @@
         "docs"
       ],
       "updated": "2026-03-08"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-09",
+      "depends_on": [],
+      "domain": "console",
+      "id": "EP-20260309-001",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/archive/2026/03/09/EP-20260309-001_codex-runtime-model-presets/EP-20260309-001_codex-runtime-model-presets.md",
+      "risk": "med",
+      "status": "archived",
+      "supersedes": [],
+      "tags": [
+        "codex",
+        "model-presets",
+        "cli"
+      ],
+      "title": "Enable dynamic Codex runtime model presets",
+      "touches": [
+        "cli",
+        "agents",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-03-09"
     }
   ],
   "schema_version": 1

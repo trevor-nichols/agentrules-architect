@@ -8,7 +8,7 @@ from collections.abc import Mapping
 import questionary
 
 from agentrules.cli.context import CliContext
-from agentrules.cli.services import configuration
+from agentrules.cli.services import codex_runtime, configuration
 from agentrules.cli.ui.styles import CLI_STYLE, model_display_choice, navigation_choice
 from agentrules.core.agents.base import ModelProvider
 from agentrules.core.configuration import model_presets
@@ -34,6 +34,7 @@ def configure_models(context: CliContext) -> None:
         active = configuration.get_active_presets()
         researcher_mode = configuration.get_researcher_mode()
         tavily_available = configuration.has_tavily_credentials()
+        runtime_codex_presets = _load_runtime_codex_presets(provider_availability)
 
         offline_mode = bool(os.getenv("OFFLINE"))
 
@@ -62,12 +63,15 @@ def configure_models(context: CliContext) -> None:
         phase = phase_selection
         title = model_presets.get_phase_title(phase)
         presets = configuration.get_available_presets_for_phase(phase, provider_availability)
+        presets = _merge_presets_with_runtime_codex(presets, runtime_codex_presets)
         if not presets:
             console.print(f"[yellow]No presets available for {title}; configure provider access first.[/]")
             continue
 
         default_key = model_presets.get_default_preset_key(phase)
         current_key = active.get(phase, default_key)
+        current_key = _normalize_codex_selection_key(current_key, runtime_codex_presets)
+        default_key = _normalize_codex_selection_key(default_key, runtime_codex_presets)
 
         if phase == "researcher":
             if configure_researcher_phase(
@@ -244,6 +248,96 @@ def _configure_general_phase(
 
 class _ConfigurationCancelled(Exception):
     """Internal sentinel for handling cancellations."""
+
+
+def _load_runtime_codex_presets(
+    provider_availability: Mapping[str, bool],
+) -> tuple[model_presets.PresetInfo, ...]:
+    codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
+    if not codex_available:
+        return ()
+
+    try:
+        diagnostics = codex_runtime.get_codex_runtime_diagnostics(include_models=True)
+    except Exception:
+        return ()
+    if diagnostics.runtime_error or diagnostics.models_error or not diagnostics.models:
+        return ()
+
+    catalog_entries = [
+        model_presets.CodexRuntimeModelCatalogEntry(
+            model=model.model,
+            display_name=model.display_name,
+            description=model.description or model.availability_message,
+            default_reasoning_effort=model.default_reasoning_effort,
+            supported_reasoning_efforts=tuple(
+                model_presets.CodexRuntimeModelReasoningOption(
+                    reasoning_effort=option.reasoning_effort,
+                    description=option.description,
+                )
+                for option in model.supported_reasoning_efforts
+            ),
+        )
+        for model in diagnostics.models
+    ]
+    return tuple(model_presets.build_codex_runtime_preset_infos(catalog_entries))
+
+
+def _merge_presets_with_runtime_codex(
+    presets: list[model_presets.PresetInfo],
+    runtime_codex_presets: tuple[model_presets.PresetInfo, ...],
+) -> list[model_presets.PresetInfo]:
+    if not runtime_codex_presets:
+        return presets
+
+    merged: list[model_presets.PresetInfo] = [preset for preset in presets if preset.provider != ModelProvider.CODEX]
+    existing_keys = {preset.key for preset in merged}
+    for runtime_preset in runtime_codex_presets:
+        if runtime_preset.key in existing_keys:
+            continue
+        merged.append(runtime_preset)
+        existing_keys.add(runtime_preset.key)
+    return merged
+
+
+def _normalize_codex_selection_key(
+    key: str | None,
+    runtime_codex_presets: tuple[model_presets.PresetInfo, ...],
+) -> str | None:
+    if key is None or not runtime_codex_presets:
+        return key
+    runtime_by_model: dict[str, str] = {}
+    runtime_by_identity: dict[tuple[str, str | None], str] = {}
+    for runtime_preset in runtime_codex_presets:
+        model_name = model_presets.parse_codex_runtime_preset_key(runtime_preset.key)
+        if model_name is None:
+            continue
+        runtime_by_model.setdefault(model_name, runtime_preset.key)
+        effort = model_presets.parse_codex_runtime_reasoning_for_preset_key(runtime_preset.key)
+        runtime_by_identity[(model_name, effort)] = runtime_preset.key
+
+    model_name = model_presets.resolve_codex_model_name_for_preset_key(key)
+    if model_name is None:
+        return key
+    selected_effort = model_presets.resolve_codex_reasoning_effort_for_preset_key(key)
+    for effort in _preferred_codex_effort_order(selected_effort):
+        candidate = runtime_by_identity.get((model_name, effort))
+        if candidate is not None:
+            return candidate
+    return runtime_by_model.get(model_name, key)
+
+
+def _preferred_codex_effort_order(selected_effort: str | None) -> tuple[str | None, ...]:
+    ordered_candidates: list[str | None] = []
+
+    def _append(value: str | None) -> None:
+        if value not in ordered_candidates:
+            ordered_candidates.append(value)
+
+    _append(selected_effort)
+    for value in ("medium", "high", "low", "minimal", "none", "xhigh", None):
+        _append(value)
+    return tuple(ordered_candidates)
 
 
 __all__ = ["configure_models"]

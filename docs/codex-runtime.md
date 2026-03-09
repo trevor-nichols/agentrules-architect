@@ -63,14 +63,16 @@ This uses the Codex app-server auth flow documented in `internal-docs/integratio
 After the runtime is available:
 
 1. Open `Settings -> Model presets per phase`
-2. Pick a `codex-*` preset for any phase you want to route through Codex
-3. For Phase 1 researcher, choose a `codex-*` preset if you want runtime-native web search instead of Tavily
+2. Pick a `Codex: <model>` option for any phase you want to route through Codex
+3. If the model exposes multiple runtime efforts, choose the desired reasoning variant (`no reasoning`, `minimal`, `low`, `medium`, `high`, or `very high`) in the variant picker
+4. For Phase 1 researcher, choose a `Codex: <model>` option if you want runtime-native web search instead of Tavily
 
 Notes:
 
 - Codex-backed researchers do not require Tavily credentials
 - Non-Codex researcher presets still require Tavily unless you are in offline mode
 - Codex-backed Phase 3 agents inspect files from the repository directly instead of receiving embedded file contents
+- `Codex: <model>` options come from live app-server `model/list` output and track runtime model availability directly
 
 ## Optional live smoke
 

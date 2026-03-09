@@ -40,6 +40,7 @@ class ReasoningMode(Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+    XHIGH = "xhigh"
 
     # For temperature-based models like gpt-4.1, use TEMPERATURE mode
     # and specify the actual temperature value separately

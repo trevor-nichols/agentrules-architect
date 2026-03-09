@@ -303,7 +303,10 @@ def build_codex_output_schema(phase: str | None) -> dict[str, Any] | None:
     schema = get_phase_model_response_schema(phase)
     if schema is None:
         return None
-    return copy.deepcopy(schema)
+    # Codex app-server forwards JSON schema constraints to model providers that
+    # enforce strict required/additionalProperties rules (mirroring OpenAI
+    # strict structured outputs semantics).
+    return build_openai_strict_schema(schema)
 
 
 def build_gemini_response_schema(phase: str | None) -> dict[str, Any] | None:

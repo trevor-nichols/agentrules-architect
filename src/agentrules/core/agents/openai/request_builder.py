@@ -94,6 +94,9 @@ def prepare_request(
 
 
 def _build_responses_reasoning_payload(reasoning: ReasoningMode) -> dict[str, str] | None:
+    if reasoning == ReasoningMode.XHIGH:
+        return {"effort": ReasoningMode.HIGH.value}
+
     if reasoning in {
         ReasoningMode.MINIMAL,
         ReasoningMode.LOW,
@@ -137,8 +140,11 @@ def _build_chat_reasoning_params(
         effort = "high"
     elif reasoning == ReasoningMode.MINIMAL:
         effort = ReasoningMode.LOW.value
-    elif reasoning in {ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH}:
-        effort = reasoning.value
+    elif reasoning in {ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH, ReasoningMode.XHIGH}:
+        if reasoning == ReasoningMode.XHIGH:
+            effort = ReasoningMode.HIGH.value
+        else:
+            effort = reasoning.value
     else:
         effort = ReasoningMode.MEDIUM.value
 

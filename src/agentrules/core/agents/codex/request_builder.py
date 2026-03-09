@@ -88,6 +88,7 @@ def _resolve_reasoning_effort(reasoning: ReasoningMode) -> str | None:
         ReasoningMode.LOW,
         ReasoningMode.MEDIUM,
         ReasoningMode.HIGH,
+        ReasoningMode.XHIGH,
     }:
         return reasoning.value
     if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:

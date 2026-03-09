@@ -6,6 +6,7 @@ from agentrules.core.utils.structured_outputs import (
     augment_prompt_for_json_mode,
     build_anthropic_output_format,
     build_chat_json_object_response_format,
+    build_codex_output_schema,
     build_openai_chat_response_format,
     build_openai_strict_schema,
     build_openai_text_format,
@@ -127,6 +128,25 @@ def test_anthropic_output_format_does_not_mutate_base_phase_schema() -> None:
     assert phase_schema["additionalProperties"] is True
     build_anthropic_output_format("phase4")
     assert phase_schema["additionalProperties"] is True
+
+
+def test_codex_output_schema_is_strict_for_phase2() -> None:
+    schema = build_codex_output_schema("phase2")
+    assert schema is not None
+    assert schema["additionalProperties"] is False
+    assert "reasoning" in schema["required"]
+
+    agent_schema = schema["properties"]["agents"]["items"]
+    assert agent_schema["additionalProperties"] is False
+    assert "responsibilities" in agent_schema["required"]
+
+
+def test_codex_output_schema_makes_optional_phase4_error_required_with_null() -> None:
+    schema = build_codex_output_schema("phase4")
+    assert schema is not None
+    assert schema["additionalProperties"] is False
+    assert schema["required"] == ["analysis", "error"]
+    assert schema["properties"]["error"]["type"] == ["string", "null"]
 
 
 def test_build_openai_strict_schema_requires_all_object_keys() -> None:

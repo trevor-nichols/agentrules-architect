@@ -71,6 +71,8 @@ def prepare_request(
 def _map_reasoning_effort(reasoning: ReasoningMode, defaults: ModelDefaults) -> str | None:
     if not defaults.reasoning_effort_supported:
         return None
+    if reasoning == ReasoningMode.XHIGH:
+        return ReasoningMode.HIGH.value
     if reasoning in {
         ReasoningMode.MINIMAL,
         ReasoningMode.LOW,

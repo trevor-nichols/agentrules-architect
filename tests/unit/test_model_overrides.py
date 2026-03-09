@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from importlib import reload
 
-from agentrules.core.agents.base import ModelProvider
+from agentrules.core.agents.base import ModelProvider, ReasoningMode
 
 
 class ModelOverrideTestCase(unittest.TestCase):
@@ -57,6 +57,127 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.config_manager.set_phase_model("phase1", None)
         self.model_config.apply_user_overrides()
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase1"], default_config)
+
+    def test_apply_user_overrides_accepts_dynamic_codex_runtime_model(self) -> None:
+        runtime_model_key = self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview")
+
+        self.config_manager.set_phase_model("phase3", runtime_model_key)
+        self.model_config.apply_user_overrides()
+
+        phase3_config = self.agents_module.MODEL_CONFIG["phase3"]
+        self.assertEqual(phase3_config.provider, ModelProvider.CODEX)
+        self.assertEqual(phase3_config.model_name, "gpt-6-codex-preview")
+        self.assertEqual(phase3_config.reasoning.value, "medium")
+
+    def test_dynamic_codex_runtime_key_generates_preset_info(self) -> None:
+        runtime_model_key = self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview")
+
+        preset_info = self.model_config.get_preset_info(runtime_model_key)
+
+        self.assertIsNotNone(preset_info)
+        assert preset_info is not None
+        self.assertEqual(preset_info.provider, ModelProvider.CODEX)
+        self.assertIn("gpt-6-codex-preview", preset_info.label)
+
+    def test_dynamic_codex_runtime_key_with_effort_generates_reasoning_variant(self) -> None:
+        runtime_model_key = self.model_config.make_codex_runtime_preset_key(
+            "gpt-6-codex-preview",
+            reasoning_effort="high",
+        )
+
+        preset_info = self.model_config.get_preset_info(runtime_model_key)
+
+        self.assertIsNotNone(preset_info)
+        assert preset_info is not None
+        self.assertEqual(preset_info.provider, ModelProvider.CODEX)
+        self.assertIn("(high)", preset_info.label.lower())
+
+    def test_apply_user_overrides_accepts_dynamic_codex_runtime_model_with_explicit_effort(self) -> None:
+        runtime_model_key = self.model_config.make_codex_runtime_preset_key(
+            "gpt-6-codex-preview",
+            reasoning_effort="low",
+        )
+
+        self.config_manager.set_phase_model("phase3", runtime_model_key)
+        self.model_config.apply_user_overrides()
+
+        phase3_config = self.agents_module.MODEL_CONFIG["phase3"]
+        self.assertEqual(phase3_config.provider, ModelProvider.CODEX)
+        self.assertEqual(phase3_config.model_name, "gpt-6-codex-preview")
+        self.assertEqual(phase3_config.reasoning, ReasoningMode.LOW)
+
+    def test_runtime_codex_catalog_presets_include_catalog_models(self) -> None:
+        catalog_entries = [
+            self.model_config.CodexRuntimeModelCatalogEntry(
+                model="gpt-5.3-codex",
+                display_name="GPT-5.3 Codex",
+                description="Already defined internally.",
+            ),
+            self.model_config.CodexRuntimeModelCatalogEntry(
+                model="gpt-6-codex-preview",
+                display_name="GPT-6 Codex Preview",
+                description="Runtime-only.",
+            ),
+        ]
+
+        presets = self.model_config.build_codex_runtime_preset_infos(catalog_entries)
+        preset_keys = {preset.key for preset in presets}
+
+        self.assertIn(self.model_config.make_codex_runtime_preset_key("gpt-5.3-codex"), preset_keys)
+        self.assertIn(self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview"), preset_keys)
+
+    def test_runtime_codex_catalog_presets_expand_reasoning_variants(self) -> None:
+        catalog_entries = [
+            self.model_config.CodexRuntimeModelCatalogEntry(
+                model="gpt-6-codex-preview",
+                display_name="GPT-6 Codex Preview",
+                description="Runtime-only.",
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=(
+                    self.model_config.CodexRuntimeModelReasoningOption(
+                        reasoning_effort="none",
+                        description="Disable reasoning.",
+                    ),
+                    self.model_config.CodexRuntimeModelReasoningOption(
+                        reasoning_effort="medium",
+                        description="Balanced reasoning.",
+                    ),
+                    self.model_config.CodexRuntimeModelReasoningOption(
+                        reasoning_effort="xhigh",
+                        description="Maximum depth.",
+                    ),
+                ),
+            ),
+        ]
+
+        presets = self.model_config.build_codex_runtime_preset_infos(catalog_entries)
+        preset_keys = {preset.key for preset in presets}
+
+        self.assertIn(
+            self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="none"),
+            preset_keys,
+        )
+        self.assertIn(
+            self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="medium"),
+            preset_keys,
+        )
+        self.assertIn(
+            self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="xhigh"),
+            preset_keys,
+        )
+
+    def test_runtime_codex_preset_key_round_trips_reasoning_effort(self) -> None:
+        runtime_model_key = self.model_config.make_codex_runtime_preset_key(
+            "gpt-6-codex-preview",
+            reasoning_effort="xhigh",
+        )
+
+        selection = self.model_config.parse_codex_runtime_preset_selection(runtime_model_key)
+
+        self.assertIsNotNone(selection)
+        assert selection is not None
+        self.assertEqual(selection.model_name, "gpt-6-codex-preview")
+        self.assertEqual(selection.reasoning_effort, "xhigh")
 
     def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
         self.assertIn("gpt-5.2-codex", self.agents_module.MODEL_PRESETS)
