@@ -139,14 +139,14 @@ Establish a temporal context that creates psychological distance from default be
 ### Format:
 
 ```
-It is {current_month} {current_year} and [temporal context].
+It is {current_year} and [temporal context].
 
 ```
 
 ### Example 1:
 
 ```
-It is {current_month} {current_year} and you are developing with the brand new {current_year} [Technology] which has the following key differences from your training data...
+It is {current_year} and you are developing with the brand new {current_year} [Technology] which has the following key differences from your training data...
 
 ```
 
@@ -464,8 +464,7 @@ def format_final_analysis_prompt(
 
     structure_str = "\n".join(structure_lines)
 
-    # Get current month and year
-    current_month = datetime.now().strftime("%B")
+    # Get current year
     current_year = datetime.now().strftime("%Y")
     cleaned_rules_filename = rules_filename.strip()
     if not cleaned_rules_filename or "/" in cleaned_rules_filename or "\\" in cleaned_rules_filename:
@@ -474,7 +473,6 @@ def format_final_analysis_prompt(
     return FINAL_ANALYSIS_PROMPT.format(
         report=json.dumps(consolidated_report, indent=2),
         project_structure=structure_str,
-        current_month=current_month,
         current_year=current_year,
         rules_filename=cleaned_rules_filename,
     )
