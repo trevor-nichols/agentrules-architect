@@ -75,7 +75,13 @@ The pipeline captures metrics (elapsed time, agent counts) and hands them to the
 
 ## 📦 Installation
 
-### Clone & bootstrap
+### Install from PyPI
+
+```bash
+pip install agentrules
+```
+
+### Install from source
 
 ```bash
 git clone https://github.com/trevor-nichols/agentrules-architect.git
@@ -104,7 +110,7 @@ Prefer module execution during development? Invoke the CLI with Python’s modul
 python -m agentrules analyze /path/to/project
 ```
 
-Need to skip local cloning? Install straight from GitHub (PyPI release pending):
+Need to install directly from GitHub instead of PyPI?
 
 ```bash
 pip install "git+https://github.com/trevor-nichols/agentrules-architect.git#egg=agentrules"
@@ -320,8 +326,17 @@ Toggle outputs with `agentrules configure --outputs` or via the config TOML.
 - Run targeted tests: `python tests/phase_3_test/run_test.py`
 - Deterministic smoke runs (CI/local without API calls): `agentrules analyze --offline tests/tests_input`
 - Full suite: `python -m unittest discover tests -v`
-- Releases are tag-driven: bump `[project].version` in `pyproject.toml`, commit it, create the matching `vX.Y.Z` tag, and push the tag to let GitHub Actions publish the GitHub Release automatically.
+- Releases are tag-driven: bump `[project].version` in `pyproject.toml`, commit, create matching `vX.Y.Z` tag, and push it.
+- GitHub Actions now publishes package artifacts with Trusted Publishing (OIDC) via `.github/workflows/publish-pypi.yml` (no long-lived PyPI API token).
+- Run a safe preflight publish first from Actions with `workflow_dispatch` and `repository = testpypi`; publish to production PyPI on tag push or manual `repository = pypi`.
 - Keep docs and presets in sync when adding providers (`config/agents.py`, `config/tools.py`, `core/agents/*`).
+
+### Release Process (PyPI)
+
+1. Update `[project].version` in `pyproject.toml`, then commit and push.
+2. Run `.github/workflows/publish-pypi.yml` manually with `repository = testpypi` to validate package upload first.
+3. Create and push matching tag `vX.Y.Z` to trigger Trusted Publishing to PyPI.
+4. The same tag also triggers `.github/workflows/release.yml` for GitHub Release artifact/notes.
 
 ## 🤝 Contributing
 
