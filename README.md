@@ -3,6 +3,7 @@
 <div align="center">
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+[![PyPI](https://img.shields.io/pypi/v/agentrules.svg)](https://pypi.org/project/agentrules/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-supported-blue.svg)](https://openai.com/)
 [![Codex Runtime](https://img.shields.io/badge/Codex%20app--server-supported-orange.svg)](https://github.com/openai/codex)
 [![Anthropic](https://img.shields.io/badge/Anthropic-supported-purple.svg)](https://www.anthropic.com/)
@@ -27,7 +28,7 @@ Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Ar
 
 ## 🔥 v3 Highlights
 
-- ✨ **Rebrand & packaging** – ships with console-script and `python -m agentrules` entry points when installed from source.
+- ✨ **Rebrand & packaging** – ships on PyPI with console-script and `python -m agentrules` entry points.
 - 🧭 **Typer CLI overhaul** – `agentrules` launches an interactive main menu with subcommands for `analyze`, `configure`, and `keys`.
 - 🗂️ **Persistent settings** – API keys, model presets, logging, and output preferences live in `~/.config/agentrules/config.toml` (override with `AGENTRULES_CONFIG_DIR`).
 - 🧠 **Expanded provider matrix** – the preset catalog spans Anthropic, OpenAI, Google, DeepSeek, xAI, and Codex runtime presets, with phase-by-phase model selection from the CLI or config file.
@@ -78,8 +79,11 @@ The pipeline captures metrics (elapsed time, agent counts) and hands them to the
 ### Install from PyPI
 
 ```bash
-pip install agentrules
+pip install -U agentrules
 ```
+
+- Package page: <https://pypi.org/project/agentrules/>
+- Test index page: <https://test.pypi.org/project/agentrules/>
 
 ### Install from source
 
@@ -114,6 +118,12 @@ Need to install directly from GitHub instead of PyPI?
 
 ```bash
 pip install "git+https://github.com/trevor-nichols/agentrules-architect.git#egg=agentrules"
+```
+
+Need to validate against TestPyPI specifically?
+
+```bash
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple agentrules==3.4.1
 ```
 
 ## 🔐 Configure API Keys
@@ -337,6 +347,7 @@ Toggle outputs with `agentrules configure --outputs` or via the config TOML.
 2. Run `.github/workflows/publish-pypi.yml` manually with `repository = testpypi` to validate package upload first.
 3. Create and push matching tag `vX.Y.Z` to trigger Trusted Publishing to PyPI.
 4. The same tag also triggers `.github/workflows/release.yml` for GitHub Release artifact/notes.
+5. One-time setup for new projects: configure Trusted Publishers on TestPyPI and PyPI for repository `trevor-nichols/agentrules-architect`, workflow `.github/workflows/publish-pypi.yml`, and environments `testpypi`/`pypi`.
 
 ## 🤝 Contributing
 
