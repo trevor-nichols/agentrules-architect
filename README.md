@@ -336,18 +336,21 @@ Toggle outputs with `agentrules configure --outputs` or via the config TOML.
 - Run targeted tests: `python tests/phase_3_test/run_test.py`
 - Deterministic smoke runs (CI/local without API calls): `agentrules analyze --offline tests/tests_input`
 - Full suite: `python -m unittest discover tests -v`
-- Releases are tag-driven: bump `[project].version` in `pyproject.toml`, commit, create matching `vX.Y.Z` tag, and push it.
+- Releases are Release Please-driven: merges to `main` update/open a release PR, and merging that PR creates the `vX.Y.Z` tag + GitHub release automatically.
 - GitHub Actions now publishes package artifacts with Trusted Publishing (OIDC) via `.github/workflows/publish-pypi.yml` (no long-lived PyPI API token).
-- Run a safe preflight publish first from Actions with `workflow_dispatch` and `repository = testpypi`; publish to production PyPI on tag push or manual `repository = pypi`.
+- Run a safe preflight publish first from Actions with `workflow_dispatch` and `repository = testpypi`; publish to production PyPI on release-tag push or manual `repository = pypi`.
 - Keep docs and presets in sync when adding providers (`config/agents.py`, `config/tools.py`, `core/agents/*`).
 
 ### Release Process (PyPI)
 
-1. Update `[project].version` in `pyproject.toml`, then commit and push.
-2. Run `.github/workflows/publish-pypi.yml` manually with `repository = testpypi` to validate package upload first.
-3. Create and push matching tag `vX.Y.Z` to trigger Trusted Publishing to PyPI.
-4. The same tag also triggers `.github/workflows/release.yml` for GitHub Release artifact/notes.
-5. One-time setup for new projects: configure Trusted Publishers on TestPyPI and PyPI for repository `trevor-nichols/agentrules-architect`, workflow `.github/workflows/publish-pypi.yml`, and environments `testpypi`/`pypi`.
+1. Merge feature PRs into `main` using Conventional Commit-style titles/messages (for example `feat: ...`, `fix: ...`).
+2. `.github/workflows/release-please.yml` updates or opens a release PR with the version bump and changelog.
+3. (Optional, recommended) run `.github/workflows/publish-pypi.yml` manually with `repository = testpypi` from the release PR head commit.
+4. Merge the release PR. Release Please creates/pushes the matching `vX.Y.Z` tag and publishes a GitHub release.
+5. The tag push triggers `.github/workflows/publish-pypi.yml` to publish to production PyPI.
+6. One-time setup for new projects:
+   - Configure a repo secret `RELEASE_PLEASE_TOKEN` (PAT or GitHub App token) with permission to create/update PRs, tags, and releases. This ensures tag pushes from Release Please trigger downstream workflows.
+   - Configure Trusted Publishers on TestPyPI and PyPI for repository `trevor-nichols/agentrules-architect`, workflow `.github/workflows/publish-pypi.yml`, and environments `testpypi`/`pypi`.
 
 ## 🤝 Contributing
 

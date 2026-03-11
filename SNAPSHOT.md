@@ -419,6 +419,8 @@
 │   │   └── __init__.pyi  # Type stub init
 │   └── tomli_w/  # Type stubs for tomli_w module
 │       └── __init__.pyi  # Type stub init
+├── .release-please-config.json
+├── .release-please-manifest.json
 ├── conftest.py  # pytest configuration, sets up live test markers
 ├── CONTRIBUTING.md
 ├── pyproject.toml  # Python project metadata and dependencies
