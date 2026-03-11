@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentrules"
-version = "3.4.1"
+version = "3.4.2"
 description = "AGENTS.md/CLAUDE.md generator and ExecPlan harness for coding agents"
 readme = "README.md"
 authors = [{name = "trevor-nichols"}]
