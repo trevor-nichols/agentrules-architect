@@ -27,7 +27,17 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
             self.assertIn("Added ExecPlans guidance", message)
             self.assertIn("## ExecPlans", content)
             self.assertIn(
-                "When writing complex features or significant refactors, use an ExecPlan",
+                "- When writing complex features or refactors, use an ExecPlan",
+                content,
+            )
+            self.assertIn("### Milestones", content)
+            self.assertIn(
+                "disaggregate the ExecPlan into milestones",
+                content,
+            )
+            self.assertIn("### Prefer CLI creation over manual file creation:", content)
+            self.assertIn(
+                "`agentrules execplan new \"<title>\" --slug <short-slug> --ms <N>`",
                 content,
             )
             self.assertLess(content.index("## ExecPlans"), content.index("# 2. TEMPORAL FRAMEWORK"))
@@ -40,8 +50,20 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
                 "# Development Principles:\n"
                 "- Keep changes maintainable.\n\n"
                 "## ExecPlans\n"
-                "When writing complex features or significant refactors, "
-                "use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.\n\n"
+                "- When writing complex features or refactors, use an ExecPlan "
+                "(as described in `.agent/PLANS.md`) from design to implementation.\n\n"
+                "### Milestones\n"
+                "- When the feature or refactor your writing is significantly complex, "
+                "disaggregate the ExecPlan into milestones "
+                "(as described in `.agent/templates/MILESTONE_TEMPLATE.md`)\n\n"
+                "### Prefer CLI creation over manual file creation:\n"
+                "* ExecPlan:\n"
+                "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug> --ms <N>` "
+                "(Use `--ms <N>` for deterministic `MS###` sequence assignment).\n"
+                "  * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`\n"
+                "* Milestones:\n"
+                "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\"`\n"
+                "  * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`\n\n"
                 "# 2. TEMPORAL FRAMEWORK\n"
                 "It is February 2026.\n"
             )
@@ -69,6 +91,39 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
             self.assertIn("missing Development Principles section", message)
             self.assertIn("# Development Principles", content)
             self.assertIn("## ExecPlans", content)
+
+    def test_replaces_outdated_execplans_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            rules_path = Path(tmpdir) / "AGENTS.md"
+            rules_path.write_text(
+                (
+                    "You are a coding agent.\n\n"
+                    "# Development Principles:\n"
+                    "- Keep changes maintainable.\n\n"
+                    "## ExecPlans\n"
+                    "When writing complex features or significant refactors, "
+                    "use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.\n\n"
+                    "# 2. TEMPORAL FRAMEWORK\n"
+                    "It is February 2026.\n"
+                ),
+                encoding="utf-8",
+            )
+
+            success, message = ensure_execplans_guidance(tmpdir, filename="AGENTS.md")
+            content = rules_path.read_text(encoding="utf-8")
+
+            self.assertTrue(success)
+            self.assertIn("Updated existing ExecPlans guidance", message)
+            self.assertIn(
+                "- When writing complex features or refactors, use an ExecPlan",
+                content,
+            )
+            self.assertIn("### Milestones", content)
+            self.assertIn("### Prefer CLI creation over manual file creation:", content)
+            self.assertNotIn(
+                "When writing complex features or significant refactors, use an ExecPlan",
+                content,
+            )
 
 
 if __name__ == "__main__":

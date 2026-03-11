@@ -28,13 +28,46 @@ DEVELOPMENT_PRINCIPLES_HEADING_PATTERN = re.compile(
 MARKDOWN_HEADING_PATTERN = re.compile(r'^(?P<hashes>#{1,6})\s+\S')
 EXECPLANS_HEADING = "## ExecPlans"
 EXECPLANS_GUIDANCE_LINE = (
-    "When writing complex features or significant refactors, "
-    "use an ExecPlan (as described in .agent/PLANS.md) from design to implementation."
+    "- When writing complex features or refactors, use an ExecPlan "
+    "(as described in `.agent/PLANS.md`) from design to implementation."
+)
+EXECPLANS_MILESTONES_HEADING = "### Milestones"
+EXECPLANS_MILESTONES_LINE = (
+    "- When the feature or refactor your writing is significantly complex, "
+    "disaggregate the ExecPlan into milestones "
+    "(as described in `.agent/templates/MILESTONE_TEMPLATE.md`)"
+)
+EXECPLANS_CLI_HEADING = "### Prefer CLI creation over manual file creation:"
+EXECPLANS_CLI_LINES = (
+    "* ExecPlan:",
+    "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug> --ms <N>` "
+    "(Use `--ms <N>` for deterministic `MS###` sequence assignment).",
+    "  * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`",
+    "* Milestones:",
+    "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\"`",
+    "  * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`",
+)
+EXECPLANS_GUIDANCE_BLOCK = (
+    EXECPLANS_HEADING,
+    EXECPLANS_GUIDANCE_LINE,
+    "",
+    EXECPLANS_MILESTONES_HEADING,
+    EXECPLANS_MILESTONES_LINE,
+    "",
+    EXECPLANS_CLI_HEADING,
+    *EXECPLANS_CLI_LINES,
+)
+EXECPLANS_REQUIRED_LINES = (
+    EXECPLANS_GUIDANCE_LINE,
+    EXECPLANS_MILESTONES_HEADING,
+    EXECPLANS_MILESTONES_LINE,
+    EXECPLANS_CLI_HEADING,
+    *EXECPLANS_CLI_LINES,
 )
 
 
 def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
-    if EXECPLANS_GUIDANCE_LINE in content:
+    if all(line in content for line in EXECPLANS_REQUIRED_LINES):
         return content, False, "ExecPlans guidance already present."
 
     lines = content.splitlines()
@@ -54,8 +87,7 @@ def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
             [
                 "# Development Principles",
                 "",
-                EXECPLANS_HEADING,
-                EXECPLANS_GUIDANCE_LINE,
+                *EXECPLANS_GUIDANCE_BLOCK,
             ]
         )
         return "\n".join(lines) + "\n", True, "Added missing Development Principles section with ExecPlans guidance."
@@ -71,16 +103,41 @@ def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
             break
 
     section_lines = lines[heading_index:section_end]
-    for line in section_lines:
+    execplans_heading_index: int | None = None
+    execplans_heading_level = 0
+    for index, line in enumerate(section_lines):
         normalized = line.strip().lower().rstrip(":")
         if normalized == "## execplans" or normalized == "### execplans":
-            return content, False, "ExecPlans heading already present under Development Principles."
+            execplans_heading_index = heading_index + index
+            heading_match = MARKDOWN_HEADING_PATTERN.match(line.strip())
+            if heading_match:
+                execplans_heading_level = len(heading_match.group("hashes"))
+            break
+
+    if execplans_heading_index is not None:
+        execplans_block_end = section_end
+        for index in range(execplans_heading_index + 1, section_end):
+            line = lines[index]
+            heading_match = MARKDOWN_HEADING_PATTERN.match(line.strip())
+            if not heading_match:
+                continue
+            if len(heading_match.group("hashes")) <= execplans_heading_level:
+                execplans_block_end = index
+                break
+
+        replacement_lines = list(EXECPLANS_GUIDANCE_BLOCK)
+        updated_lines = lines[:execplans_heading_index] + replacement_lines + lines[execplans_block_end:]
+        return (
+            "\n".join(updated_lines) + "\n",
+            True,
+            "Updated existing ExecPlans guidance under Development Principles.",
+        )
 
     insert_at = section_end
     while insert_at > heading_index and not lines[insert_at - 1].strip():
         insert_at -= 1
 
-    insertion_lines = ["", EXECPLANS_HEADING, EXECPLANS_GUIDANCE_LINE, ""]
+    insertion_lines = ["", *EXECPLANS_GUIDANCE_BLOCK, ""]
     updated_lines = lines[:insert_at] + insertion_lines + lines[section_end:]
     return "\n".join(updated_lines) + "\n", True, "Added ExecPlans guidance under Development Principles."
 
