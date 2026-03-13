@@ -56,7 +56,8 @@ class AnalysisPipeline:
     async def run_phase1(self, snapshot: ProjectSnapshot) -> dict[str, object]:
         tree = list(snapshot.tree)
         dependency_info = dict(snapshot.dependency_info)
-        phase1_raw = await self._phase1.run(tree, dependency_info)
+        project_profile = dict(snapshot.project_profile)
+        phase1_raw = await self._phase1.run(tree, dependency_info, project_profile)
         return dict(phase1_raw)
 
     async def run_phase2(

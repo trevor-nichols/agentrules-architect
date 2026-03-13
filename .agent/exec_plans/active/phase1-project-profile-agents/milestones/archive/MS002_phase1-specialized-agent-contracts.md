@@ -3,7 +3,7 @@ id: EP-20260313-001/MS002
 execplan_id: EP-20260313-001
 ms: 2
 title: "Phase 1 specialized agent contracts and gating"
-status: planned
+status: completed
 domain: backend
 owner: "@codex"
 created: 2026-03-13
@@ -26,9 +26,9 @@ Introduce explicit specialized Phase 1 agent contracts and execute them conditio
 
 ## Definition of Done
 
-- [ ] Implementation complete.
-- [ ] Validation complete.
-- [ ] Documentation and operational notes updated.
+- [x] Implementation complete.
+- [x] Validation complete.
+- [x] Documentation and operational notes updated.
 
 ## Scope
 
@@ -44,8 +44,8 @@ Introduce explicit specialized Phase 1 agent contracts and execute them conditio
 
 ## Workstreams & Tasks
 
-- [ ] Workstream A: Prompt and gating contract implementation.
-- [ ] Workstream B: Phase 1 execution and test coverage.
+- [x] Workstream A: Prompt and gating contract implementation.
+- [x] Workstream B: Phase 1 execution and test coverage.
 
 ## Risks & Mitigations
 
@@ -64,3 +64,8 @@ Introduce explicit specialized Phase 1 agent contracts and execute them conditio
 
 - 2026-03-13: Milestone created.
 - 2026-03-13: Scope finalized.
+- 2026-03-13: Added specialized prompt contracts and profile-gating helper in `config/prompts/phase_1_prompts.py`.
+- 2026-03-13: Updated `Phase1Analysis.run()` to accept and propagate `project_profile`, execute optional specialized agents, and include profile in Phase 1 output.
+- 2026-03-13: Updated orchestrator Phase 1 invocation to pass `snapshot.project_profile`.
+- 2026-03-13: Added tests in `tests/phase_1_test/test_phase1_profile_agents.py`.
+- 2026-03-13: Validation green: `ruff check ...` and `pytest -q tests/phase_1_test tests/unit/utils/test_structured_outputs.py`.

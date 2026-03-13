@@ -156,8 +156,9 @@ MS003 - Integration polish docs and regression coverage
 - [x] (2026-03-13 16:06Z) Defined concrete `project_profile` schema and Phase 1 specialized agent contracts.
 - [x] (2026-03-13 16:15Z) Implemented MS001 project profile detector and snapshot wiring with new unit coverage (`tests/unit/test_project_profile.py`).
 - [x] (2026-03-13 16:15Z) Validated MS001 via `ruff check src/agentrules/core/pipeline tests/unit/test_pipeline_snapshot.py tests/unit/test_project_profile.py` and `pytest -q tests/unit/test_pipeline_snapshot.py tests/unit/test_project_profile.py`.
-- [ ] Archive MS001 and commit.
-- [ ] Implement MS002 and validate.
+- [x] (2026-03-13 16:21Z) Archived MS001 and committed snapshot/profile foundation (`feat(pipeline): add project profile snapshot foundation`).
+- [x] (2026-03-13 16:28Z) Implemented MS002 specialized agent prompts + Phase 1 routing and added `tests/phase_1_test/test_phase1_profile_agents.py`.
+- [x] (2026-03-13 16:28Z) Validated MS002 via `ruff check ...` and `pytest -q tests/phase_1_test tests/unit/utils/test_structured_outputs.py`.
 - [ ] Archive MS002 and commit.
 - [ ] Implement MS003 and validate.
 - [ ] Archive MS003, commit, archive ExecPlan.
@@ -168,6 +169,8 @@ MS003 - Integration polish docs and regression coverage
   Evidence: CLI help output and successful milestone creation with `--ms` flags.
 - Observation: Adding `project_profile` to `ProjectSnapshot` can be made backward-compatible for existing tests by using a dataclass default rather than forcing every fixture constructor to change immediately.
   Evidence: `ProjectSnapshot.project_profile` uses `field(default_factory=dict)` and existing unit fixtures still construct valid snapshots.
+- Observation: Specialized Phase 1 agents can be added without polluting constructor state by building them per-run from profile-gated prompt contracts.
+  Evidence: `_run_specialized_profile_agents()` in `phase_1.py` creates optional agents only when `get_specialized_phase1_agent_prompts()` returns configs.
 
 ## Decision Log
 
@@ -179,6 +182,9 @@ MS003 - Integration polish docs and regression coverage
   Date/Author: 2026-03-13 / @codex
 - Decision: Build profile signal scanning from existing `list_files` with the current exclusion/gitignore pipeline settings, not custom directory traversal.
   Rationale: Keeps profile detection behavior aligned with existing tree/dependency discovery and avoids duplicate exclusion logic.
+  Date/Author: 2026-03-13 / @codex
+- Decision: Keep specialized Phase 1 agent gating declarative in `phase_1_prompts.py` via `profile_key` metadata and `get_specialized_phase1_agent_prompts()`.
+  Rationale: Centralized prompt contracts reduce branching logic in `Phase1Analysis` and make future agent additions low risk.
   Date/Author: 2026-03-13 / @codex
 
 ## Outcomes & Retrospective
