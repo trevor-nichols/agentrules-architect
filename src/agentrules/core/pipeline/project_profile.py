@@ -9,6 +9,7 @@ from typing import Any
 
 from pathspec import PathSpec
 
+from agentrules.config.exclusions import EXCLUDED_EXTENSIONS, EXCLUDED_FILES
 from agentrules.core.utils.file_system.file_retriever import list_files
 
 _FRONTEND_CONFIG_FILES = frozenset(
@@ -81,6 +82,8 @@ def build_project_profile(
     exclude_files: set[str],
     exclude_extensions: set[str],
     exclude_relative_paths: set[str],
+    explicit_exclude_files: set[str] | None = None,
+    explicit_exclude_extensions: set[str] | None = None,
 ) -> dict[str, Any]:
     """
     Build deterministic repository profile metadata for Phase 1 agent routing.
@@ -97,10 +100,23 @@ def build_project_profile(
         exclude_files=exclude_files,
         exclude_extensions=exclude_extensions,
         exclude_relative_paths=exclude_relative_paths,
+        explicit_exclude_files=explicit_exclude_files or set(),
+        explicit_exclude_extensions=explicit_exclude_extensions or set(),
     )
+    visible_file_index = {path.casefold() for path in visible_files}
 
-    manifest_records = _manifest_records(dependency_info)
-    managers = _dependency_managers(dependency_info)
+    manifest_records = _manifest_records_in_scope(
+        _manifest_records(dependency_info),
+        target_directory=target_directory,
+        visible_file_index=visible_file_index,
+    )
+    managers = _dependency_managers(
+        dependency_info,
+        target_directory=target_directory,
+        visible_file_index=visible_file_index,
+    )
+    if not managers:
+        managers = _manifest_managers(manifest_records)
     manifest_types = _manifest_types(manifest_records)
     manifest_paths = _manifest_paths(manifest_records, target_directory=target_directory)
 
@@ -136,9 +152,12 @@ def _list_visible_files(
     exclude_files: set[str],
     exclude_extensions: set[str],
     exclude_relative_paths: set[str],
+    explicit_exclude_files: set[str],
+    explicit_exclude_extensions: set[str],
 ) -> list[str]:
-    patterns = set(exclude_files)
-    patterns.update(f"*{ext}" for ext in exclude_extensions)
+    patterns = _build_exclusion_patterns(exclude_files, exclude_extensions)
+    default_exclude_files = {entry for entry in exclude_files if entry in EXCLUDED_FILES}
+    default_exclude_extensions = {entry for entry in exclude_extensions if entry in EXCLUDED_EXTENSIONS}
 
     visible_files: list[str] = []
     for path in list_files(
@@ -157,8 +176,8 @@ def _list_visible_files(
         visible_files.append(relative)
 
     if _requires_signal_override(
-        exclude_files=exclude_files,
-        exclude_extensions=exclude_extensions,
+        exclude_files=default_exclude_files,
+        exclude_extensions=default_exclude_extensions,
     ):
         signal_override_files = _list_signal_override_files(
             target_directory=target_directory,
@@ -166,14 +185,15 @@ def _list_visible_files(
             gitignore_spec=gitignore_spec,
             exclude_dirs=exclude_dirs,
             exclude_relative_paths=exclude_relative_paths,
+            explicit_exclude_files=explicit_exclude_files,
+            explicit_exclude_extensions=explicit_exclude_extensions,
         )
         visible_files.extend(signal_override_files)
     return _sorted_unique(visible_files)
 
 
 def _requires_signal_override(*, exclude_files: set[str], exclude_extensions: set[str]) -> bool:
-    exclusion_patterns = {pattern.casefold() for pattern in exclude_files}
-    exclusion_patterns.update(f"*{ext.casefold()}" for ext in exclude_extensions)
+    exclusion_patterns = _build_exclusion_patterns(exclude_files, exclude_extensions)
     return any(
         fnmatch.fnmatch(sample, pattern)
         for sample in _PROFILE_SIGNAL_PATTERN_SAMPLES
@@ -188,6 +208,8 @@ def _list_signal_override_files(
     gitignore_spec: PathSpec | None,
     exclude_dirs: set[str],
     exclude_relative_paths: set[str],
+    explicit_exclude_files: set[str],
+    explicit_exclude_extensions: set[str],
 ) -> list[str]:
     """
     Collect a targeted allowlist of profile-signal files despite global exclusions.
@@ -196,6 +218,10 @@ def _list_signal_override_files(
     markers that are intentionally hidden from general tree scanning.
     """
 
+    explicit_exclusion_patterns = _build_exclusion_patterns(
+        explicit_exclude_files,
+        explicit_exclude_extensions,
+    )
     signal_files: list[str] = []
     for path in list_files(
         target_directory,
@@ -211,6 +237,8 @@ def _list_signal_override_files(
         except ValueError:
             relative = path.as_posix()
         file_name = Path(relative).name.casefold()
+        if _matches_file_name_patterns(file_name, explicit_exclusion_patterns):
+            continue
         if file_name in _PROFILE_SIGNAL_BASENAMES or _is_requirements_signal(file_name):
             signal_files.append(relative)
     return _sorted_unique(signal_files)
@@ -218,6 +246,16 @@ def _list_signal_override_files(
 
 def _is_requirements_signal(file_name: str) -> bool:
     return any(fnmatch.fnmatch(file_name, pattern) for pattern in _PROFILE_SIGNAL_REQUIREMENTS_PATTERNS)
+
+
+def _build_exclusion_patterns(files: set[str], extensions: set[str]) -> set[str]:
+    patterns = {pattern.casefold() for pattern in files}
+    patterns.update(f"*{ext.casefold()}" for ext in extensions)
+    return patterns
+
+
+def _matches_file_name_patterns(file_name: str, patterns: set[str]) -> bool:
+    return any(fnmatch.fnmatch(file_name, pattern) for pattern in patterns)
 
 
 def _build_frontend_profile(
@@ -344,17 +382,48 @@ def _manifest_records(dependency_info: Mapping[str, Any] | None) -> list[Mapping
     return [entry for entry in manifests if isinstance(entry, Mapping)]
 
 
-def _dependency_managers(dependency_info: Mapping[str, Any] | None) -> list[str]:
+def _manifest_records_in_scope(
+    manifests: list[Mapping[str, Any]],
+    *,
+    target_directory: Path,
+    visible_file_index: set[str],
+) -> list[Mapping[str, Any]]:
+    in_scope: list[Mapping[str, Any]] = []
+    for manifest in manifests:
+        path_value = manifest.get("path")
+        if not isinstance(path_value, str) or not path_value.strip():
+            continue
+        normalized = _normalize_path(path_value, target_directory=target_directory)
+        if normalized.casefold() in visible_file_index:
+            in_scope.append(manifest)
+    return in_scope
+
+
+def _dependency_managers(
+    dependency_info: Mapping[str, Any] | None,
+    *,
+    target_directory: Path,
+    visible_file_index: set[str],
+) -> list[str]:
     if not isinstance(dependency_info, Mapping):
         return []
     summary = dependency_info.get("summary")
     if not isinstance(summary, Mapping):
         return []
-    return _sorted_unique(
-        manager
-        for manager in summary
-        if isinstance(manager, str) and manager.strip()
-    )
+    managers: set[str] = set()
+    for manager, paths in summary.items():
+        if not isinstance(manager, str) or not manager.strip():
+            continue
+        if not isinstance(paths, list):
+            continue
+        for path_value in paths:
+            if not isinstance(path_value, str) or not path_value.strip():
+                continue
+            normalized = _normalize_path(path_value, target_directory=target_directory)
+            if normalized.casefold() in visible_file_index:
+                managers.add(manager)
+                break
+    return _sorted_unique(managers)
 
 
 def _manifest_types(manifests: list[Mapping[str, Any]]) -> list[str]:
@@ -363,6 +432,15 @@ def _manifest_types(manifests: list[Mapping[str, Any]]) -> list[str]:
         for manifest in manifests
         for manifest_type in (manifest.get("type"),)
         if isinstance(manifest_type, str) and manifest_type.strip()
+    )
+
+
+def _manifest_managers(manifests: list[Mapping[str, Any]]) -> list[str]:
+    return _sorted_unique(
+        str(manager)
+        for manifest in manifests
+        for manager in (manifest.get("manager"),)
+        if isinstance(manager, str) and manager.strip()
     )
 
 

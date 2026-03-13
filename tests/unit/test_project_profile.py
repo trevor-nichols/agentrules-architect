@@ -176,6 +176,64 @@ class ProjectProfileTests(unittest.TestCase):
         self.assertIn("requirements.txt", python_profile["packaging_files"])
         self.assertIn("tox.ini", python_profile["tooling_files"])
 
+    def test_respects_explicit_excludes_for_profile_signals(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+
+            profile = build_project_profile(
+                target_directory=root,
+                dependency_info={"summary": {}, "manifests": []},
+                tree_max_depth=5,
+                gitignore_spec=None,
+                exclude_dirs=set(),
+                exclude_files={"pyproject.toml"},
+                exclude_extensions=set(),
+                exclude_relative_paths=set(),
+                explicit_exclude_files={"pyproject.toml"},
+                explicit_exclude_extensions=set(),
+            )
+
+        self.assertEqual(profile["detected_types"], ["generic"])
+        self.assertFalse(profile["python"]["detected"])
+        self.assertEqual(profile["python"]["packaging_files"], [])
+
+    def test_ignores_manifest_signals_outside_tree_depth(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            nested_manifest = root / "nested" / "deeper" / "package.json"
+            nested_manifest.parent.mkdir(parents=True, exist_ok=True)
+            nested_manifest.write_text('{"dependencies":{"next":"14.2.0"}}', encoding="utf-8")
+
+            dependency_info = {
+                "summary": {"npm": [str(nested_manifest)]},
+                "manifests": [
+                    {
+                        "path": str(nested_manifest),
+                        "type": "package_json",
+                        "manager": "npm",
+                        "data": {"dependencies": {"next": "14.2.0"}},
+                    }
+                ],
+            }
+
+            profile = build_project_profile(
+                target_directory=root,
+                dependency_info=dependency_info,
+                tree_max_depth=1,
+                gitignore_spec=None,
+                exclude_dirs=set(),
+                exclude_files=set(),
+                exclude_extensions=set(),
+                exclude_relative_paths=set(),
+            )
+
+        self.assertEqual(profile["signals"]["files_scanned"], 0)
+        self.assertEqual(profile["detected_types"], ["generic"])
+        self.assertFalse(profile["frontend"]["detected"])
+        self.assertEqual(profile["ecosystem"]["dependency_managers"], [])
+        self.assertEqual(profile["ecosystem"]["manifest_paths"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

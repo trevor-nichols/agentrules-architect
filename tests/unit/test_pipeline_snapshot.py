@@ -67,6 +67,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         mock_collect_dependency.assert_called_once_with(
             target_directory,
             gitignore_spec=spec,
+            max_depth=3,
             exclude_relative_paths={"AGENTS.custom.md", "SNAPSHOT.custom.md"},
         )
         mock_build_project_profile.assert_called_once_with(
@@ -78,6 +79,8 @@ class BuildProjectSnapshotTests(unittest.TestCase):
             exclude_files={"notes.txt"},
             exclude_extensions={".log"},
             exclude_relative_paths={"AGENTS.custom.md", "SNAPSHOT.custom.md"},
+            explicit_exclude_files=set(),
+            explicit_exclude_extensions=set(),
         )
 
         self.assertEqual(snapshot.tree_with_delimiters, ("<project_structure>", "src/", "</project_structure>"))
@@ -134,6 +137,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         mock_collect_dependency.assert_called_once_with(
             target_directory,
             gitignore_spec=None,
+            max_depth=2,
             exclude_relative_paths=set(),
         )
         mock_build_project_profile.assert_called_once_with(
@@ -145,6 +149,8 @@ class BuildProjectSnapshotTests(unittest.TestCase):
             exclude_files=set(),
             exclude_extensions=set(),
             exclude_relative_paths=set(),
+            explicit_exclude_files=set(),
+            explicit_exclude_extensions=set(),
         )
 
         self.assertEqual(snapshot.tree_with_delimiters, ("src/", "tests/"))

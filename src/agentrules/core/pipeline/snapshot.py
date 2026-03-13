@@ -40,7 +40,12 @@ def build_project_snapshot(settings: PipelineSettings) -> ProjectSnapshot:
     dependency_info = collect_dependency_info(
         settings.target_directory,
         gitignore_spec=gitignore_spec,
+        max_depth=settings.tree_max_depth,
         exclude_relative_paths=set(settings.exclude_relative_paths),
+    )
+    explicit_exclude_files = set(settings.exclusion_overrides.add_files) if settings.exclusion_overrides else set()
+    explicit_exclude_extensions = (
+        set(settings.exclusion_overrides.add_extensions) if settings.exclusion_overrides else set()
     )
     project_profile = build_project_profile(
         target_directory=settings.target_directory,
@@ -51,6 +56,8 @@ def build_project_snapshot(settings: PipelineSettings) -> ProjectSnapshot:
         exclude_files=exclude_files,
         exclude_extensions=exclude_exts,
         exclude_relative_paths=set(settings.exclude_relative_paths),
+        explicit_exclude_files=explicit_exclude_files,
+        explicit_exclude_extensions=explicit_exclude_extensions,
     )
 
     return ProjectSnapshot(
