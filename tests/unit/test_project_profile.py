@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from agentrules.config.exclusions import EXCLUDED_EXTENSIONS, EXCLUDED_FILES
 from agentrules.core.pipeline.project_profile import build_project_profile
 
 
@@ -151,6 +152,29 @@ class ProjectProfileTests(unittest.TestCase):
 
         self.assertEqual(profile["detected_types"], ["generic"])
         self.assertEqual(profile["frontend"]["signal_files"], [])
+
+    def test_retains_python_signal_files_when_defaults_exclude_them(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "requirements.txt").write_text("pytest==8.3.0\n", encoding="utf-8")
+            (root / "tox.ini").write_text("[tox]\nenvlist = py311\n", encoding="utf-8")
+
+            profile = build_project_profile(
+                target_directory=root,
+                dependency_info={"summary": {}, "manifests": []},
+                tree_max_depth=5,
+                gitignore_spec=None,
+                exclude_dirs=set(),
+                exclude_files=set(EXCLUDED_FILES),
+                exclude_extensions=set(EXCLUDED_EXTENSIONS),
+                exclude_relative_paths=set(),
+            )
+
+        self.assertIn("python", profile["detected_types"])
+        python_profile = profile["python"]
+        self.assertTrue(python_profile["detected"])
+        self.assertIn("requirements.txt", python_profile["packaging_files"])
+        self.assertIn("tox.ini", python_profile["tooling_files"])
 
 
 if __name__ == "__main__":

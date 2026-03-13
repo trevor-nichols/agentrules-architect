@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,19 @@ _PYTHON_TASK_RUNNER_FILES = frozenset({"makefile", "justfile"})
 _PYTHON_TOOLING_FILES = frozenset({"tox.ini", "noxfile.py"})
 _STYLE_EXTENSIONS = frozenset({".css", ".scss", ".sass", ".less", ".styl"})
 _PYTHON_MANAGERS = frozenset({"python", "pip", "pipenv", "conda"})
+_PROFILE_SIGNAL_REQUIREMENTS_PATTERNS = ("requirements*.txt", "requirements*.in")
+_PROFILE_SIGNAL_BASENAMES = frozenset(
+    name.casefold()
+    for name in (
+        set(_FRONTEND_CONFIG_FILES)
+        | set(_PYTHON_PACKAGING_FILES)
+        | set(_PYTHON_TASK_RUNNER_FILES)
+        | set(_PYTHON_TOOLING_FILES)
+    )
+)
+_PROFILE_SIGNAL_PATTERN_SAMPLES = frozenset(
+    _PROFILE_SIGNAL_BASENAMES | {"requirements-dev.txt", "requirements-dev.in"}
+)
 _FRONTEND_DEPENDENCY_MAP = {
     "next": "nextjs",
     "react": "react",
@@ -142,7 +156,68 @@ def _list_visible_files(
             relative = path.as_posix()
         visible_files.append(relative)
 
+    if _requires_signal_override(
+        exclude_files=exclude_files,
+        exclude_extensions=exclude_extensions,
+    ):
+        signal_override_files = _list_signal_override_files(
+            target_directory=target_directory,
+            tree_max_depth=tree_max_depth,
+            gitignore_spec=gitignore_spec,
+            exclude_dirs=exclude_dirs,
+            exclude_relative_paths=exclude_relative_paths,
+        )
+        visible_files.extend(signal_override_files)
     return _sorted_unique(visible_files)
+
+
+def _requires_signal_override(*, exclude_files: set[str], exclude_extensions: set[str]) -> bool:
+    exclusion_patterns = {pattern.casefold() for pattern in exclude_files}
+    exclusion_patterns.update(f"*{ext.casefold()}" for ext in exclude_extensions)
+    return any(
+        fnmatch.fnmatch(sample, pattern)
+        for sample in _PROFILE_SIGNAL_PATTERN_SAMPLES
+        for pattern in exclusion_patterns
+    )
+
+
+def _list_signal_override_files(
+    *,
+    target_directory: Path,
+    tree_max_depth: int,
+    gitignore_spec: PathSpec | None,
+    exclude_dirs: set[str],
+    exclude_relative_paths: set[str],
+) -> list[str]:
+    """
+    Collect a targeted allowlist of profile-signal files despite global exclusions.
+
+    This keeps deterministic profile metadata accurate for dependency/tooling
+    markers that are intentionally hidden from general tree scanning.
+    """
+
+    signal_files: list[str] = []
+    for path in list_files(
+        target_directory,
+        exclude_dirs,
+        set(),
+        max_depth=tree_max_depth,
+        gitignore_spec=gitignore_spec,
+        root=target_directory,
+        exclude_relative_paths=exclude_relative_paths,
+    ):
+        try:
+            relative = path.relative_to(target_directory).as_posix()
+        except ValueError:
+            relative = path.as_posix()
+        file_name = Path(relative).name.casefold()
+        if file_name in _PROFILE_SIGNAL_BASENAMES or _is_requirements_signal(file_name):
+            signal_files.append(relative)
+    return _sorted_unique(signal_files)
+
+
+def _is_requirements_signal(file_name: str) -> bool:
+    return any(fnmatch.fnmatch(file_name, pattern) for pattern in _PROFILE_SIGNAL_REQUIREMENTS_PATTERNS)
 
 
 def _build_frontend_profile(
