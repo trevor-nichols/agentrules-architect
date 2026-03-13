@@ -3,15 +3,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Protocol, runtime_checkable
 
-from agentrules.core.analysis import (
-    FinalAnalysis,
-    Phase1Analysis,
-    Phase2Analysis,
-    Phase3Analysis,
-    Phase4Analysis,
-    Phase5Analysis,
-)
 from agentrules.core.analysis.events import AnalysisEventSink
 from agentrules.core.pipeline.config import (
     PipelineMetrics,
@@ -21,18 +16,59 @@ from agentrules.core.pipeline.config import (
 )
 
 
+class Phase1Runner(Protocol):
+    async def run(
+        self,
+        tree: list[str],
+        package_info: dict,
+        project_profile: dict | None = None,
+        /,
+    ) -> dict: ...
+
+
+class Phase2Runner(Protocol):
+    async def run(self, phase1_results: dict, tree: Sequence[str] | None = None, /) -> dict: ...
+
+
+class Phase3Runner(Protocol):
+    async def run(self, phase2_results: dict, tree: list[str], directory: Path, /) -> dict: ...
+
+
+class Phase4Runner(Protocol):
+    async def run(self, phase3_results: dict, /) -> dict: ...
+
+
+class Phase5Runner(Protocol):
+    async def run(self, all_results: dict, /) -> dict: ...
+
+
+class FinalRunner(Protocol):
+    async def run(
+        self,
+        consolidated_report: dict,
+        project_structure: Sequence[str] | None = None,
+        /,
+        rules_filename: str | None = None,
+    ) -> dict: ...
+
+
+@runtime_checkable
+class SupportsEventSink(Protocol):
+    def set_event_sink(self, sink: AnalysisEventSink | None) -> None: ...
+
+
 class AnalysisPipeline:
     """Run the configured analysis phases and collect their outputs."""
 
     def __init__(
         self,
         *,
-        phase1: Phase1Analysis,
-        phase2: Phase2Analysis,
-        phase3: Phase3Analysis,
-        phase4: Phase4Analysis,
-        phase5: Phase5Analysis,
-        final: FinalAnalysis,
+        phase1: Phase1Runner,
+        phase2: Phase2Runner,
+        phase3: Phase3Runner,
+        phase4: Phase4Runner,
+        phase5: Phase5Runner,
+        final: FinalRunner,
         event_sink: AnalysisEventSink | None = None,
     ) -> None:
         self._phase1 = phase1
@@ -48,9 +84,9 @@ class AnalysisPipeline:
         """Attach an event sink to phases that emit progress notifications."""
 
         self._event_sink = sink
-        if hasattr(self._phase2, "set_event_sink"):
+        if isinstance(self._phase2, SupportsEventSink):
             self._phase2.set_event_sink(sink)
-        if hasattr(self._phase3, "set_event_sink"):
+        if isinstance(self._phase3, SupportsEventSink):
             self._phase3.set_event_sink(sink)
 
     async def run_phase1(self, snapshot: ProjectSnapshot) -> dict[str, object]:

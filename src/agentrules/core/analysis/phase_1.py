@@ -29,6 +29,7 @@ from agentrules.config.tools import TOOL_SETS
 from agentrules.core.agents.factory.factory import get_architect_for_phase, get_researcher_architect
 from agentrules.core.types.tool_config import Tool
 from agentrules.core.utils.provider_capabilities import requires_external_research_tool_loop
+from agentrules.core.utils.system_prompt import normalize_responsibilities
 
 try:
     from agentrules.core.agent_tools.web_search.tavily import run_tavily_search as _run_tavily_search
@@ -105,16 +106,17 @@ class Phase1Analysis:
         )
 
     def _create_phase1_architect(self, *, name: str, role: str, responsibilities: object) -> Any:
+        normalized_responsibilities = normalize_responsibilities(responsibilities)
         return get_architect_for_phase(
             "phase1",
             name=name,
             role=role,
-            responsibilities=responsibilities,
+            responsibilities=normalized_responsibilities,
             prompt_template=PHASE_1_BASE_PROMPT,
             system_prompt=self._build_phase1_system_prompt(
                 name=name,
                 role=role,
-                responsibilities=responsibilities,
+                responsibilities=normalized_responsibilities,
             ),
         )
 

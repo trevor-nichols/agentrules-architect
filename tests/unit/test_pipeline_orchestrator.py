@@ -1,4 +1,5 @@
 import unittest
+from collections.abc import Sequence
 
 from agentrules.core.pipeline.config import GitignoreSnapshot, ProjectSnapshot
 from agentrules.core.pipeline.orchestrator import AnalysisPipeline
@@ -20,7 +21,7 @@ class _RecordingPhase1:
 
 
 class _NoopPhase2:
-    async def run(self, phase1_results: dict, tree: list[str]) -> dict:
+    async def run(self, phase1_results: dict, tree: Sequence[str] | None = None) -> dict:
         return {"plan": "", "agents": []}
 
 
@@ -40,7 +41,12 @@ class _NoopPhase5:
 
 
 class _NoopFinal:
-    async def run(self, consolidated_report: dict, tree: list[str], rules_filename: str | None = None) -> dict:
+    async def run(
+        self,
+        consolidated_report: dict,
+        project_structure: Sequence[str] | None = None,
+        rules_filename: str | None = None,
+    ) -> dict:
         return {"analysis": ""}
 
 
