@@ -218,6 +218,29 @@
         "docs"
       ],
       "updated": "2026-03-09"
+    },
+    {
+      "breaking": false,
+      "created": "2026-03-13",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260313-001",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/phase1-project-profile-agents/EP-20260313-001_phase1-project-profile-agents.md",
+      "risk": "low",
+      "status": "planned",
+      "supersedes": [],
+      "tags": [],
+      "title": "Phase 1 Project Profile and Specialized Agent Contracts",
+      "touches": [],
+      "updated": "2026-03-13"
     }
   ],
   "schema_version": 1
