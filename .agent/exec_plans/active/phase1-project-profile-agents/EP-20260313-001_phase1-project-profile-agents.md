@@ -159,9 +159,11 @@ MS003 - Integration polish docs and regression coverage
 - [x] (2026-03-13 16:21Z) Archived MS001 and committed snapshot/profile foundation (`feat(pipeline): add project profile snapshot foundation`).
 - [x] (2026-03-13 16:28Z) Implemented MS002 specialized agent prompts + Phase 1 routing and added `tests/phase_1_test/test_phase1_profile_agents.py`.
 - [x] (2026-03-13 16:28Z) Validated MS002 via `ruff check ...` and `pytest -q tests/phase_1_test tests/unit/utils/test_structured_outputs.py`.
-- [ ] Archive MS002 and commit.
-- [ ] Implement MS003 and validate.
-- [ ] Archive MS003, commit, archive ExecPlan.
+- [x] (2026-03-13 16:31Z) Archived MS002 and committed specialized-agent integration (`feat(phase1): add profile-gated specialized discovery agents`).
+- [x] (2026-03-13 16:38Z) Implemented MS003 integration polish (docs, contract assertions, orchestrator regression coverage, snapshot sync).
+- [x] (2026-03-13 16:38Z) Validated MS003 via `ruff check src tests` and targeted 45-test regression suite.
+- [ ] Archive MS003 and commit.
+- [ ] Archive ExecPlan and write final retrospective.
 
 ## Surprises & Discoveries
 
@@ -171,6 +173,8 @@ MS003 - Integration polish docs and regression coverage
   Evidence: `ProjectSnapshot.project_profile` uses `field(default_factory=dict)` and existing unit fixtures still construct valid snapshots.
 - Observation: Specialized Phase 1 agents can be added without polluting constructor state by building them per-run from profile-gated prompt contracts.
   Evidence: `_run_specialized_profile_agents()` in `phase_1.py` creates optional agents only when `get_specialized_phase1_agent_prompts()` returns configs.
+- Observation: Snapshot sync should be part of milestones that add or move plan/code files; otherwise architectural inventory drifts quickly.
+  Evidence: Running `agentrules snapshot sync` updated `SNAPSHOT.md` with 5 path changes after this feature.
 
 ## Decision Log
 
@@ -186,7 +190,10 @@ MS003 - Integration polish docs and regression coverage
 - Decision: Keep specialized Phase 1 agent gating declarative in `phase_1_prompts.py` via `profile_key` metadata and `get_specialized_phase1_agent_prompts()`.
   Rationale: Centralized prompt contracts reduce branching logic in `Phase1Analysis` and make future agent additions low risk.
   Date/Author: 2026-03-13 / @codex
+- Decision: Add an orchestrator regression test to assert `project_profile` propagation into Phase 1 invocation.
+  Rationale: This edge is easy to regress during pipeline refactors and directly impacts specialized-agent execution correctness.
+  Date/Author: 2026-03-13 / @codex
 
 ## Outcomes & Retrospective
 
-Pending completion.
+Pending final archive commit.

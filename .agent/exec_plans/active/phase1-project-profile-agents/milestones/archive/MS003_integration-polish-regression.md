@@ -3,7 +3,7 @@ id: EP-20260313-001/MS003
 execplan_id: EP-20260313-001
 ms: 3
 title: "Integration polish docs and regression coverage"
-status: planned
+status: completed
 domain: backend
 owner: "@codex"
 created: 2026-03-13
@@ -26,9 +26,9 @@ Finalize integration by updating schemas/docs/snapshot references and adding reg
 
 ## Definition of Done
 
-- [ ] Implementation complete.
-- [ ] Validation complete.
-- [ ] Documentation and operational notes updated.
+- [x] Implementation complete.
+- [x] Validation complete.
+- [x] Documentation and operational notes updated.
 
 ## Scope
 
@@ -44,8 +44,8 @@ Finalize integration by updating schemas/docs/snapshot references and adding reg
 
 ## Workstreams & Tasks
 
-- [ ] Workstream A: Schema/docs updates.
-- [ ] Workstream B: Regression tests and final validation pass.
+- [x] Workstream A: Schema/docs updates.
+- [x] Workstream B: Regression tests and final validation pass.
 
 ## Risks & Mitigations
 
@@ -62,3 +62,7 @@ Finalize integration by updating schemas/docs/snapshot references and adding reg
 
 - 2026-03-13: Milestone created.
 - 2026-03-13: Scope finalized.
+- 2026-03-13: Updated `docs/structured-output-contracts.md` with Phase 1 `project_profile` and specialized agent contract notes.
+- 2026-03-13: Added orchestrator regression coverage (`tests/unit/test_pipeline_orchestrator.py`) and Phase 1 schema assertion in structured-output tests.
+- 2026-03-13: Synced `SNAPSHOT.md` after file additions/milestone archival moves.
+- 2026-03-13: Validation green: `ruff check src tests` and `pytest -q tests/unit/test_pipeline_snapshot.py tests/unit/test_project_profile.py tests/unit/test_pipeline_orchestrator.py tests/phase_1_test tests/unit/utils/test_structured_outputs.py tests/unit/test_pipeline_output_writer.py`.

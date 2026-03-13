@@ -30,6 +30,22 @@ The canonical schema objects are `PHASE_OUTPUT_SCHEMAS` in `src/agentrules/core/
 - `initial_findings: array[object]`
 - `documentation_research: object`
 - `package_info: object`
+- `project_profile: object`
+
+`project_profile` is deterministic profile metadata derived from snapshot-time
+repository signals. It includes:
+
+- `schema_version`
+- `detected_types`
+- `ecosystem`
+- `frontend`
+- `python`
+- `signals`
+
+Phase 1 may append optional specialized findings from profile-gated agents:
+
+- `Frontend Design Agent` (when `project_profile.frontend.detected` is true)
+- `Python Tooling Agent` (when `project_profile.python.detected` is true)
 
 Producer:
 
