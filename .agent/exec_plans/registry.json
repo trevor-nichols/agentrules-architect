@@ -233,13 +233,22 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/phase1-project-profile-agents/EP-20260313-001_phase1-project-profile-agents.md",
-      "risk": "low",
-      "status": "planned",
+      "path": ".agent/exec_plans/archive/2026/03/13/EP-20260313-001_phase1-project-profile-agents/EP-20260313-001_phase1-project-profile-agents.md",
+      "risk": "med",
+      "status": "archived",
       "supersedes": [],
-      "tags": [],
+      "tags": [
+        "phase1",
+        "profiling",
+        "agents"
+      ],
       "title": "Phase 1 Project Profile and Specialized Agent Contracts",
-      "touches": [],
+      "touches": [
+        "agents",
+        "cli",
+        "tests",
+        "docs"
+      ],
       "updated": "2026-03-13"
     }
   ],

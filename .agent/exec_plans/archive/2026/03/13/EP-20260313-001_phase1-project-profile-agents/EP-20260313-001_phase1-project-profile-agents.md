@@ -1,21 +1,28 @@
 ---
 id: EP-20260313-001
-title: "Phase 1 Project Profile and Specialized Agent Contracts"
-status: active
+title: Phase 1 Project Profile and Specialized Agent Contracts
+status: archived
 kind: feature
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-03-13
-updated: 2026-03-13
-tags: [phase1, profiling, agents]
-touches: [agents, cli, tests, docs]
+updated: '2026-03-13'
+tags:
+- phase1
+- profiling
+- agents
+touches:
+- agents
+- cli
+- tests
+- docs
 risk: med
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: ""
+  issue: ''
+  pr: ''
+  docs: ''
 depends_on: []
 supersedes: []
 ---
@@ -162,8 +169,8 @@ MS003 - Integration polish docs and regression coverage
 - [x] (2026-03-13 16:31Z) Archived MS002 and committed specialized-agent integration (`feat(phase1): add profile-gated specialized discovery agents`).
 - [x] (2026-03-13 16:38Z) Implemented MS003 integration polish (docs, contract assertions, orchestrator regression coverage, snapshot sync).
 - [x] (2026-03-13 16:38Z) Validated MS003 via `ruff check src tests` and targeted 45-test regression suite.
-- [ ] Archive MS003 and commit.
-- [ ] Archive ExecPlan and write final retrospective.
+- [x] (2026-03-13 16:42Z) Archived MS003 and committed integration polish (`test(pipeline): add profile propagation regression coverage`).
+- [x] (2026-03-13 16:43Z) Prepared final retrospective and archived ExecPlan.
 
 ## Surprises & Discoveries
 
@@ -196,4 +203,27 @@ MS003 - Integration polish docs and regression coverage
 
 ## Outcomes & Retrospective
 
-Pending final archive commit.
+Completed outcomes:
+
+- Added deterministic `project_profile` construction in snapshot pipeline with explicit frontend/python/ecosystem signal schema.
+- Propagated `project_profile` through orchestrator into Phase 1 execution context and output payload.
+- Added profile-gated specialized Phase 1 contracts (`Frontend Design Agent`, `Python Tooling Agent`) while preserving baseline behavior for generic repositories.
+- Updated contract docs/schema references and added regression tests covering:
+  - profile detector behavior
+  - snapshot wiring
+  - specialized agent gating
+  - orchestrator profile propagation
+  - structured Phase 1 schema contract
+
+Validation summary (all green):
+
+- `ruff check src/agentrules/core/pipeline tests/unit/test_pipeline_snapshot.py tests/unit/test_project_profile.py`
+- `pytest -q tests/unit/test_pipeline_snapshot.py tests/unit/test_project_profile.py`
+- `ruff check src/agentrules/config/prompts/phase_1_prompts.py src/agentrules/core/analysis/phase_1.py src/agentrules/core/pipeline/orchestrator.py src/agentrules/core/utils/structured_outputs.py tests/phase_1_test/test_phase1_profile_agents.py tests/phase_1_test/test_phase1_researcher_guards.py tests/phase_1_test/test_phase1_offline.py`
+- `pytest -q tests/phase_1_test tests/unit/utils/test_structured_outputs.py`
+- `ruff check src tests`
+- `pytest -q tests/unit/test_pipeline_snapshot.py tests/unit/test_project_profile.py tests/unit/test_pipeline_orchestrator.py tests/phase_1_test tests/unit/utils/test_structured_outputs.py tests/unit/test_pipeline_output_writer.py`
+
+Remaining gap:
+
+- Profile detection is intentionally rule-based and conservative; expanding ecosystem-specific heuristics can be handled in a follow-up ExecPlan.
