@@ -193,6 +193,7 @@
 │       │   │   ├── factory.py  # Builds default analysis pipeline
 │       │   │   ├── orchestrator.py  # Executes all phases sequentially
 │       │   │   ├── output.py  # Writes pipeline artifacts to disk
+│       │   │   ├── project_profile.py
 │       │   │   └── snapshot.py  # Collects project metadata before pipeline runs
 │       │   ├── streaming/  # Shared streaming primitives
 │       │   │   ├── __init__.py  # Streaming package
@@ -287,6 +288,7 @@
 │   │   ├── __init__.py  # Test package
 │   │   ├── run_test.py  # Standalone phase 1 runner
 │   │   ├── test_phase1_offline.py  # Offline tests for phase 1
+│   │   ├── test_phase1_profile_agents.py
 │   │   └── test_phase1_researcher_guards.py  # Tests for researcher constraints
 │   ├── phase_2_test/  # Phase 2 tests
 │   │   ├── output/  # Output artifacts
@@ -384,8 +386,10 @@
 │   │   ├── test_phase_prompt_separation.py  # Unit tests for prompt templating
 │   │   ├── test_phases_edges.py  # Unit tests for edge cases across all phases
 │   │   ├── test_phases_output.py  # Unit tests for saving phase artifacts
+│   │   ├── test_pipeline_orchestrator.py
 │   │   ├── test_pipeline_output_writer.py  # Unit tests for full pipeline execution output
 │   │   ├── test_pipeline_snapshot.py  # Unit tests for grabbing project state before pipeline runs
+│   │   ├── test_project_profile.py
 │   │   ├── test_release_metadata.py  # Unit tests for the release script
 │   │   ├── test_settings_output_validation.py  # Unit tests for validating custom output filenames
 │   │   ├── test_snapshot_artifact.py  # Unit tests for writing the snapshot
@@ -421,6 +425,7 @@
 │       └── __init__.pyi  # Type stub init
 ├── .release-please-config.json
 ├── .release-please-manifest.json
+├── CHANGELOG.md
 ├── conftest.py  # pytest configuration, sets up live test markers
 ├── CONTRIBUTING.md
 ├── pyproject.toml  # Python project metadata and dependencies

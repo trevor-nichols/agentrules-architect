@@ -12,6 +12,7 @@ from agentrules.core.pipeline import (
 
 
 class BuildProjectSnapshotTests(unittest.TestCase):
+    @patch("agentrules.core.pipeline.snapshot.build_project_profile")
     @patch("agentrules.core.pipeline.snapshot.collect_dependency_info")
     @patch("agentrules.core.pipeline.snapshot.get_project_tree")
     @patch("agentrules.core.pipeline.snapshot.load_gitignore_spec")
@@ -20,6 +21,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         mock_load_gitignore,
         mock_get_project_tree,
         mock_collect_dependency,
+        mock_build_project_profile,
     ) -> None:
         with TemporaryDirectory() as tmpdir:
             target_directory = Path(tmpdir)
@@ -47,6 +49,8 @@ class BuildProjectSnapshotTests(unittest.TestCase):
             ]
             dependency_payload = {"manifests": ["package.json"], "summary": {}}
             mock_collect_dependency.return_value = dependency_payload
+            profile_payload = {"schema_version": "1.0", "detected_types": ["generic"]}
+            mock_build_project_profile.return_value = profile_payload
 
             snapshot = build_project_snapshot(settings)
 
@@ -63,7 +67,20 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         mock_collect_dependency.assert_called_once_with(
             target_directory,
             gitignore_spec=spec,
+            max_depth=3,
             exclude_relative_paths={"AGENTS.custom.md", "SNAPSHOT.custom.md"},
+        )
+        mock_build_project_profile.assert_called_once_with(
+            target_directory=target_directory,
+            dependency_info=dependency_payload,
+            tree_max_depth=3,
+            gitignore_spec=spec,
+            exclude_dirs={"build"},
+            exclude_files={"notes.txt"},
+            exclude_extensions={".log"},
+            exclude_relative_paths={"AGENTS.custom.md", "SNAPSHOT.custom.md"},
+            explicit_exclude_files=set(),
+            explicit_exclude_extensions=set(),
         )
 
         self.assertEqual(snapshot.tree_with_delimiters, ("<project_structure>", "src/", "</project_structure>"))
@@ -71,7 +88,9 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         self.assertIs(snapshot.gitignore.spec, spec)
         self.assertEqual(snapshot.gitignore.path, gitignore_path)
         self.assertEqual(snapshot.dependency_info, dependency_payload)
+        self.assertEqual(snapshot.project_profile, profile_payload)
 
+    @patch("agentrules.core.pipeline.snapshot.build_project_profile")
     @patch("agentrules.core.pipeline.snapshot.collect_dependency_info")
     @patch("agentrules.core.pipeline.snapshot.get_project_tree")
     @patch("agentrules.core.pipeline.snapshot.load_gitignore_spec")
@@ -80,6 +99,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         mock_load_gitignore,
         mock_get_project_tree,
         mock_collect_dependency,
+        mock_build_project_profile,
     ) -> None:
         with TemporaryDirectory() as tmpdir:
             target_directory = Path(tmpdir)
@@ -100,6 +120,8 @@ class BuildProjectSnapshotTests(unittest.TestCase):
             mock_get_project_tree.return_value = ["src/", "tests/"]
             dependency_payload = {"manifests": [], "summary": {"total": 0}}
             mock_collect_dependency.return_value = dependency_payload
+            profile_payload = {"schema_version": "1.0", "detected_types": ["generic"]}
+            mock_build_project_profile.return_value = profile_payload
 
             snapshot = build_project_snapshot(settings)
 
@@ -115,7 +137,20 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         mock_collect_dependency.assert_called_once_with(
             target_directory,
             gitignore_spec=None,
+            max_depth=2,
             exclude_relative_paths=set(),
+        )
+        mock_build_project_profile.assert_called_once_with(
+            target_directory=target_directory,
+            dependency_info=dependency_payload,
+            tree_max_depth=2,
+            gitignore_spec=None,
+            exclude_dirs=set(),
+            exclude_files=set(),
+            exclude_extensions=set(),
+            exclude_relative_paths=set(),
+            explicit_exclude_files=set(),
+            explicit_exclude_extensions=set(),
         )
 
         self.assertEqual(snapshot.tree_with_delimiters, ("src/", "tests/"))
@@ -123,6 +158,7 @@ class BuildProjectSnapshotTests(unittest.TestCase):
         self.assertIsNone(snapshot.gitignore.spec)
         self.assertIsNone(snapshot.gitignore.path)
         self.assertEqual(snapshot.dependency_info, dependency_payload)
+        self.assertEqual(snapshot.project_profile, profile_payload)
 
 
 if __name__ == "__main__":

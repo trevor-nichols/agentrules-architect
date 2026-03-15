@@ -27,6 +27,13 @@ def test_phase_output_schemas_expose_expected_phase2_fields() -> None:
     assert "agents" in schema["properties"]
 
 
+def test_phase1_schema_includes_project_profile_contract() -> None:
+    schema = get_phase_output_schema("phase1")
+    assert schema["type"] == "object"
+    assert "project_profile" in schema["properties"]
+    assert "project_profile" in schema["required"]
+
+
 def test_phase_model_response_schema_none_for_unsupported_phase() -> None:
     assert get_phase_model_response_schema("phase1") is None
     assert get_phase_model_response_schema("missing") is None

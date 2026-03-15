@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from agentrules.core.pipeline.config import GitignoreSnapshot, PipelineSettings, ProjectSnapshot
+from agentrules.core.pipeline.project_profile import build_project_profile
 from agentrules.core.utils.dependency_scanner import collect_dependency_info
 from agentrules.core.utils.file_system.gitignore import load_gitignore_spec
 from agentrules.core.utils.file_system.tree_generator import get_project_tree
@@ -39,7 +40,24 @@ def build_project_snapshot(settings: PipelineSettings) -> ProjectSnapshot:
     dependency_info = collect_dependency_info(
         settings.target_directory,
         gitignore_spec=gitignore_spec,
+        max_depth=settings.tree_max_depth,
         exclude_relative_paths=set(settings.exclude_relative_paths),
+    )
+    explicit_exclude_files = set(settings.exclusion_overrides.add_files) if settings.exclusion_overrides else set()
+    explicit_exclude_extensions = (
+        set(settings.exclusion_overrides.add_extensions) if settings.exclusion_overrides else set()
+    )
+    project_profile = build_project_profile(
+        target_directory=settings.target_directory,
+        dependency_info=dependency_info,
+        tree_max_depth=settings.tree_max_depth,
+        gitignore_spec=gitignore_spec,
+        exclude_dirs=exclude_dirs,
+        exclude_files=exclude_files,
+        exclude_extensions=exclude_exts,
+        exclude_relative_paths=set(settings.exclude_relative_paths),
+        explicit_exclude_files=explicit_exclude_files,
+        explicit_exclude_extensions=explicit_exclude_extensions,
     )
 
     return ProjectSnapshot(
@@ -47,6 +65,7 @@ def build_project_snapshot(settings: PipelineSettings) -> ProjectSnapshot:
         tree=tuple(tree),
         dependency_info=dependency_info,
         gitignore=GitignoreSnapshot(spec=gitignore_spec, path=gitignore_path),
+        project_profile=project_profile,
     )
 
 

@@ -54,8 +54,15 @@ PHASE_OUTPUT_SCHEMAS: dict[PhaseName, dict[str, Any]] = {
             },
             "documentation_research": {"type": "object"},
             "package_info": {"type": "object"},
+            "project_profile": {"type": "object"},
         },
-        "required": ["phase", "initial_findings", "documentation_research", "package_info"],
+        "required": [
+            "phase",
+            "initial_findings",
+            "documentation_research",
+            "package_info",
+            "project_profile",
+        ],
         "additionalProperties": True,
     },
     "phase2": {

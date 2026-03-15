@@ -23,11 +23,13 @@ from agentrules.config.prompts.phase_1_prompts import (  # Prompts used for conf
     TECH_STACK_AGENT_PROMPT,
     format_phase1_system_prompt,
     get_dependency_agent_prompt,
+    get_specialized_phase1_agent_prompts,
 )
 from agentrules.config.tools import TOOL_SETS
 from agentrules.core.agents.factory.factory import get_architect_for_phase, get_researcher_architect
 from agentrules.core.types.tool_config import Tool
 from agentrules.core.utils.provider_capabilities import requires_external_research_tool_loop
+from agentrules.core.utils.system_prompt import normalize_responsibilities
 
 try:
     from agentrules.core.agent_tools.web_search.tavily import run_tavily_search as _run_tavily_search
@@ -61,41 +63,20 @@ class Phase1Analysis:
         self.researcher_enabled = researcher_enabled
 
         dependency_prompt = get_dependency_agent_prompt(self.researcher_enabled)
-        self.dependency_architect = get_architect_for_phase(
-            "phase1",
+        self.dependency_architect = self._create_phase1_architect(
             name=dependency_prompt["name"],
             role=dependency_prompt["role"],
             responsibilities=dependency_prompt["responsibilities"],
-            prompt_template=PHASE_1_BASE_PROMPT,
-            system_prompt=format_phase1_system_prompt(
-                agent_name=dependency_prompt["name"],
-                agent_role=dependency_prompt["role"],
-                responsibilities=dependency_prompt["responsibilities"],
-            ),
         )
-        self.structure_architect = get_architect_for_phase(
-            "phase1",
+        self.structure_architect = self._create_phase1_architect(
             name=STRUCTURE_AGENT_PROMPT["name"],
             role=STRUCTURE_AGENT_PROMPT["role"],
             responsibilities=STRUCTURE_AGENT_PROMPT["responsibilities"],
-            prompt_template=PHASE_1_BASE_PROMPT,
-            system_prompt=format_phase1_system_prompt(
-                agent_name=STRUCTURE_AGENT_PROMPT["name"],
-                agent_role=STRUCTURE_AGENT_PROMPT["role"],
-                responsibilities=STRUCTURE_AGENT_PROMPT["responsibilities"],
-            ),
         )
-        self.tech_stack_architect = get_architect_for_phase(
-            "phase1",
+        self.tech_stack_architect = self._create_phase1_architect(
             name=TECH_STACK_AGENT_PROMPT["name"],
             role=TECH_STACK_AGENT_PROMPT["role"],
             responsibilities=TECH_STACK_AGENT_PROMPT["responsibilities"],
-            prompt_template=PHASE_1_BASE_PROMPT,
-            system_prompt=format_phase1_system_prompt(
-                agent_name=TECH_STACK_AGENT_PROMPT["name"],
-                agent_role=TECH_STACK_AGENT_PROMPT["role"],
-                responsibilities=TECH_STACK_AGENT_PROMPT["responsibilities"],
-            ),
         )
         self.initial_architects = [
             self.dependency_architect,
@@ -110,18 +91,45 @@ class Phase1Analysis:
                 role=RESEARCHER_AGENT_PROMPT["role"],
                 responsibilities=RESEARCHER_AGENT_PROMPT["responsibilities"],
                 prompt_template=PHASE_1_BASE_PROMPT,
-                system_prompt=format_phase1_system_prompt(
-                    agent_name=RESEARCHER_AGENT_PROMPT["name"],
-                    agent_role=RESEARCHER_AGENT_PROMPT["role"],
+                system_prompt=self._build_phase1_system_prompt(
+                    name=RESEARCHER_AGENT_PROMPT["name"],
+                    role=RESEARCHER_AGENT_PROMPT["role"],
                     responsibilities=RESEARCHER_AGENT_PROMPT["responsibilities"],
                 ),
             )
+
+    def _build_phase1_system_prompt(self, *, name: str, role: str, responsibilities: object) -> str:
+        return format_phase1_system_prompt(
+            agent_name=name,
+            agent_role=role,
+            responsibilities=responsibilities,
+        )
+
+    def _create_phase1_architect(self, *, name: str, role: str, responsibilities: object) -> Any:
+        normalized_responsibilities = normalize_responsibilities(responsibilities)
+        return get_architect_for_phase(
+            "phase1",
+            name=name,
+            role=role,
+            responsibilities=normalized_responsibilities,
+            prompt_template=PHASE_1_BASE_PROMPT,
+            system_prompt=self._build_phase1_system_prompt(
+                name=name,
+                role=role,
+                responsibilities=normalized_responsibilities,
+            ),
+        )
 
     # ----------------------------------------------------
     # Run Method
     # Executes the Initial Discovery phase.
     # ----------------------------------------------------
-    async def run(self, tree: list[str], package_info: dict) -> dict:
+    async def run(
+        self,
+        tree: list[str],
+        package_info: dict,
+        project_profile: dict[str, Any] | None = None,
+    ) -> dict:
         """
         Run the Initial Discovery Phase.
 
@@ -132,12 +140,15 @@ class Phase1Analysis:
         Returns:
             Dictionary containing the results of the phase
         """
+        profile_context = project_profile if isinstance(project_profile, dict) else {}
+
         logging.info("[bold]Phase 1, Part 1:[/bold] Starting dependency analysis")
 
         dependency_context = {
             "dependency_manifests": package_info.get("manifests", []),
             "dependency_summary": package_info.get("summary", {}),
             "researcher_expected": self.researcher_enabled,
+            "project_profile": profile_context,
         }
         dependency_result = await self.dependency_architect.analyze(dependency_context)
 
@@ -166,6 +177,7 @@ class Phase1Analysis:
                 "dependency_summary": package_info.get("summary", {}),
                 "dependency_manifests": package_info.get("manifests", []),
                 "tree_structure": tree,
+                "project_profile": profile_context,
             }
 
             if requires_external_research_tool_loop(self.researcher_architect):
@@ -188,6 +200,7 @@ class Phase1Analysis:
             "research_findings": research_findings.get("findings"),
             "research_agent_error": research_findings.get("error"),
             "research_status": research_findings.get("status"),
+            "project_profile": profile_context,
         }
         tech_stack_context = dict(structure_context)
 
@@ -205,13 +218,58 @@ class Phase1Analysis:
             tech_stack_result,
         ]
 
+        specialized_results = await self._run_specialized_profile_agents(
+            project_profile=profile_context,
+            base_context=structure_context,
+        )
+        if specialized_results:
+            initial_results.extend(specialized_results)
+
         # Return the combined results.
         return {
             "phase": "Initial Discovery",
             "initial_findings": initial_results,
             "documentation_research": research_findings,
             "package_info": package_info,
+            "project_profile": profile_context,
         }
+
+    async def _run_specialized_profile_agents(
+        self,
+        *,
+        project_profile: dict[str, Any],
+        base_context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """
+        Run optional specialized Phase 1 agents selected from profile signals.
+        """
+
+        prompt_configs = get_specialized_phase1_agent_prompts(project_profile)
+        if not prompt_configs:
+            return []
+
+        logging.info(
+            "[bold]Phase 1, Part 4:[/bold] Running %d profile-specialized discovery agent(s)",
+            len(prompt_configs),
+        )
+
+        tasks = []
+        for prompt_config in prompt_configs:
+            architect = self._create_phase1_architect(
+                name=str(prompt_config["name"]),
+                role=str(prompt_config["role"]),
+                responsibilities=prompt_config.get("responsibilities", []),
+            )
+            context = dict(base_context)
+            context["project_profile"] = project_profile
+            profile_key = prompt_config.get("profile_key")
+            if isinstance(profile_key, str):
+                context[f"{profile_key}_profile"] = project_profile.get(profile_key, {})
+            tasks.append(architect.analyze(context))
+
+        results = await asyncio.gather(*tasks)
+        logging.info("[bold green]Phase 1, Part 4:[/bold green] Specialized profile agents completed")
+        return [result for result in results if isinstance(result, dict)]
 
     async def _run_researcher_with_tools(
         self,

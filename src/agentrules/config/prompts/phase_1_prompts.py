@@ -8,6 +8,9 @@ modifying the core logic of the agents.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 from agentrules.core.utils.system_prompt import normalize_responsibilities
 
 # Phase 1 system prompt template (agent behavior/persona guidance).
@@ -111,6 +114,30 @@ RESEARCHER_AGENT_PROMPT = {
     ]
 }
 
+FRONTEND_DESIGN_AGENT_PROMPT = {
+    "name": "Frontend Design Agent",
+    "role": "analyzing UI styling architecture and design system surface",
+    "responsibilities": [
+        "Identify the primary styling approach used by the frontend (Tailwind, CSS modules, global CSS, CSS-in-JS)",
+        "Locate likely design-token and variant definitions from configuration files and project layout",
+        "Summarize frontend architecture patterns that influence UI composition and onboarding",
+        "Call out uncertainty explicitly when styling evidence is incomplete or mixed"
+    ],
+    "profile_key": "frontend",
+}
+
+PYTHON_TOOLING_AGENT_PROMPT = {
+    "name": "Python Tooling Agent",
+    "role": "analyzing Python packaging, tooling, and local developer workflow surfaces",
+    "responsibilities": [
+        "Summarize Python packaging and dependency-management conventions across pyproject, requirements, and setup files",
+        "Identify task runner entrypoints such as Makefile or justfile and their likely onboarding relevance",
+        "Capture tooling surfaces such as tox or nox that shape local development workflows",
+        "Highlight mixed or redundant Python tooling conventions that may confuse onboarding"
+    ],
+    "profile_key": "python",
+}
+
 # Function to format a prompt for a specific agent
 def format_agent_prompt(agent_config, context):
     """
@@ -145,10 +172,46 @@ def get_dependency_agent_prompt(researcher_enabled: bool) -> dict:
     }
 
 
+def get_specialized_phase1_agent_prompts(
+    project_profile: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """
+    Return specialized Phase 1 agent configs based on deterministic profile signals.
+
+    Specialized agents are optional and should run only when the profile indicates
+    a relevant project surface.
+    """
+
+    prompts: list[dict[str, Any]] = []
+    profile = project_profile if isinstance(project_profile, Mapping) else {}
+
+    if _profile_slice_detected(profile, "frontend"):
+        prompts.append(_clone_prompt(FRONTEND_DESIGN_AGENT_PROMPT))
+    if _profile_slice_detected(profile, "python"):
+        prompts.append(_clone_prompt(PYTHON_TOOLING_AGENT_PROMPT))
+    return prompts
+
+
+def _profile_slice_detected(project_profile: Mapping[str, Any], key: str) -> bool:
+    section = project_profile.get(key)
+    return bool(isinstance(section, Mapping) and section.get("detected"))
+
+
+def _clone_prompt(prompt: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "name": str(prompt["name"]),
+        "role": str(prompt["role"]),
+        "responsibilities": list(prompt.get("responsibilities", [])),
+        "profile_key": prompt.get("profile_key"),
+    }
+
+
 # List of all Phase 1 agent configurations (default order assumes researcher enabled)
 PHASE_1_AGENTS = [
     DEPENDENCY_KNOWLEDGE_GAP_PROMPT,
     STRUCTURE_AGENT_PROMPT,
     TECH_STACK_AGENT_PROMPT,
-    RESEARCHER_AGENT_PROMPT
+    RESEARCHER_AGENT_PROMPT,
+    FRONTEND_DESIGN_AGENT_PROMPT,
+    PYTHON_TOOLING_AGENT_PROMPT,
 ]

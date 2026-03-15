@@ -20,10 +20,10 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 
 ### Prefer CLI creation over manual file creation:
 * ExecPlan:
-  * Create: `agentrules execplan new "<title>" --slug <short-slug> --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
+  * Create: `agentrules execplan new "<title>" --slug <short-slug>`
   * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`
 * Milestones:
-  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" [--ms <N>]`
   * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
 
 # 2. TEMPORAL FRAMEWORK
@@ -51,6 +51,7 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
 # Configuration (repo-specific)
 - Primary code paths:
   - Analysis phases: src/agentrules/core/analysis/phase_1.py ... phase_5.py
+  - Project profiling: src/agentrules/core/pipeline/project_profile.py
   - Token packing/estimation: src/agentrules/core/utils/token_estimator.py, token_packer.py
   - File I/O: src/agentrules/core/utils/file_system/file_retriever.py
   - Providers: src/agentrules/core/agents/{anthropic,openai,gemini,deepseek,xai}
@@ -90,6 +91,7 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
 # Agents & Provider Architecture
 - Each provider module implements an "architect" + "client" + "request_builder" + "response_parser" pattern. Keep adapters thin and use a single canonical translation layer for SDK-specific object creation.
 - Shared utilities should live in src/agentrules/core/utils/provider_utils.py and be imported by all provider modules.
+- Phase 1 emits `project_profile` and may conditionally run specialized discovery agents (`Frontend Design Agent`, `Python Tooling Agent`) when profile slices indicate relevance; keep gating deterministic and tied to profile booleans.
 
 ## Provider integration rules
 - Tool payloads from ToolManager must be dicts.

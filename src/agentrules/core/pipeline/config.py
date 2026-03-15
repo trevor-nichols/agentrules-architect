@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from pathspec import PathSpec
@@ -48,6 +48,7 @@ class ProjectSnapshot:
     tree: tuple[str, ...]
     dependency_info: Mapping[str, object]
     gitignore: GitignoreSnapshot
+    project_profile: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
