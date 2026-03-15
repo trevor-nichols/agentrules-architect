@@ -40,11 +40,10 @@ EXECPLANS_MILESTONES_LINE = (
 EXECPLANS_CLI_HEADING = "### Prefer CLI creation over manual file creation:"
 EXECPLANS_CLI_LINES = (
     "* ExecPlan:",
-    "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug> --ms <N>` "
-    "(Use `--ms <N>` for deterministic `MS###` sequence assignment).",
+    "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug>`",
     "  * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`",
     "* Milestones:",
-    "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\"`",
+    "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`",
     "  * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`",
 )
 EXECPLANS_GUIDANCE_BLOCK = (

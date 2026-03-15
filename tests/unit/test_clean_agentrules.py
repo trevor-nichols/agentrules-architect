@@ -37,7 +37,7 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
             )
             self.assertIn("### Prefer CLI creation over manual file creation:", content)
             self.assertIn(
-                "`agentrules execplan new \"<title>\" --slug <short-slug> --ms <N>`",
+                "`agentrules execplan new \"<title>\" --slug <short-slug>`",
                 content,
             )
             self.assertLess(content.index("## ExecPlans"), content.index("# 2. TEMPORAL FRAMEWORK"))
@@ -58,11 +58,10 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
                 "(as described in `.agent/templates/MILESTONE_TEMPLATE.md`)\n\n"
                 "### Prefer CLI creation over manual file creation:\n"
                 "* ExecPlan:\n"
-                "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug> --ms <N>` "
-                "(Use `--ms <N>` for deterministic `MS###` sequence assignment).\n"
+                "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug>`\n"
                 "  * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`\n"
                 "* Milestones:\n"
-                "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\"`\n"
+                "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`\n"
                 "  * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`\n\n"
                 "# 2. TEMPORAL FRAMEWORK\n"
                 "It is February 2026.\n"

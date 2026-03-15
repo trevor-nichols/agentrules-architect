@@ -20,10 +20,10 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 
 ### Prefer CLI creation over manual file creation:
 * ExecPlan:
-  * Create: `agentrules execplan new "<title>" --slug <short-slug> --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
+  * Create: `agentrules execplan new "<title>" --slug <short-slug>`
   * Archive: `agentrules execplan archive EP-YYYYMMDD-NNN`
 * Milestones:
-  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" [--ms <N>]`
   * Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
 
 # 2. TEMPORAL FRAMEWORK
