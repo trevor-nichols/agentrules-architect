@@ -30,9 +30,31 @@ _GPT5_RESPONSES_DEFAULTS = ModelDefaults(
     use_responses_api=True,
 )
 
+_GPT5_PRO_DEFAULTS = ModelDefaults(
+    default_reasoning=ReasoningMode.MEDIUM,
+    use_responses_api=True,
+)
+
+_GPT5_ONLY_HIGH_DEFAULTS = ModelDefaults(
+    default_reasoning=ReasoningMode.HIGH,
+    use_responses_api=True,
+)
+
+_GPT5_NONE_DEFAULTS = ModelDefaults(
+    default_reasoning=ReasoningMode.DISABLED,
+    use_responses_api=True,
+)
+
 _PREFIX_DEFAULTS: tuple[tuple[str, ModelDefaults], ...] = (
-    ("gpt-5.2", _GPT5_RESPONSES_DEFAULTS),
-    ("gpt-5.1", _GPT5_RESPONSES_DEFAULTS),
+    ("gpt-5.4-pro", _GPT5_PRO_DEFAULTS),
+    ("gpt-5.4", _GPT5_NONE_DEFAULTS),
+    ("gpt-5.3-codex", _GPT5_RESPONSES_DEFAULTS),
+    ("gpt-5.2-pro", _GPT5_PRO_DEFAULTS),
+    ("gpt-5.2-codex", _GPT5_RESPONSES_DEFAULTS),
+    ("gpt-5.2", _GPT5_NONE_DEFAULTS),
+    ("gpt-5.1-codex", _GPT5_RESPONSES_DEFAULTS),
+    ("gpt-5.1", _GPT5_NONE_DEFAULTS),
+    ("gpt-5-pro", _GPT5_ONLY_HIGH_DEFAULTS),
     ("gpt-5", _GPT5_RESPONSES_DEFAULTS),
 )
 
