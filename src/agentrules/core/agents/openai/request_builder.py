@@ -8,6 +8,19 @@ from agentrules.core.agents.base import ReasoningMode
 
 ApiType = Literal["responses", "chat"]
 
+_GPT5_RESPONSES_REASONING_SUPPORT: tuple[tuple[str, frozenset[str]], ...] = (
+    ("gpt-5.4-pro", frozenset({"medium", "high", "xhigh"})),
+    ("gpt-5.4", frozenset({"none", "low", "medium", "high", "xhigh"})),
+    ("gpt-5.3-codex", frozenset({"low", "medium", "high", "xhigh"})),
+    ("gpt-5.2-pro", frozenset({"medium", "high", "xhigh"})),
+    ("gpt-5.2-codex", frozenset({"low", "medium", "high", "xhigh"})),
+    ("gpt-5.2", frozenset({"none", "low", "medium", "high", "xhigh"})),
+    ("gpt-5.1-codex", frozenset({"low", "medium", "high"})),
+    ("gpt-5.1", frozenset({"none", "low", "medium", "high"})),
+    ("gpt-5-pro", frozenset({"high"})),
+    ("gpt-5", frozenset({"minimal", "low", "medium", "high"})),
+)
+
 
 @dataclass(frozen=True)
 class PreparedRequest:
@@ -39,7 +52,10 @@ def prepare_request(
         if system_prompt:
             payload["instructions"] = system_prompt
 
-        reasoning_payload = _build_responses_reasoning_payload(reasoning)
+        reasoning_payload = _build_responses_reasoning_payload(
+            model_name=model_name,
+            reasoning=reasoning,
+        )
         if reasoning_payload:
             payload["reasoning"] = reasoning_payload
 
@@ -93,20 +109,69 @@ def prepare_request(
     return PreparedRequest(api="chat", payload=payload)
 
 
-def _build_responses_reasoning_payload(reasoning: ReasoningMode) -> dict[str, str] | None:
+def _build_responses_reasoning_payload(
+    *,
+    model_name: str,
+    reasoning: ReasoningMode,
+) -> dict[str, str] | None:
+    supported_efforts = _resolve_supported_responses_efforts(model_name)
+
+    if not supported_efforts:
+        if reasoning == ReasoningMode.XHIGH:
+            return {"effort": ReasoningMode.HIGH.value}
+        if reasoning in {
+            ReasoningMode.MINIMAL,
+            ReasoningMode.LOW,
+            ReasoningMode.MEDIUM,
+            ReasoningMode.HIGH,
+        }:
+            return {"effort": reasoning.value}
+        if reasoning == ReasoningMode.ENABLED:
+            return {"effort": ReasoningMode.MEDIUM.value}
+        return None
+
+    effort = _select_supported_responses_effort(
+        reasoning=reasoning,
+        supported_efforts=supported_efforts,
+    )
+    if effort is None:
+        return None
+    return {"effort": effort}
+
+
+def _resolve_supported_responses_efforts(model_name: str) -> frozenset[str]:
+    normalized = model_name.lower()
+    for prefix, supported_efforts in _GPT5_RESPONSES_REASONING_SUPPORT:
+        if normalized.startswith(prefix):
+            return supported_efforts
+    return frozenset()
+
+
+def _select_supported_responses_effort(
+    *,
+    reasoning: ReasoningMode,
+    supported_efforts: frozenset[str],
+) -> str | None:
+    if reasoning == ReasoningMode.DISABLED:
+        return "none" if "none" in supported_efforts else None
+
+    if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
+        return "medium" if "medium" in supported_efforts else None
+
+    if reasoning == ReasoningMode.MINIMAL:
+        for effort in ("minimal", "none", "low"):
+            if effort in supported_efforts:
+                return effort
+        return None
+
     if reasoning == ReasoningMode.XHIGH:
-        return {"effort": ReasoningMode.HIGH.value}
+        for effort in ("xhigh", "high"):
+            if effort in supported_efforts:
+                return effort
+        return None
 
-    if reasoning in {
-        ReasoningMode.MINIMAL,
-        ReasoningMode.LOW,
-        ReasoningMode.MEDIUM,
-        ReasoningMode.HIGH,
-    }:
-        return {"effort": reasoning.value}
-
-    if reasoning == ReasoningMode.ENABLED:
-        return {"effort": ReasoningMode.MEDIUM.value}
+    if reasoning in {ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH}:
+        return reasoning.value if reasoning.value in supported_efforts else None
 
     return None
 

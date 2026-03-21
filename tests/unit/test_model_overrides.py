@@ -183,6 +183,10 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("gpt-5.2-codex", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.3-codex", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.4-2026-03-05", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt54-mini-none", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt54-mini-xhigh", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt54-nano-none", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt54-nano-xhigh", self.agents_module.MODEL_PRESETS)
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)

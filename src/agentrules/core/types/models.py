@@ -331,132 +331,167 @@ GEMINI_3_1_PRO_PREVIEW = ModelConfig(
 
 # GPT-5 configurations (Responses API only)
 
-GPT5_DEFAULT = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5",
+
+def _gpt5_responses_model(
+    model_name: str,
+    *,
+    reasoning: ReasoningMode,
+    text_verbosity: str,
+) -> ModelConfig:
+    return ModelConfig(
+        provider=ModelProvider.OPENAI,
+        model_name=model_name,
+        reasoning=reasoning,
+        temperature=None,
+        tools_config={"enabled": False, "tools": None},
+        text_verbosity=text_verbosity,
+    )
+
+
+GPT5_DEFAULT = _gpt5_responses_model(
+    "gpt-5",
     reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="medium"
+    text_verbosity="medium",
 )
 
-GPT5_MINIMAL = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5",
+GPT5_MINIMAL = _gpt5_responses_model(
+    "gpt-5",
     reasoning=ReasoningMode.MINIMAL,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="low"
+    text_verbosity="low",
 )
 
-GPT5_HIGH = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5",
+GPT5_HIGH = _gpt5_responses_model(
+    "gpt-5",
     reasoning=ReasoningMode.HIGH,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="high"
+    text_verbosity="high",
 )
 
-GPT5_MINI = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5-mini",
+GPT5_MINI = _gpt5_responses_model(
+    "gpt-5-mini",
     reasoning=ReasoningMode.HIGH,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
     text_verbosity="medium",
 )
 
 # GPT-5.1 configurations
-GPT5_1_DEFAULT = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.1",
+GPT5_1_DEFAULT = _gpt5_responses_model(
+    "gpt-5.1",
     reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="medium"
-)
-
-GPT5_1_MINIMAL = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.1",
-    reasoning=ReasoningMode.MINIMAL,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="low"
-)
-
-GPT5_1_HIGH = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.1",
-    reasoning=ReasoningMode.HIGH,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="high"
-)
-
-GPT5_1_CODEX = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.1-codex",
-    reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
-    text_verbosity="medium"
-)
-
-# GPT-5.2 configurations (Responses API)
-GPT5_2_DEFAULT = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.2",
-    reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
     text_verbosity="medium",
 )
 
-GPT5_2_MINIMAL = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.2",
-    reasoning=ReasoningMode.MINIMAL,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
+GPT5_1_MINIMAL = _gpt5_responses_model(
+    "gpt-5.1",
+    reasoning=ReasoningMode.DISABLED,
     text_verbosity="low",
 )
 
-GPT5_2_HIGH = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.2",
+GPT5_1_HIGH = _gpt5_responses_model(
+    "gpt-5.1",
     reasoning=ReasoningMode.HIGH,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
     text_verbosity="high",
 )
 
-GPT5_2_CODEX = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.2-codex",
+GPT5_1_CODEX = _gpt5_responses_model(
+    "gpt-5.1-codex",
     reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
     text_verbosity="medium",
 )
 
-GPT5_3_CODEX = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.3-codex",
+# GPT-5.2 configurations (Responses API)
+GPT5_2_DEFAULT = _gpt5_responses_model(
+    "gpt-5.2",
     reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
     text_verbosity="medium",
 )
 
-GPT5_4_2026_03_05 = ModelConfig(
-    provider=ModelProvider.OPENAI,
-    model_name="gpt-5.4-2026-03-05",
+GPT5_2_MINIMAL = _gpt5_responses_model(
+    "gpt-5.2",
+    reasoning=ReasoningMode.DISABLED,
+    text_verbosity="low",
+)
+
+GPT5_2_HIGH = _gpt5_responses_model(
+    "gpt-5.2",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_2_CODEX = _gpt5_responses_model(
+    "gpt-5.2-codex",
     reasoning=ReasoningMode.MEDIUM,
-    temperature=None,
-    tools_config={"enabled": False, "tools": None},
     text_verbosity="medium",
+)
+
+GPT5_3_CODEX = _gpt5_responses_model(
+    "gpt-5.3-codex",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_4_2026_03_05 = _gpt5_responses_model(
+    "gpt-5.4-2026-03-05",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_4_MINI_NONE = _gpt5_responses_model(
+    "gpt-5.4-mini",
+    reasoning=ReasoningMode.DISABLED,
+    text_verbosity="low",
+)
+
+GPT5_4_MINI_LOW = _gpt5_responses_model(
+    "gpt-5.4-mini",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_4_MINI_MEDIUM = _gpt5_responses_model(
+    "gpt-5.4-mini",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_4_MINI_HIGH = _gpt5_responses_model(
+    "gpt-5.4-mini",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_4_MINI_XHIGH = _gpt5_responses_model(
+    "gpt-5.4-mini",
+    reasoning=ReasoningMode.XHIGH,
+    text_verbosity="high",
+)
+
+GPT5_4_NANO_NONE = _gpt5_responses_model(
+    "gpt-5.4-nano",
+    reasoning=ReasoningMode.DISABLED,
+    text_verbosity="low",
+)
+
+GPT5_4_NANO_LOW = _gpt5_responses_model(
+    "gpt-5.4-nano",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_4_NANO_MEDIUM = _gpt5_responses_model(
+    "gpt-5.4-nano",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_4_NANO_HIGH = _gpt5_responses_model(
+    "gpt-5.4-nano",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_4_NANO_XHIGH = _gpt5_responses_model(
+    "gpt-5.4-nano",
+    reasoning=ReasoningMode.XHIGH,
+    text_verbosity="high",
 )
 
 # -----------------------------------------------------------------------------
