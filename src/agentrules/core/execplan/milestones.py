@@ -1,4 +1,4 @@
-"""Create, list, and archive ExecPlan milestones."""
+"""Create, list, and complete ExecPlan milestones."""
 
 from __future__ import annotations
 
@@ -17,10 +17,11 @@ from agentrules.core.execplan.identity import extract_execplan_id_from_filename
 from agentrules.core.execplan.locks import execplan_mutation_lock
 from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
-    ARCHIVE_DIR,
+    COMPLETE_DIR,
+    COMPLETE_DIR_ALIASES,
     MILESTONES_DIR,
     get_execplan_plan_root,
-    is_execplan_archive_path,
+    is_execplan_complete_path,
     is_execplan_milestone_path,
 )
 from agentrules.core.execplan.registry import ALLOWED_DOMAINS, DEFAULT_EXECPLANS_DIR
@@ -167,7 +168,7 @@ def scan_plan_milestone_files(*, plan_root: Path) -> tuple[MilestoneFileScan, ..
 
         resolved_candidate = candidate.resolve()
         relative = resolved_candidate.relative_to(milestones_root)
-        if not relative.parts or relative.parts[0] not in {ACTIVE_DIR, ARCHIVE_DIR}:
+        if not relative.parts or relative.parts[0] not in {ACTIVE_DIR, *COMPLETE_DIR_ALIASES}:
             continue
 
         location: Literal["active", "archived"]
@@ -274,7 +275,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
 
 def scan_active_milestones_for_archive(*, plan_root: Path, execplan_id: str) -> ActiveMilestoneArchiveScan:
     """
-    Scan milestones/active for archive safety checks using front matter as source of truth.
+    Scan milestones/active for completion safety checks using front matter as source of truth.
     """
     active_root = (plan_root / MILESTONES_DIR / ACTIVE_DIR).resolve()
     if not active_root.exists():
@@ -428,8 +429,8 @@ def _ensure_execplan_mutable(
     metadata: dict[str, Any],
     execplans_dir: Path,
 ) -> None:
-    if is_execplan_archive_path(plan_path, execplans_root=execplans_dir):
-        raise ValueError(f"ExecPlan {execplan_id!r} is archived and cannot accept new milestones.")
+    if is_execplan_complete_path(plan_path, execplans_root=execplans_dir):
+        raise ValueError(f"ExecPlan {execplan_id!r} is completed and cannot accept new milestones.")
     status = str(metadata.get("status", "")).strip().lower()
     if status == "archived":
         raise ValueError(f"ExecPlan {execplan_id!r} has archived status and cannot accept new milestones.")
@@ -682,7 +683,7 @@ def list_execplan_milestones(
         location: Literal["active", "archived"]
         if relative.parts and relative.parts[0] == ACTIVE_DIR:
             location = "active"
-        elif relative.parts and relative.parts[0] == ARCHIVE_DIR:
+        elif relative.parts and relative.parts[0] in COMPLETE_DIR_ALIASES:
             location = "archived"
         else:
             continue
@@ -745,11 +746,11 @@ def archive_execplan_milestone(
                 f"{execplan_id}/MS{sequence:03d}. Resolve duplicates: {joined}"
             )
 
-        # Keep `archive_date_yyyymmdd` for API compatibility even though archive
+        # Keep `archive_date_yyyymmdd` for API compatibility even though complete
         # layout no longer shards by date.
         if archive_date_yyyymmdd is not None:
             _validate_date_yyyymmdd(archive_date_yyyymmdd)
-        archive_dir = plan_root / MILESTONES_DIR / ARCHIVE_DIR
+        archive_dir = plan_root / MILESTONES_DIR / COMPLETE_DIR
         archive_dir.mkdir(parents=True, exist_ok=True)
 
         source_path = candidates[0]

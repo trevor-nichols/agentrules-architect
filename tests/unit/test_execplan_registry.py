@@ -134,7 +134,7 @@ class ExecPlanRegistryTests(unittest.TestCase):
             )
             _write_execplan(
                 execplans_dir
-                / "archive"
+                / "complete"
                 / "2026"
                 / "02"
                 / "12"
@@ -160,14 +160,14 @@ class ExecPlanRegistryTests(unittest.TestCase):
                 / "active"
                 / "checkout"
                 / "milestones"
-                / "archive"
+                / "complete"
                 / "MS002_add-coupon-validation.md",
                 milestone_id="EP-20260207-001/MS002",
                 execplan_id="EP-20260207-001",
             )
             _write_milestone(
                 execplans_dir
-                / "archive"
+                / "complete"
                 / "2026"
                 / "02"
                 / "12"
@@ -239,7 +239,7 @@ class ExecPlanRegistryTests(unittest.TestCase):
             )
             _write_execplan(
                 execplans_dir
-                / "archive"
+                / "complete"
                 / "2026"
                 / "02"
                 / "12"
@@ -265,14 +265,14 @@ class ExecPlanRegistryTests(unittest.TestCase):
                 / "active"
                 / "checkout"
                 / "milestones"
-                / "archive"
+                / "complete"
                 / "MS002_add-coupon-validation.md",
                 milestone_id="EP-20260207-001/MS002",
                 execplan_id="EP-20260207-001",
             )
             _write_milestone(
                 execplans_dir
-                / "archive"
+                / "complete"
                 / "2026"
                 / "02"
                 / "12"
@@ -544,7 +544,57 @@ class ExecPlanRegistryTests(unittest.TestCase):
 
             result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
             warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
-            self.assertFalse(any("under archive path" in message for message in warning_messages))
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
+
+            build = build_execplan_registry(
+                root=root,
+                execplans_dir=execplans_dir,
+                output_path=registry_path,
+                fail_on_warn=True,
+            )
+            self.assertTrue(build.wrote_registry)
+            self.assertEqual(build.warning_count, 0)
+
+    def test_collect_does_not_treat_slug_named_complete_as_archived_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            registry_path = execplans_dir / "registry.json"
+
+            _write_execplan(
+                execplans_dir / "complete" / "EP-20260207-001_complete.md",
+                plan_id="EP-20260207-001",
+                title="Complete Slug Plan",
+            )
+
+            result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
+            warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
+
+            build = build_execplan_registry(
+                root=root,
+                execplans_dir=execplans_dir,
+                output_path=registry_path,
+                fail_on_warn=True,
+            )
+            self.assertTrue(build.wrote_registry)
+            self.assertEqual(build.warning_count, 0)
+
+    def test_collect_does_not_treat_slug_named_completed_as_archived_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            registry_path = execplans_dir / "registry.json"
+
+            _write_execplan(
+                execplans_dir / "completed" / "EP-20260207-001_completed.md",
+                plan_id="EP-20260207-001",
+                title="Completed Slug Plan",
+            )
+
+            result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
+            warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
 
             build = build_execplan_registry(
                 root=root,
@@ -569,7 +619,57 @@ class ExecPlanRegistryTests(unittest.TestCase):
 
             result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
             warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
-            self.assertFalse(any("under archive path" in message for message in warning_messages))
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
+
+            build = build_execplan_registry(
+                root=root,
+                execplans_dir=execplans_dir,
+                output_path=registry_path,
+                fail_on_warn=True,
+            )
+            self.assertTrue(build.wrote_registry)
+            self.assertEqual(build.warning_count, 0)
+
+    def test_collect_does_not_treat_active_root_complete_slug_as_archived_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            registry_path = execplans_dir / "registry.json"
+
+            _write_execplan(
+                execplans_dir / "active" / "complete" / "EP-20260207-001_complete.md",
+                plan_id="EP-20260207-001",
+                title="Complete Slug Plan Under Active Root",
+            )
+
+            result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
+            warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
+
+            build = build_execplan_registry(
+                root=root,
+                execplans_dir=execplans_dir,
+                output_path=registry_path,
+                fail_on_warn=True,
+            )
+            self.assertTrue(build.wrote_registry)
+            self.assertEqual(build.warning_count, 0)
+
+    def test_collect_does_not_treat_active_root_completed_slug_as_archived_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            registry_path = execplans_dir / "registry.json"
+
+            _write_execplan(
+                execplans_dir / "active" / "completed" / "EP-20260207-001_completed.md",
+                plan_id="EP-20260207-001",
+                title="Completed Slug Plan Under Active Root",
+            )
+
+            result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
+            warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
 
             build = build_execplan_registry(
                 root=root,
@@ -613,7 +713,7 @@ class ExecPlanRegistryTests(unittest.TestCase):
 
             result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
             warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
-            self.assertFalse(any("under archive path" in message for message in warning_messages))
+            self.assertFalse(any("under a complete path" in message for message in warning_messages))
             self.assertEqual(result.error_count, 0)
 
             build = build_execplan_registry(
@@ -633,7 +733,7 @@ class ExecPlanRegistryTests(unittest.TestCase):
 
             _write_execplan(
                 execplans_dir
-                / "archive"
+                / "completed"
                 / "2026"
                 / "02"
                 / "14"
@@ -646,7 +746,7 @@ class ExecPlanRegistryTests(unittest.TestCase):
 
             result = collect_execplan_registry(root=root, execplans_dir=execplans_dir)
             warning_messages = [issue.message for issue in result.issues if issue.severity == "warning"]
-            self.assertTrue(any("under archive path" in message for message in warning_messages))
+            self.assertTrue(any("under a complete path" in message for message in warning_messages))
             self.assertEqual(result.error_count, 0)
 
             build = build_execplan_registry(

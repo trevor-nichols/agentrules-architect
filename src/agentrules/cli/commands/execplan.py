@@ -49,7 +49,7 @@ ARCHIVE_DATE_OPTION = typer.Option(
     None,
     "--date",
     metavar="YYYYMMDD",
-    help="Override archive date token used in destination path and metadata update.",
+    help="Override completion date token used in destination path and metadata update.",
 )
 EXECPLANS_DIR_OPTION = typer.Option(
     DEFAULT_EXECPLANS_DIR,
@@ -103,12 +103,12 @@ MILESTONE_MS_OPTION = typer.Option(
     "--ms",
     min=1,
     max=999,
-    help="Milestone sequence number (MS###) to archive.",
+    help="Milestone sequence number (MS###) to complete.",
 )
 MILESTONE_INCLUDE_ARCHIVED_OPTION = typer.Option(
     True,
     "--archived/--active-only",
-    help="Include archived milestones in list output.",
+    help="Include completed milestones in list output. Legacy option name retained for compatibility.",
 )
 PLAN_LIST_INCLUDE_PATH_OPTION = typer.Option(
     False,
@@ -240,6 +240,7 @@ def register(app: typer.Typer) -> None:
         console.print("[yellow]Registry was not updated.[/]")
         raise typer.Exit(1)
 
+    @execplan_app.command("complete")
     @execplan_app.command("archive")
     def archive_existing_execplan(  # type: ignore[func-returns-value]
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
@@ -275,10 +276,10 @@ def register(app: typer.Typer) -> None:
             console.print(f"[red]{error}[/]")
             raise typer.Exit(2) from error
         except OSError as error:
-            console.print(f"[red]ExecPlan archive failed due to filesystem error: {error}[/]")
+            console.print(f"[red]ExecPlan completion failed due to filesystem error: {error}[/]")
             raise typer.Exit(2) from error
 
-        console.print(f"[green]Archived ExecPlan:[/] {result.plan_id}")
+        console.print(f"[green]Completed ExecPlan:[/] {result.plan_id}")
         console.print(f"[green]From:[/] {result.source_plan_root.as_posix()}")
         console.print(f"[green]To:[/] {result.archived_plan_root.as_posix()}")
         active_count = _count_active_execplans(
@@ -456,10 +457,11 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(0)
 
         for milestone in milestones:
-            status = "[green]active[/]" if milestone.location == "active" else "[yellow]archived[/]"
+            status = "[green]active[/]" if milestone.location == "active" else "[yellow]completed[/]"
             console.print(f"{status} {milestone.milestone_id} -> {milestone.path.as_posix()}")
         raise typer.Exit(0)
 
+    @milestone_app.command("complete")
     @milestone_app.command("archive")
     def archive_milestone(  # type: ignore[func-returns-value]
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
@@ -486,10 +488,10 @@ def register(app: typer.Typer) -> None:
             console.print(f"[red]{error}[/]")
             raise typer.Exit(2) from error
         except OSError as error:
-            console.print(f"[red]Milestone archive failed due to filesystem error: {error}[/]")
+            console.print(f"[red]Milestone completion failed due to filesystem error: {error}[/]")
             raise typer.Exit(2) from error
 
-        console.print(f"[green]Archived milestone:[/] {result.milestone_id}")
+        console.print(f"[green]Completed milestone:[/] {result.milestone_id}")
         console.print(f"[green]From:[/] {result.source_path.as_posix()}")
         console.print(f"[green]To:[/] {result.archived_path.as_posix()}")
         raise typer.Exit(0)

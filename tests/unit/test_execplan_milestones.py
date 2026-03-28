@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -406,8 +407,8 @@ class ExecPlanMilestonesTests(unittest.TestCase):
 
             self.assertFalse(created_milestone.milestone_path.exists())
             self.assertTrue(archived.archived_path.exists())
-            self.assertIn("/milestones/archive/", archived.archived_path.as_posix())
-            self.assertNotIn("/milestones/archive/2026/02/12/", archived.archived_path.as_posix())
+            self.assertIn("/milestones/complete/", archived.archived_path.as_posix())
+            self.assertNotIn("/milestones/complete/2026/02/12/", archived.archived_path.as_posix())
 
     def test_archive_missing_active_milestone_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -478,6 +479,41 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertEqual([entry.milestone_id for entry in all_entries], [first.milestone_id, second.milestone_id])
             self.assertEqual([entry.location for entry in all_entries], ["archived", "active"])
             self.assertEqual([entry.milestone_id for entry in active_only], [second.milestone_id])
+
+    def test_list_milestones_includes_legacy_archive_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Legacy Archive Directory",
+                slug="legacy-archive-directory",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Legacy archived artifact",
+                execplans_dir=execplans_dir,
+            )
+
+            legacy_archive_dir = created_plan.plan_path.parent / "milestones" / "archive"
+            legacy_archive_dir.mkdir(parents=True, exist_ok=True)
+            legacy_archive_path = legacy_archive_dir / milestone.milestone_path.name
+            os.replace(milestone.milestone_path, legacy_archive_path)
+
+            entries = list_execplan_milestones(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                execplans_dir=execplans_dir,
+                include_archived=True,
+            )
+
+            self.assertEqual([entry.milestone_id for entry in entries], [milestone.milestone_id])
+            self.assertEqual([entry.location for entry in entries], ["archived"])
+            self.assertIn("/milestones/archive/", entries[0].path.as_posix())
 
 
 if __name__ == "__main__":

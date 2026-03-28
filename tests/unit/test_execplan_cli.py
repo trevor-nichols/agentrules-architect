@@ -124,7 +124,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertEqual(result.exit_code, 2, msg=result.output)
         self.assertIn("filesystem error", result.output.lower())
 
-    def test_archive_moves_execplan_directory_and_updates_registry(self) -> None:
+    def test_complete_moves_execplan_directory_and_updates_registry(self) -> None:
         from agentrules import cli
 
         create_result = self.runner.invoke(
@@ -149,7 +149,7 @@ class ExecPlanCLITests(unittest.TestCase):
             cli.app,
             [
                 "execplan",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--root",
                 str(self.root),
@@ -165,7 +165,7 @@ class ExecPlanCLITests(unittest.TestCase):
             self.root
             / ".agent"
             / "exec_plans"
-            / "archive"
+            / "complete"
             / "2026"
             / "02"
             / "12"
@@ -180,7 +180,7 @@ class ExecPlanCLITests(unittest.TestCase):
         registry_path = self.root / ".agent" / "exec_plans" / "registry.json"
         payload = json.loads(registry_path.read_text(encoding="utf-8"))
         self.assertEqual(payload["plans"][0]["id"], "EP-20260207-001")
-        self.assertIn("archive/2026/02/12/", payload["plans"][0]["path"])
+        self.assertIn("complete/2026/02/12/", payload["plans"][0]["path"])
 
     def test_archive_rejects_already_archived_execplan(self) -> None:
         from agentrules import cli
@@ -229,7 +229,7 @@ class ExecPlanCLITests(unittest.TestCase):
             ],
         )
         self.assertNotEqual(second_archive.exit_code, 0)
-        self.assertIn("already archived", second_archive.output.lower())
+        self.assertIn("already completed", second_archive.output.lower())
 
     def test_archive_prints_remaining_active_execplan_count(self) -> None:
         from agentrules import cli
@@ -268,7 +268,7 @@ class ExecPlanCLITests(unittest.TestCase):
             cli.app,
             [
                 "execplan",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--root",
                 str(self.root),
@@ -333,7 +333,7 @@ class ExecPlanCLITests(unittest.TestCase):
             [
                 "execplan",
                 "milestone",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--ms",
                 "1",
@@ -439,7 +439,7 @@ class ExecPlanCLITests(unittest.TestCase):
             cli.app,
             [
                 "execplan",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--root",
                 str(self.root),

@@ -17,9 +17,11 @@ from agentrules.core.execplan.identity import extract_execplan_id_from_filename
 from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
     ARCHIVE_DIR,
+    COMPLETE_DIR,
+    COMPLETED_DIR,
     MILESTONES_DIR,
     get_execplan_plan_root,
-    is_execplan_archive_path,
+    is_execplan_complete_path,
     is_execplan_milestone_path,
 )
 
@@ -409,12 +411,12 @@ def _build_plan(
     depends_on = _normalize_str_list(metadata.get("depends_on"))
     supersedes = _normalize_str_list(metadata.get("supersedes"))
 
-    in_archive = is_execplan_archive_path(plan_path, execplans_root=execplans_dir)
+    in_archive = is_execplan_complete_path(plan_path, execplans_root=execplans_dir)
     if status == "archived" and not in_archive:
         issues.append(
             RegistryIssue(
                 "warning",
-                "status is 'archived' but plan file is not under an archive path.",
+                "status is 'archived' but plan file is not under a complete path.",
                 path=path_text,
             )
         )
@@ -422,7 +424,7 @@ def _build_plan(
         issues.append(
             RegistryIssue(
                 "warning",
-                "Plan file is under archive path but status is neither 'archived' nor 'done'.",
+                "Plan file is under a complete path but status is neither 'archived' nor 'done'.",
                 path=path_text,
             )
         )
@@ -581,11 +583,11 @@ def _count_milestones_for_plan(*, plan_path: Path, execplan_id: str, execplans_d
         return 0, 0
 
     active_root = (milestones_root / ACTIVE_DIR).resolve()
-    archive_root = (milestones_root / ARCHIVE_DIR).resolve()
+    completed_roots = tuple((milestones_root / name).resolve() for name in (COMPLETE_DIR, COMPLETED_DIR, ARCHIVE_DIR))
 
     active_count = 0
     total_count = 0
-    for root in (active_root, archive_root):
+    for root in (active_root, *completed_roots):
         if not root.exists():
             continue
         is_active_root = root == active_root
@@ -609,8 +611,9 @@ def list_active_execplan_summaries(
     """
     Return active ExecPlans with per-plan milestone progress.
 
-    Active plans are plans whose files are not under an archive path. Milestone
-    counts include owned files in milestones/active and milestones/archive.
+    Active plans are plans whose files are not under a complete path. Milestone
+    counts include owned files in milestones/active, milestones/complete,
+    legacy milestones/completed, and legacy milestones/archive.
     """
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
@@ -629,7 +632,7 @@ def list_active_execplan_summaries(
             continue
 
         plan_path = _resolve_registry_plan_path(plan_path_value, root=resolved_root)
-        if is_execplan_archive_path(plan_path, execplans_root=resolved_execplans_dir):
+        if is_execplan_complete_path(plan_path, execplans_root=resolved_execplans_dir):
             continue
 
         active_milestones, total_milestones = _count_milestones_for_plan(
@@ -661,9 +664,10 @@ def summarize_registry_activity(
     """
     Summarize active ExecPlans and milestone progress for CLI reporting.
 
-    Active plans are plans whose files are not under an archive path. Milestone
+    Active plans are plans whose files are not under a complete path. Milestone
     totals are aggregated across active plans only and count owned milestone
-    files under milestones/active and milestones/archive.
+    files under milestones/active, milestones/complete, legacy
+    milestones/completed, and legacy milestones/archive.
     """
     summaries = list_active_execplan_summaries(
         registry=registry,

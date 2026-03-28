@@ -166,11 +166,11 @@ See [docs/codex-runtime.md](docs/codex-runtime.md) for complete setup, auth flow
 - `agentrules snapshot generate [path]` – create (or refresh) `SNAPSHOT.md` in the current directory by default.
 - `agentrules snapshot sync [path]` – sync an existing snapshot as project files evolve (also creates if missing).
 - `agentrules execplan new \"Title\"` – create a new ExecPlan markdown file under `.agent/exec_plans/active/<slug>/`.
-- `agentrules execplan archive EP-YYYYMMDD-NNN [--date YYYYMMDD]` – archive a full ExecPlan directory under `.agent/exec_plans/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/`.
+- `agentrules execplan complete EP-YYYYMMDD-NNN [--date YYYYMMDD]` – move a full ExecPlan directory under `.agent/exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/` (`completed` and `archive` remain supported as legacy aliases).
 - `agentrules execplan list [--path]` – list active ExecPlans with compact milestone progress (`completed/total`).
 - `agentrules execplan milestone new EP-YYYYMMDD-NNN \"Title\" [--ms N]` – create a milestone under a specific ExecPlan (auto sequence by default, or explicit `MS###` when provided).
 - `agentrules execplan milestone list EP-YYYYMMDD-NNN [--active-only]` – list milestones for one ExecPlan.
-- `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>` – archive an active milestone sequence.
+- `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>` – move an active milestone sequence into the `milestones/complete/` directory (`completed` and `archive` remain supported as legacy aliases).
 - `agentrules execplan milestone remaining EP-YYYYMMDD-NNN [--path]` – show active milestones left for one ExecPlan.
 - `agentrules execplan-registry [build|check|update]` – manage `.agent/exec_plans/registry.json` from ExecPlan front matter.
 - `agentrules scaffold sync [--check|--force]` – sync `.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md` with packaged defaults.
@@ -203,15 +203,21 @@ ExecPlans and milestones use canonical IDs and deterministic file locations:
 - ExecPlan ID: `EP-YYYYMMDD-NNN`
 - Milestone ID: `EP-YYYYMMDD-NNN/MS###`
 - Active ExecPlan path: `.agent/exec_plans/active/<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
-- Archived ExecPlan path: `.agent/exec_plans/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
+- Complete ExecPlan path: `.agent/exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
+- Legacy alias paths:
+  `.agent/exec_plans/completed/YYYY/MM/DD/EP-YYYYMMDD-NNN_<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
+  `.agent/exec_plans/archive/YYYY/MM/DD/EP-YYYYMMDD-NNN_<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
 - Active milestone path: `.agent/exec_plans/active/<plan-slug>/milestones/active/MS###_<milestone-slug>.md`
-- Archive milestone path: `.agent/exec_plans/active/<plan-slug>/milestones/archive/MS###_<milestone-slug>.md`
+- Complete milestone path: `.agent/exec_plans/active/<plan-slug>/milestones/complete/MS###_<milestone-slug>.md`
+- Legacy alias paths:
+  `.agent/exec_plans/active/<plan-slug>/milestones/completed/MS###_<milestone-slug>.md`
+  `.agent/exec_plans/active/<plan-slug>/milestones/archive/MS###_<milestone-slug>.md`
 
 Milestone creation is parent-first and sequence-safe:
 
 - Users provide parent ExecPlan ID + milestone title.
 - CLI/API assign `MS###` automatically, or accept `--ms N` to request a specific sequence.
-- Sequence is monotonic per plan across active and archived milestones (`MS001`, `MS002`, ...).
+- Sequence is monotonic per plan across active and completed milestones (`MS001`, `MS002`, ...). Legacy `archive` milestone directories are counted too.
 - `.agent/templates/MILESTONE_TEMPLATE.md` is a guidance scaffold for authors.
   Generated milestone files come from an internal file template used by `execplan milestone new`.
 
@@ -236,10 +242,10 @@ agentrules execplan milestone list EP-20260207-001 --active-only
 agentrules execplan milestone remaining EP-20260207-001
 
 # 4) Archive a completed milestone
-agentrules execplan milestone archive EP-20260207-001 --ms 1
+agentrules execplan milestone complete EP-20260207-001 --ms 1
 
-# 5) Archive the completed ExecPlan directory
-agentrules execplan archive EP-20260207-001 --date 20260212
+# 5) Complete the ExecPlan directory
+agentrules execplan complete EP-20260207-001 --date 20260212
 
 # Optional: list all active plans with compact milestone progress
 agentrules execplan list
