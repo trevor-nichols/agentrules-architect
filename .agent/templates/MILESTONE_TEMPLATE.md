@@ -6,7 +6,7 @@
 * Create your milestone within `.agent/exec_plans/active/<short_slug>/milestones/active/`.
 * When your milestone is complete, move it to `.agent/exec_plans/active/<short_slug>/milestones/complete/`. Legacy `milestones/completed/` and `milestones/archive/` remain supported.
 * Prefer CLI milestone workflow over manual file creation:
-  - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>"`
+  - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" --ms <N>`
   - List: `agentrules execplan milestone list EP-YYYYMMDD-NNN` (or `--active-only`)
   - Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`
   - Legacy alias: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
