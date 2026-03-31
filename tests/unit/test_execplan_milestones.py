@@ -1,4 +1,7 @@
+import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -41,6 +44,84 @@ def _write_execplan(path: Path, *, plan_id: str, title: str, domain: str = "back
         ),
         encoding="utf-8",
     )
+
+
+def _launch_milestone_create_subprocess(
+    *,
+    root: Path,
+    execplan_id: str,
+    title: str,
+    start_path: Path,
+    sequence: int | None = None,
+) -> subprocess.Popen[str]:
+    repo_root = Path(__file__).resolve().parents[2]
+    env = os.environ.copy()
+    src_path = str(repo_root / "src")
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = src_path if not existing_pythonpath else f"{src_path}{os.pathsep}{existing_pythonpath}"
+
+    code = """
+import json
+import sys
+import time
+from pathlib import Path
+
+from agentrules.core.execplan.milestones import create_execplan_milestone
+
+root = Path(sys.argv[1])
+execplan_id = sys.argv[2]
+title = sys.argv[3]
+sequence_arg = sys.argv[4]
+start_path = Path(sys.argv[5])
+execplans_dir = root / ".agent" / "exec_plans"
+
+for _ in range(500):
+    if start_path.exists():
+        break
+    time.sleep(0.01)
+else:
+    raise RuntimeError(f"timed out waiting for start signal: {start_path}")
+
+kwargs = {
+    "root": root,
+    "execplan_id": execplan_id,
+    "title": title,
+    "execplans_dir": execplans_dir,
+}
+if sequence_arg:
+    kwargs["sequence"] = int(sequence_arg)
+
+try:
+    result = create_execplan_milestone(**kwargs)
+except Exception as error:  # pragma: no cover - exercised via parent assertions
+    print(json.dumps({"ok": False, "error_type": type(error).__name__, "error": str(error)}))
+else:
+    print(json.dumps({"ok": True, "milestone_id": result.milestone_id, "sequence": result.sequence}))
+"""
+
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(root),
+            execplan_id,
+            title,
+            "" if sequence is None else str(sequence),
+            str(start_path),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+
+
+def _read_subprocess_result(process: subprocess.Popen[str]) -> dict[str, object]:
+    stdout, stderr = process.communicate(timeout=10)
+    if process.returncode != 0:
+        raise AssertionError(f"subprocess exited with {process.returncode}: stdout={stdout!r} stderr={stderr!r}")
+    return json.loads(stdout.strip())
 
 
 class ExecPlanMilestonesTests(unittest.TestCase):
@@ -231,6 +312,83 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                     sequence=1,
                     execplans_dir=execplans_dir,
                 )
+
+    def test_create_milestone_serializes_auto_sequences_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Concurrent Auto Sequence",
+                slug="concurrent-auto-sequence",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            start_path = root / "milestone-start.signal"
+            first = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Alpha",
+                start_path=start_path,
+            )
+            second = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Beta",
+                start_path=start_path,
+            )
+
+            start_path.write_text("go\n", encoding="utf-8")
+            first_result = _read_subprocess_result(first)
+            second_result = _read_subprocess_result(second)
+
+            self.assertTrue(first_result["ok"], msg=first_result)
+            self.assertTrue(second_result["ok"], msg=second_result)
+            self.assertEqual(
+                sorted([first_result["milestone_id"], second_result["milestone_id"]]),
+                ["EP-20260207-001/MS001", "EP-20260207-001/MS002"],
+            )
+
+    def test_create_milestone_rejects_duplicate_explicit_sequence_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Concurrent Explicit Sequence",
+                slug="concurrent-explicit-sequence",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            start_path = root / "milestone-start.signal"
+            first = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Alpha",
+                sequence=1,
+                start_path=start_path,
+            )
+            second = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Beta",
+                sequence=1,
+                start_path=start_path,
+            )
+
+            start_path.write_text("go\n", encoding="utf-8")
+            results = [_read_subprocess_result(first), _read_subprocess_result(second)]
+
+            successes = [result for result in results if result["ok"]]
+            failures = [result for result in results if not result["ok"]]
+            self.assertEqual(len(successes), 1, msg=results)
+            self.assertEqual(len(failures), 1, msg=results)
+            self.assertEqual(successes[0]["milestone_id"], "EP-20260207-001/MS001")
+            self.assertIn("already exists", str(failures[0]["error"]).lower())
 
     def test_next_milestone_sequence_counts_malformed_active_ms_filenames(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
