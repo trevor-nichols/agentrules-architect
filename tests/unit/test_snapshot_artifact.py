@@ -383,7 +383,8 @@ def test_sync_snapshot_artifact_respects_tree_depth_limit() -> None:
         )
 
         rendered = snapshot_path.read_text(encoding="utf-8")
-        assert "... (max depth reached)" in rendered
+        assert "└── ..." in rendered
+        assert "... (max depth reached)" not in rendered
         assert "top.py" in rendered
         assert "deep.py" not in rendered
 
@@ -408,6 +409,36 @@ def test_sync_snapshot_artifact_has_no_depth_limit_when_unspecified() -> None:
 
         rendered = snapshot_path.read_text(encoding="utf-8")
         assert "deep.py" in rendered
+        assert "... (max depth reached)" not in rendered
+
+
+def test_sync_snapshot_artifact_ignores_legacy_depth_marker_entries() -> None:
+    with TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        nested = root / "src" / "nested"
+        nested.mkdir(parents=True)
+        (nested / "deep.py").write_text("print('deep')\n", encoding="utf-8")
+        snapshot_path = root / "SNAPSHOT.md"
+        snapshot_path.write_text(
+            "<project_structure>\n"
+            "└── src\n"
+            "    └── ... (max depth reached)\n"
+            "</project_structure>\n",
+            encoding="utf-8",
+        )
+
+        sync_snapshot_artifact(
+            root,
+            output_path=snapshot_path,
+            tree_max_depth=2,
+            exclude_dirs=set(),
+            exclude_files=set(),
+            exclude_extensions=set(),
+            write=True,
+        )
+
+        rendered = snapshot_path.read_text(encoding="utf-8")
+        assert "└── ..." in rendered
         assert "... (max depth reached)" not in rendered
 
 
