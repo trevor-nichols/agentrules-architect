@@ -26,6 +26,10 @@ from ..context import CliContext
 from .output_validation import validate_pipeline_output_filenames
 
 
+def _is_running_loop_runtime_error(error: RuntimeError) -> bool:
+    return "asyncio.run() cannot be called from a running event loop" in str(error)
+
+
 def _activate_offline_mode(context: CliContext) -> None:
     if os.getenv("OFFLINE", "0") != "1":
         return
@@ -214,12 +218,21 @@ def run_pipeline(
 
     try:
         result = asyncio.run(_execute())
-    except RuntimeError:
+    except RuntimeError as error:
+        if not _is_running_loop_runtime_error(error):
+            context.console.print(f"[red]Pipeline failed:[/] {error}")
+            return False
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(_execute())
+        except Exception as nested_error:
+            context.console.print(f"[red]Pipeline failed:[/] {nested_error}")
+            return False
         finally:
             loop.close()
+    except Exception as error:
+        context.console.print(f"[red]Pipeline failed:[/] {error}")
+        return False
 
     output_writer = PipelineOutputWriter()
     output_options = PipelineOutputOptions(

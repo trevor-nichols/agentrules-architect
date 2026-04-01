@@ -5,6 +5,7 @@ import sys
 from collections import deque
 from pathlib import Path
 from typing import Literal
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -14,6 +15,7 @@ from agentrules.core.agents.codex import (
     CodexNotification,
     CodexProcessLaunchConfig,
 )
+from agentrules.core.agents.codex.process import DEFAULT_CODEX_SUBPROCESS_STREAM_LIMIT
 
 FAKE_SERVER = Path(__file__).resolve().parents[2] / "fakes" / "codex_app_server.py"
 
@@ -99,6 +101,34 @@ async def test_codex_client_chatgpt_login_and_logout(tmp_path: Path) -> None:
 
         account_after_logout = await client.read_account()
         assert account_after_logout.is_authenticated is False
+
+
+@pytest.mark.asyncio
+async def test_codex_process_uses_explicit_stream_limit(tmp_path: Path) -> None:
+    launch_config = CodexProcessLaunchConfig(
+        executable_path=sys.executable,
+        codex_home=str(tmp_path / "codex-home"),
+        cwd=str(tmp_path),
+    )
+    process = CodexAppServerProcess(
+        launch_config,
+        command=(sys.executable, "-u", str(FAKE_SERVER)),
+    )
+
+    fake_process = AsyncMock()
+    fake_process.stdin = None
+    fake_process.stdout = None
+    fake_process.stderr = None
+    fake_process.returncode = None
+
+    with patch(
+        "agentrules.core.agents.codex.process.asyncio.create_subprocess_exec",
+        new_callable=AsyncMock,
+    ) as mock_exec:
+        mock_exec.return_value = fake_process
+        await process.start()
+
+    assert mock_exec.await_args.kwargs["limit"] == DEFAULT_CODEX_SUBPROCESS_STREAM_LIMIT
 
 
 @pytest.mark.asyncio

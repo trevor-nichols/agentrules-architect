@@ -13,6 +13,8 @@ from typing import Any
 
 from .errors import CodexExecutableNotFoundError, CodexProcessError
 
+DEFAULT_CODEX_SUBPROCESS_STREAM_LIMIT = 1024 * 1024
+
 
 def _format_config_override(value: Any) -> str:
     if isinstance(value, str):
@@ -47,10 +49,14 @@ class CodexAppServerProcess:
         *,
         command: Sequence[str] | None = None,
         env: Mapping[str, str] | None = None,
+        stream_limit_bytes: int = DEFAULT_CODEX_SUBPROCESS_STREAM_LIMIT,
     ) -> None:
+        if stream_limit_bytes <= 0:
+            raise ValueError("stream_limit_bytes must be a positive integer.")
         self.launch_config = launch_config
         self._command = tuple(command) if command is not None else tuple(launch_config.build_command())
         self._env_overrides = dict(env or {})
+        self._stream_limit_bytes = stream_limit_bytes
         self._process: asyncio.subprocess.Process | None = None
         self._stderr_lines: deque[str] = deque(maxlen=50)
 
@@ -105,6 +111,7 @@ class CodexAppServerProcess:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                limit=self._stream_limit_bytes,
             )
         except FileNotFoundError as exc:
             executable = self._command[0] if self._command else self.launch_config.executable_path
@@ -157,3 +164,10 @@ class CodexAppServerProcess:
             "codex_home": self.launch_config.codex_home,
             "cwd": self.launch_config.cwd,
         }
+
+
+__all__ = [
+    "CodexAppServerProcess",
+    "CodexProcessLaunchConfig",
+    "DEFAULT_CODEX_SUBPROCESS_STREAM_LIMIT",
+]

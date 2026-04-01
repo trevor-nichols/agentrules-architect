@@ -99,6 +99,9 @@ class FinalAnalysis:
 
             # Use the architect to perform the final analysis with the formatted prompt.
             result = await self.architect.final_analysis(consolidated_report, prompt)
+            error_message = result.get("error") if isinstance(result, dict) else None
+            if isinstance(error_message, str) and error_message.strip():
+                raise RuntimeError(f"Final analysis failed: {error_message}")
 
             logger.info("[bold green]Final Analysis:[/bold green] Rules creation completed successfully")
 
@@ -106,4 +109,4 @@ class FinalAnalysis:
         except Exception as e:
             # Log any errors that occur during the analysis.
             logger.error(f"[bold red]Error in Final Analysis:[/bold red] {str(e)}")
-            return {"error": str(e)}  # Return the error message.
+            raise

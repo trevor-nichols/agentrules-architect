@@ -1,7 +1,7 @@
 import io
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from rich.console import Console
 
@@ -276,6 +276,103 @@ class PipelineRunnerTests(unittest.TestCase):
         rendered = buffer.getvalue()
         self.assertIn("Invalid output configuration", rendered)
         self.assertIn("Snapshot filename must not be . or ..", rendered)
+
+    @patch("agentrules.cli.services.pipeline_runner.PipelineOutputWriter")
+    @patch("agentrules.cli.services.pipeline_runner.build_project_snapshot")
+    @patch("agentrules.cli.services.pipeline_runner.create_default_pipeline")
+    @patch("agentrules.cli.services.pipeline_runner.get_config_manager")
+    def test_run_pipeline_returns_false_when_phase5_raises(
+        self,
+        mock_get_config_manager,
+        mock_create_pipeline,
+        mock_build_snapshot,
+        mock_output_writer_cls,
+    ) -> None:
+        buffer = io.StringIO()
+        context = CliContext(console=Console(file=buffer, width=80))
+        target = Path.cwd()
+
+        mock_config = MagicMock()
+        mock_config.get_exclusion_overrides.return_value = MagicMock(is_empty=lambda: True)
+        mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+        mock_config.get_tree_max_depth.return_value = 5
+        mock_config.get_rules_tree_max_depth.return_value = 3
+        mock_config.should_respect_gitignore.return_value = True
+        mock_config.is_researcher_enabled.return_value = False
+        mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+        mock_config.should_generate_phase_outputs.return_value = True
+        mock_config.should_generate_cursorignore.return_value = True
+        mock_config.should_generate_agent_scaffold.return_value = True
+        mock_config.should_generate_snapshot.return_value = True
+        mock_get_config_manager.return_value = mock_config
+
+        mock_build_snapshot.return_value = MagicMock()
+
+        mock_pipeline = MagicMock()
+        mock_pipeline.run_phase1 = AsyncMock(return_value={"phase": "Initial Discovery"})
+        mock_pipeline.run_phase2 = AsyncMock(return_value={"agents": []})
+        mock_pipeline.run_phase3 = AsyncMock(return_value={"findings": []})
+        mock_pipeline.run_phase4 = AsyncMock(return_value={"analysis": "ok"})
+        mock_pipeline.run_phase5 = AsyncMock(side_effect=RuntimeError("Phase 5 consolidation failed"))
+        mock_create_pipeline.return_value = mock_pipeline
+
+        ok = pipeline_runner.run_pipeline(target, offline=False, context=context)
+
+        self.assertFalse(ok)
+        mock_output_writer_cls.assert_not_called()
+        rendered = buffer.getvalue()
+        self.assertIn("Pipeline failed", rendered)
+        self.assertIn("Phase 5 consolidation failed", rendered)
+
+    @patch("agentrules.cli.services.pipeline_runner.PipelineOutputWriter")
+    @patch("agentrules.cli.services.pipeline_runner.build_project_snapshot")
+    @patch("agentrules.cli.services.pipeline_runner.create_default_pipeline")
+    @patch("agentrules.cli.services.pipeline_runner.get_config_manager")
+    def test_run_pipeline_returns_false_when_final_analysis_raises(
+        self,
+        mock_get_config_manager,
+        mock_create_pipeline,
+        mock_build_snapshot,
+        mock_output_writer_cls,
+    ) -> None:
+        buffer = io.StringIO()
+        context = CliContext(console=Console(file=buffer, width=80))
+        target = Path.cwd()
+
+        mock_config = MagicMock()
+        mock_config.get_exclusion_overrides.return_value = MagicMock(is_empty=lambda: True)
+        mock_config.get_effective_exclusions.return_value = (set(), set(), set())
+        mock_config.get_tree_max_depth.return_value = 5
+        mock_config.get_rules_tree_max_depth.return_value = 3
+        mock_config.should_respect_gitignore.return_value = True
+        mock_config.is_researcher_enabled.return_value = False
+        mock_config.resolve_rules_filename.return_value = "AGENTS.md"
+        mock_config.get_snapshot_filename.return_value = "SNAPSHOT.md"
+        mock_config.should_generate_phase_outputs.return_value = True
+        mock_config.should_generate_cursorignore.return_value = True
+        mock_config.should_generate_agent_scaffold.return_value = True
+        mock_config.should_generate_snapshot.return_value = True
+        mock_get_config_manager.return_value = mock_config
+
+        mock_build_snapshot.return_value = MagicMock()
+
+        mock_pipeline = MagicMock()
+        mock_pipeline.run_phase1 = AsyncMock(return_value={"phase": "Initial Discovery"})
+        mock_pipeline.run_phase2 = AsyncMock(return_value={"agents": []})
+        mock_pipeline.run_phase3 = AsyncMock(return_value={"findings": []})
+        mock_pipeline.run_phase4 = AsyncMock(return_value={"analysis": "ok"})
+        mock_pipeline.run_phase5 = AsyncMock(return_value={"phase": "Consolidation", "report": "ok"})
+        mock_pipeline.run_final = AsyncMock(side_effect=RuntimeError("Final analysis failed"))
+        mock_create_pipeline.return_value = mock_pipeline
+
+        ok = pipeline_runner.run_pipeline(target, offline=False, context=context)
+
+        self.assertFalse(ok)
+        mock_output_writer_cls.assert_not_called()
+        rendered = buffer.getvalue()
+        self.assertIn("Pipeline failed", rendered)
+        self.assertIn("Final analysis failed", rendered)
 
 
 if __name__ == "__main__":
