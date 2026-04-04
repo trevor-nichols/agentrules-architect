@@ -226,16 +226,6 @@ class ExecPlanCreatorTests(unittest.TestCase):
                     update_registry=False,
                 )
 
-            with self.assertRaisesRegex(ValueError, "reserved for ExecPlan directory layout roots"):
-                create_execplan(
-                    root=root,
-                    title="Completed Root Collision",
-                    slug="completed",
-                    date_yyyymmdd="20260207",
-                    execplans_dir=execplans_dir,
-                    update_registry=False,
-                )
-
     def test_create_execplan_rejects_reserved_milestones_slug(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -250,6 +240,24 @@ class ExecPlanCreatorTests(unittest.TestCase):
                     execplans_dir=execplans_dir,
                     update_registry=False,
                 )
+
+    def test_create_execplan_allows_completed_slug(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            created = create_execplan(
+                root=root,
+                title="Completed Slug Is Allowed",
+                slug="completed",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            self.assertEqual(created.plan_id, "EP-20260207-001")
+            self.assertEqual(created.slug, "completed")
+            self.assertTrue(created.plan_path.exists())
 
     def test_create_execplan_rejects_milestones_slug_in_mixed_legacy_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

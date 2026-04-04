@@ -21,7 +21,6 @@ from agentrules.core.execplan.paths import (
     EXECPLAN_ACTIVE_DIR,
     EXECPLAN_ARCHIVE_DIR,
     EXECPLAN_COMPLETE_DIR,
-    EXECPLAN_COMPLETED_DIR,
     MILESTONE_LOCATION_DIRS,
     MILESTONES_DIR,
     get_execplan_plan_root,
@@ -41,7 +40,7 @@ DATE_YYYYMMDD_RE = re.compile(r"^\d{8}$")
 EXECPLAN_ID_RE = re.compile(r"^EP-\d{8}-\d{3}$")
 FRONT_MATTER_RE = re.compile(r"\A\s*---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
 RESERVED_EXECPLAN_ROOT_SLUGS = frozenset(
-    {EXECPLAN_ACTIVE_DIR, EXECPLAN_COMPLETE_DIR, EXECPLAN_COMPLETED_DIR, EXECPLAN_ARCHIVE_DIR}
+    {EXECPLAN_ACTIVE_DIR, EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR}
 )
 RESERVED_ACTIVE_PLAN_SLUGS = frozenset({MILESTONES_DIR})
 _ARCHIVE_DESTINATION_DIRS = frozenset({EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR})
@@ -179,8 +178,8 @@ def _iter_foreign_milestone_files_within_plan_root(*, plan_root: Path, execplan_
     Return milestone artifacts under plan_root that belong to a different ExecPlan id.
 
     This detects both canonical and legacy-inherited milestone subtree shapes:
-    - milestones/(active|complete|completed|archive)/...
-    - (active|complete|completed|archive)/...  # when legacy milestones collide under modern slug roots
+    - milestones/(active|complete|archive)/...
+    - (active|complete|archive)/...  # when legacy milestones collide under modern slug roots
     """
     foreign: list[Path] = []
     resolved_plan_root = plan_root.resolve()

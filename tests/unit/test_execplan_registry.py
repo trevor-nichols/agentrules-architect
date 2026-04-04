@@ -733,7 +733,7 @@ class ExecPlanRegistryTests(unittest.TestCase):
 
             _write_execplan(
                 execplans_dir
-                / "completed"
+                / "archive"
                 / "2026"
                 / "02"
                 / "14"

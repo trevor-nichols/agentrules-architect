@@ -18,7 +18,6 @@ from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
     ARCHIVE_DIR,
     COMPLETE_DIR,
-    COMPLETED_DIR,
     MILESTONES_DIR,
     get_execplan_plan_root,
     is_execplan_complete_path,
@@ -583,11 +582,11 @@ def _count_milestones_for_plan(*, plan_path: Path, execplan_id: str, execplans_d
         return 0, 0
 
     active_root = (milestones_root / ACTIVE_DIR).resolve()
-    completed_roots = tuple((milestones_root / name).resolve() for name in (COMPLETE_DIR, COMPLETED_DIR, ARCHIVE_DIR))
+    archived_roots = tuple((milestones_root / name).resolve() for name in (COMPLETE_DIR, ARCHIVE_DIR))
 
     active_count = 0
     total_count = 0
-    for root in (active_root, *completed_roots):
+    for root in (active_root, *archived_roots):
         if not root.exists():
             continue
         is_active_root = root == active_root
@@ -613,7 +612,7 @@ def list_active_execplan_summaries(
 
     Active plans are plans whose files are not under a complete path. Milestone
     counts include owned files in milestones/active, milestones/complete,
-    legacy milestones/completed, and legacy milestones/archive.
+    and legacy milestones/archive.
     """
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
@@ -666,8 +665,8 @@ def summarize_registry_activity(
 
     Active plans are plans whose files are not under a complete path. Milestone
     totals are aggregated across active plans only and count owned milestone
-    files under milestones/active, milestones/complete, legacy
-    milestones/completed, and legacy milestones/archive.
+    files under milestones/active, milestones/complete, and legacy
+    milestones/archive.
     """
     summaries = list_active_execplan_summaries(
         registry=registry,

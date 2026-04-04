@@ -129,7 +129,7 @@ class ExecPlanPathsTests(unittest.TestCase):
                 ).resolve(),
             )
 
-    def test_legacy_completed_root_dated_path_is_archived(self) -> None:
+    def test_top_level_completed_slug_dated_path_is_not_archived(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
             plan_path = (
@@ -144,17 +144,10 @@ class ExecPlanPathsTests(unittest.TestCase):
             plan_path.parent.mkdir(parents=True, exist_ok=True)
             plan_path.write_text("# placeholder\n", encoding="utf-8")
 
-            self.assertTrue(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertFalse(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
             self.assertEqual(
                 get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
-                (
-                    execplans_dir
-                    / "completed"
-                    / "2026"
-                    / "02"
-                    / "12"
-                    / "EP-20260207-001_frontend-architecture-refactor"
-                ).resolve(),
+                (execplans_dir / "completed").resolve(),
             )
 
     def test_legacy_archive_root_dated_path_is_archived(self) -> None:
