@@ -36,7 +36,7 @@ The slug is a short, human-friendly hint. The ID is the real identity.
 ### Instructions for Creating ExecPlans
 
 - Create an ExecPlan using `agentrules execplan new "<title>" --slug <short-slug>` (e.g. `agentrules execplan new "Auth Refresh" --slug auth-refresh`). If --slug is omitted, a slug is derived from the title. The file is generated under `.agent/exec_plans/active/<short-slug>/` as `EP-YYYYMMDD-NNN_<short-slug>.md`.
-- When the ExecPlan is complete, move the full directory to `.agent/exec_plans/complete/` with `agentrules execplan complete EP-YYYYMMDD-NNN` (optionally `--date YYYYMMDD`). Legacy `.agent/exec_plans/completed/...`, `.agent/exec_plans/archive/...`, and `agentrules execplan archive ...` remain supported.
+- When the ExecPlan is complete, move the full directory to `.agent/exec_plans/complete/` with `agentrules execplan complete EP-YYYYMMDD-NNN` (optionally `--date YYYYMMDD`).
 
 ### Registry Creation & Update
 
@@ -163,18 +163,17 @@ Milestone ID format:
 Milestone filename format:
 
 - `.agent/exec_plans/active/<short-slug>/milestones/active/MS###_<short-slug>.md`
-- Complete to: `.agent/exec_plans/active/<short-slug>/milestones/complete/MS###_<short-slug>.md` (legacy `milestones/completed/` and `milestones/archive/` remain supported)
+- Complete to: `.agent/exec_plans/active/<short-slug>/milestones/complete/MS###_<short-slug>.md`
 
 ### Instructions for Creating Milestones
 
 - Base your milestone on the template shown in `.agent/templates/MILESTONE_TEMPLATE.md`.
 - Create your milestone within `.agent/exec_plans/active/<short-slug>/milestones/active/`.
-- When your milestone is complete, move it to `.agent/exec_plans/active/<short-slug>/milestones/complete/`. Legacy `milestones/completed/` and `milestones/archive/` remain supported.
+- When your milestone is complete, move it to `.agent/exec_plans/active/<short-slug>/milestones/complete/`.
 - Prefer CLI milestone workflow over manual file creation:
   - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
   - List: `agentrules execplan milestone list EP-YYYYMMDD-NNN` (or `--active-only`)
   - Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`
-  - Legacy alias: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
 
 ## Living plans and design decisions
 

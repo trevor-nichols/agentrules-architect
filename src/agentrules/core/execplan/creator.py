@@ -10,6 +10,7 @@ from datetime import datetime
 from importlib import resources
 from pathlib import Path
 from string import Template
+from typing import Literal
 
 import yaml
 
@@ -43,6 +44,7 @@ RESERVED_EXECPLAN_ROOT_SLUGS = frozenset(
     {EXECPLAN_ACTIVE_DIR, EXECPLAN_COMPLETE_DIR, EXECPLAN_COMPLETED_DIR, EXECPLAN_ARCHIVE_DIR}
 )
 RESERVED_ACTIVE_PLAN_SLUGS = frozenset({MILESTONES_DIR})
+_ARCHIVE_DESTINATION_DIRS = frozenset({EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR})
 
 _TEMPLATE_PACKAGE = "agentrules.core.execplan"
 _TEMPLATE_NAME = "EXECPLAN_TEMPLATE.md"
@@ -122,6 +124,17 @@ def _load_execplan_template() -> Template:
 
 def _resolve_path(root: Path, value: Path) -> Path:
     return value.resolve() if value.is_absolute() else (root / value).resolve()
+
+
+def _normalize_archive_destination_dir(destination_dir: str) -> str:
+    normalized = destination_dir.strip().lower()
+    if normalized not in _ARCHIVE_DESTINATION_DIRS:
+        allowed = ", ".join(sorted(_ARCHIVE_DESTINATION_DIRS))
+        raise ValueError(
+            f"Unsupported archive destination directory {destination_dir!r}. "
+            f"Expected one of: {allowed}."
+        )
+    return normalized
 
 
 def _iter_execplan_files(execplans_dir: Path) -> tuple[Path, ...]:
@@ -386,6 +399,7 @@ def archive_execplan(
     execplan_id: str,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
     archive_date_yyyymmdd: str | None = None,
+    destination_dir: Literal["complete", "archive"] = EXECPLAN_COMPLETE_DIR,
     update_registry: bool = True,
     registry_path: Path = DEFAULT_REGISTRY_PATH,
     include_registry_timestamp: bool = False,
@@ -394,6 +408,8 @@ def archive_execplan(
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
     resolved_registry_path = _resolve_path(resolved_root, registry_path)
+
+    archive_destination_dir = _normalize_archive_destination_dir(destination_dir)
 
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         source_plan_path = _resolve_execplan_by_id(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id)
@@ -472,7 +488,7 @@ def archive_execplan(
         day_value = _validate_date_yyyymmdd(day_token)
         archive_parent = (
             resolved_execplans_dir
-            / EXECPLAN_COMPLETE_DIR
+            / archive_destination_dir
             / day_value.strftime("%Y")
             / day_value.strftime("%m")
             / day_value.strftime("%d")
@@ -483,9 +499,8 @@ def archive_execplan(
         if archived_plan_root == source_plan_root or archived_plan_root.is_relative_to(source_plan_root):
             raise ValueError(
                 "Cannot complete ExecPlan safely because the destination resolves inside the source plan root. "
-                "This usually indicates a legacy top-level slug that conflicts with the complete namespace "
-                f"({EXECPLAN_COMPLETE_DIR!r}; legacy aliases {EXECPLAN_COMPLETED_DIR!r} and "
-                f"{EXECPLAN_ARCHIVE_DIR!r}). Rename or migrate the "
+                "This usually indicates a legacy top-level slug that conflicts with the destination namespace "
+                f"({archive_destination_dir!r}). Rename or migrate the "
                 "legacy plan directory first."
             )
         if legacy_active_root:

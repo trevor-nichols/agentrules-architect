@@ -60,11 +60,10 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
                 "* ExecPlan:\n"
                 "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug>`\n"
                 "  * Complete: `agentrules execplan complete EP-YYYYMMDD-NNN`\n"
-                "  * Legacy alias: `agentrules execplan archive EP-YYYYMMDD-NNN`\n"
                 "* Milestones:\n"
                 "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`\n"
                 "  * Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`\n"
-                "  * Legacy alias: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`\n\n"
+                "\n"
                 "# 2. TEMPORAL FRAMEWORK\n"
                 "It is February 2026.\n"
             )

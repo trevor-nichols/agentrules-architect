@@ -294,6 +294,19 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
             ],
         )
         self.assertEqual(archive_first.exit_code, 0, msg=archive_first.output)
+        archived_glob = list(
+            (
+                self.root
+                / ".agent"
+                / "exec_plans"
+                / "active"
+                / "milestone-remaining"
+                / "milestones"
+                / "archive"
+            ).glob("MS001*.md")
+        )
+        self.assertEqual(len(archived_glob), 1)
+        self.assertTrue(archived_glob[0].exists())
 
         remaining = self.runner.invoke(
             cli.app,

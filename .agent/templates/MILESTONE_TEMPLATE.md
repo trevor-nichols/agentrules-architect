@@ -4,12 +4,11 @@
 
 * Base your milestone on the template shown within the `<MILESTONE_TEMPLATE>` tag.
 * Create your milestone within `.agent/exec_plans/active/<short_slug>/milestones/active/`.
-* When your milestone is complete, move it to `.agent/exec_plans/active/<short_slug>/milestones/complete/`. Legacy `milestones/completed/` and `milestones/archive/` remain supported.
+* When your milestone is complete, move it to `.agent/exec_plans/active/<short_slug>/milestones/complete/`.
 * Prefer CLI milestone workflow over manual file creation:
   - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" --ms <N>`
   - List: `agentrules execplan milestone list EP-YYYYMMDD-NNN` (or `--active-only`)
   - Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`
-  - Legacy alias: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
 * Do not hand-pick `MS###` during creation. The CLI assigns the next monotonic sequence for that ExecPlan.
 
 ## Milestone identity and association (required)
@@ -41,9 +40,6 @@ Example:
 When complete, move to:
 
 - `.agent/exec_plans/active/<short_slug>/milestones/complete/MS###_<short-slug>.md`
-- Legacy aliases:
-  `.agent/exec_plans/active/<short_slug>/milestones/completed/MS###_<short-slug>.md`
-  `.agent/exec_plans/active/<short_slug>/milestones/archive/MS###_<short-slug>.md`
 
 ### Required YAML front matter (machine-readable)
 

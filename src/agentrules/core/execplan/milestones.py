@@ -17,6 +17,7 @@ from agentrules.core.execplan.identity import extract_execplan_id_from_filename
 from agentrules.core.execplan.locks import execplan_mutation_lock
 from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
+    ARCHIVE_DIR,
     COMPLETE_DIR,
     COMPLETE_DIR_ALIASES,
     MILESTONES_DIR,
@@ -36,6 +37,7 @@ FRONT_MATTER_RE = re.compile(r"\A\s*---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
 DATE_YYYYMMDD_RE = re.compile(r"^\d{8}$")
 
 _MILESTONE_CREATE_RETRIES = 32
+_ARCHIVE_DESTINATION_DIRS = frozenset({COMPLETE_DIR, ARCHIVE_DIR})
 
 _TEMPLATE_PACKAGE = "agentrules.core.execplan"
 _MILESTONE_FILE_TEMPLATE_NAME = "MILESTONE_FILE_TEMPLATE.md"
@@ -150,6 +152,17 @@ def _is_milestone_owned_by_execplan(path: Path, *, execplan_id: str) -> bool:
     if parsed_execplan_id is not None:
         return parsed_execplan_id == execplan_id
     return _extract_milestone_execplan_id(path) == execplan_id
+
+
+def _normalize_archive_destination_dir(destination_dir: str) -> str:
+    normalized = destination_dir.strip().lower()
+    if normalized not in _ARCHIVE_DESTINATION_DIRS:
+        allowed = ", ".join(sorted(_ARCHIVE_DESTINATION_DIRS))
+        raise ValueError(
+            f"Unsupported archive destination directory {destination_dir!r}. "
+            f"Expected one of: {allowed}."
+        )
+    return normalized
 
 
 def scan_plan_milestone_files(*, plan_root: Path) -> tuple[MilestoneFileScan, ...]:
@@ -712,12 +725,14 @@ def archive_execplan_milestone(
     sequence: int,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
     archive_date_yyyymmdd: str | None = None,
+    destination_dir: Literal["complete", "archive"] = COMPLETE_DIR,
 ) -> MilestoneArchiveResult:
     if sequence < 1 or sequence > 999:
         raise ValueError("Milestone sequence must be between 1 and 999.")
 
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    archive_destination_dir = _normalize_archive_destination_dir(destination_dir)
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         plan_path, plan_root, _ = _resolve_parent_execplan(
             execplans_dir=resolved_execplans_dir,
@@ -747,10 +762,10 @@ def archive_execplan_milestone(
             )
 
         # Keep `archive_date_yyyymmdd` for API compatibility even though complete
-        # layout no longer shards by date.
+        # and archive milestone layouts no longer shard by date.
         if archive_date_yyyymmdd is not None:
             _validate_date_yyyymmdd(archive_date_yyyymmdd)
-        archive_dir = plan_root / MILESTONES_DIR / COMPLETE_DIR
+        archive_dir = plan_root / MILESTONES_DIR / archive_destination_dir
         archive_dir.mkdir(parents=True, exist_ok=True)
 
         source_path = candidates[0]

@@ -214,6 +214,18 @@ class ExecPlanCLITests(unittest.TestCase):
             ],
         )
         self.assertEqual(first_archive.exit_code, 0, msg=first_archive.output)
+        archived_root = (
+            self.root
+            / ".agent"
+            / "exec_plans"
+            / "archive"
+            / "2026"
+            / "02"
+            / "12"
+            / "EP-20260207-001_archive-once"
+        )
+        self.assertTrue(archived_root.exists())
+        self.assertTrue((archived_root / "EP-20260207-001_archive-once.md").exists())
 
         second_archive = self.runner.invoke(
             cli.app,

@@ -42,11 +42,9 @@ EXECPLANS_CLI_LINES = (
     "* ExecPlan:",
     "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug>`",
     "  * Complete: `agentrules execplan complete EP-YYYYMMDD-NNN`",
-    "  * Legacy alias: `agentrules execplan archive EP-YYYYMMDD-NNN`",
     "* Milestones:",
     "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`",
     "  * Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`",
-    "  * Legacy alias: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`",
 )
 EXECPLANS_GUIDANCE_BLOCK = (
     EXECPLANS_HEADING,

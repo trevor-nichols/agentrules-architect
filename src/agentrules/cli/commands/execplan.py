@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import typer
 
@@ -13,6 +13,7 @@ from agentrules.core.execplan.milestones import (
     create_execplan_milestone,
     list_execplan_milestones,
 )
+from agentrules.core.execplan.paths import ARCHIVE_DIR, COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR, EXECPLAN_COMPLETE_DIR
 from agentrules.core.execplan.registry import (
     DEFAULT_EXECPLANS_DIR,
     DEFAULT_REGISTRY_PATH,
@@ -240,9 +241,9 @@ def register(app: typer.Typer) -> None:
         console.print("[yellow]Registry was not updated.[/]")
         raise typer.Exit(1)
 
-    @execplan_app.command("complete")
-    @execplan_app.command("archive")
-    def archive_existing_execplan(  # type: ignore[func-returns-value]
+    def _complete_or_archive_execplan(  # type: ignore[func-returns-value]
+        *,
+        destination_dir: Literal["complete", "archive"],
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
         execplans_dir: Path = EXECPLANS_DIR_OPTION,
@@ -265,6 +266,7 @@ def register(app: typer.Typer) -> None:
                 execplan_id=execplan_id.strip(),
                 execplans_dir=resolved_execplans_dir,
                 archive_date_yyyymmdd=date,
+                destination_dir=destination_dir,
                 update_registry=update_registry,
                 registry_path=resolved_registry,
                 include_registry_timestamp=registry_timestamp,
@@ -323,6 +325,52 @@ def register(app: typer.Typer) -> None:
 
         console.print("[yellow]Registry was not updated.[/]")
         raise typer.Exit(1)
+
+    @execplan_app.command("complete")
+    def complete_existing_execplan(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        date: str | None = ARCHIVE_DATE_OPTION,
+        out: Path = OUT_OPTION,
+        update_registry: bool = UPDATE_REGISTRY_OPTION,
+        fail_on_registry_warn: bool = FAIL_ON_REGISTRY_WARN_OPTION,
+        registry_timestamp: bool = REGISTRY_TIMESTAMP_OPTION,
+    ) -> None:
+        _complete_or_archive_execplan(
+            destination_dir=EXECPLAN_COMPLETE_DIR,
+            execplan_id=execplan_id,
+            root=root,
+            execplans_dir=execplans_dir,
+            date=date,
+            out=out,
+            update_registry=update_registry,
+            fail_on_registry_warn=fail_on_registry_warn,
+            registry_timestamp=registry_timestamp,
+        )
+
+    @execplan_app.command("archive")
+    def archive_existing_execplan(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        date: str | None = ARCHIVE_DATE_OPTION,
+        out: Path = OUT_OPTION,
+        update_registry: bool = UPDATE_REGISTRY_OPTION,
+        fail_on_registry_warn: bool = FAIL_ON_REGISTRY_WARN_OPTION,
+        registry_timestamp: bool = REGISTRY_TIMESTAMP_OPTION,
+    ) -> None:
+        _complete_or_archive_execplan(
+            destination_dir=EXECPLAN_ARCHIVE_DIR,
+            execplan_id=execplan_id,
+            root=root,
+            execplans_dir=execplans_dir,
+            date=date,
+            out=out,
+            update_registry=update_registry,
+            fail_on_registry_warn=fail_on_registry_warn,
+            registry_timestamp=registry_timestamp,
+        )
 
     @execplan_app.command("list")
     def list_execplans(  # type: ignore[func-returns-value]
@@ -461,9 +509,9 @@ def register(app: typer.Typer) -> None:
             console.print(f"{status} {milestone.milestone_id} -> {milestone.path.as_posix()}")
         raise typer.Exit(0)
 
-    @milestone_app.command("complete")
-    @milestone_app.command("archive")
-    def archive_milestone(  # type: ignore[func-returns-value]
+    def _complete_or_archive_milestone(  # type: ignore[func-returns-value]
+        *,
+        destination_dir: Literal["complete", "archive"],
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
         execplans_dir: Path = EXECPLANS_DIR_OPTION,
@@ -481,6 +529,7 @@ def register(app: typer.Typer) -> None:
                 execplan_id=execplan_id.strip(),
                 sequence=ms,
                 execplans_dir=resolved_execplans_dir,
+                destination_dir=destination_dir,
             )
         except (ValueError, FileNotFoundError) as error:
             raise typer.BadParameter(str(error)) from error
@@ -495,6 +544,36 @@ def register(app: typer.Typer) -> None:
         console.print(f"[green]From:[/] {result.source_path.as_posix()}")
         console.print(f"[green]To:[/] {result.archived_path.as_posix()}")
         raise typer.Exit(0)
+
+    @milestone_app.command("complete")
+    def complete_milestone(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        ms: int = MILESTONE_MS_OPTION,
+    ) -> None:
+        _complete_or_archive_milestone(
+            destination_dir=COMPLETE_DIR,
+            execplan_id=execplan_id,
+            root=root,
+            execplans_dir=execplans_dir,
+            ms=ms,
+        )
+
+    @milestone_app.command("archive")
+    def archive_milestone(  # type: ignore[func-returns-value]
+        execplan_id: str = EXECPLAN_ID_ARGUMENT,
+        root: Path | None = ROOT_OPTION,
+        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        ms: int = MILESTONE_MS_OPTION,
+    ) -> None:
+        _complete_or_archive_milestone(
+            destination_dir=ARCHIVE_DIR,
+            execplan_id=execplan_id,
+            root=root,
+            execplans_dir=execplans_dir,
+            ms=ms,
+        )
 
     @milestone_app.command("remaining")
     def list_remaining_milestones(  # type: ignore[func-returns-value]
