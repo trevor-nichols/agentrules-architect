@@ -1,3 +1,7 @@
+import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,7 +46,94 @@ def _write_execplan(path: Path, *, plan_id: str, title: str, domain: str = "back
     )
 
 
+def _launch_milestone_create_subprocess(
+    *,
+    root: Path,
+    execplan_id: str,
+    title: str,
+    start_path: Path,
+    sequence: int | None = None,
+) -> subprocess.Popen[str]:
+    repo_root = Path(__file__).resolve().parents[2]
+    env = os.environ.copy()
+    src_path = str(repo_root / "src")
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = src_path if not existing_pythonpath else f"{src_path}{os.pathsep}{existing_pythonpath}"
+
+    code = """
+import json
+import sys
+import time
+from pathlib import Path
+
+from agentrules.core.execplan.milestones import create_execplan_milestone
+
+root = Path(sys.argv[1])
+execplan_id = sys.argv[2]
+title = sys.argv[3]
+sequence_arg = sys.argv[4]
+start_path = Path(sys.argv[5])
+execplans_dir = root / ".agent" / "exec_plans"
+
+for _ in range(500):
+    if start_path.exists():
+        break
+    time.sleep(0.01)
+else:
+    raise RuntimeError(f"timed out waiting for start signal: {start_path}")
+
+kwargs = {
+    "root": root,
+    "execplan_id": execplan_id,
+    "title": title,
+    "execplans_dir": execplans_dir,
+}
+if sequence_arg:
+    kwargs["sequence"] = int(sequence_arg)
+
+try:
+    result = create_execplan_milestone(**kwargs)
+except Exception as error:  # pragma: no cover - exercised via parent assertions
+    print(json.dumps({"ok": False, "error_type": type(error).__name__, "error": str(error)}))
+else:
+    print(json.dumps({"ok": True, "milestone_id": result.milestone_id, "sequence": result.sequence}))
+"""
+
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(root),
+            execplan_id,
+            title,
+            "" if sequence is None else str(sequence),
+            str(start_path),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+
+
+def _read_subprocess_result(process: subprocess.Popen[str]) -> dict[str, object]:
+    stdout, stderr = process.communicate(timeout=10)
+    if process.returncode != 0:
+        raise AssertionError(f"subprocess exited with {process.returncode}: stdout={stdout!r} stderr={stderr!r}")
+    return json.loads(stdout.strip())
+
+
 class ExecPlanMilestonesTests(unittest.TestCase):
+    def _require_read_only_write_denial(self, path: Path) -> None:
+        path.chmod(0o444)
+        try:
+            with path.open("r+b"):
+                pass
+        except PermissionError:
+            return
+        self.skipTest("filesystem does not deny write opens for read-only files in this environment")
+
     def test_create_milestone_uses_parent_and_title_codification(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -76,6 +167,30 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertIn("domain: frontend", content)
             self.assertIn('owner: "@backend-team"', content)
             self.assertFalse((execplans_dir / ".locks").exists())
+
+    def test_create_milestone_allows_read_only_execplan_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Read Only Parent",
+                slug="read-only-parent",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            self._require_read_only_write_denial(created_plan.plan_path)
+
+            created_milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Still Create Milestone",
+                execplans_dir=execplans_dir,
+            )
+
+            self.assertEqual(created_milestone.milestone_id, "EP-20260207-001/MS001")
+            self.assertTrue(created_milestone.milestone_path.exists())
 
     def test_create_milestone_respects_owner_and_domain_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -230,6 +345,83 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                     sequence=1,
                     execplans_dir=execplans_dir,
                 )
+
+    def test_create_milestone_serializes_auto_sequences_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Concurrent Auto Sequence",
+                slug="concurrent-auto-sequence",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            start_path = root / "milestone-start.signal"
+            first = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Alpha",
+                start_path=start_path,
+            )
+            second = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Beta",
+                start_path=start_path,
+            )
+
+            start_path.write_text("go\n", encoding="utf-8")
+            first_result = _read_subprocess_result(first)
+            second_result = _read_subprocess_result(second)
+
+            self.assertTrue(first_result["ok"], msg=first_result)
+            self.assertTrue(second_result["ok"], msg=second_result)
+            self.assertEqual(
+                sorted([first_result["milestone_id"], second_result["milestone_id"]]),
+                ["EP-20260207-001/MS001", "EP-20260207-001/MS002"],
+            )
+
+    def test_create_milestone_rejects_duplicate_explicit_sequence_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Concurrent Explicit Sequence",
+                slug="concurrent-explicit-sequence",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            start_path = root / "milestone-start.signal"
+            first = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Alpha",
+                sequence=1,
+                start_path=start_path,
+            )
+            second = _launch_milestone_create_subprocess(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Beta",
+                sequence=1,
+                start_path=start_path,
+            )
+
+            start_path.write_text("go\n", encoding="utf-8")
+            results = [_read_subprocess_result(first), _read_subprocess_result(second)]
+
+            successes = [result for result in results if result["ok"]]
+            failures = [result for result in results if not result["ok"]]
+            self.assertEqual(len(successes), 1, msg=results)
+            self.assertEqual(len(failures), 1, msg=results)
+            self.assertEqual(successes[0]["milestone_id"], "EP-20260207-001/MS001")
+            self.assertIn("already exists", str(failures[0]["error"]).lower())
 
     def test_next_milestone_sequence_counts_malformed_active_ms_filenames(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -406,8 +598,39 @@ class ExecPlanMilestonesTests(unittest.TestCase):
 
             self.assertFalse(created_milestone.milestone_path.exists())
             self.assertTrue(archived.archived_path.exists())
-            self.assertIn("/milestones/archive/", archived.archived_path.as_posix())
-            self.assertNotIn("/milestones/archive/2026/02/12/", archived.archived_path.as_posix())
+            self.assertIn("/milestones/complete/", archived.archived_path.as_posix())
+            self.assertNotIn("/milestones/complete/2026/02/12/", archived.archived_path.as_posix())
+
+    def test_archive_milestone_allows_read_only_execplan_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Read Only Archive Parent",
+                slug="read-only-archive-parent",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            created_milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Archive Me Anyway",
+                execplans_dir=execplans_dir,
+            )
+            self._require_read_only_write_denial(created_plan.plan_path)
+
+            archived = archive_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                sequence=created_milestone.sequence,
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+            )
+
+            self.assertFalse(created_milestone.milestone_path.exists())
+            self.assertTrue(archived.archived_path.exists())
 
     def test_archive_missing_active_milestone_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -478,6 +701,41 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertEqual([entry.milestone_id for entry in all_entries], [first.milestone_id, second.milestone_id])
             self.assertEqual([entry.location for entry in all_entries], ["archived", "active"])
             self.assertEqual([entry.milestone_id for entry in active_only], [second.milestone_id])
+
+    def test_list_milestones_includes_legacy_archive_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Legacy Archive Directory",
+                slug="legacy-archive-directory",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Legacy archived artifact",
+                execplans_dir=execplans_dir,
+            )
+
+            legacy_archive_dir = created_plan.plan_path.parent / "milestones" / "archive"
+            legacy_archive_dir.mkdir(parents=True, exist_ok=True)
+            legacy_archive_path = legacy_archive_dir / milestone.milestone_path.name
+            os.replace(milestone.milestone_path, legacy_archive_path)
+
+            entries = list_execplan_milestones(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                execplans_dir=execplans_dir,
+                include_archived=True,
+            )
+
+            self.assertEqual([entry.milestone_id for entry in entries], [milestone.milestone_id])
+            self.assertEqual([entry.location for entry in entries], ["archived"])
+            self.assertIn("/milestones/archive/", entries[0].path.as_posix())
 
 
 if __name__ == "__main__":

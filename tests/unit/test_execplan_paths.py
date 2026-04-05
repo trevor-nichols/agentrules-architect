@@ -36,6 +36,32 @@ class ExecPlanPathsTests(unittest.TestCase):
                 (execplans_dir / "active" / "archive").resolve(),
             )
 
+    def test_active_root_complete_slug_is_not_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
+            plan_path = execplans_dir / "active" / "complete" / "EP-20260207-001_complete.md"
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text("# placeholder\n", encoding="utf-8")
+
+            self.assertFalse(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertEqual(
+                get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
+                (execplans_dir / "active" / "complete").resolve(),
+            )
+
+    def test_active_root_completed_slug_is_not_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
+            plan_path = execplans_dir / "active" / "completed" / "EP-20260207-001_completed.md"
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text("# placeholder\n", encoding="utf-8")
+
+            self.assertFalse(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertEqual(
+                get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
+                (execplans_dir / "active" / "completed").resolve(),
+            )
+
     def test_legacy_top_level_archive_slug_is_not_archived(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
@@ -49,7 +75,82 @@ class ExecPlanPathsTests(unittest.TestCase):
                 (execplans_dir / "archive").resolve(),
             )
 
-    def test_archive_root_dated_path_is_archived(self) -> None:
+    def test_legacy_top_level_complete_slug_is_not_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
+            plan_path = execplans_dir / "complete" / "EP-20260207-001_complete.md"
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text("# placeholder\n", encoding="utf-8")
+
+            self.assertFalse(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertEqual(
+                get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
+                (execplans_dir / "complete").resolve(),
+            )
+
+    def test_legacy_top_level_completed_slug_is_not_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
+            plan_path = execplans_dir / "completed" / "EP-20260207-001_completed.md"
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text("# placeholder\n", encoding="utf-8")
+
+            self.assertFalse(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertEqual(
+                get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
+                (execplans_dir / "completed").resolve(),
+            )
+
+    def test_complete_root_dated_path_is_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
+            plan_path = (
+                execplans_dir
+                / "complete"
+                / "2026"
+                / "02"
+                / "12"
+                / "EP-20260207-001_frontend-architecture-refactor"
+                / "EP-20260207-001_frontend-architecture-refactor.md"
+            )
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text("# placeholder\n", encoding="utf-8")
+
+            self.assertTrue(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertEqual(
+                get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
+                (
+                    execplans_dir
+                    / "complete"
+                    / "2026"
+                    / "02"
+                    / "12"
+                    / "EP-20260207-001_frontend-architecture-refactor"
+                ).resolve(),
+            )
+
+    def test_top_level_completed_slug_dated_path_is_not_archived(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
+            plan_path = (
+                execplans_dir
+                / "completed"
+                / "2026"
+                / "02"
+                / "12"
+                / "EP-20260207-001_frontend-architecture-refactor"
+                / "EP-20260207-001_frontend-architecture-refactor.md"
+            )
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            plan_path.write_text("# placeholder\n", encoding="utf-8")
+
+            self.assertFalse(is_execplan_archive_path(plan_path, execplans_root=execplans_dir))
+            self.assertEqual(
+                get_execplan_plan_root(plan_path, execplans_root=execplans_dir),
+                (execplans_dir / "completed").resolve(),
+            )
+
+    def test_legacy_archive_root_dated_path_is_archived(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             execplans_dir = Path(tmpdir) / ".agent" / "exec_plans"
             plan_path = (

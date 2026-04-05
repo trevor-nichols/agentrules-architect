@@ -4,11 +4,11 @@
 
 * Base your milestone on the template shown within the `<MILESTONE_TEMPLATE>` tag.
 * Create your milestone within `.agent/exec_plans/active/<short_slug>/milestones/active/`.
-* When your milestone is complete, archive it in `.agent/exec_plans/active/<short_slug>/milestones/archive/`.
+* When your milestone is complete, move it to `.agent/exec_plans/active/<short_slug>/milestones/complete/`.
 * Prefer CLI milestone workflow over manual file creation:
   - Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN "<Milestone Title>" --ms <N>` (Use `--ms <N>` for deterministic `MS###` sequence assignment).
   - List: `agentrules execplan milestone list EP-YYYYMMDD-NNN` (or `--active-only`)
-  - Archive: `agentrules execplan milestone archive EP-YYYYMMDD-NNN --ms <N>`
+  - Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`
 * By default, do not hand-pick `MS###` during creation. The CLI assigns the next monotonic sequence for that ExecPlan. Use `--ms <N>` only when deterministic sequence assignment is required.
 
 ## Milestone identity and association (required)
@@ -37,9 +37,9 @@ Example:
 
 - `.agent/exec_plans/active/<short_slug>/milestones/active/MS003_prototype-streaming.md`
 
-When complete, archive to:
+When complete, move to:
 
-- `.agent/exec_plans/active/<short_slug>/milestones/archive/MS###_<short-slug>.md`
+- `.agent/exec_plans/active/<short_slug>/milestones/complete/MS###_<short-slug>.md`
 
 ### Required YAML front matter (machine-readable)
 
@@ -105,7 +105,7 @@ Bullet list of concrete, verifiable end state:
 - …
 - `hatch run lint` / `pnpm type-check` / tests all pass (or the project’s equivalent)
 - Any new/changed run instructions are documented
-- Milestone status is updated to `completed` (and then archived when appropriate)
+- Milestone status is updated to `completed` (and then moved under `milestones/complete/` when appropriate)
 
 ---
 

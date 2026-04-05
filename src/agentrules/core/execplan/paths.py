@@ -8,9 +8,14 @@ from pathlib import Path
 
 MILESTONES_DIR = "milestones"
 ACTIVE_DIR = "active"
-ARCHIVE_DIR = "archive"
+COMPLETE_DIR = "complete"
+ARCHIVE_DIR = "archive"  # Legacy compatibility alias for complete milestone paths.
+COMPLETE_DIR_ALIASES = frozenset({COMPLETE_DIR, ARCHIVE_DIR})
+MILESTONE_LOCATION_DIRS = frozenset({ACTIVE_DIR, *COMPLETE_DIR_ALIASES})
 EXECPLAN_ACTIVE_DIR = "active"
-EXECPLAN_ARCHIVE_DIR = "archive"
+EXECPLAN_COMPLETE_DIR = COMPLETE_DIR
+EXECPLAN_ARCHIVE_DIR = ARCHIVE_DIR  # Legacy compatibility alias for complete ExecPlan roots.
+EXECPLAN_COMPLETE_DIR_ALIASES = frozenset({EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR})
 
 _YEAR_RE = re.compile(r"^\d{4}$")
 _MONTH_RE = re.compile(r"^\d{2}$")
@@ -63,27 +68,28 @@ def _classify_execplan_layout(path: Path, *, execplans_root: Path) -> _ExecPlanL
             is_archived=False,
         )
 
-    # Current archive root layout: archive/YYYY/MM/DD/<slug>/...
+    # Current complete root layout: complete/YYYY/MM/DD/<slug>/...
+    # Legacy alias: archive/YYYY/MM/DD/<slug>/...
     if (
         len(parts) >= 6
-        and parts[0] == EXECPLAN_ARCHIVE_DIR
+        and parts[0] in EXECPLAN_COMPLETE_DIR_ALIASES
         and _looks_like_archive_date(parts[1], parts[2], parts[3])
     ):
         return _ExecPlanLayout(
-            plan_root=(root / EXECPLAN_ARCHIVE_DIR / parts[1] / parts[2] / parts[3] / parts[4]).resolve(),
+            plan_root=(root / parts[0] / parts[1] / parts[2] / parts[3] / parts[4]).resolve(),
             is_archived=True,
         )
 
-    # Legacy archive layout: <slug>/archive/...
-    # Exclude namespace-rooted active paths like active/archive/... .
-    if len(parts) >= 3 and parts[1] == EXECPLAN_ARCHIVE_DIR and parts[0] != EXECPLAN_ACTIVE_DIR:
+    # Legacy complete layouts: <slug>/(complete|archive)/...
+    # Exclude namespace-rooted active paths like active/complete/... .
+    if len(parts) >= 3 and parts[1] in EXECPLAN_COMPLETE_DIR_ALIASES and parts[0] != EXECPLAN_ACTIVE_DIR:
         return _ExecPlanLayout(
             plan_root=(root / parts[0] / parts[1]).resolve(),
             is_archived=True,
         )
 
     # Legacy active layout: <slug>/...
-    # Keep compatibility for historical top-level "archive" slug directories.
+    # Keep compatibility for historical top-level "archive" / "complete" slug directories.
     if len(parts) >= 2 and parts[0] != EXECPLAN_ACTIVE_DIR:
         return _ExecPlanLayout(
             plan_root=(root / parts[0]).resolve(),
@@ -98,43 +104,46 @@ def is_execplan_milestone_path(path: Path, *, execplans_root: Path) -> bool:
     Return True when a path is under a milestone subtree.
 
     Supported layouts:
-    - Legacy: <slug>/milestones/(active|archive)/...
-    - Active root: active/<slug>/milestones/(active|archive)/...
-    - Archived root: archive/YYYY/MM/DD/<slug>/milestones/(active|archive)/...
+    - Legacy: <slug>/milestones/(active|complete|archive)/...
+    - Active root: active/<slug>/milestones/(active|complete|archive)/...
+    - Complete root: complete/YYYY/MM/DD/<slug>/milestones/(active|complete|archive)/...
+      Legacy alias:
+      archive/YYYY/MM/DD/<slug>/milestones/(active|complete|archive)/...
     """
     parts = _parts_relative_to(path, execplans_root)
     if parts is None:
         return False
 
-    # Current active root: active/<slug>/milestones/(active|archive)/...
+    # Current active root: active/<slug>/milestones/(active|complete|archive)/...
     if (
         len(parts) >= 4
         and parts[0] == EXECPLAN_ACTIVE_DIR
         and parts[2] == MILESTONES_DIR
-        and parts[3] in {ACTIVE_DIR, ARCHIVE_DIR}
+        and parts[3] in MILESTONE_LOCATION_DIRS
     ):
         return True
 
-    # Current archive root: archive/YYYY/MM/DD/<slug>/milestones/(active|archive)/...
+    # Current complete root: complete/YYYY/MM/DD/<slug>/milestones/(active|complete|archive)/...
+    # Legacy alias: archive/... with the same milestone subtree rules.
     if (
         len(parts) >= 7
-        and parts[0] == EXECPLAN_ARCHIVE_DIR
+        and parts[0] in EXECPLAN_COMPLETE_DIR_ALIASES
         and _looks_like_archive_date(parts[1], parts[2], parts[3])
         and parts[5] == MILESTONES_DIR
-        and parts[6] in {ACTIVE_DIR, ARCHIVE_DIR}
+        and parts[6] in MILESTONE_LOCATION_DIRS
     ):
         return True
 
-    # Legacy active: <slug>/milestones/(active|archive)/...
-    if len(parts) >= 3 and parts[1] == MILESTONES_DIR and parts[2] in {ACTIVE_DIR, ARCHIVE_DIR}:
+    # Legacy active: <slug>/milestones/(active|complete|archive)/...
+    if len(parts) >= 3 and parts[1] == MILESTONES_DIR and parts[2] in MILESTONE_LOCATION_DIRS:
         return True
 
-    # Legacy archived: <slug>/archive/milestones/(active|archive)/...
+    # Legacy complete layouts: <slug>/(complete|archive)/milestones/(active|complete|archive)/...
     if (
         len(parts) >= 4
-        and parts[1] == EXECPLAN_ARCHIVE_DIR
+        and parts[1] in EXECPLAN_COMPLETE_DIR_ALIASES
         and parts[2] == MILESTONES_DIR
-        and parts[3] in {ACTIVE_DIR, ARCHIVE_DIR}
+        and parts[3] in MILESTONE_LOCATION_DIRS
     ):
         return True
 
@@ -148,9 +157,11 @@ def get_execplan_plan_root(path: Path, *, execplans_root: Path) -> Path:
     Supported layouts:
     - Legacy active: <slug>/EP-...md
     - Legacy reserved active slug: active/EP-...md
-    - Legacy archived: <slug>/archive/EP-...md
+    - Legacy complete: <slug>/complete/EP-...md
+    - Legacy alias: <slug>/archive/EP-...md
     - Active root: active/<slug>/EP-...md
-    - Archived root: archive/YYYY/MM/DD/<slug>/EP-...md
+    - Complete root: complete/YYYY/MM/DD/<slug>/EP-...md
+      Legacy alias: archive/YYYY/MM/DD/<slug>/EP-...md
     """
     layout = _classify_execplan_layout(path, execplans_root=execplans_root)
     if layout is None:
@@ -161,16 +172,23 @@ def get_execplan_plan_root(path: Path, *, execplans_root: Path) -> Path:
     return layout.plan_root
 
 
-def is_execplan_archive_path(path: Path, *, execplans_root: Path) -> bool:
+def is_execplan_complete_path(path: Path, *, execplans_root: Path) -> bool:
     """
-    Return True when a plan is under a structured archive subtree.
+    Return True when a plan is under a structured complete subtree.
 
-    Supported archive layouts:
+    Supported complete layouts:
+    - Legacy: <slug>/complete/...
     - Legacy: <slug>/archive/...
-    - Current: archive/YYYY/MM/DD/<slug>/...
+    - Current: complete/YYYY/MM/DD/<slug>/...
+    - Legacy alias: archive/YYYY/MM/DD/<slug>/...
     """
     if is_execplan_milestone_path(path, execplans_root=execplans_root):
         return False
 
     layout = _classify_execplan_layout(path, execplans_root=execplans_root)
     return layout.is_archived if layout is not None else False
+
+
+def is_execplan_archive_path(path: Path, *, execplans_root: Path) -> bool:
+    """Backward-compatible alias for `is_execplan_complete_path`."""
+    return is_execplan_complete_path(path, execplans_root=execplans_root)

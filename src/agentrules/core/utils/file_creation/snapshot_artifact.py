@@ -20,7 +20,8 @@ _TREE_BLOCK_PATTERN = re.compile(
 _TREE_LINE_PATTERN = re.compile(r"^((?:[│ ]{4})*)(├── |└── )(.*)$")
 _TREE_COMMENT_DELIMITER = "  # "
 _TREE_COMMENT_PATTERN = re.compile(r"^(?P<name>.+)\s+#\s+(?P<comment>\S.*)$")
-_TREE_MAX_DEPTH_MARKER = "... (max depth reached)"
+_TREE_MAX_DEPTH_MARKER = "..."
+_LEGACY_TREE_MAX_DEPTH_MARKER = "... (max depth reached)"
 
 
 @dataclass(frozen=True)
@@ -255,7 +256,8 @@ def _snapshot_directory_exists(directory: Path, parent_parts: list[str], name: s
 
 
 def _is_tree_max_depth_marker(name: str) -> bool:
-    return name.strip() == _TREE_MAX_DEPTH_MARKER
+    normalized_name = name.strip()
+    return normalized_name in {_TREE_MAX_DEPTH_MARKER, _LEGACY_TREE_MAX_DEPTH_MARKER}
 
 
 def _parse_existing_tree_comments(

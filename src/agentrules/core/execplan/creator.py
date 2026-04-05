@@ -10,6 +10,7 @@ from datetime import datetime
 from importlib import resources
 from pathlib import Path
 from string import Template
+from typing import Literal
 
 import yaml
 
@@ -17,13 +18,13 @@ from agentrules.core.execplan.identity import extract_execplan_id_from_filename,
 from agentrules.core.execplan.locks import execplan_mutation_lock
 from agentrules.core.execplan.milestones import scan_active_milestones_for_archive
 from agentrules.core.execplan.paths import (
-    ACTIVE_DIR,
-    ARCHIVE_DIR,
     EXECPLAN_ACTIVE_DIR,
     EXECPLAN_ARCHIVE_DIR,
+    EXECPLAN_COMPLETE_DIR,
+    MILESTONE_LOCATION_DIRS,
     MILESTONES_DIR,
     get_execplan_plan_root,
-    is_execplan_archive_path,
+    is_execplan_complete_path,
     is_execplan_milestone_path,
 )
 from agentrules.core.execplan.registry import (
@@ -38,8 +39,11 @@ from agentrules.core.execplan.registry import (
 DATE_YYYYMMDD_RE = re.compile(r"^\d{8}$")
 EXECPLAN_ID_RE = re.compile(r"^EP-\d{8}-\d{3}$")
 FRONT_MATTER_RE = re.compile(r"\A\s*---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
-RESERVED_EXECPLAN_ROOT_SLUGS = frozenset({EXECPLAN_ACTIVE_DIR, EXECPLAN_ARCHIVE_DIR})
+RESERVED_EXECPLAN_ROOT_SLUGS = frozenset(
+    {EXECPLAN_ACTIVE_DIR, EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR}
+)
 RESERVED_ACTIVE_PLAN_SLUGS = frozenset({MILESTONES_DIR})
+_ARCHIVE_DESTINATION_DIRS = frozenset({EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR})
 
 _TEMPLATE_PACKAGE = "agentrules.core.execplan"
 _TEMPLATE_NAME = "EXECPLAN_TEMPLATE.md"
@@ -121,6 +125,17 @@ def _resolve_path(root: Path, value: Path) -> Path:
     return value.resolve() if value.is_absolute() else (root / value).resolve()
 
 
+def _normalize_archive_destination_dir(destination_dir: str) -> str:
+    normalized = destination_dir.strip().lower()
+    if normalized not in _ARCHIVE_DESTINATION_DIRS:
+        allowed = ", ".join(sorted(_ARCHIVE_DESTINATION_DIRS))
+        raise ValueError(
+            f"Unsupported archive destination directory {destination_dir!r}. "
+            f"Expected one of: {allowed}."
+        )
+    return normalized
+
+
 def _iter_execplan_files(execplans_dir: Path) -> tuple[Path, ...]:
     return tuple(
         candidate.resolve()
@@ -163,8 +178,8 @@ def _iter_foreign_milestone_files_within_plan_root(*, plan_root: Path, execplan_
     Return milestone artifacts under plan_root that belong to a different ExecPlan id.
 
     This detects both canonical and legacy-inherited milestone subtree shapes:
-    - milestones/(active|archive)/...
-    - (active|archive)/...  # when legacy milestones collide under modern slug roots
+    - milestones/(active|complete|archive)/...
+    - (active|complete|archive)/...  # when legacy milestones collide under modern slug roots
     """
     foreign: list[Path] = []
     resolved_plan_root = plan_root.resolve()
@@ -175,13 +190,14 @@ def _iter_foreign_milestone_files_within_plan_root(*, plan_root: Path, execplan_
         if candidate_id is None or candidate_id == execplan_id:
             continue
         relative_parts = candidate.resolve().relative_to(resolved_plan_root).parts
-        if len(relative_parts) >= 3 and relative_parts[0] == MILESTONES_DIR and relative_parts[1] in {
-            ACTIVE_DIR,
-            ARCHIVE_DIR,
-        }:
+        if (
+            len(relative_parts) >= 3
+            and relative_parts[0] == MILESTONES_DIR
+            and relative_parts[1] in MILESTONE_LOCATION_DIRS
+        ):
             foreign.append(candidate.resolve())
             continue
-        if len(relative_parts) >= 2 and relative_parts[0] in {ACTIVE_DIR, ARCHIVE_DIR}:
+        if len(relative_parts) >= 2 and relative_parts[0] in MILESTONE_LOCATION_DIRS:
             foreign.append(candidate.resolve())
             continue
     return tuple(sorted(foreign))
@@ -223,7 +239,7 @@ def _iter_unexpected_entries_in_legacy_milestones_root(*, milestones_root: Path,
         relative_parts = candidate.resolve().relative_to(resolved_root).parts
         allowed = (
             len(relative_parts) >= 2
-            and relative_parts[0] in {ACTIVE_DIR, ARCHIVE_DIR}
+            and relative_parts[0] in MILESTONE_LOCATION_DIRS
             and candidate_id == execplan_id
         )
         if not allowed:
@@ -329,7 +345,7 @@ def create_execplan(
         existing_joined = ", ".join(path.as_posix() for path in sorted(existing_plan_files))
         raise ValueError(
             "Cannot create ExecPlan because the active slug directory already contains an ExecPlan file. "
-            f"Slug: {chosen_slug!r}. Existing files: {existing_joined}. Use a new slug or archive/migrate the "
+            f"Slug: {chosen_slug!r}. Existing files: {existing_joined}. Use a new slug or complete/migrate the "
             "existing plan first."
         )
 
@@ -382,6 +398,7 @@ def archive_execplan(
     execplan_id: str,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
     archive_date_yyyymmdd: str | None = None,
+    destination_dir: Literal["complete", "archive"] = EXECPLAN_COMPLETE_DIR,
     update_registry: bool = True,
     registry_path: Path = DEFAULT_REGISTRY_PATH,
     include_registry_timestamp: bool = False,
@@ -391,10 +408,12 @@ def archive_execplan(
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
     resolved_registry_path = _resolve_path(resolved_root, registry_path)
 
+    archive_destination_dir = _normalize_archive_destination_dir(destination_dir)
+
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         source_plan_path = _resolve_execplan_by_id(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id)
-        if is_execplan_archive_path(source_plan_path, execplans_root=resolved_execplans_dir):
-            raise ValueError(f"ExecPlan {execplan_id!r} is already archived.")
+        if is_execplan_complete_path(source_plan_path, execplans_root=resolved_execplans_dir):
+            raise ValueError(f"ExecPlan {execplan_id!r} is already completed.")
 
         source_plan_root = get_execplan_plan_root(source_plan_path, execplans_root=resolved_execplans_dir)
         source_plan_path = source_plan_path.resolve()
@@ -415,7 +434,7 @@ def archive_execplan(
             if len(top_level_plan_files) != 1 or top_level_plan_files[0] != source_plan_path:
                 joined = ", ".join(path.as_posix() for path in sorted(top_level_plan_files))
                 raise ValueError(
-                    "Cannot archive legacy active-root ExecPlan safely because multiple top-level ExecPlan files "
+                    "Cannot complete legacy active-root ExecPlan safely because multiple top-level ExecPlan files "
                     f"were found under {source_plan_root.as_posix()}: {joined}"
                 )
         else:
@@ -426,7 +445,7 @@ def archive_execplan(
             if len(files_in_plan_root) != 1 or files_in_plan_root[0] != source_plan_path:
                 joined = ", ".join(path.as_posix() for path in sorted(files_in_plan_root))
                 raise ValueError(
-                    "Cannot archive entire ExecPlan directory safely because it contains multiple ExecPlan files. "
+                    "Cannot complete entire ExecPlan directory safely because it contains multiple ExecPlan files. "
                     f"Plan root: {source_plan_root.as_posix()}. Files: {joined}"
                 )
             foreign_milestones = _iter_foreign_milestone_files_within_plan_root(
@@ -436,7 +455,7 @@ def archive_execplan(
             if foreign_milestones:
                 joined = ", ".join(path.as_posix() for path in foreign_milestones)
                 raise ValueError(
-                    "Cannot archive ExecPlan safely because the plan root contains milestone files for other "
+                    "Cannot complete ExecPlan safely because the plan root contains milestone files for other "
                     f"ExecPlan IDs. Plan root: {source_plan_root.as_posix()}. Files: {joined}"
                 )
 
@@ -450,8 +469,8 @@ def archive_execplan(
                 for file in active_milestone_scan.blocking_entries
             )
             raise ValueError(
-                "Cannot archive ExecPlan because active milestone metadata is invalid. "
-                "Fix or archive these milestones first. "
+                "Cannot complete ExecPlan because active milestone metadata is invalid. "
+                "Fix or complete these milestones first. "
                 f"ExecPlan: {execplan_id}. Invalid active milestones: {joined}"
             )
 
@@ -459,8 +478,8 @@ def archive_execplan(
         if active_milestones:
             joined = ", ".join(file.path.as_posix() for file in active_milestones)
             raise ValueError(
-                "Cannot archive ExecPlan while active milestones still exist. "
-                "Archive or complete those milestones first. "
+                "Cannot complete ExecPlan while active milestones still exist. "
+                "Complete those milestones first. "
                 f"ExecPlan: {execplan_id}. Active milestones: {joined}"
             )
 
@@ -468,7 +487,7 @@ def archive_execplan(
         day_value = _validate_date_yyyymmdd(day_token)
         archive_parent = (
             resolved_execplans_dir
-            / EXECPLAN_ARCHIVE_DIR
+            / archive_destination_dir
             / day_value.strftime("%Y")
             / day_value.strftime("%m")
             / day_value.strftime("%d")
@@ -478,9 +497,10 @@ def archive_execplan(
         archived_plan_root = (archive_parent / archive_leaf).resolve()
         if archived_plan_root == source_plan_root or archived_plan_root.is_relative_to(source_plan_root):
             raise ValueError(
-                "Cannot archive ExecPlan safely because the destination resolves inside the source plan root. "
-                "This usually indicates a legacy top-level slug that conflicts with the archive namespace "
-                f"({EXECPLAN_ARCHIVE_DIR!r}). Rename or migrate the legacy plan directory first."
+                "Cannot complete ExecPlan safely because the destination resolves inside the source plan root. "
+                "This usually indicates a legacy top-level slug that conflicts with the destination namespace "
+                f"({archive_destination_dir!r}). Rename or migrate the "
+                "legacy plan directory first."
             )
         if legacy_active_root:
             legacy_milestones_root = (source_plan_root / MILESTONES_DIR).resolve()
@@ -492,7 +512,7 @@ def archive_execplan(
                 if unexpected_entries:
                     joined = ", ".join(path.as_posix() for path in unexpected_entries)
                     raise ValueError(
-                        "Cannot archive legacy active-root ExecPlan because mixed ownership artifacts were found "
+                        "Cannot complete legacy active-root ExecPlan because mixed ownership artifacts were found "
                         f"under {legacy_milestones_root.as_posix()}: {joined}"
                     )
 

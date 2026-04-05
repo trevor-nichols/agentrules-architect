@@ -216,6 +216,16 @@ class ExecPlanCreatorTests(unittest.TestCase):
                     update_registry=False,
                 )
 
+            with self.assertRaisesRegex(ValueError, "reserved for ExecPlan directory layout roots"):
+                create_execplan(
+                    root=root,
+                    title="Complete Root Collision",
+                    slug="complete",
+                    date_yyyymmdd="20260207",
+                    execplans_dir=execplans_dir,
+                    update_registry=False,
+                )
+
     def test_create_execplan_rejects_reserved_milestones_slug(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -230,6 +240,24 @@ class ExecPlanCreatorTests(unittest.TestCase):
                     execplans_dir=execplans_dir,
                     update_registry=False,
                 )
+
+    def test_create_execplan_allows_completed_slug(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            created = create_execplan(
+                root=root,
+                title="Completed Slug Is Allowed",
+                slug="completed",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+
+            self.assertEqual(created.plan_id, "EP-20260207-001")
+            self.assertEqual(created.slug, "completed")
+            self.assertTrue(created.plan_path.exists())
 
     def test_create_execplan_rejects_milestones_slug_in_mixed_legacy_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -407,7 +435,7 @@ class ExecPlanCreatorTests(unittest.TestCase):
             self.assertFalse(source_root.exists())
             self.assertTrue(archived.archived_plan_root.exists())
             self.assertIn(
-                "/archive/2026/02/12/EP-20260207-001_archive-candidate",
+                "/complete/2026/02/12/EP-20260207-001_archive-candidate",
                 archived.archived_plan_root.as_posix(),
             )
             content = archived.archived_plan_path.read_text(encoding="utf-8")
@@ -526,7 +554,7 @@ class ExecPlanCreatorTests(unittest.TestCase):
 
             self.assertIn("MS001_blocking-milestone.md", str(error_context.exception))
             self.assertTrue((execplans_dir / "active" / "archive-blocked-by-milestones").exists())
-            self.assertFalse((execplans_dir / "archive" / "2026" / "02" / "12").exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12").exists())
 
     def test_archive_execplan_rejects_non_ms_filename_active_milestone(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -579,7 +607,7 @@ class ExecPlanCreatorTests(unittest.TestCase):
 
             self.assertIn("blocking.md", str(error_context.exception))
             self.assertTrue((execplans_dir / "active" / "archive-blocked-by-non-ms-filename").exists())
-            self.assertFalse((execplans_dir / "archive" / "2026" / "02" / "12").exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12").exists())
 
     def test_archive_execplan_rejects_invalid_active_milestone_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -625,7 +653,7 @@ class ExecPlanCreatorTests(unittest.TestCase):
 
             self.assertIn("MS001_broken.md", str(error_context.exception))
             self.assertTrue((execplans_dir / "active" / "archive-blocked-by-invalid-active-milestone").exists())
-            self.assertFalse((execplans_dir / "archive" / "2026" / "02" / "12").exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12").exists())
 
     def test_archive_execplan_rejects_multi_execplan_plan_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -723,9 +751,9 @@ class ExecPlanCreatorTests(unittest.TestCase):
 
             self.assertFalse(source_root.exists())
             self.assertTrue(archived.archived_plan_path.exists())
-            self.assertIn("/archive/2026/02/12/EP-20260207-001_archive", archived.archived_plan_path.as_posix())
+            self.assertIn("/complete/2026/02/12/EP-20260207-001_archive", archived.archived_plan_path.as_posix())
 
-    def test_archive_execplan_rejects_legacy_top_level_archive_slug_conflict(self) -> None:
+    def test_archive_execplan_allows_legacy_top_level_archive_slug(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
@@ -761,6 +789,54 @@ class ExecPlanCreatorTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
+            archived = archive_execplan(
+                root=root,
+                execplan_id="EP-20260207-001",
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+                update_registry=False,
+            )
+
+            self.assertFalse(source_plan.exists())
+            self.assertTrue(archived.archived_plan_path.exists())
+            self.assertIn("/complete/2026/02/12/EP-20260207-001_archive", archived.archived_plan_path.as_posix())
+
+    def test_archive_execplan_rejects_legacy_top_level_complete_slug_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            source_root = execplans_dir / "complete"
+            source_plan = source_root / "EP-20260207-001_complete.md"
+            source_root.mkdir(parents=True, exist_ok=True)
+            source_plan.write_text(
+                (
+                    "---\n"
+                    "id: EP-20260207-001\n"
+                    'title: "Legacy Complete Slug"\n'
+                    "status: planned\n"
+                    "kind: feature\n"
+                    "domain: backend\n"
+                    'owner: "@codex"\n'
+                    "created: 2026-02-07\n"
+                    "updated: 2026-02-07\n"
+                    "tags: []\n"
+                    "touches: []\n"
+                    "risk: low\n"
+                    "breaking: false\n"
+                    "migration: false\n"
+                    "links:\n"
+                    '  issue: ""\n'
+                    '  pr: ""\n'
+                    '  docs: ""\n'
+                    "depends_on: []\n"
+                    "supersedes: []\n"
+                    "---\n\n"
+                    "# Complete\n"
+                ),
+                encoding="utf-8",
+            )
+
             with self.assertRaisesRegex(ValueError, "destination resolves inside the source plan root"):
                 archive_execplan(
                     root=root,
@@ -771,7 +847,55 @@ class ExecPlanCreatorTests(unittest.TestCase):
                 )
 
             self.assertTrue(source_plan.exists())
-            self.assertFalse((execplans_dir / "archive" / "2026" / "02" / "12").exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12").exists())
+
+    def test_archive_execplan_allows_legacy_top_level_completed_slug(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            source_root = execplans_dir / "completed"
+            source_plan = source_root / "EP-20260207-001_completed.md"
+            source_root.mkdir(parents=True, exist_ok=True)
+            source_plan.write_text(
+                (
+                    "---\n"
+                    "id: EP-20260207-001\n"
+                    'title: "Legacy Completed Slug"\n'
+                    "status: planned\n"
+                    "kind: feature\n"
+                    "domain: backend\n"
+                    'owner: "@codex"\n'
+                    "created: 2026-02-07\n"
+                    "updated: 2026-02-07\n"
+                    "tags: []\n"
+                    "touches: []\n"
+                    "risk: low\n"
+                    "breaking: false\n"
+                    "migration: false\n"
+                    "links:\n"
+                    '  issue: ""\n'
+                    '  pr: ""\n'
+                    '  docs: ""\n'
+                    "depends_on: []\n"
+                    "supersedes: []\n"
+                    "---\n\n"
+                    "# Completed\n"
+                ),
+                encoding="utf-8",
+            )
+
+            archived = archive_execplan(
+                root=root,
+                execplan_id="EP-20260207-001",
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+                update_registry=False,
+            )
+
+            self.assertFalse(source_plan.exists())
+            self.assertTrue(archived.archived_plan_path.exists())
+            self.assertIn("/complete/2026/02/12/EP-20260207-001_completed", archived.archived_plan_path.as_posix())
 
     def test_archive_execplan_supports_legacy_active_slug_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -836,8 +960,62 @@ class ExecPlanCreatorTests(unittest.TestCase):
             self.assertTrue(source_root.exists())
             self.assertTrue(modern_plan.plan_path.exists())
             self.assertTrue(archived.archived_plan_path.exists())
-            self.assertIn("/archive/2026/02/12/EP-20260207-001_active", archived.archived_plan_path.as_posix())
+            self.assertIn("/complete/2026/02/12/EP-20260207-001_active", archived.archived_plan_path.as_posix())
             self.assertTrue((archived.archived_plan_root / "milestones" / "archive").exists())
+            self.assertFalse((source_root / "milestones").exists())
+
+    def test_archive_execplan_supports_legacy_active_root_with_complete_milestones(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            source_root = execplans_dir / "active"
+            source_plan = source_root / "EP-20260207-001_active.md"
+            source_root.mkdir(parents=True, exist_ok=True)
+            source_plan.write_text(
+                (
+                    "---\n"
+                    "id: EP-20260207-001\n"
+                    'title: "Legacy Active Slug"\n'
+                    "status: planned\n"
+                    "kind: feature\n"
+                    "domain: backend\n"
+                    'owner: "@codex"\n'
+                    "created: 2026-02-07\n"
+                    "updated: 2026-02-07\n"
+                    "tags: []\n"
+                    "touches: []\n"
+                    "risk: low\n"
+                    "breaking: false\n"
+                    "migration: false\n"
+                    "links:\n"
+                    '  issue: ""\n'
+                    '  pr: ""\n'
+                    '  docs: ""\n'
+                    "depends_on: []\n"
+                    "supersedes: []\n"
+                    "---\n\n"
+                    "# Active\n"
+                ),
+                encoding="utf-8",
+            )
+            source_completed_milestone = (
+                source_root / "milestones" / "complete" / "EP-20260207-001_MS001_legacy-active-complete.md"
+            )
+            source_completed_milestone.parent.mkdir(parents=True, exist_ok=True)
+            source_completed_milestone.write_text("# completed milestone\n", encoding="utf-8")
+
+            archived = archive_execplan(
+                root=root,
+                execplan_id="EP-20260207-001",
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+                update_registry=False,
+            )
+
+            self.assertFalse(source_plan.exists())
+            self.assertTrue(archived.archived_plan_path.exists())
+            self.assertTrue((archived.archived_plan_root / "milestones" / "complete").exists())
             self.assertFalse((source_root / "milestones").exists())
 
     def test_archive_execplan_allows_same_slug_archived_on_same_day(self) -> None:
@@ -962,7 +1140,54 @@ class ExecPlanCreatorTests(unittest.TestCase):
 
             self.assertTrue(modern.exists())
             self.assertTrue(legacy_milestone.exists())
-            self.assertFalse((execplans_dir / "archive" / "2026" / "02" / "12" / "EP-20260208-001_milestones").exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12" / "EP-20260208-001_milestones").exists())
+
+    def test_archive_execplan_rejects_foreign_completed_milestones_in_modern_plan_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+
+            modern = create_execplan(
+                root=root,
+                title="Modern Plan",
+                slug="modern-plan",
+                date_yyyymmdd="20260208",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            foreign_milestone = (
+                modern.plan_path.parent / "milestones" / "complete" / "EP-20260207-001_MS001_foreign.md"
+            )
+            foreign_milestone.parent.mkdir(parents=True, exist_ok=True)
+            foreign_milestone.write_text(
+                (
+                    "---\n"
+                    "milestone_id: EP-20260207-001/MS001\n"
+                    "execplan_id: EP-20260207-001\n"
+                    'title: "Foreign milestone"\n'
+                    "status: completed\n"
+                    "domain: backend\n"
+                    'owner: "@codex"\n'
+                    "created: 2026-02-07\n"
+                    "updated: 2026-02-12\n"
+                    "---\n\n"
+                    "# Foreign\n"
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "contains milestone files for other ExecPlan IDs"):
+                archive_execplan(
+                    root=root,
+                    execplan_id=modern.plan_id,
+                    execplans_dir=execplans_dir,
+                    archive_date_yyyymmdd="20260212",
+                    update_registry=False,
+                )
+
+            self.assertTrue(modern.plan_path.exists())
+            self.assertTrue(foreign_milestone.exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12" / "EP-20260208-001_modern-plan").exists())
 
     def test_archive_legacy_active_root_rejects_mixed_namespace_collision(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1041,7 +1266,7 @@ class ExecPlanCreatorTests(unittest.TestCase):
 
             self.assertTrue(legacy_plan.exists())
             self.assertTrue(modern.exists())
-            self.assertFalse((execplans_dir / "archive" / "2026" / "02" / "12" / "EP-20260207-001_active").exists())
+            self.assertFalse((execplans_dir / "complete" / "2026" / "02" / "12" / "EP-20260207-001_active").exists())
 
 
 if __name__ == "__main__":

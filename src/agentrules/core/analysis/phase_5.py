@@ -79,6 +79,9 @@ class Phase5Analysis:
 
             # Use the architect to consolidate results
             result = await self.architect.consolidate_results(all_results, prompt)
+            error_message = result.get("error") if isinstance(result, dict) else None
+            if isinstance(error_message, str) and error_message.strip():
+                raise RuntimeError(f"Phase 5 consolidation failed: {error_message}")
 
             logger.info("[bold green]Phase 5:[/bold green] Consolidation completed successfully")
 
@@ -96,7 +99,4 @@ class Phase5Analysis:
             return result
         except Exception as e:
             logger.error(f"[bold red]Error in Phase 5:[/bold red] {str(e)}")
-            return {
-                "phase": "Consolidation",
-                "error": str(e)
-            }
+            raise

@@ -138,7 +138,7 @@ def generate_tree(
 
     # If we've reached max depth, indicate there's more
     if max_depth is not None and current_depth >= max_depth:
-        return [f"{prefix}└── ... (max depth reached)"]
+        return [f"{prefix}└── ..."]
 
     tree = []
 
