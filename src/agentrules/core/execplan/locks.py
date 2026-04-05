@@ -32,9 +32,13 @@ _LOCKS_DIRNAME = ".locks"
 
 @contextmanager
 def file_lock(lock_path: Path) -> Iterator[None]:
-    """Acquire an exclusive advisory lock on an existing file path."""
+    """Acquire an exclusive advisory lock on an existing file path.
+
+    Advisory locking is coordination only, so opening the ExecPlan must not
+    require write permission on the markdown file itself.
+    """
     resolved_lock_path = lock_path.resolve()
-    with resolved_lock_path.open("r+b") as handle:
+    with resolved_lock_path.open("rb") as handle:
         if fcntl is not None:  # pragma: no branch
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         elif msvcrt is not None:  # pragma: no cover - Windows-only branch

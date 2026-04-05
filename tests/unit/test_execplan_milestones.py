@@ -125,6 +125,15 @@ def _read_subprocess_result(process: subprocess.Popen[str]) -> dict[str, object]
 
 
 class ExecPlanMilestonesTests(unittest.TestCase):
+    def _require_read_only_write_denial(self, path: Path) -> None:
+        path.chmod(0o444)
+        try:
+            with path.open("r+b"):
+                pass
+        except PermissionError:
+            return
+        self.skipTest("filesystem does not deny write opens for read-only files in this environment")
+
     def test_create_milestone_uses_parent_and_title_codification(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -158,6 +167,30 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertIn("domain: frontend", content)
             self.assertIn('owner: "@backend-team"', content)
             self.assertFalse((execplans_dir / ".locks").exists())
+
+    def test_create_milestone_allows_read_only_execplan_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Read Only Parent",
+                slug="read-only-parent",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            self._require_read_only_write_denial(created_plan.plan_path)
+
+            created_milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Still Create Milestone",
+                execplans_dir=execplans_dir,
+            )
+
+            self.assertEqual(created_milestone.milestone_id, "EP-20260207-001/MS001")
+            self.assertTrue(created_milestone.milestone_path.exists())
 
     def test_create_milestone_respects_owner_and_domain_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -567,6 +600,37 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertTrue(archived.archived_path.exists())
             self.assertIn("/milestones/complete/", archived.archived_path.as_posix())
             self.assertNotIn("/milestones/complete/2026/02/12/", archived.archived_path.as_posix())
+
+    def test_archive_milestone_allows_read_only_execplan_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            execplans_dir = root / ".agent" / "exec_plans"
+            created_plan = create_execplan(
+                root=root,
+                title="Read Only Archive Parent",
+                slug="read-only-archive-parent",
+                date_yyyymmdd="20260207",
+                execplans_dir=execplans_dir,
+                update_registry=False,
+            )
+            created_milestone = create_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                title="Archive Me Anyway",
+                execplans_dir=execplans_dir,
+            )
+            self._require_read_only_write_denial(created_plan.plan_path)
+
+            archived = archive_execplan_milestone(
+                root=root,
+                execplan_id=created_plan.plan_id,
+                sequence=created_milestone.sequence,
+                execplans_dir=execplans_dir,
+                archive_date_yyyymmdd="20260212",
+            )
+
+            self.assertFalse(created_milestone.milestone_path.exists())
+            self.assertTrue(archived.archived_path.exists())
 
     def test_archive_missing_active_milestone_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
