@@ -58,6 +58,10 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.model_config.apply_user_overrides()
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase1"], default_config)
 
+    def test_default_phase_presets_use_gpt55_default(self) -> None:
+        self.assertTrue(self.agents_module.MODEL_PRESET_DEFAULTS)
+        self.assertTrue(all(value == "gpt55-default" for value in self.agents_module.MODEL_PRESET_DEFAULTS.values()))
+
     def test_apply_user_overrides_accepts_dynamic_codex_runtime_model(self) -> None:
         runtime_model_key = self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview")
 
@@ -180,6 +184,9 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(selection.reasoning_effort, "xhigh")
 
     def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
+        self.assertIn("gpt55-none", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt55-default", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt55-xhigh", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.2-codex", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.3-codex", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt-5.4-2026-03-05", self.agents_module.MODEL_PRESETS)

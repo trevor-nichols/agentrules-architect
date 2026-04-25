@@ -9,6 +9,8 @@ from agentrules.core.agents.base import ReasoningMode
 ApiType = Literal["responses", "chat"]
 
 _GPT5_RESPONSES_REASONING_SUPPORT: tuple[tuple[str, frozenset[str]], ...] = (
+    ("gpt-5.5-pro", frozenset()),
+    ("gpt-5.5", frozenset({"none", "low", "medium", "high", "xhigh"})),
     ("gpt-5.4-pro", frozenset({"medium", "high", "xhigh"})),
     ("gpt-5.4", frozenset({"none", "low", "medium", "high", "xhigh"})),
     ("gpt-5.3-codex", frozenset({"low", "medium", "high", "xhigh"})),

@@ -372,6 +372,37 @@ GPT5_MINI = _gpt5_responses_model(
     text_verbosity="medium",
 )
 
+# GPT-5.5 configurations
+GPT5_5_NONE = _gpt5_responses_model(
+    "gpt-5.5",
+    reasoning=ReasoningMode.DISABLED,
+    text_verbosity="low",
+)
+
+GPT5_5_LOW = _gpt5_responses_model(
+    "gpt-5.5",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_5_DEFAULT = _gpt5_responses_model(
+    "gpt-5.5",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_5_HIGH = _gpt5_responses_model(
+    "gpt-5.5",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_5_XHIGH = _gpt5_responses_model(
+    "gpt-5.5",
+    reasoning=ReasoningMode.XHIGH,
+    text_verbosity="high",
+)
+
 # GPT-5.1 configurations
 GPT5_1_DEFAULT = _gpt5_responses_model(
     "gpt-5.1",

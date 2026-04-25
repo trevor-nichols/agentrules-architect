@@ -6,7 +6,7 @@ AgentRules supports Codex as a local runtime provider through `codex app-server`
 
 - Launches the local `codex` CLI in app-server mode.
 - Reuses ChatGPT login state from `CODEX_HOME` instead of asking AgentRules for an OpenAI API key.
-- Lets phase presets use `codex-*` model variants such as `codex-gpt-5.3-codex` and `codex-gpt-5.4`.
+- Surfaces live `Codex: <model>` options from app-server `model/list`, while keeping older `codex-*` aliases for compatibility.
 - Keeps structured outputs enabled for the phases that already depend on schemas.
 
 ## Configure it
@@ -73,6 +73,7 @@ Notes:
 - Non-Codex researcher presets still require Tavily unless you are in offline mode
 - Codex-backed Phase 3 agents inspect files from the repository directly instead of receiving embedded file contents
 - `Codex: <model>` options come from live app-server `model/list` output and track runtime model availability directly
+- Model availability is account- and runtime-dependent; current signed-in runtimes commonly expose models such as `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, and `gpt-5.2`
 
 ## Optional live smoke
 
