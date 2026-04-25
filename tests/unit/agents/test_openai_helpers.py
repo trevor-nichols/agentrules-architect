@@ -17,6 +17,12 @@ class OpenAIConfigTests(unittest.TestCase):
         self.assertTrue(defaults.use_responses_api)
         self.assertIsNone(defaults.default_temperature)
 
+    def test_resolve_defaults_for_gpt55_prefix(self) -> None:
+        defaults = resolve_model_defaults("gpt-5.5")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+        self.assertTrue(defaults.use_responses_api)
+        self.assertIsNone(defaults.default_temperature)
+
     def test_resolve_defaults_for_gpt51_prefix(self) -> None:
         defaults = resolve_model_defaults("gpt-5.1-large")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.DISABLED)
@@ -174,6 +180,41 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["input"], "Hello gpt-5.3-codex")
         self.assertEqual(payload["reasoning"], {"effort": "medium"})
         self.assertEqual(payload["text"], {"verbosity": "medium"})
+
+    def test_prepare_request_for_responses_api_gpt55_xhigh(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5.5",
+            content="Hello gpt-5.5",
+            reasoning=ReasoningMode.XHIGH,
+            temperature=None,
+            tools=None,
+            text_verbosity="high",
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["model"], "gpt-5.5")
+        self.assertEqual(payload["input"], "Hello gpt-5.5")
+        self.assertEqual(payload["reasoning"], {"effort": "xhigh"})
+        self.assertEqual(payload["text"], {"verbosity": "high"})
+
+    def test_prepare_request_for_responses_api_gpt55_minimal_downgrades_to_none(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5.5",
+            content="Hello gpt-5.5",
+            reasoning=ReasoningMode.MINIMAL,
+            temperature=None,
+            tools=None,
+            text_verbosity="low",
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.api, "responses")
+        payload = prepared.payload
+        self.assertEqual(payload["model"], "gpt-5.5")
+        self.assertEqual(payload["reasoning"], {"effort": "none"})
+        self.assertEqual(payload["text"], {"verbosity": "low"})
 
     def test_prepare_request_for_responses_api_gpt54_mini_none(self) -> None:
         prepared = prepare_request(

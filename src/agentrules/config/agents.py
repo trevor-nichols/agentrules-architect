@@ -55,6 +55,11 @@ from agentrules.core.types.models import (
     GPT5_4_NANO_MEDIUM,
     GPT5_4_NANO_NONE,
     GPT5_4_NANO_XHIGH,
+    GPT5_5_DEFAULT,
+    GPT5_5_HIGH,
+    GPT5_5_LOW,
+    GPT5_5_NONE,
+    GPT5_5_XHIGH,
     GPT5_DEFAULT,
     GPT5_HIGH,
     GPT5_MINI,
@@ -379,6 +384,36 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Cost-efficient GPT-5 Mini with 400k context and high reasoning.",
         provider=ModelProvider.OPENAI,
     ),
+    "gpt55-none": _preset(
+        config=GPT5_5_NONE,
+        label="GPT-5.5 (no reasoning)",
+        description="GPT-5.5 via Responses API with reasoning disabled and low verbosity for fast runs.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt55-low": _preset(
+        config=GPT5_5_LOW,
+        label="GPT-5.5 (low reasoning)",
+        description="GPT-5.5 via Responses API with low reasoning effort and low verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt55-default": _preset(
+        config=GPT5_5_DEFAULT,
+        label="GPT-5.5 (medium reasoning)",
+        description="GPT-5.5 via Responses API with medium reasoning and verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt55-high": _preset(
+        config=GPT5_5_HIGH,
+        label="GPT-5.5 (high reasoning)",
+        description="GPT-5.5 via Responses API with high reasoning depth and high verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt55-xhigh": _preset(
+        config=GPT5_5_XHIGH,
+        label="GPT-5.5 (xhigh reasoning)",
+        description="GPT-5.5 via Responses API with maximum supported reasoning depth and high verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
     "gpt5-minimal": _preset(
         config=GPT5_MINIMAL,
         label="GPT-5 (minimal reasoning)",
@@ -583,13 +618,13 @@ MODEL_PRESETS: dict[str, PresetDefinition] = {
 }
 
 MODEL_PRESET_DEFAULTS: dict[str, str] = {
-    "phase1": "gpt5-mini",
-    "phase2": "gpt5-mini",
-    "phase3": "gpt5-mini",
-    "phase4": "gpt5-mini",
-    "phase5": "gpt5-mini",
-    "final": "gpt5-mini",
-    "researcher": "gpt5-mini",
+    "phase1": "gpt55-default",
+    "phase2": "gpt55-default",
+    "phase3": "gpt55-default",
+    "phase4": "gpt55-default",
+    "phase5": "gpt55-default",
+    "final": "gpt55-default",
+    "researcher": "gpt55-default",
 }
 
 

@@ -288,7 +288,7 @@ The app currently exposes presets across these providers:
 
 Choose any available preset per phase through the CLI (`agentrules configure --models`) or by editing `config.toml` / `config/agents.py`. At runtime the values populate `MODEL_CONFIG`, which the pipeline consumes while resolving phase architects (`src/agentrules/core/agents/factory/factory.py`).
 
-> **Preset tip:** Legacy-friendly presets stay under the `gpt5-*` keys (backed by the `gpt-5` model name) so existing `config.toml` files continue to work, while the newer GPT‑5.1 presets live under the `gpt51-*` keys, GPT‑5.2 presets under `gpt52-*`, and GPT‑5.4 Mini/Nano variants under the `gpt54-mini-*` and `gpt54-nano-*` keys. Mixing them per phase or per-agent is fully supported.
+> **Preset tip:** Legacy-friendly presets stay under the `gpt5-*` keys (backed by the `gpt-5` model name) so existing `config.toml` files continue to work. Newer GPT‑5.5 presets live under `gpt55-*`, GPT‑5.1 presets under `gpt51-*`, GPT‑5.2 presets under `gpt52-*`, and GPT‑5.4 Mini/Nano variants under the `gpt54-mini-*` and `gpt54-nano-*` keys. Codex selections in the settings UI come from the live app-server catalog rather than this static shorthand list.
 
 ## 🧠 Reasoning & Advanced Configuration
 
