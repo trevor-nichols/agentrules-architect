@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.8.0](https://github.com/trevor-nichols/agentrules-architect/compare/v3.7.0...v3.8.0) (2026-04-25)
+
+
+### Features
+
+* **models:** add GPT-5.5 presets and defaults ([72b7131](https://github.com/trevor-nichols/agentrules-architect/commit/72b71312d5ac3fd32858b2bac116fd7df968de52))
+* **models:** add GPT-5.5 presets and defaults ([1ecf656](https://github.com/trevor-nichols/agentrules-architect/commit/1ecf65695d165c820e29f7034cc9cdc1de390a8c))
+
 ## [3.7.0](https://github.com/trevor-nichols/agentrules-architect/compare/v3.6.0...v3.7.0) (2026-04-05)
 
 
