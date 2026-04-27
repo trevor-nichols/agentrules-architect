@@ -187,7 +187,7 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         self.assertEqual(len(active_glob), 1)
         self.assertTrue(active_glob[0].exists())
 
-        archive_result = self.runner.invoke(
+        complete_result = self.runner.invoke(
             cli.app,
             [
                 "execplan",
@@ -200,10 +200,10 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
                 str(self.root),
             ],
         )
-        self.assertEqual(archive_result.exit_code, 0, msg=archive_result.output)
+        self.assertEqual(complete_result.exit_code, 0, msg=complete_result.output)
 
         self.assertFalse(active_glob[0].exists())
-        archived_glob = list(
+        completed_glob = list(
             (
                 self.root
                 / ".agent"
@@ -216,8 +216,10 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
                 "MS001*.md"
             )
         )
-        self.assertEqual(len(archived_glob), 1)
-        self.assertTrue(archived_glob[0].exists())
+        self.assertEqual(len(completed_glob), 1)
+        self.assertTrue(completed_glob[0].exists())
+        content = completed_glob[0].read_text(encoding="utf-8")
+        self.assertIn("status: completed", content)
 
         list_active_only = self.runner.invoke(
             cli.app,
@@ -280,12 +282,12 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         )
         self.assertEqual(create_second.exit_code, 0, msg=create_second.output)
 
-        archive_first = self.runner.invoke(
+        complete_first = self.runner.invoke(
             cli.app,
             [
                 "execplan",
                 "milestone",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--ms",
                 "1",
@@ -293,8 +295,8 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
                 str(self.root),
             ],
         )
-        self.assertEqual(archive_first.exit_code, 0, msg=archive_first.output)
-        archived_glob = list(
+        self.assertEqual(complete_first.exit_code, 0, msg=complete_first.output)
+        completed_glob = list(
             (
                 self.root
                 / ".agent"
@@ -302,11 +304,11 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
                 / "active"
                 / "milestone-remaining"
                 / "milestones"
-                / "archive"
+                / "complete"
             ).glob("MS001*.md")
         )
-        self.assertEqual(len(archived_glob), 1)
-        self.assertTrue(archived_glob[0].exists())
+        self.assertEqual(len(completed_glob), 1)
+        self.assertTrue(completed_glob[0].exists())
 
         remaining = self.runner.invoke(
             cli.app,
@@ -338,6 +340,24 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         )
         self.assertEqual(remaining_with_path.exit_code, 0, msg=remaining_with_path.output)
         self.assertIn("->", remaining_with_path.output)
+
+    def test_milestone_archive_command_is_removed(self) -> None:
+        from agentrules import cli
+
+        result = self.runner.invoke(
+            cli.app,
+            [
+                "execplan",
+                "milestone",
+                "archive",
+                "EP-20260207-001",
+                "--ms",
+                "1",
+            ],
+        )
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("no such command", result.output.lower())
 
 
 if __name__ == "__main__":

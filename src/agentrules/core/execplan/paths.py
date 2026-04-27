@@ -25,7 +25,7 @@ _DAY_RE = re.compile(r"^\d{2}$")
 @dataclass(frozen=True, slots=True)
 class _ExecPlanLayout:
     plan_root: Path
-    is_archived: bool
+    is_completed: bool
 
 
 def _parts_relative_to(path: Path, root: Path) -> tuple[str, ...] | None:
@@ -35,7 +35,7 @@ def _parts_relative_to(path: Path, root: Path) -> tuple[str, ...] | None:
         return None
 
 
-def _looks_like_archive_date(year: str, month: str, day: str) -> bool:
+def _looks_like_completion_date(year: str, month: str, day: str) -> bool:
     if _YEAR_RE.fullmatch(year) is None:
         return False
     if _MONTH_RE.fullmatch(month) is None:
@@ -58,14 +58,14 @@ def _classify_execplan_layout(path: Path, *, execplans_root: Path) -> _ExecPlanL
     if len(parts) >= 3 and parts[0] == EXECPLAN_ACTIVE_DIR:
         return _ExecPlanLayout(
             plan_root=(root / EXECPLAN_ACTIVE_DIR / parts[1]).resolve(),
-            is_archived=False,
+            is_completed=False,
         )
 
     # Legacy active slug layout using reserved root name: active/EP-...md
     if len(parts) >= 2 and parts[0] == EXECPLAN_ACTIVE_DIR:
         return _ExecPlanLayout(
             plan_root=(root / EXECPLAN_ACTIVE_DIR).resolve(),
-            is_archived=False,
+            is_completed=False,
         )
 
     # Current complete root layout: complete/YYYY/MM/DD/<slug>/...
@@ -73,11 +73,11 @@ def _classify_execplan_layout(path: Path, *, execplans_root: Path) -> _ExecPlanL
     if (
         len(parts) >= 6
         and parts[0] in EXECPLAN_COMPLETE_DIR_ALIASES
-        and _looks_like_archive_date(parts[1], parts[2], parts[3])
+        and _looks_like_completion_date(parts[1], parts[2], parts[3])
     ):
         return _ExecPlanLayout(
             plan_root=(root / parts[0] / parts[1] / parts[2] / parts[3] / parts[4]).resolve(),
-            is_archived=True,
+            is_completed=True,
         )
 
     # Legacy complete layouts: <slug>/(complete|archive)/...
@@ -85,7 +85,7 @@ def _classify_execplan_layout(path: Path, *, execplans_root: Path) -> _ExecPlanL
     if len(parts) >= 3 and parts[1] in EXECPLAN_COMPLETE_DIR_ALIASES and parts[0] != EXECPLAN_ACTIVE_DIR:
         return _ExecPlanLayout(
             plan_root=(root / parts[0] / parts[1]).resolve(),
-            is_archived=True,
+            is_completed=True,
         )
 
     # Legacy active layout: <slug>/...
@@ -93,7 +93,7 @@ def _classify_execplan_layout(path: Path, *, execplans_root: Path) -> _ExecPlanL
     if len(parts) >= 2 and parts[0] != EXECPLAN_ACTIVE_DIR:
         return _ExecPlanLayout(
             plan_root=(root / parts[0]).resolve(),
-            is_archived=False,
+            is_completed=False,
         )
 
     return None
@@ -128,7 +128,7 @@ def is_execplan_milestone_path(path: Path, *, execplans_root: Path) -> bool:
     if (
         len(parts) >= 7
         and parts[0] in EXECPLAN_COMPLETE_DIR_ALIASES
-        and _looks_like_archive_date(parts[1], parts[2], parts[3])
+        and _looks_like_completion_date(parts[1], parts[2], parts[3])
         and parts[5] == MILESTONES_DIR
         and parts[6] in MILESTONE_LOCATION_DIRS
     ):
@@ -186,7 +186,7 @@ def is_execplan_complete_path(path: Path, *, execplans_root: Path) -> bool:
         return False
 
     layout = _classify_execplan_layout(path, execplans_root=execplans_root)
-    return layout.is_archived if layout is not None else False
+    return layout.is_completed if layout is not None else False
 
 
 def is_execplan_archive_path(path: Path, *, execplans_root: Path) -> bool:
