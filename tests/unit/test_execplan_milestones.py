@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 
 from agentrules.core.execplan import milestones as milestone_module
-from agentrules.core.execplan.creator import archive_execplan, create_execplan
+from agentrules.core.execplan.creator import complete_execplan, create_execplan
 from agentrules.core.execplan.milestones import (
-    archive_execplan_milestone,
+    complete_execplan_milestone,
     create_execplan_milestone,
     list_execplan_milestones,
 )
@@ -220,7 +220,7 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertIn("domain: backend", content)
             self.assertIn('owner: "@release-team"', content)
 
-    def test_create_milestone_sequence_stays_monotonic_after_archive(self) -> None:
+    def test_create_milestone_sequence_stays_monotonic_after_complete(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
@@ -239,12 +239,12 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                 title="Prototype indexing",
                 execplans_dir=execplans_dir,
             )
-            archive_execplan_milestone(
+            complete_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 sequence=first.sequence,
                 execplans_dir=execplans_dir,
-                archive_date_yyyymmdd="20260211",
+                completion_date_yyyymmdd="20260211",
             )
 
             second = create_execplan_milestone(
@@ -311,14 +311,14 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                     execplans_dir=execplans_dir,
                 )
 
-    def test_create_milestone_rejects_explicit_sequence_when_archived(self) -> None:
+    def test_create_milestone_rejects_explicit_sequence_when_completed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
             created_plan = create_execplan(
                 root=root,
-                title="Archived Sequence Collision",
-                slug="archived-sequence-collision",
+                title="Completed Sequence Collision",
+                slug="completed-sequence-collision",
                 date_yyyymmdd="20260207",
                 execplans_dir=execplans_dir,
                 update_registry=False,
@@ -329,12 +329,12 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                 title="First",
                 execplans_dir=execplans_dir,
             )
-            archive_execplan_milestone(
+            complete_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 sequence=first.sequence,
                 execplans_dir=execplans_dir,
-                archive_date_yyyymmdd="20260212",
+                completion_date_yyyymmdd="20260212",
             )
 
             with self.assertRaisesRegex(ValueError, "already exists"):
@@ -380,7 +380,7 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             self.assertTrue(first_result["ok"], msg=first_result)
             self.assertTrue(second_result["ok"], msg=second_result)
             self.assertEqual(
-                sorted([first_result["milestone_id"], second_result["milestone_id"]]),
+                sorted([str(first_result["milestone_id"]), str(second_result["milestone_id"])]),
                 ["EP-20260207-001/MS001", "EP-20260207-001/MS002"],
             )
 
@@ -540,24 +540,24 @@ class ExecPlanMilestonesTests(unittest.TestCase):
 
             self.assertIn("MS001_broken.md", str(error_context.exception))
 
-    def test_create_milestone_rejects_archived_execplan(self) -> None:
+    def test_create_milestone_rejects_completed_execplan(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
             created_plan = create_execplan(
                 root=root,
-                title="Archive Locked Plan",
-                slug="archive-locked-plan",
+                title="Complete Locked Plan",
+                slug="complete-locked-plan",
                 date_yyyymmdd="20260207",
                 execplans_dir=execplans_dir,
                 update_registry=False,
             )
 
-            archive_execplan(
+            complete_execplan(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 execplans_dir=execplans_dir,
-                archive_date_yyyymmdd="20260212",
+                completion_date_yyyymmdd="20260212",
                 update_registry=False,
             )
 
@@ -569,7 +569,7 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                     execplans_dir=execplans_dir,
                 )
 
-    def test_archive_moves_active_milestone_to_archive_path(self) -> None:
+    def test_complete_moves_active_milestone_to_complete_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
@@ -588,27 +588,27 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                 execplans_dir=execplans_dir,
             )
 
-            archived = archive_execplan_milestone(
+            completed = complete_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 sequence=1,
                 execplans_dir=execplans_dir,
-                archive_date_yyyymmdd="20260212",
+                completion_date_yyyymmdd="20260212",
             )
 
             self.assertFalse(created_milestone.milestone_path.exists())
-            self.assertTrue(archived.archived_path.exists())
-            self.assertIn("/milestones/complete/", archived.archived_path.as_posix())
-            self.assertNotIn("/milestones/complete/2026/02/12/", archived.archived_path.as_posix())
+            self.assertTrue(completed.completed_path.exists())
+            self.assertIn("/milestones/complete/", completed.completed_path.as_posix())
+            self.assertNotIn("/milestones/complete/2026/02/12/", completed.completed_path.as_posix())
 
-    def test_archive_milestone_allows_read_only_execplan_file(self) -> None:
+    def test_complete_milestone_allows_read_only_execplan_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
             created_plan = create_execplan(
                 root=root,
-                title="Read Only Archive Parent",
-                slug="read-only-archive-parent",
+                title="Read Only Complete Parent",
+                slug="read-only-complete-parent",
                 date_yyyymmdd="20260207",
                 execplans_dir=execplans_dir,
                 update_registry=False,
@@ -616,23 +616,23 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             created_milestone = create_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
-                title="Archive Me Anyway",
+                title="Complete Me Anyway",
                 execplans_dir=execplans_dir,
             )
             self._require_read_only_write_denial(created_plan.plan_path)
 
-            archived = archive_execplan_milestone(
+            completed = complete_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 sequence=created_milestone.sequence,
                 execplans_dir=execplans_dir,
-                archive_date_yyyymmdd="20260212",
+                completion_date_yyyymmdd="20260212",
             )
 
             self.assertFalse(created_milestone.milestone_path.exists())
-            self.assertTrue(archived.archived_path.exists())
+            self.assertTrue(completed.completed_path.exists())
 
-    def test_archive_missing_active_milestone_raises(self) -> None:
+    def test_complete_missing_active_milestone_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
@@ -646,14 +646,14 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(FileNotFoundError, "was not found"):
-                archive_execplan_milestone(
+                complete_execplan_milestone(
                     root=root,
                     execplan_id=created_plan.plan_id,
                     sequence=1,
                     execplans_dir=execplans_dir,
                 )
 
-    def test_list_milestones_returns_active_and_archived(self) -> None:
+    def test_list_milestones_returns_active_and_completed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             execplans_dir = root / ".agent" / "exec_plans"
@@ -671,12 +671,12 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                 title="Benchmark baseline",
                 execplans_dir=execplans_dir,
             )
-            archive_execplan_milestone(
+            complete_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 sequence=first.sequence,
                 execplans_dir=execplans_dir,
-                archive_date_yyyymmdd="20260212",
+                completion_date_yyyymmdd="20260212",
             )
             second = create_execplan_milestone(
                 root=root,
@@ -689,17 +689,17 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                 root=root,
                 execplan_id=created_plan.plan_id,
                 execplans_dir=execplans_dir,
-                include_archived=True,
+                include_completed=True,
             )
             active_only = list_execplan_milestones(
                 root=root,
                 execplan_id=created_plan.plan_id,
                 execplans_dir=execplans_dir,
-                include_archived=False,
+                include_completed=False,
             )
 
             self.assertEqual([entry.milestone_id for entry in all_entries], [first.milestone_id, second.milestone_id])
-            self.assertEqual([entry.location for entry in all_entries], ["archived", "active"])
+            self.assertEqual([entry.location for entry in all_entries], ["completed", "active"])
             self.assertEqual([entry.milestone_id for entry in active_only], [second.milestone_id])
 
     def test_list_milestones_includes_legacy_archive_directory(self) -> None:
@@ -717,7 +717,7 @@ class ExecPlanMilestonesTests(unittest.TestCase):
             milestone = create_execplan_milestone(
                 root=root,
                 execplan_id=created_plan.plan_id,
-                title="Legacy archived artifact",
+                title="Legacy completed artifact",
                 execplans_dir=execplans_dir,
             )
 
@@ -730,11 +730,11 @@ class ExecPlanMilestonesTests(unittest.TestCase):
                 root=root,
                 execplan_id=created_plan.plan_id,
                 execplans_dir=execplans_dir,
-                include_archived=True,
+                include_completed=True,
             )
 
             self.assertEqual([entry.milestone_id for entry in entries], [milestone.milestone_id])
-            self.assertEqual([entry.location for entry in entries], ["archived"])
+            self.assertEqual([entry.location for entry in entries], ["completed"])
             self.assertIn("/milestones/archive/", entries[0].path.as_posix())
 
 

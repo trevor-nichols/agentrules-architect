@@ -50,7 +50,7 @@ Required keys:
 - `execplan_id`: `EP-YYYYMMDD-NNN`
 - `ms`: integer milestone sequence (e.g. 1, 2, 3)
 - `title`: short milestone title
-- `status`: `planned | in_progress | completed | blocked | archived`
+- `status`: `planned | in_progress | completed | blocked`
 - `domain`: `backend | frontend | console | infra | cross-cutting`
 - `owner`: `@handle` (e.g. codex, claude, etc.)
 - `created`: `YYYY-MM-DD`

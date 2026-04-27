@@ -235,7 +235,7 @@ agentrules execplan milestone list EP-20260207-001 --active-only
 # Optional: compact "what's left" view for active milestones only
 agentrules execplan milestone remaining EP-20260207-001
 
-# 4) Archive a completed milestone
+# 4) Complete a finished milestone
 agentrules execplan milestone complete EP-20260207-001 --ms 1
 
 # 5) Complete the ExecPlan directory
