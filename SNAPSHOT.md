@@ -32,6 +32,7 @@
 │       │   │   └── tree.py  # `tree` command to preview project structure
 │       │   ├── services/  # CLI-specific business logic bridging core and UI
 │       │   │   ├── __init__.py  # Services package
+│       │   │   ├── claude_code_runtime.py
 │       │   │   ├── codex_runtime.py  # Interaction with Codex local app-server
 │       │   │   ├── configuration.py  # Interface to the core configuration manager
 │       │   │   ├── output_validation.py  # Output filename validation logic
@@ -49,6 +50,7 @@
 │       │   │   │   │   ├── researcher.py  # Researcher specific model config
 │       │   │   │   │   └── utils.py  # Shared model choice UI helpers
 │       │   │   │   ├── __init__.py  # Settings package
+│       │   │   │   ├── claude_code.py
 │       │   │   │   ├── codex.py  # Codex runtime configuration UI
 │       │   │   │   ├── logging.py  # Logging verbosity UI
 │       │   │   │   ├── menu.py  # Settings top-level menu
@@ -374,6 +376,7 @@
 │   │   ├── test_analysis_view.py  # Unit tests for terminal UI tracking
 │   │   ├── test_clean_agentrules.py  # Unit tests for AGENTS.md cleaning
 │   │   ├── test_cli.py  # Unit tests for Typer commands
+│   │   ├── test_cli_claude_code_settings.py
 │   │   ├── test_cli_codex_settings.py  # Unit tests for Codex settings UI
 │   │   ├── test_cli_model_picker_ui.py  # Unit tests for model selection UI
 │   │   ├── test_codex_runtime_service.py  # Unit tests for Codex runtime sync wrapper

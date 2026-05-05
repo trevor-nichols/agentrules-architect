@@ -86,7 +86,7 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
 - [x] (2026-05-04 22:15 America/New_York) Milestone 1 implementation complete: provider identity, Claude Code runtime config, OAuth environment sanitization, availability checks, tests, and snapshot sync are in place.
 - [x] (2026-05-04 22:35 America/New_York) Milestone 2 implementation complete: Claude Code Agent SDK adapter, request builder, lazy client, response parser, structured output mapping, tests, ruff, pyright, and snapshot sync are in place.
 - [x] (2026-05-04 22:50 America/New_York) Milestone 3 implementation complete: factory wiring, static Claude Code presets, provider capabilities, Phase 3 repo-runtime path, picker labels, researcher gating, tests, ruff, and pyright are in place.
-- [ ] Milestone 4 implementation complete.
+- [x] (2026-05-04 23:10 America/New_York) Milestone 4 implementation complete: Claude Code runtime diagnostics, settings UI, OAuth/setup-token guidance, API-key sanitization warnings, tests, ruff, pyright, and snapshot sync are in place.
 - [ ] Milestone 5 implementation complete.
 - [ ] Final validation complete.
 
@@ -110,6 +110,8 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
   Evidence: Static runtime presets derive from existing Claude presets and preserve model names such as `claude-sonnet-4-6`, while changing only `provider` to `ModelProvider.CLAUDE_CODE`.
 - Observation: The existing Phase 3 runtime prompt path generalized cleanly from Codex to Claude Code.
   Evidence: Updating `uses_repo_runtime()` to include Claude Code made Phase 3 skip file-body embedding and send cwd/runtime instructions without additional Phase 3 branching.
+- Observation: Claude Code UX should guide, not own, authentication.
+  Evidence: The settings page reports executable/env signals and points users to `claude auth login` or `claude setup-token`, but does not inspect credential files or store OAuth secrets.
 
 ## Decision Log
 
