@@ -160,7 +160,12 @@ def create_claude_code_config(base_config: ModelConfig) -> ModelConfig:
     Claude Code uses Claude model identifiers and thinking controls, but obtains
     auth and tool execution through the local Claude Code Agent SDK runtime.
     """
-    return base_config._replace(provider=ModelProvider.CLAUDE_CODE)
+    # Claude Code runs through the local SDK runtime, so token preflight should
+    # stay local as well rather than calling the direct Anthropic API.
+    return base_config._replace(
+        provider=ModelProvider.CLAUDE_CODE,
+        estimator_family="tiktoken",
+    )
 
 # O1 configurations with different reasoning levels
 O3_HIGH = ModelConfig(

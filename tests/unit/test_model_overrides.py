@@ -244,10 +244,17 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("claude-code-opus-4.6-reasoning-max", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-code-haiku", self.agents_module.MODEL_PRESETS)
 
+        base_preset = self.agents_module.MODEL_PRESETS["claude-sonnet-4.6"]
         preset = self.agents_module.MODEL_PRESETS["claude-code-sonnet-4.6"]
         self.assertEqual(preset["provider"], ModelProvider.CLAUDE_CODE)
         self.assertEqual(preset["config"].provider, ModelProvider.CLAUDE_CODE)
         self.assertEqual(preset["config"].model_name, "claude-sonnet-4-6")
+        self.assertEqual(base_preset["config"].estimator_family, "anthropic_api")
+        self.assertEqual(preset["config"].estimator_family, "tiktoken")
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["claude-code-sonnet-4.6-reasoning-high"]["config"].estimator_family,
+            "tiktoken",
+        )
 
     def test_claude_code_presets_are_gated_by_runtime_availability(self) -> None:
         unavailable = self.model_config.get_available_presets_for_phase(

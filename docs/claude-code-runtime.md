@@ -72,6 +72,7 @@ Claude Code runtime requests run with bounded execution defaults:
 - `max_turns = 12`: passed to the Claude Agent SDK as the maximum number of agentic turns for one request.
 - `request_timeout_seconds = 300.0`: enforced by AgentRules around the SDK query collection.
 - `max_budget_usd = unset`: optional per-request SDK budget ceiling. When unset, AgentRules does not pass a budget limit.
+- Token preflight stays local: Claude Code presets use `tiktoken` estimation instead of Anthropic `count_tokens`, so token logging does not depend on parent-process Anthropic credentials or incur Anthropic API usage.
 
 These settings belong in the `[claude_code]` config section when non-default values are needed. The timeout is an AgentRules control and is not passed as a `ClaudeAgentOptions` field.
 
