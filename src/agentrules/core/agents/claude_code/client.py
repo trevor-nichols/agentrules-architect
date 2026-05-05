@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Mapping
+from contextlib import suppress
+from inspect import isawaitable
 from typing import Any
 
 from .errors import ClaudeCodeExecutionError, ClaudeCodeSDKImportError
@@ -33,10 +35,7 @@ async def execute_query(
     except ClaudeCodeSDKImportError:
         raise
     except TimeoutError as exc:
-        timeout_label = "unknown" if timeout_seconds is None else f"{timeout_seconds:g}"
-        raise ClaudeCodeExecutionError(
-            f"Claude Code SDK query timed out after {timeout_label} seconds."
-        ) from exc
+        raise _build_timeout_error(timeout_seconds) from exc
     except Exception as exc:
         raise ClaudeCodeExecutionError(f"Claude Code SDK query failed: {exc}") from exc
 
@@ -45,7 +44,11 @@ async def _collect_query_messages(query_fn: Any, *, prompt: str, options: Any) -
     return tuple([message async for message in query_fn(prompt=prompt, options=options)])
 
 
-async def stream_query(prompt: str, options: Mapping[str, Any]) -> AsyncIterator[Any]:
+async def stream_query(
+    prompt: str,
+    options: Mapping[str, Any],
+    timeout_seconds: float | None = None,
+) -> AsyncIterator[Any]:
     """Execute a Claude Agent SDK query and yield messages as they arrive."""
 
     try:
@@ -58,10 +61,62 @@ async def stream_query(prompt: str, options: Mapping[str, Any]) -> AsyncIterator
 
     try:
         sdk_options = ClaudeAgentOptions(**dict(options))
-        async for message in query(prompt=prompt, options=sdk_options):
+        async for message in _stream_query_messages(
+            query,
+            prompt=prompt,
+            options=sdk_options,
+            timeout_seconds=timeout_seconds,
+        ):
             yield message
+    except TimeoutError as exc:
+        raise _build_timeout_error(timeout_seconds) from exc
     except Exception as exc:
         raise ClaudeCodeExecutionError(f"Claude Code SDK query failed: {exc}") from exc
+
+
+async def _stream_query_messages(
+    query_fn: Any,
+    *,
+    prompt: str,
+    options: Any,
+    timeout_seconds: float | None,
+) -> AsyncIterator[Any]:
+    query_iterator = query_fn(prompt=prompt, options=options)
+    if timeout_seconds is None:
+        async for message in query_iterator:
+            yield message
+        return
+
+    iterator = query_iterator.__aiter__()
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_seconds
+    try:
+        while True:
+            remaining_seconds = deadline - loop.time()
+            if remaining_seconds <= 0:
+                raise TimeoutError
+            try:
+                message = await asyncio.wait_for(anext(iterator), timeout=remaining_seconds)
+            except StopAsyncIteration:
+                return
+            yield message
+    except TimeoutError:
+        await _close_async_iterator(iterator)
+        raise
+
+
+async def _close_async_iterator(iterator: AsyncIterator[Any]) -> None:
+    close = getattr(iterator, "aclose", None)
+    if callable(close):
+        with suppress(Exception):
+            result = close()
+            if isawaitable(result):
+                await result
+
+
+def _build_timeout_error(timeout_seconds: float | None) -> ClaudeCodeExecutionError:
+    timeout_label = "unknown" if timeout_seconds is None else f"{timeout_seconds:g}"
+    return ClaudeCodeExecutionError(f"Claude Code SDK query timed out after {timeout_label} seconds.")
 
 
 __all__ = ["execute_query", "stream_query"]
