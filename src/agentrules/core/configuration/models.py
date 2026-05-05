@@ -13,6 +13,7 @@ from agentrules.core.utils.constants import (
 
 ResearcherMode = Literal["on", "off"]
 CodexHomeStrategy = Literal["managed", "inherit"]
+ClaudeCodeAuthStrategy = Literal["oauth"]
 
 
 @dataclass
@@ -28,6 +29,16 @@ class CodexConfig:
 
     def is_default(self) -> bool:
         return self.cli_path == "codex" and self.home_strategy == "managed" and self.managed_home is None
+
+
+@dataclass
+class ClaudeCodeConfig:
+    cli_path: str = "claude"
+    auth_strategy: ClaudeCodeAuthStrategy = "oauth"
+    sanitize_api_key_env: bool = True
+
+    def is_default(self) -> bool:
+        return self.cli_path == "claude" and self.auth_strategy == "oauth" and self.sanitize_api_key_env
 
 
 @dataclass
@@ -77,6 +88,7 @@ class FeatureToggles:
 class CLIConfig:
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
     codex: CodexConfig = field(default_factory=CodexConfig)
+    claude_code: ClaudeCodeConfig = field(default_factory=ClaudeCodeConfig)
     models: dict[str, str] = field(default_factory=dict)
     verbosity: str | None = None
     outputs: OutputPreferences = field(default_factory=OutputPreferences)

@@ -49,6 +49,7 @@ class ReasoningMode(Enum):
 class ModelProvider(Enum):
     """Enum for specifying the model provider."""
     ANTHROPIC = "anthropic"
+    CLAUDE_CODE = "claude_code"
     OPENAI = "openai"
     CODEX = "codex"
     DEEPSEEK = "deepseek"

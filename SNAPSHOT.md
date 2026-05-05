@@ -157,6 +157,7 @@
 │       │   ├── configuration/  # Application configuration manager
 │       │   │   ├── services/  # Configuration sub-services
 │       │   │   │   ├── __init__.py  # Config services package
+│       │   │   │   ├── claude_code.py
 │       │   │   │   ├── codex.py  # Codex runtime config getters/setters
 │       │   │   │   ├── exclusions.py  # Exclusion overrides getters/setters
 │       │   │   │   ├── features.py  # Feature toggles getters/setters

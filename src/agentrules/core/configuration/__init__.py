@@ -10,9 +10,12 @@ from __future__ import annotations
 from functools import lru_cache
 
 from .constants import (
+    CLAUDE_CODE_API_KEY_ENV_VARS,
+    CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR,
     CODEX_HOME_ENV_VAR,
     CONFIG_DIR,
     CONFIG_FILE,
+    DEFAULT_CLAUDE_CODE_CLI_PATH,
     DEFAULT_CODEX_CLI_PATH,
     DEFAULT_CODEX_HOME_DIRNAME,
     DEFAULT_VERBOSITY,
@@ -25,6 +28,8 @@ from .constants import (
 from .manager import ConfigManager
 from .models import (
     CLIConfig,
+    ClaudeCodeAuthStrategy,
+    ClaudeCodeConfig,
     CodexConfig,
     CodexHomeStrategy,
     ExclusionOverrides,
@@ -36,12 +41,17 @@ from .models import (
 
 __all__ = [
     "CLIConfig",
+    "CLAUDE_CODE_API_KEY_ENV_VARS",
+    "CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR",
     "CODEX_HOME_ENV_VAR",
+    "ClaudeCodeAuthStrategy",
+    "ClaudeCodeConfig",
     "ConfigManager",
     "CONFIG_DIR",
     "CONFIG_FILE",
     "CodexConfig",
     "CodexHomeStrategy",
+    "DEFAULT_CLAUDE_CODE_CLI_PATH",
     "DEFAULT_CODEX_CLI_PATH",
     "DEFAULT_CODEX_HOME_DIRNAME",
     "DEFAULT_VERBOSITY",

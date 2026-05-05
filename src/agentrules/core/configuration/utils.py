@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import cast
 
-from .models import CodexHomeStrategy, ResearcherMode
+from .models import ClaudeCodeAuthStrategy, CodexHomeStrategy, ResearcherMode
 
 
 def coerce_bool(value: object, default: bool = False) -> bool:
@@ -97,6 +97,16 @@ def normalize_codex_home_strategy(
         normalized = value.strip().lower()
         if normalized in {"managed", "inherit"}:
             return cast(CodexHomeStrategy, normalized)
+    return default
+
+
+def normalize_claude_code_auth_strategy(
+    value: object,
+    *,
+    default: ClaudeCodeAuthStrategy,
+) -> ClaudeCodeAuthStrategy:
+    if isinstance(value, str) and value.strip().lower() == "oauth":
+        return "oauth"
     return default
 
 

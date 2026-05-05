@@ -8,7 +8,7 @@ from agentrules.core.agents.base import ModelProvider
 
 from ..constants import PROVIDER_ENV_MAP
 from ..models import CLIConfig, ProviderConfig
-from . import codex
+from . import claude_code, codex
 
 
 def set_provider_key(config: CLIConfig, provider: str, api_key: str | None) -> None:
@@ -29,6 +29,8 @@ def is_model_provider_available(
 ) -> bool:
     if provider_slug == ModelProvider.CODEX.value:
         return codex.is_codex_available(config)
+    if provider_slug == ModelProvider.CLAUDE_CODE.value:
+        return claude_code.is_claude_code_available(config)
 
     stored = config.providers.get(provider_slug)
     if stored and stored.api_key:

@@ -250,6 +250,40 @@
         "docs"
       ],
       "updated": "2026-03-13"
+    },
+    {
+      "breaking": false,
+      "created": "2026-05-04",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260504-001",
+      "kind": "feature",
+      "links": {
+        "docs": "internal-docs/integrations/anthropic/agents-sdk",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/claude-code-oauth-runtime/EP-20260504-001_claude-code-oauth-runtime.md",
+      "risk": "med",
+      "status": "planned",
+      "supersedes": [],
+      "tags": [
+        "claude-code",
+        "anthropic",
+        "oauth",
+        "runtime-provider"
+      ],
+      "title": "Claude Code OAuth Runtime Provider",
+      "touches": [
+        "cli",
+        "agents",
+        "security",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-05-04"
     }
   ],
   "schema_version": 1

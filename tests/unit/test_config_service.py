@@ -143,6 +143,101 @@ class ConfigServiceTestCase(unittest.TestCase):
         availability = self.config_manager.get_provider_availability()
         self.assertTrue(availability["codex"])
 
+    def test_claude_code_runtime_config_persists_dedicated_section(self) -> None:
+        self.config_manager.set_claude_code_cli_path("/usr/local/bin/claude")
+        self.config_manager.set_claude_code_sanitize_api_key_env(False)
+
+        config = self.config_manager.load()
+        self.assertEqual(config.claude_code.cli_path, "/usr/local/bin/claude")
+        self.assertEqual(config.claude_code.auth_strategy, "oauth")
+        self.assertFalse(config.claude_code.sanitize_api_key_env)
+
+        persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertIn("[claude_code]", persisted)
+        self.assertIn('cli_path = "/usr/local/bin/claude"', persisted)
+        self.assertIn("sanitize_api_key_env = false", persisted)
+
+    def test_claude_code_defaults_do_not_persist_dedicated_section(self) -> None:
+        self.config_manager.get_claude_code_config()
+
+        persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertNotIn("[claude_code]", persisted)
+
+    def test_claude_code_availability_uses_resolved_executable(self) -> None:
+        self.config_manager.set_claude_code_cli_path(sys.executable)
+        self.assertTrue(self.config_manager.is_claude_code_available())
+        availability = self.config_manager.get_provider_availability()
+        self.assertTrue(availability["claude_code"])
+
+    def test_claude_code_relative_cli_path_resolves_to_absolute_path(self) -> None:
+        executable = Path(self.temp_dir.name) / "bin" / "claude"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text("#!/bin/sh\n", encoding="utf-8")
+        executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            self.config_manager.set_claude_code_cli_path("bin/claude")
+            resolved = self.config_manager.resolve_claude_code_executable()
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertEqual(resolved, str(executable.resolve()))
+
+    @unittest.skipIf(os.name == "nt", "Executable-bit validation is platform-specific on Windows")
+    def test_claude_code_non_executable_cli_path_is_unavailable(self) -> None:
+        candidate = Path(self.temp_dir.name) / "bin" / "claude"
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_text("#!/bin/sh\n", encoding="utf-8")
+        candidate.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+        previous_cwd = os.getcwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            self.config_manager.set_claude_code_cli_path("bin/claude")
+            resolved = self.config_manager.resolve_claude_code_executable()
+            is_available = self.config_manager.is_claude_code_available()
+            provider_availability = self.config_manager.get_provider_availability()
+        finally:
+            os.chdir(previous_cwd)
+
+        self.assertIsNone(resolved)
+        self.assertFalse(is_available)
+        self.assertFalse(provider_availability["claude_code"])
+
+    def test_claude_code_environment_sanitizes_api_key_credentials_for_oauth(self) -> None:
+        env = {
+            "ANTHROPIC_API_KEY": "api-key",
+            "ANTHROPIC_AUTH_TOKEN": "auth-token",
+            self.configuration.CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR: "oauth-token",
+            "PATH": "/usr/bin",
+        }
+        repository = TomlConfigRepository(Path(self.temp_dir.name) / "isolated-config.toml")
+        manager = self.configuration.ConfigManager(repository=repository, environ=env)
+
+        child_env = manager.build_claude_code_environment()
+
+        self.assertNotIn("ANTHROPIC_API_KEY", child_env)
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", child_env)
+        self.assertEqual(child_env[self.configuration.CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR], "oauth-token")
+        self.assertEqual(env["ANTHROPIC_API_KEY"], "api-key")
+
+    def test_claude_code_environment_can_preserve_api_key_credentials_when_configured(self) -> None:
+        env = {
+            "ANTHROPIC_API_KEY": "api-key",
+            "ANTHROPIC_AUTH_TOKEN": "auth-token",
+            self.configuration.CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR: "oauth-token",
+        }
+        repository = TomlConfigRepository(Path(self.temp_dir.name) / "isolated-config.toml")
+        manager = self.configuration.ConfigManager(repository=repository, environ=env)
+        manager.set_claude_code_sanitize_api_key_env(False)
+
+        child_env = manager.build_claude_code_environment()
+
+        self.assertEqual(child_env["ANTHROPIC_API_KEY"], "api-key")
+        self.assertEqual(child_env["ANTHROPIC_AUTH_TOKEN"], "auth-token")
+
     def test_codex_relative_cli_path_resolves_to_absolute_path(self) -> None:
         executable = Path(self.temp_dir.name) / "bin" / "codex"
         executable.parent.mkdir(parents=True, exist_ok=True)
@@ -237,6 +332,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertTrue(self.config_manager.is_researcher_enabled())
 
     def test_researcher_mode_resets_when_tavily_key_removed(self) -> None:
+        self.config_manager.set_phase_model("researcher", "gpt5-mini")
         self.config_manager.set_provider_key("tavily", "tavily-test-key")
         self.assertEqual(self.config_manager.get_researcher_mode(), "on")
 
@@ -246,6 +342,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertFalse(self.config_manager.is_researcher_enabled())
 
     def test_researcher_mode_explicit_overrides(self) -> None:
+        self.config_manager.set_phase_model("researcher", "gpt5-mini")
         self.config_manager.set_researcher_mode("off")
         self.assertEqual(self.config_manager.get_researcher_mode(), "off")
         self.assertFalse(self.config_manager.is_researcher_enabled())

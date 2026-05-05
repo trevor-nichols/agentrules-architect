@@ -29,6 +29,9 @@ class EnvironmentManager:
     def getenv(self, key: str) -> str | None:
         return self._environ.get(key)
 
+    def snapshot(self) -> dict[str, str]:
+        return dict(self._environ)
+
     def getenv_for_codex_runtime(self, key: str) -> str | None:
         if key != CODEX_HOME_ENV_VAR:
             return self.getenv(key)

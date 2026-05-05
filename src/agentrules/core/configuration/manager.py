@@ -15,9 +15,18 @@ from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_
 
 from .constants import RULES_FILENAME_ENV_VAR
 from .environment import EnvironmentManager
-from .models import CLIConfig, CodexConfig, CodexHomeStrategy, ExclusionOverrides, OutputPreferences, ResearcherMode
+from .models import (
+    CLIConfig,
+    ClaudeCodeAuthStrategy,
+    ClaudeCodeConfig,
+    CodexConfig,
+    CodexHomeStrategy,
+    ExclusionOverrides,
+    OutputPreferences,
+    ResearcherMode,
+)
 from .repository import ConfigRepository, TomlConfigRepository
-from .services import codex, exclusions, features, outputs, phase_models, providers
+from .services import claude_code, codex, exclusions, features, outputs, phase_models, providers
 from .services import logging as logging_service
 from .utils import normalize_rules_filename
 
@@ -145,6 +154,51 @@ class ConfigManager:
             cwd=cwd,
             config_overrides=config_overrides,
         )
+
+    # ------------------------------------------------------------------
+    # Claude Code runtime settings
+    # ------------------------------------------------------------------
+    def get_claude_code_config(self) -> ClaudeCodeConfig:
+        config = self._repository.load()
+        normalized = claude_code.get_claude_code_config(config)
+        self._repository.save(config)
+        return normalized
+
+    def set_claude_code_cli_path(self, cli_path: str | None) -> CLIConfig:
+        config = self._repository.load()
+        claude_code.set_claude_code_cli_path(config, cli_path)
+        self._repository.save(config)
+        return config
+
+    def set_claude_code_auth_strategy(self, strategy: str | None) -> CLIConfig:
+        config = self._repository.load()
+        claude_code.set_claude_code_auth_strategy(config, strategy)
+        self._repository.save(config)
+        return config
+
+    def set_claude_code_sanitize_api_key_env(self, enabled: bool) -> CLIConfig:
+        config = self._repository.load()
+        claude_code.set_claude_code_sanitize_api_key_env(config, enabled)
+        self._repository.save(config)
+        return config
+
+    def get_claude_code_auth_strategy(self) -> ClaudeCodeAuthStrategy:
+        config = self._repository.load()
+        normalized = claude_code.get_claude_code_auth_strategy(config)
+        self._repository.save(config)
+        return normalized
+
+    def resolve_claude_code_executable(self) -> str | None:
+        config = self._repository.load()
+        return claude_code.resolve_claude_code_executable(config)
+
+    def is_claude_code_available(self) -> bool:
+        config = self._repository.load()
+        return claude_code.is_claude_code_available(config)
+
+    def build_claude_code_environment(self) -> dict[str, str]:
+        config = self._repository.load()
+        return claude_code.build_claude_code_environment(config, self._environment.snapshot())
 
     # ------------------------------------------------------------------
     # Phase model overrides
