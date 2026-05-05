@@ -96,6 +96,11 @@ def build_runtime_guidance(
                 "[dim]Set a valid Claude executable path, or clear the path to let the SDK use its default "
                 "runtime resolution.[/]"
             )
+        else:
+            notes.append(
+                "[dim]Install Claude Code or configure a valid Claude executable path so the SDK default "
+                "runtime can be resolved.[/]"
+            )
     else:
         notes.append(
             "[dim]Authenticate outside AgentRules with Claude Code's OAuth flow. When the `claude` command "

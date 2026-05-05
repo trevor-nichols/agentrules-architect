@@ -77,7 +77,7 @@ These settings belong in the `[claude_code]` config section when non-default val
 
 ## CLI Resolution
 
-AgentRules treats a missing `claude_code.cli_path` value as "SDK default." In that mode, `prepare_request()` omits `cli_path` from `ClaudeAgentOptions`, matching the SDK's documented `None` default.
+AgentRules treats a missing `claude_code.cli_path` value as "SDK default." In that mode, `prepare_request()` omits `cli_path` from `ClaudeAgentOptions`, matching the SDK's documented `None` default. Availability checks still validate that the SDK default executable can be resolved before Claude Code presets are offered.
 
 Configure `Claude executable path` only when you need an explicit runtime override. Existing configs
 with `cli_path = "claude"` remain valid and are treated as explicit settings; AgentRules resolves
@@ -141,7 +141,7 @@ The live smoke skips itself if the runtime is unavailable or if Claude Code repo
 
 ## Troubleshooting
 
-- Missing explicit `claude`: clear `Claude executable path` to use SDK default resolution, or set it to the correct command.
+- Missing Claude executable: install a resolvable Claude Code runtime, clear a broken explicit path to use SDK default resolution, or set `Claude executable path` to the correct command.
 - Missing SDK package: install dependencies so `claude-agent-sdk` is available in the AgentRules environment.
 - Auth failure: run `claude auth login` locally, or use `claude setup-token` and export `CLAUDE_CODE_OAUTH_TOKEN` for automation.
 - API-key precedence: keep `Strip Anthropic API-key env` enabled unless you intentionally want API-key variables to reach Claude Code.

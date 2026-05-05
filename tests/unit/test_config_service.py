@@ -206,17 +206,41 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(config.request_timeout_seconds, 300.0)
         self.assertIsNone(config.max_budget_usd)
 
-    def test_claude_code_sdk_default_uses_sdk_importability(self) -> None:
+    def test_claude_code_sdk_default_requires_resolved_executable(self) -> None:
         config = self.config_manager.get_claude_code_config()
 
-        with patch(
-            "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
-            return_value=True,
+        with (
+            patch(
+                "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+                return_value=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._resolve_sdk_default_executable",
+                return_value=None,
+            ),
         ):
+            resolved = self.config_manager.resolve_claude_code_executable()
             availability = self.config_manager.get_provider_availability()
 
         self.assertIsNone(config.cli_path)
-        self.assertIsNone(self.config_manager.resolve_claude_code_executable())
+        self.assertIsNone(resolved)
+        self.assertFalse(availability["claude_code"])
+
+    def test_claude_code_sdk_default_is_available_when_executable_resolves(self) -> None:
+        with (
+            patch(
+                "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+                return_value=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._resolve_sdk_default_executable",
+                return_value=sys.executable,
+            ),
+        ):
+            self.assertEqual(self.config_manager.resolve_claude_code_executable(), sys.executable)
+            self.assertTrue(self.config_manager.is_claude_code_available())
+            availability = self.config_manager.get_provider_availability()
+
         self.assertTrue(availability["claude_code"])
 
     def test_claude_code_sdk_default_is_unavailable_when_sdk_is_missing(self) -> None:
@@ -228,6 +252,26 @@ class ConfigServiceTestCase(unittest.TestCase):
             availability = self.config_manager.get_provider_availability()
 
         self.assertFalse(availability["claude_code"])
+
+    def test_unknown_provider_key_round_trips_through_config_save(self) -> None:
+        self.configuration.CONFIG_FILE.write_text(
+            "\n".join(
+                [
+                    "[providers.custom_ai]",
+                    'api_key = "legacy-key"',
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        self.config_manager.set_logging_verbosity("standard")
+        config = self.config_manager.load()
+        persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+
+        self.assertIn("custom_ai", config.providers)
+        self.assertEqual(config.providers["custom_ai"].api_key, "legacy-key")
+        self.assertIn("[providers.custom_ai]", persisted)
+        self.assertIn('api_key = "legacy-key"', persisted)
 
     def test_claude_code_availability_uses_resolved_executable(self) -> None:
         self.config_manager.set_claude_code_cli_path(sys.executable)

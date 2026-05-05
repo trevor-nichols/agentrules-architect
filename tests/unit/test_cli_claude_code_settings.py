@@ -44,12 +44,13 @@ def test_claude_code_runtime_state_uses_sdk_default_when_path_is_unset(
     manager = _build_config_manager(tmp_path)
     monkeypatch.setattr(manager, "is_claude_code_available", lambda: True)
     monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
+    monkeypatch.setattr(manager, "resolve_claude_code_executable", lambda: "/resolved/sdk/claude")
     monkeypatch.setattr(configuration, "CONFIG_MANAGER", manager)
 
     state = configuration.get_claude_code_runtime_state()
 
     assert state.cli_path is None
-    assert state.executable_path is None
+    assert state.executable_path == "/resolved/sdk/claude"
     assert state.is_available is True
 
 
@@ -92,7 +93,7 @@ def test_claude_code_diagnostics_report_missing_executable(tmp_path: Path, monke
     assert "could not be resolved" in (diagnostics.runtime_error or "")
 
 
-def test_claude_code_diagnostics_treat_sdk_default_as_available(
+def test_claude_code_diagnostics_validate_sdk_default_executable(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -103,15 +104,39 @@ def test_claude_code_diagnostics_treat_sdk_default_as_available(
         env={"CLAUDE_CODE_OAUTH_TOKEN": "oauth-token"},
     )
     monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
+    monkeypatch.setattr(manager, "resolve_claude_code_executable", lambda: None)
 
     diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
 
     assert diagnostics.cli_path is None
     assert diagnostics.executable_path is None
     assert diagnostics.sdk_available is True
+    assert diagnostics.is_available is False
+    assert "SDK default runtime" in (diagnostics.runtime_error or "")
+    assert diagnostics.version is None
+
+
+def test_claude_code_diagnostics_treat_resolved_sdk_default_as_available(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from agentrules.cli.services.claude_code_runtime import get_claude_code_runtime_diagnostics
+
+    manager = _build_config_manager(
+        tmp_path,
+        env={"CLAUDE_CODE_OAUTH_TOKEN": "oauth-token"},
+    )
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
+    monkeypatch.setattr(manager, "resolve_claude_code_executable", lambda: sys.executable)
+
+    diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
+
+    assert diagnostics.cli_path is None
+    assert diagnostics.executable_path == sys.executable
+    assert diagnostics.sdk_available is True
     assert diagnostics.is_available is True
     assert diagnostics.runtime_error is None
-    assert diagnostics.version is None
+    assert diagnostics.version
 
 
 def test_claude_code_diagnostics_report_missing_sdk(tmp_path: Path, monkeypatch) -> None:

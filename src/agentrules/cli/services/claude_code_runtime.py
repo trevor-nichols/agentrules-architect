@@ -48,10 +48,11 @@ def get_claude_code_runtime_diagnostics(
 
     if not sdk_available:
         runtime_error = "Claude Agent SDK package could not be imported in the AgentRules environment."
-    elif runtime_config.cli_path is None:
-        pass
     elif executable_path is None:
-        runtime_error = "Configured Claude Code executable could not be resolved from the current settings."
+        if runtime_config.cli_path is None:
+            runtime_error = "Claude Code executable could not be resolved from the SDK default runtime settings."
+        else:
+            runtime_error = "Configured Claude Code executable could not be resolved from the current settings."
     else:
         try:
             completed = subprocess.run(

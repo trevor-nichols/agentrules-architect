@@ -88,7 +88,7 @@ def _is_executable_file(candidate: Path) -> bool:
 def resolve_claude_code_executable(config: CLIConfig) -> str | None:
     cli_path = get_claude_code_config(config).cli_path
     if cli_path is None:
-        return None
+        return _resolve_sdk_default_executable()
     expanded = os.path.expanduser(cli_path)
     if os.path.sep in expanded or (os.path.altsep and os.path.altsep in expanded):
         candidate = Path(expanded)
@@ -101,6 +101,44 @@ def resolve_claude_code_executable(config: CLIConfig) -> str | None:
     return str(Path(resolved).resolve())
 
 
+def _resolve_sdk_default_executable() -> str | None:
+    bundled = _resolve_sdk_bundled_executable()
+    if bundled is not None:
+        return bundled
+
+    resolved = shutil.which("claude")
+    if resolved is not None:
+        return str(Path(resolved).resolve())
+
+    for candidate in _claude_code_default_locations():
+        if _is_executable_file(candidate):
+            return str(candidate.resolve())
+    return None
+
+
+def _resolve_sdk_bundled_executable() -> str | None:
+    spec = importlib.util.find_spec(configuration_constants.CLAUDE_AGENT_SDK_IMPORT_NAME)
+    if spec is None or spec.origin is None:
+        return None
+
+    cli_name = "claude.exe" if os.name == "nt" else "claude"
+    candidate = Path(spec.origin).resolve().parent / "_bundled" / cli_name
+    if _is_executable_file(candidate):
+        return str(candidate.resolve())
+    return None
+
+
+def _claude_code_default_locations() -> tuple[Path, ...]:
+    return (
+        Path.home() / ".npm-global/bin/claude",
+        Path("/usr/local/bin/claude"),
+        Path.home() / ".local/bin/claude",
+        Path.home() / "node_modules/.bin/claude",
+        Path.home() / ".yarn/bin/claude",
+        Path.home() / ".claude/local/claude",
+    )
+
+
 def is_claude_agent_sdk_available() -> bool:
     try:
         return importlib.util.find_spec(configuration_constants.CLAUDE_AGENT_SDK_IMPORT_NAME) is not None
@@ -109,11 +147,8 @@ def is_claude_agent_sdk_available() -> bool:
 
 
 def is_claude_code_available(config: CLIConfig) -> bool:
-    claude_code_config = get_claude_code_config(config)
     if not is_claude_agent_sdk_available():
         return False
-    if claude_code_config.cli_path is None:
-        return True
     return resolve_claude_code_executable(config) is not None
 
 
