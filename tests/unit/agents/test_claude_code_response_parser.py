@@ -66,6 +66,34 @@ def test_parse_response_collects_text_tool_calls_and_usage() -> None:
     assert parsed.error_message is None
 
 
+def test_parse_response_coerces_sdk_object_tool_input() -> None:
+    class _ToolInput:
+        def to_dict(self) -> dict[str, str]:
+            return {"file_path": "src/app.py"}
+
+    class ToolUseBlock:
+        def __init__(self) -> None:
+            self.id = "tool-1"
+            self.name = "Read"
+            self.input = _ToolInput()
+
+    class AssistantMessage:
+        def __init__(self) -> None:
+            self.error = None
+            self.usage = None
+            self.content = [ToolUseBlock()]
+
+    parsed = parse_response((AssistantMessage(),))
+
+    assert parsed.tool_calls == [
+        {
+            "id": "tool-1",
+            "name": "Read",
+            "input": {"file_path": "src/app.py"},
+        }
+    ]
+
+
 def test_parse_response_prefers_result_text_and_structured_output() -> None:
     structured = {"analysis": "Structured synthesis."}
     parsed = parse_response(

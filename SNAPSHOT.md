@@ -265,6 +265,7 @@
 │       │   │   ├── model_config_helper.py  # Utility to find string name for model config
 │       │   │   ├── offline.py  # Offline stubs for testing without network
 │       │   │   ├── provider_capabilities.py  # Helpers for provider branching
+│       │   │   ├── provider_utils.py
 │       │   │   ├── release_metadata.py  # Validation script for GitHub tag releases
 │       │   │   ├── structured_outputs.py  # JSON Schema builders for providers
 │       │   │   ├── system_prompt.py  # Default system prompt formatter
@@ -366,6 +367,7 @@
 │   │   │   └── test_phase3_packing.py  # Tests for batch token packing
 │   │   ├── utils
 │   │   │   ├── test_provider_capabilities.py
+│   │   │   ├── test_provider_utils.py
 │   │   │   ├── test_structured_outputs.py
 │   │   │   ├── test_token_estimator.py
 │   │   │   └── test_token_packer.py

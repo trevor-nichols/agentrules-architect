@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from agentrules.core.utils.provider_utils import sdk_object_to_dict
+
 
 @dataclass(frozen=True)
 class ParsedResponse:
@@ -36,7 +38,7 @@ def parse_response(messages: Sequence[Any]) -> ParsedResponse:
             assistant_error = getattr(message, "error", None)
             if assistant_error:
                 errors.append(str(assistant_error))
-            assistant_usage = _to_dict(getattr(message, "usage", None))
+            assistant_usage = sdk_object_to_dict(getattr(message, "usage", None))
             if assistant_usage is not None:
                 usage = assistant_usage
             for block in getattr(message, "content", []) or []:
@@ -44,7 +46,7 @@ def parse_response(messages: Sequence[Any]) -> ParsedResponse:
             continue
 
         if message_type == "ResultMessage":
-            result_usage = _to_dict(getattr(message, "usage", None))
+            result_usage = sdk_object_to_dict(getattr(message, "usage", None))
             if result_usage is not None:
                 usage = result_usage
             result_value = getattr(message, "result", None)
@@ -82,11 +84,13 @@ def _collect_content_block(
         return
 
     if block_type == "ToolUseBlock":
+        raw_input = getattr(block, "input", None)
+        tool_input = sdk_object_to_dict(raw_input)
         tool_calls.append(
             {
                 "id": getattr(block, "id", None),
                 "name": getattr(block, "name", None),
-                "input": _to_dict(getattr(block, "input", None)) or getattr(block, "input", None),
+                "input": tool_input if tool_input is not None else raw_input,
             }
         )
         return
@@ -113,28 +117,6 @@ def _format_result_error(message: Any) -> str:
     if subtype:
         return str(subtype)
     return "Claude Code SDK returned an error result."
-
-
-def _to_dict(value: Any) -> dict[str, Any] | None:
-    if value is None:
-        return None
-    if isinstance(value, dict):
-        return value
-    if hasattr(value, "model_dump"):
-        dumped = value.model_dump()
-        if isinstance(dumped, dict):
-            return dumped
-    if hasattr(value, "to_dict"):
-        dumped = value.to_dict()
-        if isinstance(dumped, dict):
-            return dumped
-    if hasattr(value, "__dict__"):
-        return {
-            key: item
-            for key, item in value.__dict__.items()
-            if not key.startswith("_")
-        }
-    return None
 
 
 __all__ = ["ParsedResponse", "parse_response"]
