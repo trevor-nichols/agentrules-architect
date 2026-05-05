@@ -178,7 +178,7 @@
 │       │   │   │   ├── EXECPLAN_TEMPLATE.md
 │       │   │   │   └── MILESTONE_FILE_TEMPLATE.md
 │       │   │   ├── __init__.py  # ExecPlan package
-│       │   │   ├── creator.py  # Creates and archives ExecPlans
+│       │   │   ├── creator.py  # Creates and completes ExecPlans
 │       │   │   ├── identity.py  # ExecPlan filename parsing
 │       │   │   ├── locks.py  # Legacy file locking (now no-ops)
 │       │   │   ├── milestones.py  # Manages ExecPlan milestones

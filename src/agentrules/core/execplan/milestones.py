@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import os
 import re
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from importlib import resources
 from pathlib import Path
 from string import Template
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 import yaml
 
@@ -17,7 +18,6 @@ from agentrules.core.execplan.identity import extract_execplan_id_from_filename
 from agentrules.core.execplan.locks import execplan_mutation_lock
 from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
-    ARCHIVE_DIR,
     COMPLETE_DIR,
     COMPLETE_DIR_ALIASES,
     MILESTONES_DIR,
@@ -26,6 +26,7 @@ from agentrules.core.execplan.paths import (
     is_execplan_milestone_path,
 )
 from agentrules.core.execplan.registry import ALLOWED_DOMAINS, DEFAULT_EXECPLANS_DIR
+from agentrules.core.utils.file_creation.atomic_write import atomic_write_text
 
 EXECPLAN_ID_RE = re.compile(r"^EP-\d{8}-\d{3}$")
 MILESTONE_ID_RE = re.compile(r"^(?P<execplan_id>EP-\d{8}-\d{3})/MS(?P<ms>\d{3})$")
@@ -37,8 +38,6 @@ FRONT_MATTER_RE = re.compile(r"\A\s*---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
 DATE_YYYYMMDD_RE = re.compile(r"^\d{8}$")
 
 _MILESTONE_CREATE_RETRIES = 32
-_ARCHIVE_DESTINATION_DIRS = frozenset({COMPLETE_DIR, ARCHIVE_DIR})
-
 _TEMPLATE_PACKAGE = "agentrules.core.execplan"
 _MILESTONE_FILE_TEMPLATE_NAME = "MILESTONE_FILE_TEMPLATE.md"
 
@@ -54,13 +53,21 @@ class MilestoneCreateResult:
 
 
 @dataclass(frozen=True, slots=True)
-class MilestoneArchiveResult:
+class MilestoneCompleteResult:
     milestone_id: str
     sequence: int
     source_path: Path
-    archived_path: Path
+    completed_path: Path
     execplan_id: str
     plan_path: Path
+
+    @property
+    def archived_path(self) -> Path:
+        """Deprecated compatibility alias for ``completed_path``."""
+        return self.completed_path
+
+
+MilestoneArchiveResult: TypeAlias = MilestoneCompleteResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +75,7 @@ class MilestoneRef:
     milestone_id: str
     sequence: int
     execplan_id: str
-    location: Literal["active", "archived"]
+    location: Literal["active", "completed"]
     path: Path
 
 
@@ -76,13 +83,13 @@ class MilestoneRef:
 class MilestoneFileScan:
     path: Path
     sequence: int
-    location: Literal["active", "archived"]
+    location: Literal["active", "completed"]
     execplan_id: str | None
     parse_error: str | None
 
 
 @dataclass(frozen=True, slots=True)
-class ActiveMilestoneArchiveScanEntry:
+class ActiveMilestoneCompletionScanEntry:
     path: Path
     execplan_id: str | None
     milestone_id: str | None
@@ -91,9 +98,13 @@ class ActiveMilestoneArchiveScanEntry:
 
 
 @dataclass(frozen=True, slots=True)
-class ActiveMilestoneArchiveScan:
-    active_milestones_for_execplan: tuple[ActiveMilestoneArchiveScanEntry, ...]
-    blocking_entries: tuple[ActiveMilestoneArchiveScanEntry, ...]
+class ActiveMilestoneCompletionScan:
+    active_milestones_for_execplan: tuple[ActiveMilestoneCompletionScanEntry, ...]
+    blocking_entries: tuple[ActiveMilestoneCompletionScanEntry, ...]
+
+
+ActiveMilestoneArchiveScanEntry: TypeAlias = ActiveMilestoneCompletionScanEntry
+ActiveMilestoneArchiveScan: TypeAlias = ActiveMilestoneCompletionScan
 
 
 def parse_milestone_id(value: str) -> tuple[str, int] | None:
@@ -156,11 +167,10 @@ def _is_milestone_owned_by_execplan(path: Path, *, execplan_id: str) -> bool:
 
 def _normalize_archive_destination_dir(destination_dir: str) -> str:
     normalized = destination_dir.strip().lower()
-    if normalized not in _ARCHIVE_DESTINATION_DIRS:
-        allowed = ", ".join(sorted(_ARCHIVE_DESTINATION_DIRS))
+    if normalized != COMPLETE_DIR:
         raise ValueError(
-            f"Unsupported archive destination directory {destination_dir!r}. "
-            f"Expected one of: {allowed}."
+            f"Unsupported completion destination directory {destination_dir!r}. "
+            f"The legacy archive destination is deprecated; use {COMPLETE_DIR!r}."
         )
     return normalized
 
@@ -184,11 +194,11 @@ def scan_plan_milestone_files(*, plan_root: Path) -> tuple[MilestoneFileScan, ..
         if not relative.parts or relative.parts[0] not in {ACTIVE_DIR, *COMPLETE_DIR_ALIASES}:
             continue
 
-        location: Literal["active", "archived"]
+        location: Literal["active", "completed"]
         if relative.parts[0] == ACTIVE_DIR:
             location = "active"
         else:
-            location = "archived"
+            location = "completed"
 
         parsed_execplan_id, sequence, _ = parsed
         parse_error: str | None = None
@@ -218,11 +228,11 @@ def list_invalid_active_milestone_files(*, plan_root: Path) -> tuple[MilestoneFi
     )
 
 
-def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveScanEntry:
+def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneCompletionScanEntry:
     try:
         metadata = _extract_front_matter(path.read_text(encoding="utf-8"))
     except OSError as error:
-        return ActiveMilestoneArchiveScanEntry(
+        return ActiveMilestoneCompletionScanEntry(
             path=path,
             execplan_id=None,
             milestone_id=None,
@@ -230,7 +240,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
             parse_error=f"could not read milestone file: {error}",
         )
     except UnicodeDecodeError:
-        return ActiveMilestoneArchiveScanEntry(
+        return ActiveMilestoneCompletionScanEntry(
             path=path,
             execplan_id=None,
             milestone_id=None,
@@ -238,7 +248,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
             parse_error="milestone file is not valid UTF-8",
         )
     except ValueError as error:
-        return ActiveMilestoneArchiveScanEntry(
+        return ActiveMilestoneCompletionScanEntry(
             path=path,
             execplan_id=None,
             milestone_id=None,
@@ -248,7 +258,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
 
     execplan_id = str(metadata.get("execplan_id", "")).strip()
     if EXECPLAN_ID_RE.fullmatch(execplan_id) is None:
-        return ActiveMilestoneArchiveScanEntry(
+        return ActiveMilestoneCompletionScanEntry(
             path=path,
             execplan_id=None,
             milestone_id=None,
@@ -259,7 +269,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
     milestone_id = str(metadata.get("id", "")).strip()
     parsed_milestone_id = parse_milestone_id(milestone_id)
     if parsed_milestone_id is None:
-        return ActiveMilestoneArchiveScanEntry(
+        return ActiveMilestoneCompletionScanEntry(
             path=path,
             execplan_id=execplan_id,
             milestone_id=milestone_id or None,
@@ -269,7 +279,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
 
     parsed_execplan_id, sequence = parsed_milestone_id
     if parsed_execplan_id != execplan_id:
-        return ActiveMilestoneArchiveScanEntry(
+        return ActiveMilestoneCompletionScanEntry(
             path=path,
             execplan_id=execplan_id,
             milestone_id=milestone_id,
@@ -277,7 +287,7 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
             parse_error="front matter id and execplan_id refer to different ExecPlan IDs",
         )
 
-    return ActiveMilestoneArchiveScanEntry(
+    return ActiveMilestoneCompletionScanEntry(
         path=path,
         execplan_id=execplan_id,
         milestone_id=milestone_id,
@@ -286,16 +296,16 @@ def _scan_active_milestone_front_matter(path: Path) -> ActiveMilestoneArchiveSca
     )
 
 
-def scan_active_milestones_for_archive(*, plan_root: Path, execplan_id: str) -> ActiveMilestoneArchiveScan:
+def scan_active_milestones_for_completion(*, plan_root: Path, execplan_id: str) -> ActiveMilestoneCompletionScan:
     """
     Scan milestones/active for completion safety checks using front matter as source of truth.
     """
     active_root = (plan_root / MILESTONES_DIR / ACTIVE_DIR).resolve()
     if not active_root.exists():
-        return ActiveMilestoneArchiveScan(active_milestones_for_execplan=(), blocking_entries=())
+        return ActiveMilestoneCompletionScan(active_milestones_for_execplan=(), blocking_entries=())
 
-    active_milestones_for_execplan: list[ActiveMilestoneArchiveScanEntry] = []
-    blocking_entries: list[ActiveMilestoneArchiveScanEntry] = []
+    active_milestones_for_execplan: list[ActiveMilestoneCompletionScanEntry] = []
+    blocking_entries: list[ActiveMilestoneCompletionScanEntry] = []
 
     for candidate in active_root.rglob("*.md"):
         if not candidate.is_file():
@@ -306,7 +316,7 @@ def scan_active_milestones_for_archive(*, plan_root: Path, execplan_id: str) -> 
             continue
         if scanned.execplan_id != execplan_id:
             blocking_entries.append(
-                ActiveMilestoneArchiveScanEntry(
+                ActiveMilestoneCompletionScanEntry(
                     path=scanned.path,
                     execplan_id=scanned.execplan_id,
                     milestone_id=scanned.milestone_id,
@@ -329,10 +339,19 @@ def scan_active_milestones_for_archive(*, plan_root: Path, execplan_id: str) -> 
             item.path.as_posix(),
         )
     )
-    return ActiveMilestoneArchiveScan(
+    return ActiveMilestoneCompletionScan(
         active_milestones_for_execplan=tuple(active_milestones_for_execplan),
         blocking_entries=tuple(blocking_entries),
     )
+
+
+def scan_active_milestones_for_archive(*, plan_root: Path, execplan_id: str) -> ActiveMilestoneCompletionScan:
+    warnings.warn(
+        "scan_active_milestones_for_archive() is deprecated; use scan_active_milestones_for_completion().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return scan_active_milestones_for_completion(plan_root=plan_root, execplan_id=execplan_id)
 
 
 def _resolve_path(root: Path, value: Path) -> Path:
@@ -400,6 +419,23 @@ def _extract_front_matter(content: str) -> dict[str, Any]:
     return metadata
 
 
+def _mark_milestone_completed(*, milestone_path: Path, updated_yyyy_mm_dd: str) -> None:
+    content = milestone_path.read_text(encoding="utf-8")
+    match = FRONT_MATTER_RE.search(content)
+    if match is None:
+        raise ValueError(f"Milestone {milestone_path.as_posix()} is missing YAML front matter.")
+
+    metadata = yaml.safe_load(match.group(1))
+    if not isinstance(metadata, dict):
+        raise ValueError(f"Milestone {milestone_path.as_posix()} has invalid YAML front matter.")
+
+    metadata["status"] = "completed"
+    metadata["updated"] = updated_yyyy_mm_dd
+    updated_front_matter = yaml.safe_dump(metadata, sort_keys=False).strip()
+    updated_content = f"{content[:match.start(1)]}{updated_front_matter}{content[match.end(1):]}"
+    atomic_write_text(milestone_path, updated_content)
+
+
 def _resolve_parent_execplan(
     *,
     execplans_dir: Path,
@@ -445,8 +481,8 @@ def _ensure_execplan_mutable(
     if is_execplan_complete_path(plan_path, execplans_root=execplans_dir):
         raise ValueError(f"ExecPlan {execplan_id!r} is completed and cannot accept new milestones.")
     status = str(metadata.get("status", "")).strip().lower()
-    if status == "archived":
-        raise ValueError(f"ExecPlan {execplan_id!r} has archived status and cannot accept new milestones.")
+    if status in {"archived", "done"}:
+        raise ValueError(f"ExecPlan {execplan_id!r} is completed and cannot accept new milestones.")
 
 
 def _uses_legacy_shared_active_root(*, plan_path: Path, plan_root: Path, execplans_dir: Path) -> bool:
@@ -676,8 +712,17 @@ def list_execplan_milestones(
     root: Path,
     execplan_id: str,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
-    include_archived: bool = True,
+    include_completed: bool = True,
+    include_archived: bool | None = None,
 ) -> tuple[MilestoneRef, ...]:
+    if include_archived is not None:
+        warnings.warn(
+            "include_archived is deprecated; use include_completed.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        include_completed = include_archived
+
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
     _, plan_root, _ = _resolve_parent_execplan(
@@ -693,15 +738,15 @@ def list_execplan_milestones(
             continue
         _, sequence, _ = parsed
         relative = path.relative_to(milestones_root)
-        location: Literal["active", "archived"]
+        location: Literal["active", "completed"]
         if relative.parts and relative.parts[0] == ACTIVE_DIR:
             location = "active"
         elif relative.parts and relative.parts[0] in COMPLETE_DIR_ALIASES:
-            location = "archived"
+            location = "completed"
         else:
             continue
 
-        if location == "archived" and not include_archived:
+        if location == "completed" and not include_completed:
             continue
 
         refs.append(
@@ -718,21 +763,19 @@ def list_execplan_milestones(
     return tuple(refs)
 
 
-def archive_execplan_milestone(
+def complete_execplan_milestone(
     *,
     root: Path,
     execplan_id: str,
     sequence: int,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
-    archive_date_yyyymmdd: str | None = None,
-    destination_dir: Literal["complete", "archive"] = COMPLETE_DIR,
-) -> MilestoneArchiveResult:
+    completion_date_yyyymmdd: str | None = None,
+) -> MilestoneCompleteResult:
     if sequence < 1 or sequence > 999:
         raise ValueError("Milestone sequence must be between 1 and 999.")
 
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-    archive_destination_dir = _normalize_archive_destination_dir(destination_dir)
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         plan_path, plan_root, _ = _resolve_parent_execplan(
             execplans_dir=resolved_execplans_dir,
@@ -761,24 +804,61 @@ def archive_execplan_milestone(
                 f"{execplan_id}/MS{sequence:03d}. Resolve duplicates: {joined}"
             )
 
-        # Keep `archive_date_yyyymmdd` for API compatibility even though complete
-        # and archive milestone layouts no longer shard by date.
-        if archive_date_yyyymmdd is not None:
-            _validate_date_yyyymmdd(archive_date_yyyymmdd)
-        archive_dir = plan_root / MILESTONES_DIR / archive_destination_dir
-        archive_dir.mkdir(parents=True, exist_ok=True)
+        day_token = completion_date_yyyymmdd or _today_yyyymmdd_local()
+        day_value = _validate_date_yyyymmdd(day_token)
+        complete_dir = plan_root / MILESTONES_DIR / COMPLETE_DIR
+        complete_dir.mkdir(parents=True, exist_ok=True)
 
         source_path = candidates[0]
-        archived_path = (archive_dir / source_path.name).resolve()
-        if archived_path.exists():
-            raise FileExistsError(f"Archive destination already exists: {archived_path.as_posix()}")
+        completed_path = (complete_dir / source_path.name).resolve()
+        if completed_path.exists():
+            raise FileExistsError(f"Completion destination already exists: {completed_path.as_posix()}")
 
-        os.replace(source_path, archived_path)
-    return MilestoneArchiveResult(
+        os.replace(source_path, completed_path)
+        try:
+            _mark_milestone_completed(
+                milestone_path=completed_path,
+                updated_yyyy_mm_dd=day_value.strftime("%Y-%m-%d"),
+            )
+        except Exception as error:
+            try:
+                os.replace(completed_path, source_path)
+            except OSError as rollback_error:
+                raise RuntimeError(
+                    "Milestone file was moved but metadata update failed, and rollback did not succeed. "
+                    f"Moved path: {completed_path.as_posix()}, rollback error: {rollback_error}"
+                ) from error
+            raise
+    return MilestoneCompleteResult(
         milestone_id=_milestone_id(execplan_id, sequence=sequence),
         sequence=sequence,
         source_path=source_path,
-        archived_path=archived_path,
+        completed_path=completed_path,
         execplan_id=execplan_id,
         plan_path=plan_path,
+    )
+
+
+def archive_execplan_milestone(
+    *,
+    root: Path,
+    execplan_id: str,
+    sequence: int,
+    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    archive_date_yyyymmdd: str | None = None,
+    destination_dir: Literal["complete", "archive"] = COMPLETE_DIR,
+) -> MilestoneCompleteResult:
+    warnings.warn(
+        "archive_execplan_milestone() is deprecated; use complete_execplan_milestone(). "
+        "New completions always write under milestones/complete/.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    _normalize_archive_destination_dir(destination_dir)
+    return complete_execplan_milestone(
+        root=root,
+        execplan_id=execplan_id,
+        sequence=sequence,
+        execplans_dir=execplans_dir,
+        completion_date_yyyymmdd=archive_date_yyyymmdd,
     )

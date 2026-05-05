@@ -51,7 +51,7 @@ Required keys and allowed values:
 
 - `id` (required): `EP-YYYYMMDD-NNN` (must match the filename ID)
 - `title` (required): short, action-oriented title
-- `status` (required): `planned | active | paused | done | archived`
+- `status` (required): `planned | active | paused | done`
 - `kind` (required): `feature | refactor | bugfix | migration | infra | spike | perf | docs | tests`
 - `domain` (required): `backend | frontend | console | infra | cross-cutting`
 - `owner` (required): `@handle` (e.g. codex, claude, etc.)

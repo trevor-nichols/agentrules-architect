@@ -145,7 +145,7 @@ class ExecPlanCLITests(unittest.TestCase):
         source_plan = source_root / "EP-20260207-001_frontend-architecture-refactor.md"
         self.assertTrue(source_plan.exists())
 
-        archive_result = self.runner.invoke(
+        complete_result = self.runner.invoke(
             cli.app,
             [
                 "execplan",
@@ -157,11 +157,11 @@ class ExecPlanCLITests(unittest.TestCase):
                 "20260212",
             ],
         )
-        self.assertEqual(archive_result.exit_code, 0, msg=archive_result.output)
-        self.assertIn("Active ExecPlans: none", archive_result.output)
+        self.assertEqual(complete_result.exit_code, 0, msg=complete_result.output)
+        self.assertIn("Active ExecPlans: none", complete_result.output)
         self.assertFalse(source_root.exists())
 
-        archived_root = (
+        completed_root = (
             self.root
             / ".agent"
             / "exec_plans"
@@ -171,10 +171,10 @@ class ExecPlanCLITests(unittest.TestCase):
             / "12"
             / "EP-20260207-001_frontend-architecture-refactor"
         )
-        archived_plan = archived_root / "EP-20260207-001_frontend-architecture-refactor.md"
-        self.assertTrue(archived_plan.exists())
-        content = archived_plan.read_text(encoding="utf-8")
-        self.assertIn("status: archived", content)
+        completed_plan = completed_root / "EP-20260207-001_frontend-architecture-refactor.md"
+        self.assertTrue(completed_plan.exists())
+        content = completed_plan.read_text(encoding="utf-8")
+        self.assertIn("status: done", content)
         self.assertIn("updated: '2026-02-12'", content)
 
         registry_path = self.root / ".agent" / "exec_plans" / "registry.json"
@@ -182,7 +182,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertEqual(payload["plans"][0]["id"], "EP-20260207-001")
         self.assertIn("complete/2026/02/12/", payload["plans"][0]["path"])
 
-    def test_archive_rejects_already_archived_execplan(self) -> None:
+    def test_complete_rejects_already_completed_execplan(self) -> None:
         from agentrules import cli
 
         create_result = self.runner.invoke(
@@ -190,7 +190,7 @@ class ExecPlanCLITests(unittest.TestCase):
             [
                 "execplan",
                 "new",
-                "Archive Once",
+                "Complete Once",
                 "--root",
                 str(self.root),
                 "--date",
@@ -200,11 +200,11 @@ class ExecPlanCLITests(unittest.TestCase):
         )
         self.assertEqual(create_result.exit_code, 0, msg=create_result.output)
 
-        first_archive = self.runner.invoke(
+        first_complete = self.runner.invoke(
             cli.app,
             [
                 "execplan",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--root",
                 str(self.root),
@@ -213,25 +213,25 @@ class ExecPlanCLITests(unittest.TestCase):
                 "--no-update-registry",
             ],
         )
-        self.assertEqual(first_archive.exit_code, 0, msg=first_archive.output)
-        archived_root = (
+        self.assertEqual(first_complete.exit_code, 0, msg=first_complete.output)
+        completed_root = (
             self.root
             / ".agent"
             / "exec_plans"
-            / "archive"
+            / "complete"
             / "2026"
             / "02"
             / "12"
-            / "EP-20260207-001_archive-once"
+            / "EP-20260207-001_complete-once"
         )
-        self.assertTrue(archived_root.exists())
-        self.assertTrue((archived_root / "EP-20260207-001_archive-once.md").exists())
+        self.assertTrue(completed_root.exists())
+        self.assertTrue((completed_root / "EP-20260207-001_complete-once.md").exists())
 
-        second_archive = self.runner.invoke(
+        second_complete = self.runner.invoke(
             cli.app,
             [
                 "execplan",
-                "archive",
+                "complete",
                 "EP-20260207-001",
                 "--root",
                 str(self.root),
@@ -240,10 +240,18 @@ class ExecPlanCLITests(unittest.TestCase):
                 "--no-update-registry",
             ],
         )
-        self.assertNotEqual(second_archive.exit_code, 0)
-        self.assertIn("already completed", second_archive.output.lower())
+        self.assertNotEqual(second_complete.exit_code, 0)
+        self.assertIn("already completed", second_complete.output.lower())
 
-    def test_archive_prints_remaining_active_execplan_count(self) -> None:
+    def test_archive_execplan_command_is_removed(self) -> None:
+        from agentrules import cli
+
+        result = self.runner.invoke(cli.app, ["execplan", "archive", "EP-20260207-001"])
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("no such command", result.output.lower())
+
+    def test_complete_prints_remaining_active_execplan_count(self) -> None:
         from agentrules import cli
 
         first_create = self.runner.invoke(
@@ -276,7 +284,7 @@ class ExecPlanCLITests(unittest.TestCase):
         )
         self.assertEqual(second_create.exit_code, 0, msg=second_create.output)
 
-        archive_result = self.runner.invoke(
+        complete_result = self.runner.invoke(
             cli.app,
             [
                 "execplan",
@@ -290,8 +298,8 @@ class ExecPlanCLITests(unittest.TestCase):
             ],
         )
 
-        self.assertEqual(archive_result.exit_code, 0, msg=archive_result.output)
-        self.assertIn("Active ExecPlans: 1", archive_result.output)
+        self.assertEqual(complete_result.exit_code, 0, msg=complete_result.output)
+        self.assertIn("Active ExecPlans: 1", complete_result.output)
 
     def test_list_execplans_prints_compact_progress(self) -> None:
         from agentrules import cli
@@ -340,7 +348,7 @@ class ExecPlanCLITests(unittest.TestCase):
         )
         self.assertEqual(create_milestone.exit_code, 0, msg=create_milestone.output)
 
-        archive_milestone = self.runner.invoke(
+        complete_milestone = self.runner.invoke(
             cli.app,
             [
                 "execplan",
@@ -353,7 +361,7 @@ class ExecPlanCLITests(unittest.TestCase):
                 str(self.root),
             ],
         )
-        self.assertEqual(archive_milestone.exit_code, 0, msg=archive_milestone.output)
+        self.assertEqual(complete_milestone.exit_code, 0, msg=complete_milestone.output)
 
         listed = self.runner.invoke(
             cli.app,
@@ -401,7 +409,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertEqual(listed.exit_code, 0, msg=listed.output)
         self.assertIn("-> .agent/exec_plans/active/path-visibility/EP-20260207-001_path-visibility.md", listed.output)
 
-    def test_archive_rejects_when_active_milestones_exist(self) -> None:
+    def test_complete_rejects_when_active_milestones_exist(self) -> None:
         from agentrules import cli
 
         create_result = self.runner.invoke(
@@ -409,7 +417,7 @@ class ExecPlanCLITests(unittest.TestCase):
             [
                 "execplan",
                 "new",
-                "Archive Guard Rail",
+                "Complete Guard Rail",
                 "--root",
                 str(self.root),
                 "--date",
@@ -424,7 +432,7 @@ class ExecPlanCLITests(unittest.TestCase):
             / ".agent"
             / "exec_plans"
             / "active"
-            / "archive-guard-rail"
+            / "complete-guard-rail"
             / "milestones"
             / "active"
             / "MS001_blocking.md"
@@ -447,7 +455,7 @@ class ExecPlanCLITests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        archive_result = self.runner.invoke(
+        complete_result = self.runner.invoke(
             cli.app,
             [
                 "execplan",
@@ -461,9 +469,9 @@ class ExecPlanCLITests(unittest.TestCase):
             ],
         )
 
-        self.assertNotEqual(archive_result.exit_code, 0)
-        self.assertIn("active milestones still exist", archive_result.output.lower())
-        self.assertIn("MS001_blocking.md", archive_result.output)
+        self.assertNotEqual(complete_result.exit_code, 0)
+        self.assertIn("active milestones still exist", complete_result.output.lower())
+        self.assertIn("MS001_blocking.md", complete_result.output)
 
 
 if __name__ == "__main__":

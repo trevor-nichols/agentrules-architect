@@ -410,8 +410,8 @@ def _build_plan(
     depends_on = _normalize_str_list(metadata.get("depends_on"))
     supersedes = _normalize_str_list(metadata.get("supersedes"))
 
-    in_archive = is_execplan_complete_path(plan_path, execplans_root=execplans_dir)
-    if status == "archived" and not in_archive:
+    in_complete = is_execplan_complete_path(plan_path, execplans_root=execplans_dir)
+    if status == "archived" and not in_complete:
         issues.append(
             RegistryIssue(
                 "warning",
@@ -419,7 +419,7 @@ def _build_plan(
                 path=path_text,
             )
         )
-    if in_archive and status not in {"archived", "done"}:
+    if in_complete and status not in {"archived", "done"}:
         issues.append(
             RegistryIssue(
                 "warning",
@@ -582,11 +582,11 @@ def _count_milestones_for_plan(*, plan_path: Path, execplan_id: str, execplans_d
         return 0, 0
 
     active_root = (milestones_root / ACTIVE_DIR).resolve()
-    archived_roots = tuple((milestones_root / name).resolve() for name in (COMPLETE_DIR, ARCHIVE_DIR))
+    completed_roots = tuple((milestones_root / name).resolve() for name in (COMPLETE_DIR, ARCHIVE_DIR))
 
     active_count = 0
     total_count = 0
-    for root in (active_root, *archived_roots):
+    for root in (active_root, *completed_roots):
         if not root.exists():
             continue
         is_active_root = root == active_root

@@ -1,22 +1,23 @@
-"""Create ExecPlan documents and optionally refresh the ExecPlan registry."""
+"""Create and complete ExecPlan documents, optionally refreshing the registry."""
 
 from __future__ import annotations
 
 import os
 import re
 import tempfile
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from importlib import resources
 from pathlib import Path
 from string import Template
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import yaml
 
 from agentrules.core.execplan.identity import extract_execplan_id_from_filename, parse_execplan_filename
 from agentrules.core.execplan.locks import execplan_mutation_lock
-from agentrules.core.execplan.milestones import scan_active_milestones_for_archive
+from agentrules.core.execplan.milestones import scan_active_milestones_for_completion
 from agentrules.core.execplan.paths import (
     EXECPLAN_ACTIVE_DIR,
     EXECPLAN_ARCHIVE_DIR,
@@ -43,8 +44,6 @@ RESERVED_EXECPLAN_ROOT_SLUGS = frozenset(
     {EXECPLAN_ACTIVE_DIR, EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR}
 )
 RESERVED_ACTIVE_PLAN_SLUGS = frozenset({MILESTONES_DIR})
-_ARCHIVE_DESTINATION_DIRS = frozenset({EXECPLAN_COMPLETE_DIR, EXECPLAN_ARCHIVE_DIR})
-
 _TEMPLATE_PACKAGE = "agentrules.core.execplan"
 _TEMPLATE_NAME = "EXECPLAN_TEMPLATE.md"
 
@@ -58,13 +57,26 @@ class ExecPlanCreateResult:
 
 
 @dataclass(frozen=True, slots=True)
-class ExecPlanArchiveResult:
+class ExecPlanCompleteResult:
     plan_id: str
     source_plan_path: Path
-    archived_plan_path: Path
+    completed_plan_path: Path
     source_plan_root: Path
-    archived_plan_root: Path
+    completed_plan_root: Path
     registry_result: RegistryBuildResult | None = None
+
+    @property
+    def archived_plan_path(self) -> Path:
+        """Deprecated compatibility alias for ``completed_plan_path``."""
+        return self.completed_plan_path
+
+    @property
+    def archived_plan_root(self) -> Path:
+        """Deprecated compatibility alias for ``completed_plan_root``."""
+        return self.completed_plan_root
+
+
+ExecPlanArchiveResult: TypeAlias = ExecPlanCompleteResult
 
 
 def _today_yyyymmdd_local() -> str:
@@ -127,11 +139,10 @@ def _resolve_path(root: Path, value: Path) -> Path:
 
 def _normalize_archive_destination_dir(destination_dir: str) -> str:
     normalized = destination_dir.strip().lower()
-    if normalized not in _ARCHIVE_DESTINATION_DIRS:
-        allowed = ", ".join(sorted(_ARCHIVE_DESTINATION_DIRS))
+    if normalized != EXECPLAN_COMPLETE_DIR:
         raise ValueError(
-            f"Unsupported archive destination directory {destination_dir!r}. "
-            f"Expected one of: {allowed}."
+            f"Unsupported completion destination directory {destination_dir!r}. "
+            f"The legacy archive destination is deprecated; use {EXECPLAN_COMPLETE_DIR!r}."
         )
     return normalized
 
@@ -265,7 +276,7 @@ def _atomic_write_text(path: Path, text: str) -> None:
             os.remove(temporary_path)
 
 
-def _mark_execplan_archived(*, plan_path: Path, updated_yyyy_mm_dd: str) -> None:
+def _mark_execplan_completed(*, plan_path: Path, updated_yyyy_mm_dd: str) -> None:
     content = plan_path.read_text(encoding="utf-8")
     match = FRONT_MATTER_RE.search(content)
     if match is None:
@@ -275,7 +286,7 @@ def _mark_execplan_archived(*, plan_path: Path, updated_yyyy_mm_dd: str) -> None
     if not isinstance(metadata, dict):
         raise ValueError(f"ExecPlan {plan_path.as_posix()} has invalid YAML front matter.")
 
-    metadata["status"] = "archived"
+    metadata["status"] = "done"
     metadata["updated"] = updated_yyyy_mm_dd
     updated_front_matter = yaml.safe_dump(metadata, sort_keys=False).strip()
     updated_content = f"{content[:match.start(1)]}{updated_front_matter}{content[match.end(1):]}"
@@ -392,23 +403,20 @@ def create_execplan(
     )
 
 
-def archive_execplan(
+def complete_execplan(
     *,
     root: Path,
     execplan_id: str,
     execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
-    archive_date_yyyymmdd: str | None = None,
-    destination_dir: Literal["complete", "archive"] = EXECPLAN_COMPLETE_DIR,
+    completion_date_yyyymmdd: str | None = None,
     update_registry: bool = True,
     registry_path: Path = DEFAULT_REGISTRY_PATH,
     include_registry_timestamp: bool = False,
     fail_on_registry_warn: bool = False,
-) -> ExecPlanArchiveResult:
+) -> ExecPlanCompleteResult:
     resolved_root = root.resolve()
     resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
     resolved_registry_path = _resolve_path(resolved_root, registry_path)
-
-    archive_destination_dir = _normalize_archive_destination_dir(destination_dir)
 
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         source_plan_path = _resolve_execplan_by_id(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id)
@@ -459,7 +467,7 @@ def archive_execplan(
                     f"ExecPlan IDs. Plan root: {source_plan_root.as_posix()}. Files: {joined}"
                 )
 
-        active_milestone_scan = scan_active_milestones_for_archive(
+        active_milestone_scan = scan_active_milestones_for_completion(
             plan_root=source_plan_root,
             execplan_id=execplan_id,
         )
@@ -483,23 +491,23 @@ def archive_execplan(
                 f"ExecPlan: {execplan_id}. Active milestones: {joined}"
             )
 
-        day_token = archive_date_yyyymmdd or _today_yyyymmdd_local()
+        day_token = completion_date_yyyymmdd or _today_yyyymmdd_local()
         day_value = _validate_date_yyyymmdd(day_token)
-        archive_parent = (
+        completion_parent = (
             resolved_execplans_dir
-            / archive_destination_dir
+            / EXECPLAN_COMPLETE_DIR
             / day_value.strftime("%Y")
             / day_value.strftime("%m")
             / day_value.strftime("%d")
         )
 
-        archive_leaf = f"{execplan_id}_{source_plan_root.name}"
-        archived_plan_root = (archive_parent / archive_leaf).resolve()
-        if archived_plan_root == source_plan_root or archived_plan_root.is_relative_to(source_plan_root):
+        completion_leaf = f"{execplan_id}_{source_plan_root.name}"
+        completed_plan_root = (completion_parent / completion_leaf).resolve()
+        if completed_plan_root == source_plan_root or completed_plan_root.is_relative_to(source_plan_root):
             raise ValueError(
                 "Cannot complete ExecPlan safely because the destination resolves inside the source plan root. "
                 "This usually indicates a legacy top-level slug that conflicts with the destination namespace "
-                f"({archive_destination_dir!r}). Rename or migrate the "
+                f"({EXECPLAN_COMPLETE_DIR!r}). Rename or migrate the "
                 "legacy plan directory first."
             )
         if legacy_active_root:
@@ -516,70 +524,70 @@ def archive_execplan(
                         f"under {legacy_milestones_root.as_posix()}: {joined}"
                     )
 
-            archive_parent.mkdir(parents=True, exist_ok=True)
-            if archived_plan_root.exists():
-                raise FileExistsError(f"Archive destination already exists: {archived_plan_root.as_posix()}")
-            archived_plan_root.mkdir(parents=False, exist_ok=False)
+            completion_parent.mkdir(parents=True, exist_ok=True)
+            if completed_plan_root.exists():
+                raise FileExistsError(f"Completion destination already exists: {completed_plan_root.as_posix()}")
+            completed_plan_root.mkdir(parents=False, exist_ok=False)
 
-            archived_plan_path = (archived_plan_root / source_plan_path.name).resolve()
-            archived_milestones_root = (archived_plan_root / MILESTONES_DIR).resolve()
+            completed_plan_path = (completed_plan_root / source_plan_path.name).resolve()
+            completed_milestones_root = (completed_plan_root / MILESTONES_DIR).resolve()
             moved_plan = False
             moved_milestones = False
             try:
-                os.replace(source_plan_path, archived_plan_path)
+                os.replace(source_plan_path, completed_plan_path)
                 moved_plan = True
                 if legacy_milestones_root.exists():
-                    os.replace(legacy_milestones_root, archived_milestones_root)
+                    os.replace(legacy_milestones_root, completed_milestones_root)
                     moved_milestones = True
 
-                _mark_execplan_archived(
-                    plan_path=archived_plan_path,
+                _mark_execplan_completed(
+                    plan_path=completed_plan_path,
                     updated_yyyy_mm_dd=day_value.strftime("%Y-%m-%d"),
                 )
             except Exception as error:
                 if moved_milestones:
                     try:
-                        os.replace(archived_milestones_root, legacy_milestones_root)
+                        os.replace(completed_milestones_root, legacy_milestones_root)
                     except OSError as rollback_error:
                         raise RuntimeError(
                             "Legacy milestone subtree was moved but rollback did not succeed. "
-                            f"Moved path: {archived_milestones_root.as_posix()}, rollback error: {rollback_error}"
+                            f"Moved path: {completed_milestones_root.as_posix()}, rollback error: {rollback_error}"
                         ) from error
                 if moved_plan:
                     try:
-                        os.replace(archived_plan_path, source_plan_path)
+                        os.replace(completed_plan_path, source_plan_path)
                     except OSError as rollback_error:
                         raise RuntimeError(
                             "Legacy ExecPlan file was moved but rollback did not succeed. "
-                            f"Moved path: {archived_plan_path.as_posix()}, rollback error: {rollback_error}"
+                            f"Moved path: {completed_plan_path.as_posix()}, rollback error: {rollback_error}"
                         ) from error
                 try:
-                    archived_plan_root.rmdir()
+                    completed_plan_root.rmdir()
                 except OSError:
                     pass
                 raise
         else:
-            archive_parent.mkdir(parents=True, exist_ok=True)
-            if archived_plan_root.exists():
-                raise FileExistsError(f"Archive destination already exists: {archived_plan_root.as_posix()}")
+            completion_parent.mkdir(parents=True, exist_ok=True)
+            if completed_plan_root.exists():
+                raise FileExistsError(f"Completion destination already exists: {completed_plan_root.as_posix()}")
 
             moved = False
             try:
-                os.replace(source_plan_root, archived_plan_root)
+                os.replace(source_plan_root, completed_plan_root)
                 moved = True
-                archived_plan_path = (archived_plan_root / source_plan_path.relative_to(source_plan_root)).resolve()
-                _mark_execplan_archived(
-                    plan_path=archived_plan_path,
+                completed_plan_path = (completed_plan_root / source_plan_path.relative_to(source_plan_root)).resolve()
+                _mark_execplan_completed(
+                    plan_path=completed_plan_path,
                     updated_yyyy_mm_dd=day_value.strftime("%Y-%m-%d"),
                 )
             except Exception as error:
                 if moved:
                     try:
-                        os.replace(archived_plan_root, source_plan_root)
+                        os.replace(completed_plan_root, source_plan_root)
                     except OSError as rollback_error:
                         raise RuntimeError(
                             "ExecPlan directory was moved but metadata update failed, and rollback did not succeed. "
-                            f"Moved path: {archived_plan_root.as_posix()}, rollback error: {rollback_error}"
+                            f"Moved path: {completed_plan_root.as_posix()}, rollback error: {rollback_error}"
                         ) from error
                 raise
 
@@ -593,11 +601,42 @@ def archive_execplan(
             fail_on_warn=fail_on_registry_warn,
         )
 
-    return ExecPlanArchiveResult(
+    return ExecPlanCompleteResult(
         plan_id=execplan_id,
         source_plan_path=source_plan_path,
-        archived_plan_path=archived_plan_path,
+        completed_plan_path=completed_plan_path,
         source_plan_root=source_plan_root,
-        archived_plan_root=archived_plan_root,
+        completed_plan_root=completed_plan_root,
         registry_result=registry_result,
+    )
+
+
+def archive_execplan(
+    *,
+    root: Path,
+    execplan_id: str,
+    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    archive_date_yyyymmdd: str | None = None,
+    destination_dir: Literal["complete", "archive"] = EXECPLAN_COMPLETE_DIR,
+    update_registry: bool = True,
+    registry_path: Path = DEFAULT_REGISTRY_PATH,
+    include_registry_timestamp: bool = False,
+    fail_on_registry_warn: bool = False,
+) -> ExecPlanCompleteResult:
+    warnings.warn(
+        "archive_execplan() is deprecated; use complete_execplan(). "
+        "New completions always write under the complete/ layout.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    _normalize_archive_destination_dir(destination_dir)
+    return complete_execplan(
+        root=root,
+        execplan_id=execplan_id,
+        execplans_dir=execplans_dir,
+        completion_date_yyyymmdd=archive_date_yyyymmdd,
+        update_registry=update_registry,
+        registry_path=registry_path,
+        include_registry_timestamp=include_registry_timestamp,
+        fail_on_registry_warn=fail_on_registry_warn,
     )

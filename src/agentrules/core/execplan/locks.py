@@ -12,6 +12,7 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, cast
 
 from agentrules.core.execplan.identity import extract_execplan_id_from_filename
 from agentrules.core.execplan.paths import is_execplan_milestone_path
@@ -43,7 +44,8 @@ def file_lock(lock_path: Path) -> Iterator[None]:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         elif msvcrt is not None:  # pragma: no cover - Windows-only branch
             handle.seek(0)
-            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+            msvcrt_runtime = cast(Any, msvcrt)
+            msvcrt_runtime.locking(handle.fileno(), msvcrt_runtime.LK_LOCK, 1)
         else:  # pragma: no cover - unsupported platform
             raise RuntimeError("No supported file locking implementation is available on this platform.")
 
@@ -54,7 +56,8 @@ def file_lock(lock_path: Path) -> Iterator[None]:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
             elif msvcrt is not None:  # pragma: no cover - Windows-only branch
                 handle.seek(0)
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                msvcrt_runtime = cast(Any, msvcrt)
+                msvcrt_runtime.locking(handle.fileno(), msvcrt_runtime.LK_UNLCK, 1)
 
 
 def get_execplan_lock_path(*, execplans_dir: Path, execplan_id: str) -> Path:
