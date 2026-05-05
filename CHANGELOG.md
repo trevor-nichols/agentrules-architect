@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0](https://github.com/trevor-nichols/agentrules-architect/compare/v3.8.0...v4.0.0) (2026-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **execplan:** deprecate archive in favor of complete
+
+### Features
+
+* **execplan:** deprecate archive in favor of complete ([8148fb0](https://github.com/trevor-nichols/agentrules-architect/commit/8148fb0de1dd49d6636fa3e882982d12f5429471))
+
 ## [3.8.0](https://github.com/trevor-nichols/agentrules-architect/compare/v3.7.0...v3.8.0) (2026-04-25)
 
 
