@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from .. import constants as configuration_constants
-from ..models import CLIConfig, ClaudeCodeAuthStrategy, ClaudeCodeConfig
+from ..models import ClaudeCodeAuthStrategy, ClaudeCodeConfig, CLIConfig
 from ..utils import normalize_claude_code_auth_strategy, normalize_optional_string
 
 

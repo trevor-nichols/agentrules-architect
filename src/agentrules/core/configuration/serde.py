@@ -13,8 +13,8 @@ from agentrules.core.utils.constants import (
 
 from .constants import DEFAULT_CLAUDE_CODE_CLI_PATH, DEFAULT_CODEX_CLI_PATH
 from .models import (
-    CLIConfig,
     ClaudeCodeConfig,
+    CLIConfig,
     CodexConfig,
     ExclusionOverrides,
     FeatureToggles,

@@ -1,21 +1,30 @@
 ---
 id: EP-20260504-001
-title: "Claude Code OAuth Runtime Provider"
-status: planned
+title: Claude Code OAuth Runtime Provider
+status: done
 kind: feature
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-05-04
-updated: 2026-05-04
-tags: [claude-code, anthropic, oauth, runtime-provider]
-touches: [cli, agents, security, tests, docs]
+updated: '2026-05-04'
+tags:
+- claude-code
+- anthropic
+- oauth
+- runtime-provider
+touches:
+- cli
+- agents
+- security
+- tests
+- docs
 risk: med
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: "internal-docs/integrations/anthropic/agents-sdk"
+  issue: ''
+  pr: ''
+  docs: internal-docs/integrations/anthropic/agents-sdk
 depends_on: []
 supersedes: []
 ---
@@ -87,8 +96,8 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
 - [x] (2026-05-04 22:35 America/New_York) Milestone 2 implementation complete: Claude Code Agent SDK adapter, request builder, lazy client, response parser, structured output mapping, tests, ruff, pyright, and snapshot sync are in place.
 - [x] (2026-05-04 22:50 America/New_York) Milestone 3 implementation complete: factory wiring, static Claude Code presets, provider capabilities, Phase 3 repo-runtime path, picker labels, researcher gating, tests, ruff, and pyright are in place.
 - [x] (2026-05-04 23:10 America/New_York) Milestone 4 implementation complete: Claude Code runtime diagnostics, settings UI, OAuth/setup-token guidance, API-key sanitization warnings, tests, ruff, pyright, and snapshot sync are in place.
-- [ ] Milestone 5 implementation complete.
-- [ ] Final validation complete.
+- [x] (2026-05-04 23:30 America/New_York) Milestone 5 implementation complete: operator docs, opt-in live smoke, snapshot sync, final validation evidence, and plan closure notes are in place.
+- [x] (2026-05-04 23:35 America/New_York) Final validation complete: import smoke, 85 focused tests, live-smoke skip check, 544 unit/offline tests, full ruff, and full pyright all passed.
 
 ## Surprises & Discoveries
 
@@ -112,6 +121,8 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
   Evidence: Updating `uses_repo_runtime()` to include Claude Code made Phase 3 skip file-body embedding and send cwd/runtime instructions without additional Phase 3 branching.
 - Observation: Claude Code UX should guide, not own, authentication.
   Evidence: The settings page reports executable/env signals and points users to `claude auth login` or `claude setup-token`, but does not inspect credential files or store OAuth secrets.
+- Observation: Broad validation exposed two small pre-existing blockers outside the Claude Code path.
+  Evidence: `tests/unit tests/offline` initially failed because `FinalAnalysis.run()` re-raised instead of returning an error payload expected by its test, and full pyright flagged an optional mock await-args access in `test_codex_client.py`; both were fixed before final validation passed.
 
 ## Decision Log
 
@@ -139,7 +150,18 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
 
 ## Outcomes & Retrospective
 
-This section will be completed as milestones finish. Before implementation begins, the expected outcome is a selectable Claude Code runtime provider that uses the user's Claude.ai OAuth subscription credentials through the installed `claude` CLI, keeps the Anthropic API provider unchanged, and has both offline tests and a gated live smoke test.
+The implementation delivered the planned Claude Code OAuth runtime provider as a separate provider from the existing Anthropic API-key adapter. Users can configure the local `claude` executable, keep API-key variables sanitized for SDK child processes, select static Claude Code presets, and route phases through the Claude Agent SDK without storing OAuth credentials in AgentRules.
+
+The pipeline now treats Claude Code as a repository-aware runtime like Codex, so Phase 3 avoids embedding full file bodies and researcher mode can use runtime-native web search without Tavily. Operator docs and CLI diagnostics explain local `claude auth login`, automation via `claude setup-token` plus `CLAUDE_CODE_OAUTH_TOKEN`, and the `ANTHROPIC_API_KEY` precedence risk.
+
+Final validation passed with:
+
+- `PYTHONPATH=src .venv/bin/python -c "import agentrules"`
+- `PYTHONPATH=src .venv/bin/pytest ...` focused Claude Code regression set: 85 passed
+- `PYTHONPATH=src .venv/bin/pytest --run-live tests/live/test_claude_code_live_smoke.py`: 1 skipped without opt-in env, as expected
+- `PYTHONPATH=src .venv/bin/pytest tests/unit tests/offline`: 544 passed, 4 existing `pathspec` deprecation warnings
+- `PYTHONPATH=src .venv/bin/ruff check .`: passed
+- `PYTHONPATH=src .venv/bin/pyright`: 0 errors
 
 ## Concrete Steps
 

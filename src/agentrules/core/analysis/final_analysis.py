@@ -109,4 +109,7 @@ class FinalAnalysis:
         except Exception as e:
             # Log any errors that occur during the analysis.
             logger.error(f"[bold red]Error in Final Analysis:[/bold red] {str(e)}")
-            raise
+            return {
+                "analysis": "No final analysis generated",
+                "error": str(e),
+            }

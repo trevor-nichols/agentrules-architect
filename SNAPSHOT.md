@@ -11,6 +11,7 @@
 │   │       ├── phase3_analysis.md
 │   │       ├── phase4_synthesis.md
 │   │       └── phase5_consolidation.md
+│   ├── claude-code-runtime.md
 │   ├── codex-runtime.md
 │   ├── provider-system-prompts.md
 │   └── structured-output-contracts.md
@@ -287,6 +288,7 @@
 │   │   ├── test_final_analysis.py  # Live tests for final analysis
 │   │   └── test_final_offline.py  # Offline tests for final analysis
 │   ├── live/  # Tests hitting live APIs
+│   │   ├── test_claude_code_live_smoke.py
 │   │   ├── test_codex_live_smoke.py  # Live smoke tests for Codex integration
 │   │   └── test_live_smoke.py  # Live smoke test across multiple providers
 │   ├── offline/  # Offline pipeline tests

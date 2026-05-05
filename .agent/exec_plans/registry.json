@@ -265,9 +265,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/claude-code-oauth-runtime/EP-20260504-001_claude-code-oauth-runtime.md",
+      "path": ".agent/exec_plans/complete/2026/05/04/EP-20260504-001_claude-code-oauth-runtime/EP-20260504-001_claude-code-oauth-runtime.md",
       "risk": "med",
-      "status": "planned",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "claude-code",
