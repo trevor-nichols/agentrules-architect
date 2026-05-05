@@ -72,6 +72,7 @@ def _build_architect(
         _prompt: str,
         _options: Mapping[str, Any],
         _timeout_seconds: float | None,
+        _sanitized_env_vars: tuple[str, ...],
     ) -> tuple[Any, ...]:
         return messages
 
@@ -128,13 +129,16 @@ async def test_claude_code_analyze_passes_configured_timeout_to_executor(tmp_pat
     config.claude_code.request_timeout_seconds = 2.5
     manager.save(config)
     observed_timeout: dict[str, float | None] = {"value": None}
+    observed_sanitized_env_vars: dict[str, tuple[str, ...]] = {"value": ()}
 
     async def _fake_query(
         _prompt: str,
         _options: Mapping[str, Any],
         timeout_seconds: float | None,
+        sanitized_env_vars: tuple[str, ...],
     ) -> tuple[Any, ...]:
         observed_timeout["value"] = timeout_seconds
+        observed_sanitized_env_vars["value"] = sanitized_env_vars
         return (_assistant_message("Claude Code analyzed the repo."), _result_message())
 
     architect = ClaudeCodeArchitect(
@@ -157,6 +161,7 @@ async def test_claude_code_analyze_passes_configured_timeout_to_executor(tmp_pat
 
     assert result["findings"] == "Claude Code analyzed the repo."
     assert observed_timeout["value"] == 2.5
+    assert observed_sanitized_env_vars["value"] == ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 
 
 @pytest.mark.asyncio

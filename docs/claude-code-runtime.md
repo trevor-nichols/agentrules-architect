@@ -52,6 +52,11 @@ The Claude Agent SDK gives Anthropic API-key variables precedence over Claude.ai
 - `ANTHROPIC_API_KEY`
 - `ANTHROPIC_AUTH_TOKEN`
 
+The SDK merges `ClaudeAgentOptions.env` on top of the inherited process environment, so removing these
+keys from the per-call environment is not sufficient by itself. When sanitization is enabled,
+AgentRules also removes those keys from inherited `os.environ` while the SDK starts the Claude Code
+subprocess, then restores the parent process values after the subprocess environment has been built.
+
 This does not change the existing direct Anthropic provider. API-key auth remains supported there; it is intentionally not the auth path for `ModelProvider.CLAUDE_CODE`.
 
 ## Prompt behavior
@@ -97,7 +102,7 @@ Useful local checks:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -c "import agentrules"
-PYTHONPATH=src .venv/bin/pytest tests/unit/agents/test_claude_code_request_builder.py tests/unit/agents/test_claude_code_response_parser.py tests/unit/agents/test_claude_code_architect.py tests/unit/test_cli_claude_code_settings.py
+PYTHONPATH=src .venv/bin/pytest tests/unit/agents/test_claude_code_client.py tests/unit/agents/test_claude_code_request_builder.py tests/unit/agents/test_claude_code_response_parser.py tests/unit/agents/test_claude_code_architect.py tests/unit/test_cli_claude_code_settings.py
 PYTHONPATH=src .venv/bin/pytest tests/unit/test_config_service.py tests/unit/test_cli_model_picker_ui.py tests/unit/utils/test_provider_capabilities.py tests/unit/utils/test_structured_outputs.py tests/unit/analysis/test_phase3_packing.py
 PYTHONPATH=src .venv/bin/ruff check .
 PYTHONPATH=src .venv/bin/pyright

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agentrules.core.agents.base import ReasoningMode
-from agentrules.core.configuration import ConfigManager
+from agentrules.core.configuration import CLAUDE_CODE_API_KEY_ENV_VARS, ConfigManager
 from agentrules.core.utils.structured_outputs import build_claude_code_output_format
 
 DEFAULT_THINKING_BUDGET = 16_000
@@ -31,6 +31,7 @@ class PreparedRequest:
     options: dict[str, Any]
     token_payload: dict[str, Any]
     execution_timeout_seconds: float
+    sanitized_env_vars: tuple[str, ...]
 
 
 def prepare_request(
@@ -50,6 +51,10 @@ def prepare_request(
     normalized_cwd = _normalize_cwd(cwd)
     runtime_config = config_manager.get_claude_code_config()
     output_format = build_claude_code_output_format(phase_name)
+    sanitized_env_vars = _resolve_sanitized_env_vars(
+        auth_strategy=runtime_config.auth_strategy,
+        sanitize_api_key_env=runtime_config.sanitize_api_key_env,
+    )
 
     options: dict[str, Any] = {
         "allowed_tools": list(_resolve_allowed_tools(tools_config)),
@@ -91,6 +96,7 @@ def prepare_request(
         options=options,
         token_payload=token_payload,
         execution_timeout_seconds=runtime_config.request_timeout_seconds,
+        sanitized_env_vars=sanitized_env_vars,
     )
 
 
@@ -132,6 +138,16 @@ def _resolve_effort(reasoning: ReasoningMode, effort: str | None) -> str | None:
     if reasoning in {ReasoningMode.HIGH, ReasoningMode.XHIGH}:
         return "high" if reasoning == ReasoningMode.HIGH else "max"
     return None
+
+
+def _resolve_sanitized_env_vars(
+    *,
+    auth_strategy: str,
+    sanitize_api_key_env: bool,
+) -> tuple[str, ...]:
+    if auth_strategy == "oauth" and sanitize_api_key_env:
+        return CLAUDE_CODE_API_KEY_ENV_VARS
+    return ()
 
 
 __all__ = [

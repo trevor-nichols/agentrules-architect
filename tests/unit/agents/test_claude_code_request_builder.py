@@ -64,6 +64,7 @@ def test_prepare_request_sets_oauth_runtime_options_and_sanitized_env(tmp_path: 
     assert prepared.options["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "oauth-token"
     assert "ANTHROPIC_API_KEY" not in prepared.options["env"]
     assert "ANTHROPIC_AUTH_TOKEN" not in prepared.options["env"]
+    assert prepared.sanitized_env_vars == ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 
 
 def test_prepare_request_omits_cli_path_for_sdk_default_runtime(tmp_path: Path) -> None:
@@ -178,3 +179,22 @@ def test_prepare_request_uses_configured_execution_guardrails(tmp_path: Path) ->
     assert sdk_options.max_budget_usd == 0.25
     assert prepared.execution_timeout_seconds == 1.5
     assert "request_timeout_seconds" not in prepared.options
+
+
+def test_prepare_request_keeps_api_key_env_when_sanitization_is_disabled(tmp_path: Path) -> None:
+    manager = _build_config_manager(tmp_path)
+    manager.set_claude_code_sanitize_api_key_env(False)
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-sonnet-4-6",
+        content="Inspect repository architecture.",
+        system_prompt="Use AgentRules phase guidance.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    assert prepared.options["env"]["ANTHROPIC_API_KEY"] == "api-key"
+    assert prepared.options["env"]["ANTHROPIC_AUTH_TOKEN"] == "auth-token"
+    assert prepared.sanitized_env_vars == ()
