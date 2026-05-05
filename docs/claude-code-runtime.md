@@ -8,6 +8,7 @@ AgentRules supports Claude Code as a local runtime provider through the Anthropi
 - Reuses Claude Code OAuth state instead of asking AgentRules for an Anthropic API key.
 - Adds `Claude Code ...` model presets that route AgentRules phases through `ModelProvider.CLAUDE_CODE`.
 - Keeps structured outputs enabled for schema-backed phases.
+- Preserves Claude Code's default system prompt and appends AgentRules phase instructions for each request.
 - Treats Claude Code as repository-aware, so Phase 3 agents can inspect files through runtime tools instead of receiving embedded file bodies.
 
 ## Configure it
@@ -52,6 +53,12 @@ The Claude Agent SDK gives Anthropic API-key variables precedence over Claude.ai
 - `ANTHROPIC_AUTH_TOKEN`
 
 This does not change the existing direct Anthropic provider. API-key auth remains supported there; it is intentionally not the auth path for `ModelProvider.CLAUDE_CODE`.
+
+## Prompt behavior
+
+AgentRules sends its phase-specific system instructions as an append block on Claude Code's built-in prompt preset. It does not replace Claude Code's default prompt and does not write prompt instructions into `CLAUDE.md`, `.claude/settings.json`, or other persistent Claude Code files.
+
+This keeps Claude Code's tool guidance, safety instructions, and runtime context intact while making each AgentRules request carry the correct phase behavior.
 
 ## Select Claude Code presets
 

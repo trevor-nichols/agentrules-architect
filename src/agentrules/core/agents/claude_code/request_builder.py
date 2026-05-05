@@ -59,7 +59,7 @@ def prepare_request(
         "model": model_name,
         "permission_mode": "dontAsk",
         "setting_sources": [],
-        "system_prompt": system_prompt,
+        "system_prompt": _build_system_prompt_option(system_prompt),
         "tools": {"type": "preset", "preset": "claude_code"},
     }
 
@@ -95,6 +95,15 @@ def _resolve_allowed_tools(tools_config: dict[str, Any] | None) -> tuple[str, ..
     if tools_config and tools_config.get("enabled"):
         return RESEARCH_ALLOWED_TOOLS
     return READ_ONLY_ALLOWED_TOOLS
+
+
+def _build_system_prompt_option(system_prompt: str) -> dict[str, Any]:
+    return {
+        "type": "preset",
+        "preset": "claude_code",
+        "append": system_prompt,
+        "exclude_dynamic_sections": True,
+    }
 
 
 def _build_thinking_config(reasoning: ReasoningMode) -> dict[str, Any] | None:

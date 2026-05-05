@@ -284,6 +284,42 @@
         "docs"
       ],
       "updated": "2026-05-04"
+    },
+    {
+      "breaking": false,
+      "created": "2026-05-05",
+      "depends_on": [
+        "EP-20260504-001"
+      ],
+      "domain": "cross-cutting",
+      "id": "EP-20260505-001",
+      "kind": "refactor",
+      "links": {
+        "docs": "internal-docs/integrations/anthropic/agents-sdk",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/claude-code-runtime-hardening/EP-20260505-001_claude-code-runtime-hardening.md",
+      "risk": "med",
+      "status": "planned",
+      "supersedes": [],
+      "tags": [
+        "claude-code",
+        "agent-sdk",
+        "provider-runtime",
+        "hardening"
+      ],
+      "title": "Harden Claude Code Runtime Provider",
+      "touches": [
+        "cli",
+        "agents",
+        "security",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-05-05"
     }
   ],
   "schema_version": 1

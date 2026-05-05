@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from claude_agent_sdk import ClaudeAgentOptions
+
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.claude_code.request_builder import prepare_request
 from agentrules.core.configuration.manager import ConfigManager
@@ -38,7 +40,12 @@ def test_prepare_request_sets_oauth_runtime_options_and_sanitized_env(tmp_path: 
     assert prepared.options["permission_mode"] == "dontAsk"
     assert prepared.options["allowed_tools"] == ["Read", "Glob", "Grep"]
     assert "Bash" in prepared.options["disallowed_tools"]
-    assert prepared.options["system_prompt"] == "Keep responses concise."
+    assert prepared.options["system_prompt"] == {
+        "type": "preset",
+        "preset": "claude_code",
+        "append": "Keep responses concise.",
+        "exclude_dynamic_sections": True,
+    }
     assert prepared.options["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "oauth-token"
     assert "ANTHROPIC_API_KEY" not in prepared.options["env"]
     assert "ANTHROPIC_AUTH_TOKEN" not in prepared.options["env"]
@@ -89,3 +96,24 @@ def test_prepare_request_maps_xhigh_reasoning_to_max_effort(tmp_path: Path) -> N
     )
 
     assert prepared.options["effort"] == "max"
+
+
+def test_prepare_request_builds_sdk_accepted_system_prompt_preset(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name="claude-sonnet-4-6",
+        content="Inspect repository architecture.",
+        system_prompt="Use AgentRules phase guidance.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    sdk_options = ClaudeAgentOptions(**prepared.options)
+
+    assert sdk_options.system_prompt == {
+        "type": "preset",
+        "preset": "claude_code",
+        "append": "Use AgentRules phase guidance.",
+        "exclude_dynamic_sections": True,
+    }
