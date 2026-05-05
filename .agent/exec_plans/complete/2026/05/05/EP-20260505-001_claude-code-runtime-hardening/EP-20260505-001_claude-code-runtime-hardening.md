@@ -1,22 +1,32 @@
 ---
 id: EP-20260505-001
-title: "Harden Claude Code Runtime Provider"
-status: planned
+title: Harden Claude Code Runtime Provider
+status: done
 kind: refactor
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-05-05
-updated: 2026-05-05
-tags: [claude-code, agent-sdk, provider-runtime, hardening]
-touches: [cli, agents, security, tests, docs]
+updated: '2026-05-05'
+tags:
+- claude-code
+- agent-sdk
+- provider-runtime
+- hardening
+touches:
+- cli
+- agents
+- security
+- tests
+- docs
 risk: med
 breaking: false
 migration: false
 links:
-  issue: ""
-  pr: ""
-  docs: "internal-docs/integrations/anthropic/agents-sdk"
-depends_on: [EP-20260504-001]
+  issue: ''
+  pr: ''
+  docs: internal-docs/integrations/anthropic/agents-sdk
+depends_on:
+- EP-20260504-001
 supersedes: []
 ---
 
@@ -82,8 +92,11 @@ Milestone 5, `EP-20260505-001/MS005 Clarify Final Analysis Failure Contract`, re
 - [x] (2026-05-05 America/New_York) Drafted remediation strategy for all five Claude Code runtime review findings.
 - [x] (2026-05-05 America/New_York) Completed MS001: Claude Code requests now preserve the built-in Claude Code prompt preset and append AgentRules instructions; validation passed with focused tests, SDK import smoke, and ruff.
 - [x] (2026-05-05 America/New_York) Completed MS002: Claude Code requests now include configurable turn and optional budget limits, and SDK query collection has an AgentRules timeout; validation passed with focused tests, live-smoke skip check, ruff, and pyright.
-- [ ] Implementation complete.
-- [ ] Validation complete.
+- [x] (2026-05-05 America/New_York) Completed MS003: default Claude Code runtime config now lets the SDK resolve its CLI path, while explicit configured paths are still validated; validation passed with config, CLI, model preset, request-builder, ruff, pyright, SDK import, and import-smoke checks.
+- [x] (2026-05-05 America/New_York) Completed MS004: added shared `sdk_object_to_dict()` provider utility and moved Claude Code response parsing off its local `_to_dict`; validation passed with provider utility tests, response parser tests, ruff, pyright, and snapshot sync.
+- [x] (2026-05-05 America/New_York) Completed MS005: final analysis now logs and re-raises failures so critical rules generation stops instead of returning placeholder content; validation passed with phase-edge, Claude Code architect, final-analysis, CLI boundary, broad unit/offline, ruff, pyright, and import-smoke checks.
+- [x] Implementation complete.
+- [x] Validation complete.
 
 ## Surprises & Discoveries
 
@@ -114,7 +127,11 @@ Milestone 5, `EP-20260505-001/MS005 Clarify Final Analysis Failure Contract`, re
 
 ## Outcomes & Retrospective
 
-Document outcomes, remaining gaps, and follow-up work when implementation is complete.
+Completed all five hardening milestones. Claude Code runtime requests now preserve the Claude Code prompt preset, run with explicit execution bounds, defer to SDK-default CLI resolution when no path is configured, use a shared SDK-object coercion helper in response parsing, and fail fast during final rules generation.
+
+Validation completed across milestone-specific suites and the broad `tests/unit tests/offline` suite. Live Claude Code smoke remains opt-in and was not run live because it requires `AGENTRULES_RUN_CLAUDE_CODE_LIVE=1` and authenticated local runtime state.
+
+Remaining follow-up is intentionally outside this ExecPlan: other provider adapters still have local object-coercion helpers that can be migrated to `sdk_object_to_dict()` in a separate, low-risk cleanup once covered by provider-specific tests.
 
 ## Concrete Steps
 

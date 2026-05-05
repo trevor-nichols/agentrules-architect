@@ -301,9 +301,9 @@
       },
       "migration": false,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/claude-code-runtime-hardening/EP-20260505-001_claude-code-runtime-hardening.md",
+      "path": ".agent/exec_plans/complete/2026/05/05/EP-20260505-001_claude-code-runtime-hardening/EP-20260505-001_claude-code-runtime-hardening.md",
       "risk": "med",
-      "status": "planned",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "claude-code",
