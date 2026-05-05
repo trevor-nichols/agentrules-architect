@@ -158,6 +158,13 @@ PROVIDER_STRUCTURED_OUTPUT_SPECS: dict[ModelProvider, ProviderStructuredOutputSp
         schema_guarantee="strong",
         notes="Codex app-server accepts a per-turn outputSchema on turn/start.",
     ),
+    ModelProvider.CLAUDE_CODE: ProviderStructuredOutputSpec(
+        provider=ModelProvider.CLAUDE_CODE,
+        doc_path="internal-docs/integrations/anthropic/agents-sdk/structured-outputs.md",
+        request_mode="json_schema",
+        schema_guarantee="strong",
+        notes="Claude Agent SDK validates output_format json_schema in the final ResultMessage.",
+    ),
     ModelProvider.ANTHROPIC: ProviderStructuredOutputSpec(
         provider=ModelProvider.ANTHROPIC,
         doc_path="internal-docs/integrations/anthropic/structured-outputs.md",
@@ -236,7 +243,7 @@ def resolve_structured_output_mode(
             return "disabled"
         return "json_schema"
 
-    if provider in {ModelProvider.OPENAI, ModelProvider.CODEX, ModelProvider.GEMINI}:
+    if provider in {ModelProvider.OPENAI, ModelProvider.CODEX, ModelProvider.CLAUDE_CODE, ModelProvider.GEMINI}:
         return "json_schema"
 
     if provider in {ModelProvider.DEEPSEEK, ModelProvider.XAI}:
@@ -302,6 +309,17 @@ def build_anthropic_output_format(phase: str | None) -> dict[str, Any] | None:
     return {
         "type": "json_schema",
         "schema": anthropic_schema,
+    }
+
+
+def build_claude_code_output_format(phase: str | None) -> dict[str, Any] | None:
+    """Build Claude Agent SDK output_format json_schema payload."""
+    schema = get_phase_model_response_schema(phase)
+    if schema is None:
+        return None
+    return {
+        "type": "json_schema",
+        "schema": build_anthropic_compatible_schema(schema),
     }
 
 

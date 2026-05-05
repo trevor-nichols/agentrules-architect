@@ -84,7 +84,7 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
 - [x] (2026-05-04 21:55 America/New_York) Drafted the implementation plan around Claude Code Claude.ai OAuth subscription auth, separate from Anthropic API-key auth.
 - [x] (2026-05-04 21:48 America/New_York) User approved the plan and requested milestone-by-milestone execution, validation, archiving, and commits.
 - [x] (2026-05-04 22:15 America/New_York) Milestone 1 implementation complete: provider identity, Claude Code runtime config, OAuth environment sanitization, availability checks, tests, and snapshot sync are in place.
-- [ ] Milestone 2 implementation complete.
+- [x] (2026-05-04 22:35 America/New_York) Milestone 2 implementation complete: Claude Code Agent SDK adapter, request builder, lazy client, response parser, structured output mapping, tests, ruff, pyright, and snapshot sync are in place.
 - [ ] Milestone 3 implementation complete.
 - [ ] Milestone 4 implementation complete.
 - [ ] Milestone 5 implementation complete.
@@ -102,6 +102,10 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
   Evidence: `python -c "import agentrules"` failed with `ModuleNotFoundError` and `pytest` was not on PATH, while `PYTHONPATH=src .venv/bin/python -c "import agentrules"` and `PYTHONPATH=src .venv/bin/pytest ...` succeeded.
 - Observation: Existing researcher-mode tests were sensitive to ambient model preset state.
   Evidence: The first MS001 focused test run failed because the researcher phase resolved to a runtime-native Codex preset; making those tests explicitly select non-runtime `gpt5-mini` restored the intended assertion and the focused suite passed.
+- Observation: The installed Claude Agent SDK matches the documented package and import names.
+  Evidence: `uv add claude-agent-sdk` installed version `0.1.73`, and runtime inspection confirmed `claude_agent_sdk.query`, `ClaudeAgentOptions`, `AssistantMessage`, `ResultMessage`, `TextBlock`, and `ToolUseBlock`.
+- Observation: The SDK message dataclasses expose enough fields for deterministic offline parser tests.
+  Evidence: `AssistantMessage.content`, `ResultMessage.structured_output`, `ResultMessage.is_error`, and `ToolUseBlock.input` were instantiated directly in unit tests without contacting Claude.
 
 ## Decision Log
 
@@ -122,6 +126,9 @@ Milestone 5, `EP-20260504-001/MS005 Validation Documentation and Rollout`, compl
   Date/Author: 2026-05-04 / @codex
 - Decision: Keep Claude Code OAuth env sanitization as a child-environment builder rather than mutating process-wide provider credentials.
   Rationale: Existing Anthropic API-key behavior must remain intact for `ModelProvider.ANTHROPIC`; the Claude Code runtime needs a sanitized environment only when launching SDK/CLI child processes.
+  Date/Author: 2026-05-04 / @codex
+- Decision: Defer `stream_analyze()` for Claude Code until a later pass.
+  Rationale: MS002 covers the non-streaming provider contract needed by the pipeline and verifies `query()` output parsing. Streaming requires mapping partial SDK events into AgentRules `StreamChunk` semantics and is not needed to unblock phase execution.
   Date/Author: 2026-05-04 / @codex
 
 ## Outcomes & Retrospective

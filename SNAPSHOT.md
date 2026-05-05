@@ -92,6 +92,13 @@
 │       │   │   │   ├── request_builder.py  # Request construction for Anthropic
 │       │   │   │   ├── response_parser.py  # Anthropic response parser
 │       │   │   │   └── tooling.py  # Tool config resolution for Anthropic
+│       │   │   ├── claude_code
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── architect.py
+│       │   │   │   ├── client.py
+│       │   │   │   ├── errors.py
+│       │   │   │   ├── request_builder.py
+│       │   │   │   └── response_parser.py
 │       │   │   ├── codex/  # Codex App Server integration
 │       │   │   │   ├── __init__.py  # Codex package
 │       │   │   │   ├── architect.py  # BaseArchitect implementation for Codex
@@ -335,6 +342,9 @@
 │   │   │   ├── test_anthropic_capabilities.py  # Tests for Anthropic capability flags
 │   │   │   ├── test_anthropic_client_compat.py  # Tests for Anthropic client
 │   │   │   ├── test_anthropic_request_builder.py  # Tests for Anthropic request building
+│   │   │   ├── test_claude_code_architect.py
+│   │   │   ├── test_claude_code_request_builder.py
+│   │   │   ├── test_claude_code_response_parser.py
 │   │   │   ├── test_codex_architect.py  # Tests for Codex architect
 │   │   │   ├── test_codex_client.py  # Tests for Codex client
 │   │   │   ├── test_codex_request_builder.py  # Tests for Codex request building
