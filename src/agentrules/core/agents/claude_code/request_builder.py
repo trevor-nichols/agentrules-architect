@@ -69,8 +69,12 @@ def prepare_request(
         "tools": {"type": "preset", "preset": "claude_code"},
     }
 
-    if runtime_config.cli_path is not None:
-        options["cli_path"] = runtime_config.cli_path
+    resolved_cli_path = _resolve_cli_path(
+        config_manager,
+        configured_cli_path=runtime_config.cli_path,
+    )
+    if resolved_cli_path is not None:
+        options["cli_path"] = resolved_cli_path
 
     thinking = _build_thinking_config(reasoning)
     if thinking is not None:
@@ -148,6 +152,21 @@ def _resolve_sanitized_env_vars(
     if auth_strategy == "oauth" and sanitize_api_key_env:
         return CLAUDE_CODE_API_KEY_ENV_VARS
     return ()
+
+
+def _resolve_cli_path(
+    config_manager: ConfigManager,
+    *,
+    configured_cli_path: str | None,
+) -> str | None:
+    if configured_cli_path is None:
+        return None
+    resolved = config_manager.resolve_claude_code_executable()
+    if resolved is None:
+        raise ValueError(
+            f"Configured Claude Code executable could not be resolved: {configured_cli_path!r}."
+        )
+    return resolved
 
 
 __all__ = [

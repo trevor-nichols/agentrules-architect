@@ -79,7 +79,11 @@ These settings belong in the `[claude_code]` config section when non-default val
 
 AgentRules treats a missing `claude_code.cli_path` value as "SDK default." In that mode, `prepare_request()` omits `cli_path` from `ClaudeAgentOptions`, matching the SDK's documented `None` default.
 
-Configure `Claude executable path` only when you need an explicit runtime override. Existing configs with `cli_path = "claude"` remain valid and are treated as explicit settings; if that command cannot be resolved, Claude Code presets are gated off until the path is fixed or cleared.
+Configure `Claude executable path` only when you need an explicit runtime override. Existing configs
+with `cli_path = "claude"` remain valid and are treated as explicit settings; AgentRules resolves
+explicit commands and paths before passing them to the SDK. If the configured executable cannot be
+resolved, Claude Code presets are gated off and request preparation fails fast until the path is fixed
+or cleared.
 
 ## Select Claude Code presets
 

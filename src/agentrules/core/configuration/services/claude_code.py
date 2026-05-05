@@ -95,7 +95,10 @@ def resolve_claude_code_executable(config: CLIConfig) -> str | None:
         if _is_executable_file(candidate):
             return str(candidate.resolve())
         return None
-    return shutil.which(expanded)
+    resolved = shutil.which(expanded)
+    if resolved is None:
+        return None
+    return str(Path(resolved).resolve())
 
 
 def is_claude_agent_sdk_available() -> bool:

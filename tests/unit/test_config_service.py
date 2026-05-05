@@ -257,6 +257,18 @@ class ConfigServiceTestCase(unittest.TestCase):
 
         self.assertEqual(resolved, str(executable.resolve()))
 
+    def test_claude_code_command_cli_path_resolves_to_absolute_path(self) -> None:
+        executable = Path(self.temp_dir.name) / "bin" / "claude"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text("#!/bin/sh\n", encoding="utf-8")
+        executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+        self.config_manager.set_claude_code_cli_path("claude")
+
+        with patch.dict(os.environ, {"PATH": str(executable.parent)}):
+            resolved = self.config_manager.resolve_claude_code_executable()
+
+        self.assertEqual(resolved, str(executable.resolve()))
+
     @unittest.skipIf(os.name == "nt", "Executable-bit validation is platform-specific on Windows")
     def test_claude_code_non_executable_cli_path_is_unavailable(self) -> None:
         candidate = Path(self.temp_dir.name) / "bin" / "claude"

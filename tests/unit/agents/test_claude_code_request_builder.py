@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
 from claude_agent_sdk import ClaudeAgentOptions
 
 from agentrules.core.agents.base import ReasoningMode
@@ -46,7 +47,7 @@ def test_prepare_request_sets_oauth_runtime_options_and_sanitized_env(tmp_path: 
     )
 
     assert prepared.options["model"] == "claude-sonnet-4-6"
-    assert prepared.options["cli_path"] == sys.executable
+    assert prepared.options["cli_path"] == str(Path(sys.executable).resolve())
     assert prepared.options["cwd"] == str(tmp_path.resolve())
     assert prepared.options["permission_mode"] == "dontAsk"
     assert prepared.options["allowed_tools"] == ["Read", "Glob", "Grep"]
@@ -82,6 +83,48 @@ def test_prepare_request_omits_cli_path_for_sdk_default_runtime(tmp_path: Path) 
 
     assert "cli_path" not in prepared.options
     assert sdk_options.cli_path is None
+
+
+def test_prepare_request_resolves_configured_cli_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    executable = bin_dir / "claude"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    manager = _build_sdk_default_config_manager(tmp_path)
+    manager.set_claude_code_cli_path("claude")
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-sonnet-4-6",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    assert prepared.options["cli_path"] == str(executable.resolve())
+
+
+def test_prepare_request_fails_fast_when_configured_cli_path_is_missing(tmp_path: Path) -> None:
+    manager = _build_sdk_default_config_manager(tmp_path)
+    manager.set_claude_code_cli_path(str(tmp_path / "missing-claude"))
+
+    with pytest.raises(ValueError, match="Configured Claude Code executable could not be resolved"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-sonnet-4-6",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DISABLED,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
 
 
 def test_prepare_request_enables_research_tools_when_tools_config_enabled(tmp_path: Path) -> None:
