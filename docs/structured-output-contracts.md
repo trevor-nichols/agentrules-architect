@@ -148,6 +148,10 @@ Consumer:
 
 - Output writer and AGENTS.md generation path
 
+Failure behavior:
+
+- `FinalAnalysis.run` treats provider `error` payloads and raised exceptions as critical generation failures. It logs and re-raises so the CLI/pipeline boundary can stop the run before writing placeholder rules content.
+
 Structured-output mode:
 
 - Enforced in `PHASE_MODEL_RESPONSE_SCHEMAS["final"]`

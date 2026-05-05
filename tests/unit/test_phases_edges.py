@@ -209,8 +209,8 @@ async def test_final_analysis_lazy_factory_success_and_error(monkeypatch):
     # Error path
     factory_mod.get_architect_for_phase = lambda phase: ArchFail()
     fa2 = FinalAnalysis()
-    out2 = await fa2.run({"report": "R"}, ["."])
-    assert "error" in out2
+    with pytest.raises(RuntimeError, match="boom"):
+        await fa2.run({"report": "R"}, ["."])
 
 
 @pytest.mark.asyncio

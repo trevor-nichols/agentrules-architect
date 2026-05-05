@@ -2,18 +2,21 @@
 id: EP-20260505-001/MS005
 execplan_id: EP-20260505-001
 ms: 5
-title: "Clarify Final Analysis Failure Contract"
-status: planned
+title: Clarify Final Analysis Failure Contract
+status: completed
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-05-05
-updated: 2026-05-05
-tags: [final-analysis, fail-fast, pipeline-contract]
+updated: '2026-05-05'
+tags:
+- final-analysis
+- fail-fast
+- pipeline-contract
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Clarify Final Analysis Failure Contract
@@ -26,11 +29,11 @@ Restore a clear fail-fast contract for final analysis. At the end of this milest
 
 ## Definition of Done
 
-- [ ] `src/agentrules/core/analysis/final_analysis.py` re-raises exceptions after logging, matching the Phase 5 fail-fast pattern.
-- [ ] Tests that previously expected an error payload are updated to expect a raised exception.
-- [ ] Any CLI or pipeline-level tests that rely on top-level error reporting still pass.
-- [ ] The ExecPlan and milestone changelog explain why placeholder final analysis output is not acceptable for critical artifact generation.
-- [ ] Broad phase-edge tests and offline tests pass.
+- [x] `src/agentrules/core/analysis/final_analysis.py` re-raises exceptions after logging, matching the Phase 5 fail-fast pattern.
+- [x] Tests that previously expected an error payload are updated to expect a raised exception.
+- [x] Any CLI or pipeline-level tests that rely on top-level error reporting still pass.
+- [x] The ExecPlan and milestone changelog explain why placeholder final analysis output is not acceptable for critical artifact generation.
+- [x] Broad phase-edge tests and offline tests pass.
 
 ## Scope
 
@@ -47,10 +50,10 @@ Restore a clear fail-fast contract for final analysis. At the end of this milest
 
 ## Workstreams & Tasks
 
-- [ ] Contract: decide and document that final analysis is a critical generation phase and must fail fast.
-- [ ] Implementation: change the exception handler back to `raise` after logging.
-- [ ] Tests: update the final-analysis failure-path test to use `pytest.raises(RuntimeError, match="boom")` or the exact propagated exception.
-- [ ] Regression: run Phase 5 and final-analysis edge tests together to confirm consistent behavior.
+- [x] Contract: decide and document that final analysis is a critical generation phase and must fail fast.
+- [x] Implementation: change the exception handler back to `raise` after logging.
+- [x] Tests: update the final-analysis failure-path test to use `pytest.raises(RuntimeError, match="boom")` or the exact propagated exception.
+- [x] Regression: run Phase 5 and final-analysis edge tests together to confirm consistent behavior.
 
 ## Risks & Mitigations
 
@@ -70,3 +73,12 @@ Restore a clear fail-fast contract for final analysis. At the end of this milest
 
 - 2026-05-05: Milestone created.
 - 2026-05-05: Drafted fail-fast final-analysis contract scope from Claude Code runtime review finding 5.
+- 2026-05-05: Restored fail-fast final-analysis behavior, documented the critical-artifact failure contract, and validated CLI boundary handling.
+
+## Validation Results
+
+- 2026-05-05: `PYTHONPATH=src .venv/bin/pytest tests/unit/test_phases_edges.py tests/unit/agents/test_claude_code_architect.py tests/final_analysis_test/test_final_offline.py tests/test_cli_services.py::PipelineRunnerTests::test_run_pipeline_returns_false_when_final_analysis_raises` passed with 20 tests.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/pytest tests/unit tests/offline` passed with 568 tests and 4 existing pathspec deprecation warnings.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/ruff check src/agentrules/core/analysis/final_analysis.py tests/unit/test_phases_edges.py docs/structured-output-contracts.md` passed.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/pyright` passed with 0 errors.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/python -c "import agentrules"` passed.
