@@ -467,6 +467,7 @@ def _provider_display_name(provider: ModelProvider) -> str:
     mapping = {
         ModelProvider.OPENAI: "OpenAI",
         ModelProvider.CODEX: "Codex App Server",
+        ModelProvider.CLAUDE_CODE: "Claude Code",
         ModelProvider.ANTHROPIC: "Anthropic",
         ModelProvider.GEMINI: "Google Gemini",
         ModelProvider.DEEPSEEK: "DeepSeek",

@@ -177,10 +177,11 @@ def describe_researcher_phase_status(
     researcher_info = model_presets.get_preset_info(researcher_key) if researcher_key else None
     researcher_uses_native_search = uses_runtime_native_web_search(researcher_info)
     codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
+    claude_code_available = bool(provider_availability.get(ModelProvider.CLAUDE_CODE.value, False))
 
     if not tavily_available and not offline_mode and not researcher_uses_native_search:
-        if codex_available:
-            return "Needs Tavily or Codex preset", ""
+        if codex_available or claude_code_available:
+            return "Needs Tavily or runtime preset", ""
         return "Add Tavily API key to enable", ""
 
     status_label = "On" if researcher_mode == "on" else "Off"

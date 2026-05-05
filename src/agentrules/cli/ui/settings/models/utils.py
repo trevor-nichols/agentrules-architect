@@ -231,6 +231,8 @@ def compact_model_label(label: str, provider_slug: str, provider_display: str) -
         normalized = normalized[: -len(f"[{provider_display}]")].rstrip()
     if provider_slug == "codex" and normalized.lower().startswith("codex:"):
         return normalized.split(":", 1)[1].strip()
+    if provider_slug == "claude_code" and normalized.lower().startswith("claude code "):
+        return normalized[len("claude code ") :].strip()
     if provider_slug == "openai" and normalized.lower().startswith("openai "):
         return normalized[len("openai ") :].strip()
     return normalized

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import questionary
 
+from agentrules.cli.ui.settings.models import describe_researcher_phase_status
 from agentrules.cli.ui.settings.models.utils import (
     build_model_choice_state,
     compact_model_label,
@@ -27,6 +28,7 @@ def _preset(
 def test_model_picker_adds_provider_separators_and_badges() -> None:
     presets = [
         _preset(key="openai-gpt5", label="OpenAI GPT-5", provider=ModelProvider.OPENAI),
+        _preset(key="claude-code-sonnet", label="Claude Code Claude Sonnet 4.6", provider=ModelProvider.CLAUDE_CODE),
         _preset(key="claude-sonnet", label="Claude Sonnet 4.6", provider=ModelProvider.ANTHROPIC),
     ]
 
@@ -39,11 +41,21 @@ def test_model_picker_adds_provider_separators_and_badges() -> None:
     )
 
     separators = [choice for choice in state.choices if isinstance(choice, questionary.Separator)]
-    assert [separator.title for separator in separators] == ["---- OpenAI ----", "---- Anthropic ----"]
+    assert [separator.title for separator in separators] == [
+        "---- OpenAI ----",
+        "---- Claude Code ----",
+        "---- Anthropic ----",
+    ]
 
     openai_choice = next(choice for choice in state.choices if getattr(choice, "value", None) == "openai-gpt5")
     assert isinstance(openai_choice.title, list)
     assert ("class:provider.openai", "[OA]") in openai_choice.title
+
+    claude_code_choice = next(
+        choice for choice in state.choices if getattr(choice, "value", None) == "claude-code-sonnet"
+    )
+    assert isinstance(claude_code_choice.title, list)
+    assert ("class:provider.claude_code", "[CC]") in claude_code_choice.title
 
     anthropic_choice = next(choice for choice in state.choices if getattr(choice, "value", None) == "claude-sonnet")
     assert isinstance(anthropic_choice.title, list)
@@ -74,4 +86,24 @@ def test_model_picker_group_choice_shows_variant_summary_and_defaults_to_group()
 def test_compact_model_label_removes_provider_prefixes() -> None:
     assert compact_model_label("OpenAI O3", "openai", "OpenAI") == "O3"
     assert compact_model_label("Codex: gpt-5.3-codex", "codex", "Codex App Server") == "gpt-5.3-codex"
+    assert (
+        compact_model_label("Claude Code Claude Sonnet 4.6", "claude_code", "Claude Code")
+        == "Claude Sonnet 4.6"
+    )
     assert compact_model_label("Claude Sonnet 4.6", "anthropic", "Anthropic") == "Claude Sonnet 4.6"
+
+
+def test_researcher_status_mentions_runtime_preset_when_claude_code_available() -> None:
+    model_label, provider_label = describe_researcher_phase_status(
+        researcher_key="gpt55-default",
+        researcher_mode="off",
+        tavily_available=False,
+        offline_mode=False,
+        provider_availability={
+            ModelProvider.CLAUDE_CODE.value: True,
+            ModelProvider.CODEX.value: False,
+        },
+    )
+
+    assert model_label == "Needs Tavily or runtime preset"
+    assert provider_label == ""

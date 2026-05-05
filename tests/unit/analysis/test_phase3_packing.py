@@ -58,6 +58,20 @@ class CodexDummyArchitect:
         }
 
 
+class ClaudeCodeDummyArchitect(CodexDummyArchitect):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model_name = "claude-sonnet-4-6"
+        self.provider = ModelProvider.CLAUDE_CODE
+        self._model_config = ModelConfig(
+            provider=ModelProvider.CLAUDE_CODE,
+            model_name="claude-sonnet-4-6",
+            reasoning=ReasoningMode.DYNAMIC,
+            max_input_tokens=200_000,
+            estimator_family="tiktoken",
+        )
+
+
 @pytest.mark.asyncio
 async def test_phase3_batches_are_sequential(monkeypatch):
     phase = Phase3Analysis()
@@ -109,6 +123,40 @@ async def test_phase3_codex_path_skips_file_loading_and_uses_repo_runtime_prompt
 
     def _unexpected_file_load(*_args, **_kwargs):
         raise AssertionError("Phase 3 should not load file bodies for Codex runtime agents")
+
+    monkeypatch.setattr(
+        "agentrules.core.analysis.phase_3.get_architect_for_phase",
+        lambda *args, **kwargs: architect,
+    )
+    monkeypatch.setattr(phase, "_get_file_contents", _unexpected_file_load)
+
+    result = await phase.run({"agents": [agent_def]}, tree=["a.py", "nested/b.py"], directory=tmp_path)
+
+    findings = result["findings"][0]
+    assert findings["received_files"] == ["a.py", "nested/b.py"]
+    assert findings["file_contents"] == {}
+    assert findings["cwd"] == str(tmp_path.resolve())
+    assert "RUNTIME INSTRUCTIONS:" in findings["formatted_prompt"]
+    assert "repository navigation, file reading, and search tools" in findings["formatted_prompt"]
+    assert "FILE CONTENTS:" not in findings["formatted_prompt"]
+
+
+@pytest.mark.asyncio
+async def test_phase3_claude_code_path_skips_file_loading_and_uses_repo_runtime_prompt(
+    monkeypatch,
+    tmp_path: Path,
+):
+    phase = Phase3Analysis()
+    architect = ClaudeCodeDummyArchitect()
+    agent_def = {
+        "id": "agent_1",
+        "name": "Claude Code Runtime Agent",
+        "description": "Testing",
+        "file_assignments": ["a.py", "nested/b.py"],
+    }
+
+    def _unexpected_file_load(*_args, **_kwargs):
+        raise AssertionError("Phase 3 should not load file bodies for Claude Code runtime agents")
 
     monkeypatch.setattr(
         "agentrules.core.analysis.phase_3.get_architect_for_phase",

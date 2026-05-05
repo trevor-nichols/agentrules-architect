@@ -81,6 +81,9 @@ class ArchitectFactory:
         if provider == ModelProvider.ANTHROPIC:
             from ..anthropic import AnthropicArchitect  # noqa: E402
             return AnthropicArchitect(**common_args)
+        elif provider == ModelProvider.CLAUDE_CODE:
+            from ..claude_code import ClaudeCodeArchitect  # noqa: E402
+            return ClaudeCodeArchitect(**common_args)
         elif provider == ModelProvider.OPENAI:
             from ..openai import OpenAIArchitect  # noqa: E402
             return OpenAIArchitect(

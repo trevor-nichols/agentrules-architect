@@ -152,6 +152,16 @@ def create_codex_config(base_config: ModelConfig) -> ModelConfig:
     """
     return base_config._replace(provider=ModelProvider.CODEX)
 
+
+def create_claude_code_config(base_config: ModelConfig) -> ModelConfig:
+    """
+    Re-target an existing Claude model configuration to the Claude Code runtime.
+
+    Claude Code uses Claude model identifiers and thinking controls, but obtains
+    auth and tool execution through the local Claude Code Agent SDK runtime.
+    """
+    return base_config._replace(provider=ModelProvider.CLAUDE_CODE)
+
 # O1 configurations with different reasoning levels
 O3_HIGH = ModelConfig(
     provider=ModelProvider.OPENAI,

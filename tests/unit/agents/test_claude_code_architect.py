@@ -8,8 +8,10 @@ from typing import Any
 import pytest
 from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock
 
+from agentrules.config.agents import MODEL_PRESETS
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.agents.claude_code.architect import ClaudeCodeArchitect
+from agentrules.core.agents.factory.factory import ArchitectFactory
 from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.repository import TomlConfigRepository
 from agentrules.core.types.models import ModelConfig
@@ -84,6 +86,19 @@ def _build_architect(
         config_manager=_build_config_manager(tmp_path),
         query_executor=_fake_query,
     )
+
+
+def test_factory_creates_claude_code_architect() -> None:
+    architect = ArchitectFactory.create_architect(
+        model_config=MODEL_PRESETS["claude-code-sonnet-4.6"]["config"],
+        name="Claude Code Factory Agent",
+        role="analysis",
+        responsibilities=["Review the repository"],
+        prompt_template="{context}",
+        system_prompt="Use concise bullets.",
+    )
+
+    assert isinstance(architect, ClaudeCodeArchitect)
 
 
 @pytest.mark.asyncio

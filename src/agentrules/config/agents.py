@@ -77,6 +77,7 @@ from agentrules.core.types.models import (
     O4_MINI_LOW,
     O4_MINI_MEDIUM,
     ModelConfig,
+    create_claude_code_config,
     create_codex_config,
 )
 
@@ -167,6 +168,22 @@ def _derive_codex_runtime_preset(
         label=label or f"Codex {base_label}",
         description=description or f"{base_description} Routed through the Codex app-server runtime.",
         provider=ModelProvider.CODEX,
+    )
+
+
+def _derive_claude_code_runtime_preset(
+    base_preset: PresetDefinition,
+    *,
+    label: str | None = None,
+    description: str | None = None,
+) -> PresetDefinition:
+    base_label = base_preset["label"]
+    base_description = base_preset["description"]
+    return _preset(
+        config=create_claude_code_config(base_preset["config"]),
+        label=label or f"Claude Code {base_label}",
+        description=description or f"{base_description} Routed through the Claude Code Agent SDK runtime.",
+        provider=ModelProvider.CLAUDE_CODE,
     )
 
 
@@ -612,9 +629,39 @@ def _build_codex_runtime_presets() -> dict[str, PresetDefinition]:
     }
 
 
+def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
+    return {
+        "claude-code-sonnet-4.6": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-sonnet-4.6"]),
+        "claude-code-sonnet-4.6-reasoning-high": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-4.6-reasoning-high"]
+        ),
+        "claude-code-sonnet-4.6-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-4.6-reasoning-medium"]
+        ),
+        "claude-code-sonnet-4.6-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-4.6-reasoning-low"]
+        ),
+        "claude-code-opus-4.6": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-opus-4.6"]),
+        "claude-code-opus-4.6-reasoning": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.6-reasoning"]
+        ),
+        "claude-code-opus-4.6-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.6-reasoning-medium"]
+        ),
+        "claude-code-opus-4.6-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.6-reasoning-low"]
+        ),
+        "claude-code-opus-4.6-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.6-reasoning-max"]
+        ),
+        "claude-code-haiku": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-haiku"]),
+    }
+
+
 MODEL_PRESETS: dict[str, PresetDefinition] = {
     **BASE_MODEL_PRESETS,
     **_build_codex_runtime_presets(),
+    **_build_claude_code_runtime_presets(),
 }
 
 MODEL_PRESET_DEFAULTS: dict[str, str] = {
