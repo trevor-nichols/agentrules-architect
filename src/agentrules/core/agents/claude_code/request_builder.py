@@ -53,7 +53,6 @@ def prepare_request(
 
     options: dict[str, Any] = {
         "allowed_tools": list(_resolve_allowed_tools(tools_config)),
-        "cli_path": runtime_config.cli_path,
         "cwd": normalized_cwd,
         "disallowed_tools": list(DEFAULT_DISALLOWED_TOOLS),
         "env": config_manager.build_claude_code_environment(),
@@ -64,6 +63,9 @@ def prepare_request(
         "system_prompt": _build_system_prompt_option(system_prompt),
         "tools": {"type": "preset", "preset": "claude_code"},
     }
+
+    if runtime_config.cli_path is not None:
+        options["cli_path"] = runtime_config.cli_path
 
     thinking = _build_thinking_config(reasoning)
     if thinking is not None:

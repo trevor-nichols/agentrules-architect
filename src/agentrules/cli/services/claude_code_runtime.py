@@ -15,8 +15,9 @@ from agentrules.core.configuration import (
 
 @dataclass(frozen=True)
 class ClaudeCodeRuntimeDiagnostics:
-    cli_path: str
+    cli_path: str | None
     executable_path: str | None
+    sdk_available: bool
     auth_strategy: str
     sanitize_api_key_env: bool
     oauth_token_present: bool
@@ -27,7 +28,7 @@ class ClaudeCodeRuntimeDiagnostics:
 
     @property
     def is_available(self) -> bool:
-        return self.executable_path is not None and self.runtime_error is None
+        return self.sdk_available and self.runtime_error is None
 
 
 def get_claude_code_runtime_diagnostics(
@@ -38,14 +39,19 @@ def get_claude_code_runtime_diagnostics(
     manager = config_manager or get_config_manager()
     runtime_config = manager.get_claude_code_config()
     executable_path = manager.resolve_claude_code_executable()
+    sdk_available = manager.is_claude_agent_sdk_available()
     child_env = manager.build_claude_code_environment()
 
     version: str | None = None
     version_error: str | None = None
     runtime_error: str | None = None
 
-    if executable_path is None:
-        runtime_error = "Claude Code executable could not be resolved from the current settings."
+    if not sdk_available:
+        runtime_error = "Claude Agent SDK package could not be imported in the AgentRules environment."
+    elif runtime_config.cli_path is None:
+        pass
+    elif executable_path is None:
+        runtime_error = "Configured Claude Code executable could not be resolved from the current settings."
     else:
         try:
             completed = subprocess.run(
@@ -68,6 +74,7 @@ def get_claude_code_runtime_diagnostics(
     return ClaudeCodeRuntimeDiagnostics(
         cli_path=runtime_config.cli_path,
         executable_path=executable_path,
+        sdk_available=sdk_available,
         auth_strategy=runtime_config.auth_strategy,
         sanitize_api_key_env=runtime_config.sanitize_api_key_env,
         oauth_token_present=CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR in child_env,

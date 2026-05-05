@@ -24,6 +24,16 @@ def _build_config_manager(tmp_path: Path) -> ConfigManager:
     return manager
 
 
+def _build_sdk_default_config_manager(tmp_path: Path) -> ConfigManager:
+    env = {
+        "ANTHROPIC_API_KEY": "api-key",
+        "ANTHROPIC_AUTH_TOKEN": "auth-token",
+        "CLAUDE_CODE_OAUTH_TOKEN": "oauth-token",
+        "PATH": "/usr/bin",
+    }
+    return ConfigManager(repository=TomlConfigRepository(tmp_path / "config.toml"), environ=env)
+
+
 def test_prepare_request_sets_oauth_runtime_options_and_sanitized_env(tmp_path: Path) -> None:
     prepared = prepare_request(
         config_manager=_build_config_manager(tmp_path),
@@ -54,6 +64,23 @@ def test_prepare_request_sets_oauth_runtime_options_and_sanitized_env(tmp_path: 
     assert prepared.options["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "oauth-token"
     assert "ANTHROPIC_API_KEY" not in prepared.options["env"]
     assert "ANTHROPIC_AUTH_TOKEN" not in prepared.options["env"]
+
+
+def test_prepare_request_omits_cli_path_for_sdk_default_runtime(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_sdk_default_config_manager(tmp_path),
+        model_name="claude-sonnet-4-6",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    sdk_options = ClaudeAgentOptions(**prepared.options)
+
+    assert "cli_path" not in prepared.options
+    assert sdk_options.cli_path is None
 
 
 def test_prepare_request_enables_research_tools_when_tools_config_enabled(tmp_path: Path) -> None:

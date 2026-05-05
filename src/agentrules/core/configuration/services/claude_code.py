@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 from collections.abc import Mapping
@@ -19,8 +20,7 @@ from ..utils import (
 
 def get_claude_code_config(config: CLIConfig) -> ClaudeCodeConfig:
     normalized = ClaudeCodeConfig(
-        cli_path=normalize_optional_string(config.claude_code.cli_path)
-        or configuration_constants.DEFAULT_CLAUDE_CODE_CLI_PATH,
+        cli_path=normalize_optional_string(config.claude_code.cli_path),
         auth_strategy=normalize_claude_code_auth_strategy(config.claude_code.auth_strategy, default="oauth"),
         sanitize_api_key_env=bool(config.claude_code.sanitize_api_key_env),
         max_turns=coerce_positive_int(
@@ -44,7 +44,7 @@ def get_claude_code_config(config: CLIConfig) -> ClaudeCodeConfig:
 def set_claude_code_cli_path(config: CLIConfig, cli_path: str | None) -> None:
     current = get_claude_code_config(config)
     config.claude_code = current.__class__(
-        cli_path=normalize_optional_string(cli_path) or configuration_constants.DEFAULT_CLAUDE_CODE_CLI_PATH,
+        cli_path=normalize_optional_string(cli_path),
         auth_strategy=current.auth_strategy,
         sanitize_api_key_env=current.sanitize_api_key_env,
         max_turns=current.max_turns,
@@ -87,6 +87,8 @@ def _is_executable_file(candidate: Path) -> bool:
 
 def resolve_claude_code_executable(config: CLIConfig) -> str | None:
     cli_path = get_claude_code_config(config).cli_path
+    if cli_path is None:
+        return None
     expanded = os.path.expanduser(cli_path)
     if os.path.sep in expanded or (os.path.altsep and os.path.altsep in expanded):
         candidate = Path(expanded)
@@ -96,7 +98,19 @@ def resolve_claude_code_executable(config: CLIConfig) -> str | None:
     return shutil.which(expanded)
 
 
+def is_claude_agent_sdk_available() -> bool:
+    try:
+        return importlib.util.find_spec(configuration_constants.CLAUDE_AGENT_SDK_IMPORT_NAME) is not None
+    except (ImportError, ValueError):
+        return False
+
+
 def is_claude_code_available(config: CLIConfig) -> bool:
+    claude_code_config = get_claude_code_config(config)
+    if not is_claude_agent_sdk_available():
+        return False
+    if claude_code_config.cli_path is None:
+        return True
     return resolve_claude_code_executable(config) is not None
 
 

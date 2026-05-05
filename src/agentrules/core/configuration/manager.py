@@ -192,6 +192,9 @@ class ConfigManager:
         config = self._repository.load()
         return claude_code.resolve_claude_code_executable(config)
 
+    def is_claude_agent_sdk_available(self) -> bool:
+        return claude_code.is_claude_agent_sdk_available()
+
     def is_claude_code_available(self) -> bool:
         config = self._repository.load()
         return claude_code.is_claude_code_available(config)

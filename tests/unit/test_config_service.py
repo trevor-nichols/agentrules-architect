@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from importlib import reload
 from pathlib import Path
+from unittest.mock import patch
 
 from agentrules.core.configuration.repository import TomlConfigRepository
 
@@ -158,9 +159,10 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertIn("sanitize_api_key_env = false", persisted)
 
     def test_claude_code_defaults_do_not_persist_dedicated_section(self) -> None:
-        self.config_manager.get_claude_code_config()
+        config = self.config_manager.get_claude_code_config()
 
         persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertIsNone(config.cli_path)
         self.assertNotIn("[claude_code]", persisted)
 
     def test_claude_code_runtime_guardrail_config_persists_non_defaults(self) -> None:
@@ -199,14 +201,44 @@ class ConfigServiceTestCase(unittest.TestCase):
 
         config = self.config_manager.get_claude_code_config()
 
+        self.assertEqual(config.cli_path, "claude")
         self.assertEqual(config.max_turns, 12)
         self.assertEqual(config.request_timeout_seconds, 300.0)
         self.assertIsNone(config.max_budget_usd)
 
+    def test_claude_code_sdk_default_uses_sdk_importability(self) -> None:
+        config = self.config_manager.get_claude_code_config()
+
+        with patch(
+            "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+            return_value=True,
+        ):
+            availability = self.config_manager.get_provider_availability()
+
+        self.assertIsNone(config.cli_path)
+        self.assertIsNone(self.config_manager.resolve_claude_code_executable())
+        self.assertTrue(availability["claude_code"])
+
+    def test_claude_code_sdk_default_is_unavailable_when_sdk_is_missing(self) -> None:
+        with patch(
+            "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+            return_value=False,
+        ):
+            self.assertFalse(self.config_manager.is_claude_code_available())
+            availability = self.config_manager.get_provider_availability()
+
+        self.assertFalse(availability["claude_code"])
+
     def test_claude_code_availability_uses_resolved_executable(self) -> None:
         self.config_manager.set_claude_code_cli_path(sys.executable)
-        self.assertTrue(self.config_manager.is_claude_code_available())
-        availability = self.config_manager.get_provider_availability()
+
+        with patch(
+            "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+            return_value=True,
+        ):
+            self.assertTrue(self.config_manager.is_claude_code_available())
+            availability = self.config_manager.get_provider_availability()
+
         self.assertTrue(availability["claude_code"])
 
     def test_claude_code_relative_cli_path_resolves_to_absolute_path(self) -> None:
@@ -237,8 +269,12 @@ class ConfigServiceTestCase(unittest.TestCase):
             os.chdir(self.temp_dir.name)
             self.config_manager.set_claude_code_cli_path("bin/claude")
             resolved = self.config_manager.resolve_claude_code_executable()
-            is_available = self.config_manager.is_claude_code_available()
-            provider_availability = self.config_manager.get_provider_availability()
+            with patch(
+                "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+                return_value=True,
+            ):
+                is_available = self.config_manager.is_claude_code_available()
+                provider_availability = self.config_manager.get_provider_availability()
         finally:
             os.chdir(previous_cwd)
 

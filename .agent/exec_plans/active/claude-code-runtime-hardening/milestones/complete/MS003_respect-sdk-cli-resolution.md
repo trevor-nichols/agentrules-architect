@@ -2,18 +2,21 @@
 id: EP-20260505-001/MS003
 execplan_id: EP-20260505-001
 ms: 3
-title: "Respect SDK CLI Resolution"
-status: planned
+title: Respect SDK CLI Resolution
+status: completed
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-05-05
-updated: 2026-05-05
-tags: [claude-code, configuration, cli-resolution]
+updated: '2026-05-05'
+tags:
+- claude-code
+- configuration
+- cli-resolution
 risk: med
 links:
-  issue: ""
-  docs: "internal-docs/integrations/anthropic/agents-sdk/overview.md"
-  pr: ""
+  issue: ''
+  docs: internal-docs/integrations/anthropic/agents-sdk/overview.md
+  pr: ''
 ---
 
 # Respect SDK CLI Resolution
@@ -26,12 +29,12 @@ Make the Claude Code runtime honor the SDK's documented default binary resolutio
 
 ## Definition of Done
 
-- [ ] `ClaudeCodeConfig.cli_path` can represent "SDK default" as `None`.
-- [ ] Default serialized config does not write a `claude_code.cli_path` value.
-- [ ] `prepare_request()` omits `cli_path` from SDK options when `cli_path` is `None`.
-- [ ] Provider availability is true when the Claude Agent SDK is importable and no explicit invalid CLI path is configured.
-- [ ] Diagnostics clearly separate SDK runtime availability from optional operator commands like `claude auth login` and `claude setup-token`.
-- [ ] Config, CLI settings, model preset gating, and request-builder tests cover default SDK resolution and explicit path behavior.
+- [x] `ClaudeCodeConfig.cli_path` can represent "SDK default" as `None`.
+- [x] Default serialized config does not write a `claude_code.cli_path` value.
+- [x] `prepare_request()` omits `cli_path` from SDK options when `cli_path` is `None`.
+- [x] Provider availability is true when the Claude Agent SDK is importable and no explicit invalid CLI path is configured.
+- [x] Diagnostics clearly separate SDK runtime availability from optional operator commands like `claude auth login` and `claude setup-token`.
+- [x] Config, CLI settings, model preset gating, and request-builder tests cover default SDK resolution and explicit path behavior.
 
 ## Scope
 
@@ -50,11 +53,11 @@ Make the Claude Code runtime honor the SDK's documented default binary resolutio
 
 ## Workstreams & Tasks
 
-- [ ] Config model: represent the default as `None` and only normalize non-empty user input to a string path/command.
-- [ ] Availability: return false for an explicit non-resolvable path, true for SDK-default mode when the package is importable, and preserve false when the SDK is missing.
-- [ ] Request options: include `cli_path` only for explicit user settings.
-- [ ] CLI UX: show "SDK default" or similar in the settings table, and keep guidance for local setup commands.
-- [ ] Tests: cover no `[claude_code]` section persisted by default, explicit path persistence, explicit bad path unavailability, and preset gating under SDK-default availability.
+- [x] Config model: represent the default as `None` and only normalize non-empty user input to a string path/command.
+- [x] Availability: return false for an explicit non-resolvable path, true for SDK-default mode when the package is importable, and preserve false when the SDK is missing.
+- [x] Request options: include `cli_path` only for explicit user settings.
+- [x] CLI UX: show "SDK default" or similar in the settings table, and keep guidance for local setup commands.
+- [x] Tests: cover no `[claude_code]` section persisted by default, explicit path persistence, explicit bad path unavailability, and preset gating under SDK-default availability.
 
 ## Risks & Mitigations
 
@@ -74,3 +77,12 @@ Make the Claude Code runtime honor the SDK's documented default binary resolutio
 
 - 2026-05-05: Milestone created.
 - 2026-05-05: Drafted SDK-default CLI resolution scope from Claude Code runtime review finding 3.
+- 2026-05-05: Implemented SDK-default CLI resolution, explicit-path validation, diagnostics, docs, and targeted tests.
+
+## Validation Results
+
+- 2026-05-05: `PYTHONPATH=src .venv/bin/pytest tests/unit/test_config_service.py tests/unit/test_cli_claude_code_settings.py tests/unit/test_model_overrides.py tests/unit/agents/test_claude_code_request_builder.py` passed with 73 tests.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/python -c "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('claude_agent_sdk') else 1)"` passed.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/python -c "import agentrules"` passed.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/ruff check src/agentrules/core/configuration src/agentrules/cli/services/claude_code_runtime.py src/agentrules/cli/ui/settings/claude_code.py tests/unit/test_config_service.py tests/unit/test_cli_claude_code_settings.py tests/unit/agents/test_claude_code_request_builder.py tests/live/test_claude_code_live_smoke.py` passed.
+- 2026-05-05: `PYTHONPATH=src .venv/bin/pyright` passed with 0 errors.

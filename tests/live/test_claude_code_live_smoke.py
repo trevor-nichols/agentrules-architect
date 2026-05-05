@@ -17,7 +17,8 @@ LIVE_FLAG = "AGENTRULES_RUN_CLAUDE_CODE_LIVE"
 
 def _build_live_config_manager(tmp_path: Path) -> ConfigManager:
     manager = ConfigManager(repository=TomlConfigRepository(tmp_path / "config.toml"))
-    manager.set_claude_code_cli_path(os.getenv("AGENTRULES_CLAUDE_CODE_CLI", "claude"))
+    if cli_path := os.getenv("AGENTRULES_CLAUDE_CODE_CLI"):
+        manager.set_claude_code_cli_path(cli_path)
     return manager
 
 

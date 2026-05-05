@@ -22,6 +22,22 @@ def _format_bool(value: bool) -> str:
     return "[green]Yes[/]" if value else "[yellow]No[/]"
 
 
+def _format_cli_path(cli_path: str | None) -> str:
+    return cli_path or "[dim]SDK default[/]"
+
+
+def _format_cli_path_plain(cli_path: str | None) -> str:
+    return cli_path or "SDK default"
+
+
+def _format_resolved_executable(state: configuration.ClaudeCodeRuntimeState) -> str:
+    if state.executable_path:
+        return state.executable_path
+    if state.cli_path is None:
+        return "[dim]SDK default[/]"
+    return "[red]Not found[/]"
+
+
 def _render_runtime_summary(
     context: CliContext,
     state: configuration.ClaudeCodeRuntimeState,
@@ -30,8 +46,9 @@ def _render_runtime_summary(
     config_table = Table(title="[bold]Claude Code Runtime Configuration[/bold]", show_lines=False, pad_edge=False)
     config_table.add_column("Setting", style="bold")
     config_table.add_column("Value")
-    config_table.add_row("Configured executable", state.cli_path)
-    config_table.add_row("Resolved executable", state.executable_path or "[red]Not found[/]")
+    config_table.add_row("Configured executable", _format_cli_path(state.cli_path))
+    config_table.add_row("Resolved executable", _format_resolved_executable(state))
+    config_table.add_row("Claude Agent SDK", _format_bool(diagnostics.sdk_available))
     config_table.add_row("Auth strategy", state.auth_strategy)
     config_table.add_row("OAuth token env var", state.oauth_token_env_var)
     config_table.add_row("Strip Anthropic API-key env", _format_bool(state.sanitize_api_key_env))
@@ -67,20 +84,23 @@ def build_runtime_guidance(
     """Render operator notes for the current Claude Code runtime state."""
 
     notes: list[str] = [
-        "[dim]Claude Code uses Claude.ai OAuth subscription auth through the local `claude` CLI. "
-        "AgentRules does not store Anthropic API keys for this runtime.[/]"
+        "[dim]Claude Code uses the Claude Agent SDK and Claude.ai OAuth subscription auth. "
+        "AgentRules uses the SDK default runtime unless you configure an explicit executable path.[/]"
     ]
 
     if diagnostics.runtime_error:
-        notes.append(
-            "[dim]Install Claude Code or set the executable path to the `claude` command before selecting "
-            "Claude Code presets.[/]"
-        )
+        if not diagnostics.sdk_available:
+            notes.append("[dim]Install AgentRules dependencies so `claude-agent-sdk` is importable.[/]")
+        elif state.cli_path:
+            notes.append(
+                "[dim]Set a valid Claude executable path, or clear the path to let the SDK use its default "
+                "runtime resolution.[/]"
+            )
     else:
         notes.append(
-            "[dim]Authenticate outside AgentRules with `claude auth login`, then return here and refresh "
-            "the runtime status. For automated environments, run `claude setup-token` and export "
-            "CLAUDE_CODE_OAUTH_TOKEN.[/]"
+            "[dim]Authenticate outside AgentRules with Claude Code's OAuth flow. When the `claude` command "
+            "is available, run `claude auth login`; for automated environments, run `claude setup-token` "
+            "and export CLAUDE_CODE_OAUTH_TOKEN.[/]"
         )
 
     if state.sanitize_api_key_env:
@@ -109,9 +129,9 @@ def configure_claude_code_runtime(context: CliContext) -> None:
     console = context.console
     console.print("\n[bold]Configure Claude Code Runtime[/bold]")
     console.print(
-        "Claude Code uses the local [cyan]claude[/cyan] CLI and Claude.ai OAuth subscription auth. "
-        "Use [cyan]claude auth login[/cyan] in your terminal to authenticate; AgentRules only stores "
-        "runtime settings and never stores Anthropic API keys for this provider.\n"
+        "Claude Code uses the Claude Agent SDK and Claude.ai OAuth subscription auth. Leave the executable "
+        "path blank to use the SDK default runtime; set a path only when you need an explicit override. "
+        "AgentRules only stores runtime settings and never stores Anthropic API keys for this provider.\n"
     )
 
     while True:
@@ -122,7 +142,7 @@ def configure_claude_code_runtime(context: CliContext) -> None:
         selection = questionary.select(
             "Select Claude Code runtime action:",
             choices=[
-                value_choice("Claude executable path", state.cli_path, value="__CLI_PATH__"),
+                value_choice("Claude executable path", _format_cli_path_plain(state.cli_path), value="__CLI_PATH__"),
                 value_choice(
                     "Strip Anthropic API-key env",
                     "Yes" if state.sanitize_api_key_env else "No",
@@ -146,8 +166,8 @@ def configure_claude_code_runtime(context: CliContext) -> None:
 
         if selection == "__CLI_PATH__":
             answer = questionary.text(
-                "Enter the Claude executable path or command name:",
-                default=state.cli_path,
+                "Enter the Claude executable path or command name (leave blank for SDK default):",
+                default=state.cli_path or "",
                 qmark="🧰",
                 style=CLI_STYLE,
             ).ask()
@@ -185,4 +205,3 @@ def configure_claude_code_runtime(context: CliContext) -> None:
         if selection == "__REFRESH__":
             console.print("[green]Claude Code runtime status refreshed.[/]")
             continue
-

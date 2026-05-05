@@ -22,6 +22,7 @@ def test_claude_code_runtime_state_exposes_config_and_availability(tmp_path: Pat
     from agentrules.cli.services import configuration
 
     manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "is_claude_code_available", lambda: True)
     manager.set_claude_code_cli_path(sys.executable)
     monkeypatch.setattr(configuration, "CONFIG_MANAGER", manager)
 
@@ -34,7 +35,25 @@ def test_claude_code_runtime_state_exposes_config_and_availability(tmp_path: Pat
     assert state.is_available is True
 
 
-def test_claude_code_diagnostics_use_sanitized_child_environment(tmp_path: Path) -> None:
+def test_claude_code_runtime_state_uses_sdk_default_when_path_is_unset(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from agentrules.cli.services import configuration
+
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "is_claude_code_available", lambda: True)
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
+    monkeypatch.setattr(configuration, "CONFIG_MANAGER", manager)
+
+    state = configuration.get_claude_code_runtime_state()
+
+    assert state.cli_path is None
+    assert state.executable_path is None
+    assert state.is_available is True
+
+
+def test_claude_code_diagnostics_use_sanitized_child_environment(tmp_path: Path, monkeypatch) -> None:
     from agentrules.cli.services.claude_code_runtime import get_claude_code_runtime_diagnostics
 
     manager = _build_config_manager(
@@ -47,21 +66,24 @@ def test_claude_code_diagnostics_use_sanitized_child_environment(tmp_path: Path)
         },
     )
     manager.set_claude_code_cli_path(sys.executable)
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
 
     diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
 
     assert diagnostics.executable_path == str(Path(sys.executable).resolve())
+    assert diagnostics.sdk_available is True
     assert diagnostics.is_available is True
     assert diagnostics.oauth_token_present is True
     assert diagnostics.api_key_env_present_after_sanitization is False
     assert diagnostics.version is not None
 
 
-def test_claude_code_diagnostics_report_missing_executable(tmp_path: Path) -> None:
+def test_claude_code_diagnostics_report_missing_executable(tmp_path: Path, monkeypatch) -> None:
     from agentrules.cli.services.claude_code_runtime import get_claude_code_runtime_diagnostics
 
     manager = _build_config_manager(tmp_path)
     manager.set_claude_code_cli_path(str(tmp_path / "missing-claude"))
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
 
     diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
 
@@ -70,17 +92,53 @@ def test_claude_code_diagnostics_report_missing_executable(tmp_path: Path) -> No
     assert "could not be resolved" in (diagnostics.runtime_error or "")
 
 
+def test_claude_code_diagnostics_treat_sdk_default_as_available(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from agentrules.cli.services.claude_code_runtime import get_claude_code_runtime_diagnostics
+
+    manager = _build_config_manager(
+        tmp_path,
+        env={"CLAUDE_CODE_OAUTH_TOKEN": "oauth-token"},
+    )
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
+
+    diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
+
+    assert diagnostics.cli_path is None
+    assert diagnostics.executable_path is None
+    assert diagnostics.sdk_available is True
+    assert diagnostics.is_available is True
+    assert diagnostics.runtime_error is None
+    assert diagnostics.version is None
+
+
+def test_claude_code_diagnostics_report_missing_sdk(tmp_path: Path, monkeypatch) -> None:
+    from agentrules.cli.services.claude_code_runtime import get_claude_code_runtime_diagnostics
+
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: False)
+
+    diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
+
+    assert diagnostics.sdk_available is False
+    assert diagnostics.is_available is False
+    assert "SDK package" in (diagnostics.runtime_error or "")
+
+
 def test_claude_code_runtime_guidance_explains_oauth_and_api_key_sanitization() -> None:
     state = ClaudeCodeRuntimeState(
-        cli_path="claude",
+        cli_path=None,
         auth_strategy="oauth",
         sanitize_api_key_env=True,
-        executable_path="/usr/local/bin/claude",
+        executable_path=None,
         is_available=True,
     )
     diagnostics = ClaudeCodeRuntimeDiagnostics(
-        cli_path="claude",
-        executable_path="/usr/local/bin/claude",
+        cli_path=None,
+        executable_path=None,
+        sdk_available=True,
         auth_strategy="oauth",
         sanitize_api_key_env=True,
         oauth_token_present=False,
@@ -90,6 +148,7 @@ def test_claude_code_runtime_guidance_explains_oauth_and_api_key_sanitization() 
 
     guidance = build_runtime_guidance(state, diagnostics)
 
+    assert any("SDK default runtime" in note for note in guidance)
     assert any("claude auth login" in note for note in guidance)
     assert any("claude setup-token" in note for note in guidance)
     assert any("CLAUDE_CODE_OAUTH_TOKEN" in note for note in guidance)
@@ -108,6 +167,7 @@ def test_claude_code_runtime_guidance_warns_when_sanitization_disabled() -> None
     diagnostics = ClaudeCodeRuntimeDiagnostics(
         cli_path="claude",
         executable_path="/usr/local/bin/claude",
+        sdk_available=True,
         auth_strategy="oauth",
         sanitize_api_key_env=False,
         oauth_token_present=True,

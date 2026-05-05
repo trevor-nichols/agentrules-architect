@@ -76,8 +76,7 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
     claude_code = ClaudeCodeConfig(
         cli_path=normalize_optional_string(
             claude_code_payload.get("cli_path") if isinstance(claude_code_payload, Mapping) else None
-        )
-        or DEFAULT_CLAUDE_CODE_CLI_PATH,
+        ),
         auth_strategy=normalize_claude_code_auth_strategy(
             claude_code_payload.get("auth_strategy") if isinstance(claude_code_payload, Mapping) else None,
             default="oauth",

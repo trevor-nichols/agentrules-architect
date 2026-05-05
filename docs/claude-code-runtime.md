@@ -1,10 +1,10 @@
 # Claude Code Runtime
 
-AgentRules supports Claude Code as a local runtime provider through the Anthropic Claude Agent SDK. This is separate from the direct Anthropic API-key provider: Claude Code runtime auth is Claude.ai OAuth subscription auth owned by the local `claude` CLI.
+AgentRules supports Claude Code as a local runtime provider through the Anthropic Claude Agent SDK. This is separate from the direct Anthropic API-key provider: Claude Code runtime auth is Claude.ai OAuth subscription auth owned by Claude Code, while the SDK owns default runtime resolution.
 
 ## What this integration does
 
-- Uses the local `claude` executable through `claude-agent-sdk`.
+- Uses the Claude Agent SDK runtime through `claude-agent-sdk`; by default AgentRules does not force a specific `claude` executable path.
 - Reuses Claude Code OAuth state instead of asking AgentRules for an Anthropic API key.
 - Adds `Claude Code ...` model presets that route AgentRules phases through `ModelProvider.CLAUDE_CODE`.
 - Keeps structured outputs enabled for schema-backed phases.
@@ -17,9 +17,9 @@ Use `Settings -> Claude Code runtime`.
 
 That menu controls:
 
-- `Claude executable path`: defaults to `claude` from `PATH`.
+- `Claude executable path`: defaults to SDK resolution. Leave it blank unless you need to force a specific command or binary path.
 - `Strip Anthropic API-key env`: defaults to yes. This removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from Claude Code child processes.
-- Runtime diagnostics: executable resolution, `claude --version`, `CLAUDE_CODE_OAUTH_TOKEN` presence, and API-key env visibility after sanitization.
+- Runtime diagnostics: SDK importability, optional explicit executable resolution, `claude --version` for explicit executables, `CLAUDE_CODE_OAUTH_TOKEN` presence, and API-key env visibility after sanitization.
 - OAuth guidance: local login and automation setup commands.
 
 ## Sign in locally
@@ -28,7 +28,7 @@ Claude Code owns the Claude.ai OAuth flow. AgentRules does not perform browser l
 
 Flow:
 
-1. Run `claude auth login`.
+1. Run Claude Code's OAuth login flow outside AgentRules. If the `claude` command is available in your shell, run `claude auth login`.
 2. Complete the Claude.ai OAuth subscription auth flow in Claude Code.
 3. Open `Settings -> Claude Code runtime`.
 4. Refresh the runtime status.
@@ -70,6 +70,12 @@ Claude Code runtime requests run with bounded execution defaults:
 
 These settings belong in the `[claude_code]` config section when non-default values are needed. The timeout is an AgentRules control and is not passed as a `ClaudeAgentOptions` field.
 
+## CLI Resolution
+
+AgentRules treats a missing `claude_code.cli_path` value as "SDK default." In that mode, `prepare_request()` omits `cli_path` from `ClaudeAgentOptions`, matching the SDK's documented `None` default.
+
+Configure `Claude executable path` only when you need an explicit runtime override. Existing configs with `cli_path = "claude"` remain valid and are treated as explicit settings; if that command cannot be resolved, Claude Code presets are gated off until the path is fixed or cleared.
+
 ## Select Claude Code presets
 
 After the runtime is available:
@@ -105,7 +111,7 @@ The repository includes an opt-in live Claude Code smoke test.
 
 Run it only when:
 
-- the local `claude` CLI is installed
+- the Claude Agent SDK is installed, and any explicit `AGENTRULES_CLAUDE_CODE_CLI` override points to a resolvable executable
 - Claude Code is authenticated through Claude.ai OAuth or `CLAUDE_CODE_OAUTH_TOKEN`
 - you explicitly want to validate a live structured-output request
 
@@ -126,7 +132,7 @@ The live smoke skips itself if the runtime is unavailable or if Claude Code repo
 
 ## Troubleshooting
 
-- Missing `claude`: install Claude Code or set `Claude executable path` to the correct command.
+- Missing explicit `claude`: clear `Claude executable path` to use SDK default resolution, or set it to the correct command.
 - Missing SDK package: install dependencies so `claude-agent-sdk` is available in the AgentRules environment.
 - Auth failure: run `claude auth login` locally, or use `claude setup-token` and export `CLAUDE_CODE_OAUTH_TOKEN` for automation.
 - API-key precedence: keep `Strip Anthropic API-key env` enabled unless you intentionally want API-key variables to reach Claude Code.

@@ -41,7 +41,7 @@ class CodexRuntimeState:
 
 @dataclass(frozen=True)
 class ClaudeCodeRuntimeState:
-    cli_path: str
+    cli_path: str | None
     auth_strategy: ClaudeCodeAuthStrategy
     sanitize_api_key_env: bool
     executable_path: str | None = None

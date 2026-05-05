@@ -10,6 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from .constants import (
+    CLAUDE_AGENT_SDK_IMPORT_NAME,
     CLAUDE_CODE_API_KEY_ENV_VARS,
     CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR,
     CODEX_HOME_ENV_VAR,
@@ -41,6 +42,7 @@ from .models import (
 
 __all__ = [
     "CLIConfig",
+    "CLAUDE_AGENT_SDK_IMPORT_NAME",
     "CLAUDE_CODE_API_KEY_ENV_VARS",
     "CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR",
     "CODEX_HOME_ENV_VAR",
