@@ -9,7 +9,12 @@ from pathlib import Path
 
 from .. import constants as configuration_constants
 from ..models import ClaudeCodeAuthStrategy, ClaudeCodeConfig, CLIConfig
-from ..utils import normalize_claude_code_auth_strategy, normalize_optional_string
+from ..utils import (
+    coerce_positive_float,
+    coerce_positive_int,
+    normalize_claude_code_auth_strategy,
+    normalize_optional_string,
+)
 
 
 def get_claude_code_config(config: CLIConfig) -> ClaudeCodeConfig:
@@ -18,6 +23,19 @@ def get_claude_code_config(config: CLIConfig) -> ClaudeCodeConfig:
         or configuration_constants.DEFAULT_CLAUDE_CODE_CLI_PATH,
         auth_strategy=normalize_claude_code_auth_strategy(config.claude_code.auth_strategy, default="oauth"),
         sanitize_api_key_env=bool(config.claude_code.sanitize_api_key_env),
+        max_turns=coerce_positive_int(
+            config.claude_code.max_turns,
+            minimum=1,
+            default=configuration_constants.DEFAULT_CLAUDE_CODE_MAX_TURNS,
+        )
+        or configuration_constants.DEFAULT_CLAUDE_CODE_MAX_TURNS,
+        request_timeout_seconds=coerce_positive_float(
+            config.claude_code.request_timeout_seconds,
+            minimum=0.0,
+            default=configuration_constants.DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+        )
+        or configuration_constants.DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+        max_budget_usd=coerce_positive_float(config.claude_code.max_budget_usd, minimum=0.0, default=None),
     )
     config.claude_code = normalized
     return normalized
@@ -29,6 +47,9 @@ def set_claude_code_cli_path(config: CLIConfig, cli_path: str | None) -> None:
         cli_path=normalize_optional_string(cli_path) or configuration_constants.DEFAULT_CLAUDE_CODE_CLI_PATH,
         auth_strategy=current.auth_strategy,
         sanitize_api_key_env=current.sanitize_api_key_env,
+        max_turns=current.max_turns,
+        request_timeout_seconds=current.request_timeout_seconds,
+        max_budget_usd=current.max_budget_usd,
     )
 
 
@@ -38,6 +59,9 @@ def set_claude_code_auth_strategy(config: CLIConfig, strategy: str | None) -> No
         cli_path=current.cli_path,
         auth_strategy=normalize_claude_code_auth_strategy(strategy, default="oauth"),
         sanitize_api_key_env=current.sanitize_api_key_env,
+        max_turns=current.max_turns,
+        request_timeout_seconds=current.request_timeout_seconds,
+        max_budget_usd=current.max_budget_usd,
     )
 
 
@@ -47,6 +71,9 @@ def set_claude_code_sanitize_api_key_env(config: CLIConfig, enabled: bool) -> No
         cli_path=current.cli_path,
         auth_strategy=current.auth_strategy,
         sanitize_api_key_env=bool(enabled),
+        max_turns=current.max_turns,
+        request_timeout_seconds=current.request_timeout_seconds,
+        max_budget_usd=current.max_budget_usd,
     )
 
 
@@ -83,4 +110,3 @@ def build_claude_code_environment(
         for env_var in configuration_constants.CLAUDE_CODE_API_KEY_ENV_VARS:
             env.pop(env_var, None)
     return env
-

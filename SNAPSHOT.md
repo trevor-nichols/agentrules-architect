@@ -347,6 +347,7 @@
 │   │   │   ├── test_anthropic_client_compat.py  # Tests for Anthropic client
 │   │   │   ├── test_anthropic_request_builder.py  # Tests for Anthropic request building
 │   │   │   ├── test_claude_code_architect.py
+│   │   │   ├── test_claude_code_client.py
 │   │   │   ├── test_claude_code_request_builder.py
 │   │   │   ├── test_claude_code_response_parser.py
 │   │   │   ├── test_codex_architect.py  # Tests for Codex architect

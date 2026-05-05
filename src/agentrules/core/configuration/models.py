@@ -11,6 +11,8 @@ from agentrules.core.utils.constants import (
     DEFAULT_SNAPSHOT_FILENAME,
 )
 
+from .constants import DEFAULT_CLAUDE_CODE_MAX_TURNS, DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS
+
 ResearcherMode = Literal["on", "off"]
 CodexHomeStrategy = Literal["managed", "inherit"]
 ClaudeCodeAuthStrategy = Literal["oauth"]
@@ -36,9 +38,19 @@ class ClaudeCodeConfig:
     cli_path: str = "claude"
     auth_strategy: ClaudeCodeAuthStrategy = "oauth"
     sanitize_api_key_env: bool = True
+    max_turns: int = DEFAULT_CLAUDE_CODE_MAX_TURNS
+    request_timeout_seconds: float = DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS
+    max_budget_usd: float | None = None
 
     def is_default(self) -> bool:
-        return self.cli_path == "claude" and self.auth_strategy == "oauth" and self.sanitize_api_key_env
+        return (
+            self.cli_path == "claude"
+            and self.auth_strategy == "oauth"
+            and self.sanitize_api_key_env
+            and self.max_turns == DEFAULT_CLAUDE_CODE_MAX_TURNS
+            and self.request_timeout_seconds == DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS
+            and self.max_budget_usd is None
+        )
 
 
 @dataclass

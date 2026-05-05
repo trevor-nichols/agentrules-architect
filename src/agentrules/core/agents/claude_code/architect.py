@@ -27,7 +27,7 @@ from .response_parser import ParsedResponse, parse_response
 
 logger = logging.getLogger("project_extractor")
 
-QueryExecutor = Callable[[str, Mapping[str, Any]], Awaitable[tuple[Any, ...]]]
+QueryExecutor = Callable[[str, Mapping[str, Any], float | None], Awaitable[tuple[Any, ...]]]
 
 
 class ClaudeCodeArchitect(BaseArchitect):
@@ -214,7 +214,11 @@ class ClaudeCodeArchitect(BaseArchitect):
         )
 
     async def _execute_request(self, prepared: PreparedRequest) -> ParsedResponse:
-        messages = await self._query_executor(prepared.prompt, prepared.options)
+        messages = await self._query_executor(
+            prepared.prompt,
+            prepared.options,
+            prepared.execution_timeout_seconds,
+        )
         return parse_response(messages)
 
     async def _run_phase_request(

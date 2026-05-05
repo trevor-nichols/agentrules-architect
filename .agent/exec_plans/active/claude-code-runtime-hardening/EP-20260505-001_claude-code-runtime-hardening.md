@@ -81,6 +81,7 @@ Milestone 5, `EP-20260505-001/MS005 Clarify Final Analysis Failure Contract`, re
 - [x] (2026-05-05 America/New_York) Created this ExecPlan and five active milestones with `agentrules execplan new` and `agentrules execplan milestone new`.
 - [x] (2026-05-05 America/New_York) Drafted remediation strategy for all five Claude Code runtime review findings.
 - [x] (2026-05-05 America/New_York) Completed MS001: Claude Code requests now preserve the built-in Claude Code prompt preset and append AgentRules instructions; validation passed with focused tests, SDK import smoke, and ruff.
+- [x] (2026-05-05 America/New_York) Completed MS002: Claude Code requests now include configurable turn and optional budget limits, and SDK query collection has an AgentRules timeout; validation passed with focused tests, live-smoke skip check, ruff, and pyright.
 - [ ] Implementation complete.
 - [ ] Validation complete.
 

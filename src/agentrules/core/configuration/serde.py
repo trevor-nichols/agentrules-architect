@@ -11,7 +11,12 @@ from agentrules.core.utils.constants import (
     DEFAULT_SNAPSHOT_FILENAME,
 )
 
-from .constants import DEFAULT_CLAUDE_CODE_CLI_PATH, DEFAULT_CODEX_CLI_PATH
+from .constants import (
+    DEFAULT_CLAUDE_CODE_CLI_PATH,
+    DEFAULT_CLAUDE_CODE_MAX_TURNS,
+    DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+    DEFAULT_CODEX_CLI_PATH,
+)
 from .models import (
     ClaudeCodeConfig,
     CLIConfig,
@@ -23,6 +28,7 @@ from .models import (
 )
 from .utils import (
     coerce_bool,
+    coerce_positive_float,
     coerce_positive_int,
     coerce_string_list,
     normalize_claude_code_auth_strategy,
@@ -79,6 +85,23 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
         sanitize_api_key_env=coerce_bool(
             claude_code_payload.get("sanitize_api_key_env") if isinstance(claude_code_payload, Mapping) else None,
             default=True,
+        ),
+        max_turns=coerce_positive_int(
+            claude_code_payload.get("max_turns") if isinstance(claude_code_payload, Mapping) else None,
+            minimum=1,
+            default=DEFAULT_CLAUDE_CODE_MAX_TURNS,
+        )
+        or DEFAULT_CLAUDE_CODE_MAX_TURNS,
+        request_timeout_seconds=coerce_positive_float(
+            claude_code_payload.get("request_timeout_seconds") if isinstance(claude_code_payload, Mapping) else None,
+            minimum=0.0,
+            default=DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+        )
+        or DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+        max_budget_usd=coerce_positive_float(
+            claude_code_payload.get("max_budget_usd") if isinstance(claude_code_payload, Mapping) else None,
+            minimum=0.0,
+            default=None,
         ),
     )
 
@@ -189,6 +212,12 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
             claude_code_payload["auth_strategy"] = config.claude_code.auth_strategy
         if not config.claude_code.sanitize_api_key_env:
             claude_code_payload["sanitize_api_key_env"] = False
+        if config.claude_code.max_turns != DEFAULT_CLAUDE_CODE_MAX_TURNS:
+            claude_code_payload["max_turns"] = config.claude_code.max_turns
+        if config.claude_code.request_timeout_seconds != DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS:
+            claude_code_payload["request_timeout_seconds"] = config.claude_code.request_timeout_seconds
+        if config.claude_code.max_budget_usd is not None:
+            claude_code_payload["max_budget_usd"] = config.claude_code.max_budget_usd
         if claude_code_payload:
             payload["claude_code"] = claude_code_payload
 

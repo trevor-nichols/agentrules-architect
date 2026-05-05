@@ -46,6 +46,31 @@ def coerce_positive_int(
     return default
 
 
+def coerce_positive_float(
+    value: object,
+    *,
+    minimum: float = 0.0,
+    default: float | None = None,
+) -> float | None:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        return parsed if parsed > minimum else default
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return default
+        try:
+            parsed = float(stripped)
+        except ValueError:
+            return default
+        return parsed if parsed > minimum else default
+    return default
+
+
 def coerce_string_list(payload: object, key: str) -> list[str]:
     if not isinstance(payload, Mapping):
         return []

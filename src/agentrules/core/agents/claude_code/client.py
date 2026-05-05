@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
 from .errors import ClaudeCodeExecutionError, ClaudeCodeSDKImportError
 
 
-async def execute_query(prompt: str, options: Mapping[str, Any]) -> tuple[Any, ...]:
+async def execute_query(
+    prompt: str,
+    options: Mapping[str, Any],
+    timeout_seconds: float | None = None,
+) -> tuple[Any, ...]:
     """Execute a Claude Agent SDK query and collect all emitted messages."""
 
     try:
@@ -21,11 +26,23 @@ async def execute_query(prompt: str, options: Mapping[str, Any]) -> tuple[Any, .
 
     try:
         sdk_options = ClaudeAgentOptions(**dict(options))
-        return tuple([message async for message in query(prompt=prompt, options=sdk_options)])
+        collection = _collect_query_messages(query, prompt=prompt, options=sdk_options)
+        if timeout_seconds is None:
+            return await collection
+        return await asyncio.wait_for(collection, timeout=timeout_seconds)
     except ClaudeCodeSDKImportError:
         raise
+    except TimeoutError as exc:
+        timeout_label = "unknown" if timeout_seconds is None else f"{timeout_seconds:g}"
+        raise ClaudeCodeExecutionError(
+            f"Claude Code SDK query timed out after {timeout_label} seconds."
+        ) from exc
     except Exception as exc:
         raise ClaudeCodeExecutionError(f"Claude Code SDK query failed: {exc}") from exc
+
+
+async def _collect_query_messages(query_fn: Any, *, prompt: str, options: Any) -> tuple[Any, ...]:
+    return tuple([message async for message in query_fn(prompt=prompt, options=options)])
 
 
 async def stream_query(prompt: str, options: Mapping[str, Any]) -> AsyncIterator[Any]:

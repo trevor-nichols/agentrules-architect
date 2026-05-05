@@ -8,6 +8,7 @@ from claude_agent_sdk import ClaudeAgentOptions
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.claude_code.request_builder import prepare_request
 from agentrules.core.configuration.manager import ConfigManager
+from agentrules.core.configuration.models import ClaudeCodeConfig
 from agentrules.core.configuration.repository import TomlConfigRepository
 
 
@@ -40,6 +41,10 @@ def test_prepare_request_sets_oauth_runtime_options_and_sanitized_env(tmp_path: 
     assert prepared.options["permission_mode"] == "dontAsk"
     assert prepared.options["allowed_tools"] == ["Read", "Glob", "Grep"]
     assert "Bash" in prepared.options["disallowed_tools"]
+    assert prepared.options["max_turns"] == 12
+    assert "max_budget_usd" not in prepared.options
+    assert "request_timeout_seconds" not in prepared.options
+    assert prepared.execution_timeout_seconds == 300.0
     assert prepared.options["system_prompt"] == {
         "type": "preset",
         "preset": "claude_code",
@@ -117,3 +122,32 @@ def test_prepare_request_builds_sdk_accepted_system_prompt_preset(tmp_path: Path
         "append": "Use AgentRules phase guidance.",
         "exclude_dynamic_sections": True,
     }
+
+
+def test_prepare_request_uses_configured_execution_guardrails(tmp_path: Path) -> None:
+    manager = _build_config_manager(tmp_path)
+    config = manager.load()
+    config.claude_code = ClaudeCodeConfig(
+        cli_path=sys.executable,
+        max_turns=3,
+        request_timeout_seconds=1.5,
+        max_budget_usd=0.25,
+    )
+    manager.save(config)
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-sonnet-4-6",
+        content="Inspect repository architecture.",
+        system_prompt="Use AgentRules phase guidance.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    sdk_options = ClaudeAgentOptions(**prepared.options)
+
+    assert sdk_options.max_turns == 3
+    assert sdk_options.max_budget_usd == 0.25
+    assert prepared.execution_timeout_seconds == 1.5
+    assert "request_timeout_seconds" not in prepared.options

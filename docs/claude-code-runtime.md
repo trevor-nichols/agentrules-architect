@@ -60,6 +60,16 @@ AgentRules sends its phase-specific system instructions as an append block on Cl
 
 This keeps Claude Code's tool guidance, safety instructions, and runtime context intact while making each AgentRules request carry the correct phase behavior.
 
+## Execution guardrails
+
+Claude Code runtime requests run with bounded execution defaults:
+
+- `max_turns = 12`: passed to the Claude Agent SDK as the maximum number of agentic turns for one request.
+- `request_timeout_seconds = 300.0`: enforced by AgentRules around the SDK query collection.
+- `max_budget_usd = unset`: optional per-request SDK budget ceiling. When unset, AgentRules does not pass a budget limit.
+
+These settings belong in the `[claude_code]` config section when non-default values are needed. The timeout is an AgentRules control and is not passed as a `ClaudeAgentOptions` field.
+
 ## Select Claude Code presets
 
 After the runtime is available:

@@ -2,18 +2,22 @@
 id: EP-20260505-001/MS002
 execplan_id: EP-20260505-001
 ms: 2
-title: "Add Runtime Execution Guardrails"
-status: planned
+title: Add Runtime Execution Guardrails
+status: completed
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-05-05
-updated: 2026-05-05
-tags: [claude-code, guardrails, timeouts, cost-control]
+updated: '2026-05-05'
+tags:
+- claude-code
+- guardrails
+- timeouts
+- cost-control
 risk: med
 links:
-  issue: ""
-  docs: "internal-docs/integrations/anthropic/agents-sdk/python-sdk.md"
-  pr: ""
+  issue: ''
+  docs: internal-docs/integrations/anthropic/agents-sdk/python-sdk.md
+  pr: ''
 ---
 
 # Add Runtime Execution Guardrails
@@ -26,12 +30,12 @@ Bound Claude Code runtime execution so headless AgentRules runs cannot wait inde
 
 ## Definition of Done
 
-- [ ] Claude Code runtime config has validated defaults for request timeout and maximum turns.
-- [ ] `prepare_request()` includes `max_turns` and optional `max_budget_usd` in SDK options.
-- [ ] AgentRules-only timeout data is not passed as an unsupported `ClaudeAgentOptions` field.
-- [ ] `src/agentrules/core/agents/claude_code/client.py` wraps SDK iterator collection with `asyncio.wait_for` or equivalent cancellation-safe timeout handling.
-- [ ] Timeout and SDK failures map to `ClaudeCodeExecutionError` with actionable messages.
-- [ ] Unit tests cover default guardrail options, custom guardrail config, and timeout error mapping.
+- [x] Claude Code runtime config has validated defaults for request timeout and maximum turns.
+- [x] `prepare_request()` includes `max_turns` and optional `max_budget_usd` in SDK options.
+- [x] AgentRules-only timeout data is not passed as an unsupported `ClaudeAgentOptions` field.
+- [x] `src/agentrules/core/agents/claude_code/client.py` wraps SDK iterator collection with `asyncio.wait_for` or equivalent cancellation-safe timeout handling.
+- [x] Timeout and SDK failures map to `ClaudeCodeExecutionError` with actionable messages.
+- [x] Unit tests cover default guardrail options, custom guardrail config, and timeout error mapping.
 
 ## Scope
 
@@ -50,11 +54,11 @@ Bound Claude Code runtime execution so headless AgentRules runs cannot wait inde
 
 ## Workstreams & Tasks
 
-- [ ] Configuration: choose conservative defaults. Suggested initial values are `max_turns=12`, `request_timeout_seconds=300.0`, and `max_budget_usd=None`.
-- [ ] Serialization: persist only non-default guardrail settings, preserving existing config files without migration work.
-- [ ] Request builder: place `max_turns` and `max_budget_usd` into SDK options only when valid, and keep timeout on `PreparedRequest`.
-- [ ] Client: implement timeout wrapping around message collection and make cancellation cleanup explicit.
-- [ ] Tests: include an async fake query that never completes and assert that the returned error mentions timeout.
+- [x] Configuration: choose conservative defaults. Suggested initial values are `max_turns=12`, `request_timeout_seconds=300.0`, and `max_budget_usd=None`.
+- [x] Serialization: persist only non-default guardrail settings, preserving existing config files without migration work.
+- [x] Request builder: place `max_turns` and `max_budget_usd` into SDK options only when valid, and keep timeout on `PreparedRequest`.
+- [x] Client: implement timeout wrapping around message collection and make cancellation cleanup explicit.
+- [x] Tests: include an async fake query that never completes and assert that the returned error mentions timeout.
 
 ## Risks & Mitigations
 
@@ -65,7 +69,7 @@ Bound Claude Code runtime execution so headless AgentRules runs cannot wait inde
 
 ## Validation / QA Plan
 
-- Run `PYTHONPATH=src .venv/bin/pytest tests/unit/agents/test_claude_code_request_builder.py tests/unit/agents/test_claude_code_architect.py tests/unit/test_config_service.py`.
+- Run `PYTHONPATH=src .venv/bin/pytest tests/unit/agents/test_claude_code_request_builder.py tests/unit/agents/test_claude_code_architect.py tests/unit/agents/test_claude_code_client.py tests/unit/test_config_service.py`.
 - Run `PYTHONPATH=src .venv/bin/pytest --run-live tests/live/test_claude_code_live_smoke.py`; without `AGENTRULES_RUN_CLAUDE_CODE_LIVE=1`, one skipped test is acceptable.
 - Run `PYTHONPATH=src .venv/bin/ruff check src/agentrules/core/agents/claude_code src/agentrules/core/configuration tests/unit/agents/test_claude_code_architect.py tests/unit/test_config_service.py`.
 - Green means prepared SDK options contain the configured turn and budget limits, timeout does not appear in `ClaudeAgentOptions`, and a timed-out SDK query produces a deterministic AgentRules error.
@@ -74,3 +78,4 @@ Bound Claude Code runtime execution so headless AgentRules runs cannot wait inde
 
 - 2026-05-05: Milestone created.
 - 2026-05-05: Drafted guardrail config, request, client, and validation scope from Claude Code runtime review finding 2.
+- 2026-05-05: Implemented Claude Code execution guardrails with persisted config defaults, SDK `max_turns` and optional budget options, AgentRules-only timeout enforcement, timeout tests, and docs. Validation passed with focused tests, live-smoke skip check, ruff, and pyright.

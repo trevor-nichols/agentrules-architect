@@ -68,7 +68,11 @@ def _build_architect(
     tmp_path: Path,
     messages: tuple[Any, ...],
 ) -> ClaudeCodeArchitect:
-    async def _fake_query(_prompt: str, _options: Mapping[str, Any]) -> tuple[Any, ...]:
+    async def _fake_query(
+        _prompt: str,
+        _options: Mapping[str, Any],
+        _timeout_seconds: float | None,
+    ) -> tuple[Any, ...]:
         return messages
 
     return ClaudeCodeArchitect(
@@ -115,6 +119,44 @@ async def test_claude_code_analyze_returns_plain_text_findings(tmp_path: Path) -
     assert result["agent"] == "Claude Code Tester"
     assert result["findings"] == "Claude Code analyzed the repo."
     assert "error" not in result
+
+
+@pytest.mark.asyncio
+async def test_claude_code_analyze_passes_configured_timeout_to_executor(tmp_path: Path) -> None:
+    manager = _build_config_manager(tmp_path)
+    config = manager.load()
+    config.claude_code.request_timeout_seconds = 2.5
+    manager.save(config)
+    observed_timeout: dict[str, float | None] = {"value": None}
+
+    async def _fake_query(
+        _prompt: str,
+        _options: Mapping[str, Any],
+        timeout_seconds: float | None,
+    ) -> tuple[Any, ...]:
+        observed_timeout["value"] = timeout_seconds
+        return (_assistant_message("Claude Code analyzed the repo."), _result_message())
+
+    architect = ClaudeCodeArchitect(
+        model_name="claude-sonnet-4-6",
+        reasoning=ReasoningMode.DYNAMIC,
+        name="Claude Code Tester",
+        role="repository analysis",
+        responsibilities=["Inspect the codebase"],
+        prompt_template="{context}",
+        system_prompt="Use concise bullets.",
+        model_config=ModelConfig(
+            provider=ModelProvider.CLAUDE_CODE,
+            model_name="claude-sonnet-4-6",
+        ),
+        config_manager=manager,
+        query_executor=_fake_query,
+    )
+
+    result = await architect.analyze({"formatted_prompt": "Inspect the main module."})
+
+    assert result["findings"] == "Claude Code analyzed the repo."
+    assert observed_timeout["value"] == 2.5
 
 
 @pytest.mark.asyncio

@@ -30,6 +30,7 @@ class PreparedRequest:
     prompt: str
     options: dict[str, Any]
     token_payload: dict[str, Any]
+    execution_timeout_seconds: float
 
 
 def prepare_request(
@@ -56,6 +57,7 @@ def prepare_request(
         "cwd": normalized_cwd,
         "disallowed_tools": list(DEFAULT_DISALLOWED_TOOLS),
         "env": config_manager.build_claude_code_environment(),
+        "max_turns": runtime_config.max_turns,
         "model": model_name,
         "permission_mode": "dontAsk",
         "setting_sources": [],
@@ -74,6 +76,9 @@ def prepare_request(
     if output_format is not None:
         options["output_format"] = output_format
 
+    if runtime_config.max_budget_usd is not None:
+        options["max_budget_usd"] = runtime_config.max_budget_usd
+
     token_payload = {
         "input": content,
         "instructions": system_prompt,
@@ -83,6 +88,7 @@ def prepare_request(
         prompt=content,
         options=options,
         token_payload=token_payload,
+        execution_timeout_seconds=runtime_config.request_timeout_seconds,
     )
 
 

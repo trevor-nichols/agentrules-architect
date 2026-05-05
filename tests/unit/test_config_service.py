@@ -163,6 +163,46 @@ class ConfigServiceTestCase(unittest.TestCase):
         persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
         self.assertNotIn("[claude_code]", persisted)
 
+    def test_claude_code_runtime_guardrail_config_persists_non_defaults(self) -> None:
+        config = self.config_manager.load()
+        config.claude_code = self.configuration.ClaudeCodeConfig(
+            cli_path=sys.executable,
+            max_turns=4,
+            request_timeout_seconds=12.5,
+            max_budget_usd=0.75,
+        )
+        self.config_manager.save(config)
+
+        loaded = self.config_manager.get_claude_code_config()
+
+        self.assertEqual(loaded.max_turns, 4)
+        self.assertEqual(loaded.request_timeout_seconds, 12.5)
+        self.assertEqual(loaded.max_budget_usd, 0.75)
+        persisted = self.configuration.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertIn("max_turns = 4", persisted)
+        self.assertIn("request_timeout_seconds = 12.5", persisted)
+        self.assertIn("max_budget_usd = 0.75", persisted)
+
+    def test_claude_code_runtime_guardrail_config_normalizes_invalid_values(self) -> None:
+        self.configuration.CONFIG_FILE.write_text(
+            "\n".join(
+                [
+                    "[claude_code]",
+                    'cli_path = "claude"',
+                    "max_turns = 0",
+                    "request_timeout_seconds = -1",
+                    "max_budget_usd = 0",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        config = self.config_manager.get_claude_code_config()
+
+        self.assertEqual(config.max_turns, 12)
+        self.assertEqual(config.request_timeout_seconds, 300.0)
+        self.assertIsNone(config.max_budget_usd)
+
     def test_claude_code_availability_uses_resolved_executable(self) -> None:
         self.config_manager.set_claude_code_cli_path(sys.executable)
         self.assertTrue(self.config_manager.is_claude_code_available())
