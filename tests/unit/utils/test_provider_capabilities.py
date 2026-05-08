@@ -35,3 +35,21 @@ def test_codex_runtime_capabilities_are_centralized() -> None:
     assert uses_runtime_native_web_search(openai_config) is False
     assert requires_external_research_tool_loop(openai_config) is True
     assert should_embed_phase3_file_contents(openai_config) is True
+
+
+def test_claude_code_runtime_capabilities_are_centralized() -> None:
+    claude_code_config = ModelConfig(
+        provider=ModelProvider.CLAUDE_CODE,
+        model_name="claude-sonnet-4-6",
+        reasoning=ReasoningMode.DYNAMIC,
+    )
+    claude_code_architect = SimpleNamespace(
+        provider=ModelProvider.CLAUDE_CODE,
+        _model_config=claude_code_config,
+    )
+
+    assert resolve_provider(claude_code_architect) == ModelProvider.CLAUDE_CODE
+    assert uses_repo_runtime(claude_code_architect) is True
+    assert uses_runtime_native_web_search(claude_code_architect) is True
+    assert requires_external_research_tool_loop(claude_code_architect) is False
+    assert should_embed_phase3_file_contents(claude_code_architect) is False

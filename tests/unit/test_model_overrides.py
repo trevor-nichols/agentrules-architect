@@ -211,6 +211,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             "phase3",
             provider_availability={
                 "anthropic": False,
+                "claude_code": False,
                 "openai": False,
                 "codex": False,
                 "deepseek": False,
@@ -226,6 +227,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             "phase3",
             provider_availability={
                 "anthropic": False,
+                "claude_code": False,
                 "openai": False,
                 "codex": True,
                 "deepseek": False,
@@ -235,6 +237,55 @@ class ModelOverrideTestCase(unittest.TestCase):
         )
         available_keys = {preset.key for preset in available}
         self.assertIn("codex-gpt-5.3-codex", available_keys)
+
+    def test_claude_code_registry_includes_derived_runtime_presets(self) -> None:
+        self.assertIn("claude-code-sonnet-4.6", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-code-sonnet-4.6-reasoning-high", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-code-opus-4.6-reasoning-max", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-code-haiku", self.agents_module.MODEL_PRESETS)
+
+        base_preset = self.agents_module.MODEL_PRESETS["claude-sonnet-4.6"]
+        preset = self.agents_module.MODEL_PRESETS["claude-code-sonnet-4.6"]
+        self.assertEqual(preset["provider"], ModelProvider.CLAUDE_CODE)
+        self.assertEqual(preset["config"].provider, ModelProvider.CLAUDE_CODE)
+        self.assertEqual(preset["config"].model_name, "claude-sonnet-4-6")
+        self.assertEqual(base_preset["config"].estimator_family, "anthropic_api")
+        self.assertEqual(preset["config"].estimator_family, "tiktoken")
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["claude-code-sonnet-4.6-reasoning-high"]["config"].estimator_family,
+            "tiktoken",
+        )
+
+    def test_claude_code_presets_are_gated_by_runtime_availability(self) -> None:
+        unavailable = self.model_config.get_available_presets_for_phase(
+            "phase3",
+            provider_availability={
+                "anthropic": False,
+                "claude_code": False,
+                "openai": False,
+                "codex": False,
+                "deepseek": False,
+                "gemini": False,
+                "xai": False,
+            },
+        )
+        unavailable_keys = {preset.key for preset in unavailable}
+        self.assertNotIn("claude-code-sonnet-4.6", unavailable_keys)
+
+        available = self.model_config.get_available_presets_for_phase(
+            "phase3",
+            provider_availability={
+                "anthropic": False,
+                "claude_code": True,
+                "openai": False,
+                "codex": False,
+                "deepseek": False,
+                "gemini": False,
+                "xai": False,
+            },
+        )
+        available_keys = {preset.key for preset in available}
+        self.assertIn("claude-code-sonnet-4.6", available_keys)
 
     def test_anthropic_registry_includes_claude_sonnet_46_presets(self) -> None:
         self.assertIn("claude-sonnet-4.6", self.agents_module.MODEL_PRESETS)

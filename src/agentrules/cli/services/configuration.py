@@ -6,8 +6,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from agentrules.core.configuration import (
+    CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR,
     CODEX_HOME_ENV_VAR,
     PROVIDER_ENV_MAP,
+    ClaudeCodeAuthStrategy,
     CodexHomeStrategy,
     OutputPreferences,
     get_config_manager,
@@ -35,6 +37,16 @@ class CodexRuntimeState:
     env_var: str = CODEX_HOME_ENV_VAR
     executable_path: str | None = None
     is_available: bool = False
+
+
+@dataclass(frozen=True)
+class ClaudeCodeRuntimeState:
+    cli_path: str | None
+    auth_strategy: ClaudeCodeAuthStrategy
+    sanitize_api_key_env: bool
+    executable_path: str | None = None
+    is_available: bool = False
+    oauth_token_env_var: str = CLAUDE_CODE_OAUTH_TOKEN_ENV_VAR
 
 
 def list_provider_states() -> list[ProviderState]:
@@ -115,6 +127,25 @@ def save_codex_home_strategy(strategy: str | None) -> None:
 
 def save_codex_managed_home(managed_home: str | None) -> None:
     CONFIG_MANAGER.set_codex_managed_home(managed_home)
+
+
+def get_claude_code_runtime_state() -> ClaudeCodeRuntimeState:
+    claude_code_config = CONFIG_MANAGER.get_claude_code_config()
+    return ClaudeCodeRuntimeState(
+        cli_path=claude_code_config.cli_path,
+        auth_strategy=claude_code_config.auth_strategy,
+        sanitize_api_key_env=claude_code_config.sanitize_api_key_env,
+        executable_path=CONFIG_MANAGER.resolve_claude_code_executable(),
+        is_available=CONFIG_MANAGER.is_claude_code_available(),
+    )
+
+
+def save_claude_code_cli_path(cli_path: str | None) -> None:
+    CONFIG_MANAGER.set_claude_code_cli_path(cli_path)
+
+
+def save_claude_code_sanitize_api_key_env(enabled: bool) -> None:
+    CONFIG_MANAGER.set_claude_code_sanitize_api_key_env(enabled)
 
 
 def get_logging_preference() -> str | None:

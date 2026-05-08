@@ -128,6 +128,7 @@ async def test_codex_process_uses_explicit_stream_limit(tmp_path: Path) -> None:
         mock_exec.return_value = fake_process
         await process.start()
 
+    assert mock_exec.await_args is not None
     assert mock_exec.await_args.kwargs["limit"] == DEFAULT_CODEX_SUBPROCESS_STREAM_LIMIT
 
 

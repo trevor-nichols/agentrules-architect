@@ -7,6 +7,7 @@ import questionary
 from agentrules.cli.context import CliContext
 from agentrules.cli.ui.styles import CLI_STYLE, navigation_choice
 
+from .claude_code import configure_claude_code_runtime
 from .codex import configure_codex_runtime
 from .exclusions import configure_exclusions
 from .logging import configure_logging
@@ -17,6 +18,7 @@ from .providers import configure_provider_keys
 SETTINGS_CATEGORY_ENTRIES: tuple[tuple[str, str], ...] = (
     ("Provider API keys", "providers"),
     ("Codex runtime", "codex"),
+    ("Claude Code runtime", "claude_code"),
     ("Model presets per phase", "models"),
     ("Logging verbosity", "logging"),
     ("Output preferences", "outputs"),
@@ -35,7 +37,7 @@ def configure_settings(context: CliContext) -> None:
 
     console = context.console
     console.print("\n[bold]Settings[/bold]")
-    console.print("[dim]Provider API keys and the local Codex runtime are configured separately.[/]")
+    console.print("[dim]Provider API keys and local CLI runtimes are configured separately.[/]")
 
     while True:
         selection = questionary.select(
@@ -55,6 +57,8 @@ def configure_settings(context: CliContext) -> None:
             configure_provider_keys(context)
         elif selection == "codex":
             configure_codex_runtime(context)
+        elif selection == "claude_code":
+            configure_claude_code_runtime(context)
         elif selection == "models":
             configure_models(context)
         elif selection == "logging":

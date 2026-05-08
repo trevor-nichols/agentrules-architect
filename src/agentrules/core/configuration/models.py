@@ -11,8 +11,15 @@ from agentrules.core.utils.constants import (
     DEFAULT_SNAPSHOT_FILENAME,
 )
 
+from .constants import (
+    DEFAULT_CLAUDE_CODE_CLI_PATH,
+    DEFAULT_CLAUDE_CODE_MAX_TURNS,
+    DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+)
+
 ResearcherMode = Literal["on", "off"]
 CodexHomeStrategy = Literal["managed", "inherit"]
+ClaudeCodeAuthStrategy = Literal["oauth"]
 
 
 @dataclass
@@ -28,6 +35,26 @@ class CodexConfig:
 
     def is_default(self) -> bool:
         return self.cli_path == "codex" and self.home_strategy == "managed" and self.managed_home is None
+
+
+@dataclass
+class ClaudeCodeConfig:
+    cli_path: str | None = DEFAULT_CLAUDE_CODE_CLI_PATH
+    auth_strategy: ClaudeCodeAuthStrategy = "oauth"
+    sanitize_api_key_env: bool = True
+    max_turns: int = DEFAULT_CLAUDE_CODE_MAX_TURNS
+    request_timeout_seconds: float = DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS
+    max_budget_usd: float | None = None
+
+    def is_default(self) -> bool:
+        return (
+            self.cli_path == DEFAULT_CLAUDE_CODE_CLI_PATH
+            and self.auth_strategy == "oauth"
+            and self.sanitize_api_key_env
+            and self.max_turns == DEFAULT_CLAUDE_CODE_MAX_TURNS
+            and self.request_timeout_seconds == DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS
+            and self.max_budget_usd is None
+        )
 
 
 @dataclass
@@ -77,6 +104,7 @@ class FeatureToggles:
 class CLIConfig:
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
     codex: CodexConfig = field(default_factory=CodexConfig)
+    claude_code: ClaudeCodeConfig = field(default_factory=ClaudeCodeConfig)
     models: dict[str, str] = field(default_factory=dict)
     verbosity: str | None = None
     outputs: OutputPreferences = field(default_factory=OutputPreferences)

@@ -11,12 +11,27 @@ from agentrules.core.utils.constants import (
     DEFAULT_SNAPSHOT_FILENAME,
 )
 
-from .constants import DEFAULT_CODEX_CLI_PATH
-from .models import CLIConfig, CodexConfig, ExclusionOverrides, FeatureToggles, OutputPreferences, ProviderConfig
+from .constants import (
+    DEFAULT_CLAUDE_CODE_CLI_PATH,
+    DEFAULT_CLAUDE_CODE_MAX_TURNS,
+    DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+    DEFAULT_CODEX_CLI_PATH,
+)
+from .models import (
+    ClaudeCodeConfig,
+    CLIConfig,
+    CodexConfig,
+    ExclusionOverrides,
+    FeatureToggles,
+    OutputPreferences,
+    ProviderConfig,
+)
 from .utils import (
     coerce_bool,
+    coerce_positive_float,
     coerce_positive_int,
     coerce_string_list,
+    normalize_claude_code_auth_strategy,
     normalize_codex_home_strategy,
     normalize_optional_string,
     normalize_output_filename,
@@ -54,6 +69,38 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
         ),
         managed_home=normalize_optional_string(
             codex_payload.get("managed_home") if isinstance(codex_payload, Mapping) else None
+        ),
+    )
+
+    claude_code_payload = payload.get("claude_code")
+    claude_code = ClaudeCodeConfig(
+        cli_path=normalize_optional_string(
+            claude_code_payload.get("cli_path") if isinstance(claude_code_payload, Mapping) else None
+        ),
+        auth_strategy=normalize_claude_code_auth_strategy(
+            claude_code_payload.get("auth_strategy") if isinstance(claude_code_payload, Mapping) else None,
+            default="oauth",
+        ),
+        sanitize_api_key_env=coerce_bool(
+            claude_code_payload.get("sanitize_api_key_env") if isinstance(claude_code_payload, Mapping) else None,
+            default=True,
+        ),
+        max_turns=coerce_positive_int(
+            claude_code_payload.get("max_turns") if isinstance(claude_code_payload, Mapping) else None,
+            minimum=1,
+            default=DEFAULT_CLAUDE_CODE_MAX_TURNS,
+        )
+        or DEFAULT_CLAUDE_CODE_MAX_TURNS,
+        request_timeout_seconds=coerce_positive_float(
+            claude_code_payload.get("request_timeout_seconds") if isinstance(claude_code_payload, Mapping) else None,
+            minimum=0.0,
+            default=DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+        )
+        or DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS,
+        max_budget_usd=coerce_positive_float(
+            claude_code_payload.get("max_budget_usd") if isinstance(claude_code_payload, Mapping) else None,
+            minimum=0.0,
+            default=None,
         ),
     )
 
@@ -124,6 +171,7 @@ def config_from_dict(payload: Mapping[str, Any]) -> CLIConfig:
     return CLIConfig(
         providers=providers,
         codex=codex,
+        claude_code=claude_code,
         models=models,
         verbosity=verbosity,
         outputs=outputs,
@@ -154,6 +202,23 @@ def config_to_dict(config: CLIConfig) -> dict[str, Any]:
             codex_payload["managed_home"] = config.codex.managed_home
         if codex_payload:
             payload["codex"] = codex_payload
+
+    if not config.claude_code.is_default():
+        claude_code_payload: dict[str, Any] = {}
+        if config.claude_code.cli_path != DEFAULT_CLAUDE_CODE_CLI_PATH:
+            claude_code_payload["cli_path"] = config.claude_code.cli_path
+        if config.claude_code.auth_strategy != "oauth":
+            claude_code_payload["auth_strategy"] = config.claude_code.auth_strategy
+        if not config.claude_code.sanitize_api_key_env:
+            claude_code_payload["sanitize_api_key_env"] = False
+        if config.claude_code.max_turns != DEFAULT_CLAUDE_CODE_MAX_TURNS:
+            claude_code_payload["max_turns"] = config.claude_code.max_turns
+        if config.claude_code.request_timeout_seconds != DEFAULT_CLAUDE_CODE_REQUEST_TIMEOUT_SECONDS:
+            claude_code_payload["request_timeout_seconds"] = config.claude_code.request_timeout_seconds
+        if config.claude_code.max_budget_usd is not None:
+            claude_code_payload["max_budget_usd"] = config.claude_code.max_budget_usd
+        if claude_code_payload:
+            payload["claude_code"] = claude_code_payload
 
     if config.verbosity:
         normalized = normalize_verbosity_label(config.verbosity)

@@ -188,5 +188,5 @@ def _render_researcher_requirements_notice(
 
     printer(
         "[yellow]This researcher preset still needs Tavily web search. "
-        "Add a Tavily API key or choose a Codex preset to activate runtime-native research.[/]"
+        "Add a Tavily API key or choose a Codex or Claude Code preset to activate runtime-native research.[/]"
     )

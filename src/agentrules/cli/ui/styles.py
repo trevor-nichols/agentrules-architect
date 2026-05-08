@@ -8,6 +8,7 @@ import questionary
 from questionary import Style
 
 _PROVIDER_BADGES: dict[str, str] = {
+    "claude_code": "CC",
     "codex": "CX",
     "xai": "XA",
     "deepseek": "DS",
@@ -37,6 +38,7 @@ CLI_STYLE = Style(
         ("status.model", "fg:#00d1b2 bold"),
         ("status.provider", "fg:#888888"),
         ("status.variant", "fg:#00d1b2"),
+        ("provider.claude_code", "fg:#a855f7 bold"),
         ("provider.codex", "fg:#f97316 bold"),
         ("provider.xai", "fg:#ef4444 bold"),
         ("provider.deepseek", "fg:#14b8a6 bold"),

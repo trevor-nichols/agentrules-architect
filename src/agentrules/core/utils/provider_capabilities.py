@@ -28,7 +28,7 @@ def resolve_provider(subject: Any) -> ModelProvider | None:
 def uses_repo_runtime(subject: Any) -> bool:
     """Return whether the provider runs against a repository-aware runtime."""
 
-    return resolve_provider(subject) == ModelProvider.CODEX
+    return resolve_provider(subject) in {ModelProvider.CODEX, ModelProvider.CLAUDE_CODE}
 
 
 def uses_runtime_native_web_search(subject: Any) -> bool:

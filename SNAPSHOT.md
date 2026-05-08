@@ -11,6 +11,7 @@
 │   │       ├── phase3_analysis.md
 │   │       ├── phase4_synthesis.md
 │   │       └── phase5_consolidation.md
+│   ├── claude-code-runtime.md
 │   ├── codex-runtime.md
 │   ├── provider-system-prompts.md
 │   └── structured-output-contracts.md
@@ -32,6 +33,7 @@
 │       │   │   └── tree.py  # `tree` command to preview project structure
 │       │   ├── services/  # CLI-specific business logic bridging core and UI
 │       │   │   ├── __init__.py  # Services package
+│       │   │   ├── claude_code_runtime.py
 │       │   │   ├── codex_runtime.py  # Interaction with Codex local app-server
 │       │   │   ├── configuration.py  # Interface to the core configuration manager
 │       │   │   ├── output_validation.py  # Output filename validation logic
@@ -49,6 +51,7 @@
 │       │   │   │   │   ├── researcher.py  # Researcher specific model config
 │       │   │   │   │   └── utils.py  # Shared model choice UI helpers
 │       │   │   │   ├── __init__.py  # Settings package
+│       │   │   │   ├── claude_code.py
 │       │   │   │   ├── codex.py  # Codex runtime configuration UI
 │       │   │   │   ├── logging.py  # Logging verbosity UI
 │       │   │   │   ├── menu.py  # Settings top-level menu
@@ -92,6 +95,13 @@
 │       │   │   │   ├── request_builder.py  # Request construction for Anthropic
 │       │   │   │   ├── response_parser.py  # Anthropic response parser
 │       │   │   │   └── tooling.py  # Tool config resolution for Anthropic
+│       │   │   ├── claude_code
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── architect.py
+│       │   │   │   ├── client.py
+│       │   │   │   ├── errors.py
+│       │   │   │   ├── request_builder.py
+│       │   │   │   └── response_parser.py
 │       │   │   ├── codex/  # Codex App Server integration
 │       │   │   │   ├── __init__.py  # Codex package
 │       │   │   │   ├── architect.py  # BaseArchitect implementation for Codex
@@ -157,6 +167,7 @@
 │       │   ├── configuration/  # Application configuration manager
 │       │   │   ├── services/  # Configuration sub-services
 │       │   │   │   ├── __init__.py  # Config services package
+│       │   │   │   ├── claude_code.py
 │       │   │   │   ├── codex.py  # Codex runtime config getters/setters
 │       │   │   │   ├── exclusions.py  # Exclusion overrides getters/setters
 │       │   │   │   ├── features.py  # Feature toggles getters/setters
@@ -254,6 +265,7 @@
 │       │   │   ├── model_config_helper.py  # Utility to find string name for model config
 │       │   │   ├── offline.py  # Offline stubs for testing without network
 │       │   │   ├── provider_capabilities.py  # Helpers for provider branching
+│       │   │   ├── provider_utils.py
 │       │   │   ├── release_metadata.py  # Validation script for GitHub tag releases
 │       │   │   ├── structured_outputs.py  # JSON Schema builders for providers
 │       │   │   ├── system_prompt.py  # Default system prompt formatter
@@ -277,6 +289,7 @@
 │   │   ├── test_final_analysis.py  # Live tests for final analysis
 │   │   └── test_final_offline.py  # Offline tests for final analysis
 │   ├── live/  # Tests hitting live APIs
+│   │   ├── test_claude_code_live_smoke.py
 │   │   ├── test_codex_live_smoke.py  # Live smoke tests for Codex integration
 │   │   └── test_live_smoke.py  # Live smoke test across multiple providers
 │   ├── offline/  # Offline pipeline tests
@@ -334,6 +347,10 @@
 │   │   │   ├── test_anthropic_capabilities.py  # Tests for Anthropic capability flags
 │   │   │   ├── test_anthropic_client_compat.py  # Tests for Anthropic client
 │   │   │   ├── test_anthropic_request_builder.py  # Tests for Anthropic request building
+│   │   │   ├── test_claude_code_architect.py
+│   │   │   ├── test_claude_code_client.py
+│   │   │   ├── test_claude_code_request_builder.py
+│   │   │   ├── test_claude_code_response_parser.py
 │   │   │   ├── test_codex_architect.py  # Tests for Codex architect
 │   │   │   ├── test_codex_client.py  # Tests for Codex client
 │   │   │   ├── test_codex_request_builder.py  # Tests for Codex request building
@@ -350,6 +367,7 @@
 │   │   │   └── test_phase3_packing.py  # Tests for batch token packing
 │   │   ├── utils
 │   │   │   ├── test_provider_capabilities.py
+│   │   │   ├── test_provider_utils.py
 │   │   │   ├── test_structured_outputs.py
 │   │   │   ├── test_token_estimator.py
 │   │   │   └── test_token_packer.py
@@ -363,6 +381,7 @@
 │   │   ├── test_analysis_view.py  # Unit tests for terminal UI tracking
 │   │   ├── test_clean_agentrules.py  # Unit tests for AGENTS.md cleaning
 │   │   ├── test_cli.py  # Unit tests for Typer commands
+│   │   ├── test_cli_claude_code_settings.py
 │   │   ├── test_cli_codex_settings.py  # Unit tests for Codex settings UI
 │   │   ├── test_cli_model_picker_ui.py  # Unit tests for model selection UI
 │   │   ├── test_codex_runtime_service.py  # Unit tests for Codex runtime sync wrapper

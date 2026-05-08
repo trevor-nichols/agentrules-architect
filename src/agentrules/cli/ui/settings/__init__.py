@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .claude_code import configure_claude_code_runtime
 from .codex import configure_codex_runtime
 from .exclusions import configure_exclusions
 from .logging import configure_logging
@@ -12,6 +13,7 @@ from .providers import configure_provider_keys, show_provider_summary
 
 __all__ = [
     "configure_settings",
+    "configure_claude_code_runtime",
     "configure_codex_runtime",
     "configure_logging",
     "configure_output_preferences",

@@ -20,6 +20,7 @@ def test_settings_menu_separates_provider_keys_and_codex_runtime() -> None:
     assert [choice.title for choice in choices] == [entry[0] for entry in SETTINGS_CATEGORY_ENTRIES]
     assert ("Provider API keys", "providers") in SETTINGS_CATEGORY_ENTRIES
     assert ("Codex runtime", "codex") in SETTINGS_CATEGORY_ENTRIES
+    assert ("Claude Code runtime", "claude_code") in SETTINGS_CATEGORY_ENTRIES
 
 
 def test_researcher_status_mentions_codex_as_alternative_when_tavily_missing() -> None:
@@ -31,7 +32,7 @@ def test_researcher_status_mentions_codex_as_alternative_when_tavily_missing() -
         provider_availability={"codex": True},
     )
 
-    assert model_label == "Needs Tavily or Codex preset"
+    assert model_label == "Needs Tavily or runtime preset"
     assert provider_label == ""
 
 
