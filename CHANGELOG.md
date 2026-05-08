@@ -1,5 +1,33 @@
 # Changelog
 
+## [4.1.0](https://github.com/trevor-nichols/agentrules-architect/compare/v4.0.0...v4.1.0) (2026-05-08)
+
+
+### Features
+
+* **agents:** add Claude Code SDK adapter ([5d1cf06](https://github.com/trevor-nichols/agentrules-architect/commit/5d1cf06e45f808043020ed59c563303c385a2ca7))
+* **claude-code:** add Claude Agent SDK runtime integration ([9558f06](https://github.com/trevor-nichols/agentrules-architect/commit/9558f064ea3248a90abb48e9901f679456e0243e))
+* **claude-code:** add runtime execution guardrails ([2543d4b](https://github.com/trevor-nichols/agentrules-architect/commit/2543d4bc527fb093abbe2f19d80f2f9e4280d714))
+* **cli:** add Claude Code runtime settings ([dd24f18](https://github.com/trevor-nichols/agentrules-architect/commit/dd24f184a6c4bc744697b84fcaa31348d54e7307))
+* **config:** add Claude Code runtime foundation ([0299fbb](https://github.com/trevor-nichols/agentrules-architect/commit/0299fbb87f1bbba2e7314cb2dfc17a6d90d3fae9))
+* **models:** wire Claude Code runtime presets ([efecbcf](https://github.com/trevor-nichols/agentrules-architect/commit/efecbcf150c46cbff5e6b2ccb2c5f3ff4d20177d))
+
+
+### Bug Fixes
+
+* **analysis:** fail fast on final generation errors ([64c862c](https://github.com/trevor-nichols/agentrules-architect/commit/64c862c3255cd18e42fa67e03c6af120c7b5e2d3))
+* **claude-code:** defer default CLI resolution to SDK ([27e87fe](https://github.com/trevor-nichols/agentrules-architect/commit/27e87feb7ef18e620bb3b94fd7d9879c500e55ad))
+* **claude-code:** enforce streaming query timeouts ([3015191](https://github.com/trevor-nichols/agentrules-architect/commit/301519114082c456d8dda039c6424d6d7f05fd08))
+* **claude-code:** keep token preflight local ([bb44987](https://github.com/trevor-nichols/agentrules-architect/commit/bb449870d7649b1922ca1f9d0f0f1b2964a7ad67))
+* **claude-code:** resolve configured cli path ([b6dd91f](https://github.com/trevor-nichols/agentrules-architect/commit/b6dd91f03901033c59fa3d364b7a61e27f559f52))
+* **claude-code:** scrub inherited API key env ([0841e06](https://github.com/trevor-nichols/agentrules-architect/commit/0841e067624ba6556d7be36b7985b3d1ae6fe844))
+* **claude-code:** validate sdk default runtime ([7f9deca](https://github.com/trevor-nichols/agentrules-architect/commit/7f9deca23e92d7f901e0bf9180b6258faa68af73))
+
+
+### Documentation
+
+* **claude-code:** document runtime rollout ([44cf0d3](https://github.com/trevor-nichols/agentrules-architect/commit/44cf0d321bbeb6786ad72875334f3f5d3951f7cb))
+
 ## [4.0.0](https://github.com/trevor-nichols/agentrules-architect/compare/v3.8.0...v4.0.0) (2026-05-05)
 
 
