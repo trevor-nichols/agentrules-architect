@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.2.0](https://github.com/trevor-nichols/agentrules-architect/compare/v4.1.0...v4.2.0) (2026-06-03)
+
+
+### Features
+
+* **models:** add current provider model presets ([9a5da4a](https://github.com/trevor-nichols/agentrules-architect/commit/9a5da4a11f465c34ed51aad9c019ca698eeec558))
+
+
+### Bug Fixes
+
+* **models:** add Gemini 3.5 and remap retired presets ([3726b03](https://github.com/trevor-nichols/agentrules-architect/commit/3726b0329d6ebb80fb3c935114f10dd1caacfb4e))
+* **models:** harden codex and claude runtime selection ([c6d42cb](https://github.com/trevor-nichols/agentrules-architect/commit/c6d42cb56ce52e76e940a5ccb6cbe1b603bb32bf))
+* **xai:** migrate Grok presets to canonical models ([6ba5c56](https://github.com/trevor-nichols/agentrules-architect/commit/6ba5c5673e520933c8c184ce861283ec66baa2c1))
+
+
+### Documentation
+
+* **readme:** refresh project overview ([309f2e7](https://github.com/trevor-nichols/agentrules-architect/commit/309f2e7539daf27936d4746c363e21deaf1c02ec))
+
 ## [4.1.0](https://github.com/trevor-nichols/agentrules-architect/compare/v4.0.0...v4.1.0) (2026-05-08)
 
 
