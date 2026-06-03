@@ -26,6 +26,18 @@ PHASE_TITLES: dict[str, str] = {
 PHASE_SEQUENCE: list[str] = list(agent_settings.MODEL_PRESET_DEFAULTS.keys())
 CODEX_RUNTIME_PRESET_PREFIX = "codex-runtime:"
 CODEX_RUNTIME_PRESET_EFFORT_SEPARATOR = "|effort="
+CODEX_RUNTIME_DEFAULT_KEY = f"{CODEX_RUNTIME_PRESET_PREFIX}__default__"
+CODEX_RUNTIME_DEFAULT_MODEL_NAME = "__codex_runtime_default__"
+LEGACY_CODEX_RUNTIME_MODEL_ALIASES: dict[str, str] = {
+    "gpt-5.4-2026-03-05": "gpt-5.4",
+}
+_LEGACY_CODEX_RUNTIME_MODEL_NAMES_BY_CANONICAL: dict[str, tuple[str, ...]] = {}
+for _legacy_model_name, _canonical_model_name in LEGACY_CODEX_RUNTIME_MODEL_ALIASES.items():
+    _LEGACY_CODEX_RUNTIME_MODEL_NAMES_BY_CANONICAL.setdefault(_canonical_model_name, ())
+    _LEGACY_CODEX_RUNTIME_MODEL_NAMES_BY_CANONICAL[_canonical_model_name] = (
+        *_LEGACY_CODEX_RUNTIME_MODEL_NAMES_BY_CANONICAL[_canonical_model_name],
+        _legacy_model_name,
+    )
 
 CodexRuntimeReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None
 _CODEX_RUNTIME_REASONING_EFFORT_ORDER: tuple[str, ...] = (
@@ -60,12 +72,19 @@ class CodexRuntimeModelCatalogEntry:
     model: str
     display_name: str | None = None
     description: str | None = None
+    is_default: bool = False
     default_reasoning_effort: CodexRuntimeReasoningEffort = None
     supported_reasoning_efforts: tuple[CodexRuntimeModelReasoningOption, ...] = ()
 
 
 @dataclass(frozen=True)
 class CodexRuntimeModelReasoningOption:
+    reasoning_effort: CodexRuntimeReasoningEffort
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class _ResolvedCodexRuntimeReasoningOption:
     reasoning_effort: CodexRuntimeReasoningEffort
     description: str | None = None
 
@@ -108,6 +127,9 @@ def get_preset_info(key: str) -> PresetInfo | None:
     if preset is not None:
         return preset
 
+    if is_codex_runtime_default_preset_key(key):
+        return _build_runtime_codex_default_preset_info()
+
     runtime_selection = parse_codex_runtime_preset_selection(key)
     if runtime_selection is None:
         return None
@@ -134,9 +156,19 @@ def get_model_config_for_phase(
     if preset_key is None:
         return None
 
+    return get_model_config_for_preset_key(preset_key)
+
+
+def get_model_config_for_preset_key(preset_key: str | None):
+    if preset_key is None:
+        return None
+
     preset = agent_settings.MODEL_PRESETS.get(preset_key)
     if preset is not None:
         return preset["config"]
+
+    if is_codex_runtime_default_preset_key(preset_key):
+        return _build_runtime_codex_default_model_config()
 
     runtime_selection = parse_codex_runtime_preset_selection(preset_key)
     if runtime_selection is not None:
@@ -210,6 +242,11 @@ def apply_user_overrides(overrides: Mapping[str, str] | None = None) -> dict[str
             applied[phase] = preset_key
             continue
 
+        if is_codex_runtime_default_preset_key(preset_key):
+            agent_settings.MODEL_CONFIG[phase] = _build_runtime_codex_default_model_config()
+            applied[phase] = preset_key
+            continue
+
         runtime_selection = parse_codex_runtime_preset_selection(preset_key)
         if runtime_selection is None:
             continue
@@ -234,10 +271,16 @@ def make_codex_runtime_preset_key(
     return f"{base}{CODEX_RUNTIME_PRESET_EFFORT_SEPARATOR}{normalized_effort}"
 
 
+def is_codex_runtime_default_preset_key(key: str | None) -> bool:
+    return isinstance(key, str) and key == CODEX_RUNTIME_DEFAULT_KEY
+
+
 def parse_codex_runtime_preset_selection(key: str | None) -> CodexRuntimePresetSelection | None:
     if not isinstance(key, str):
         return None
     if not key.startswith(CODEX_RUNTIME_PRESET_PREFIX):
+        return None
+    if is_codex_runtime_default_preset_key(key):
         return None
 
     raw_value = key.removeprefix(CODEX_RUNTIME_PRESET_PREFIX).strip()
@@ -267,19 +310,32 @@ def parse_codex_runtime_reasoning_for_preset_key(key: str | None) -> CodexRuntim
     return selection.reasoning_effort
 
 
-def resolve_codex_model_name_for_preset_key(key: str | None) -> str | None:
+def resolve_raw_codex_model_name_for_preset_key(key: str | None) -> str | None:
+    if is_codex_runtime_default_preset_key(key):
+        return None
     runtime_selection = parse_codex_runtime_preset_selection(key)
     if runtime_selection is not None:
-        return runtime_selection.model_name
+        normalized_model_name = runtime_selection.model_name.strip()
+        return normalized_model_name or None
     if not isinstance(key, str):
         return None
     preset = agent_settings.MODEL_PRESETS.get(key)
     if preset is None or preset["provider"] != ModelProvider.CODEX:
         return None
-    return preset["config"].model_name
+    model_name = preset["config"].model_name.strip()
+    return model_name or None
+
+
+def resolve_codex_model_name_for_preset_key(key: str | None) -> str | None:
+    model_name = resolve_raw_codex_model_name_for_preset_key(key)
+    if model_name is None:
+        return None
+    return normalize_codex_runtime_model_name(model_name)
 
 
 def resolve_codex_reasoning_effort_for_preset_key(key: str | None) -> CodexRuntimeReasoningEffort:
+    if is_codex_runtime_default_preset_key(key):
+        return None
     runtime_selection = parse_codex_runtime_preset_selection(key)
     if runtime_selection is not None:
         return runtime_selection.reasoning_effort
@@ -294,32 +350,98 @@ def resolve_codex_reasoning_effort_for_preset_key(key: str | None) -> CodexRunti
 def build_codex_runtime_preset_infos(
     catalog_entries: Iterable[CodexRuntimeModelCatalogEntry],
 ) -> list[PresetInfo]:
+    entries = tuple(catalog_entries)
     runtime_infos: list[PresetInfo] = []
-    seen_keys: set[str] = set()
+    seen_identities: dict[tuple[str, CodexRuntimeReasoningEffort], int] = {}
 
+    default_entry = _resolve_runtime_default_catalog_entry(entries)
+    if default_entry is not None:
+        runtime_infos.append(
+            _build_runtime_codex_default_preset_info(
+                display_name=default_entry.display_name,
+                model_name=default_entry.model,
+                default_reasoning_effort=default_entry.default_reasoning_effort,
+                description=default_entry.description,
+            )
+        )
+
+    for entry in entries:
+        model_name = entry.model.strip()
+        if not model_name:
+            continue
+        normalized_model_name = normalize_codex_runtime_model_name(model_name)
+        for reasoning_option in _resolve_runtime_reasoning_options(entry):
+            identity = (
+                normalized_model_name,
+                reasoning_option.reasoning_effort,
+            )
+            preset = _build_runtime_codex_preset_info(
+                model_name,
+                display_name=entry.display_name,
+                description=entry.description,
+                reasoning_effort=reasoning_option.reasoning_effort,
+                reasoning_description=reasoning_option.description,
+            )
+            existing_index = seen_identities.get(identity)
+            if existing_index is None:
+                seen_identities[identity] = len(runtime_infos)
+                runtime_infos.append(preset)
+                continue
+
+            existing_preset = runtime_infos[existing_index]
+            existing_model_name = parse_codex_runtime_preset_key(existing_preset.key)
+            if _prefer_runtime_catalog_model_name(
+                existing_model_name,
+                candidate_model_name=model_name,
+                normalized_model_name=normalized_model_name,
+            ):
+                runtime_infos[existing_index] = preset
+
+    return runtime_infos
+
+
+def build_codex_runtime_executable_identities(
+    catalog_entries: Iterable[CodexRuntimeModelCatalogEntry],
+) -> frozenset[tuple[str, CodexRuntimeReasoningEffort]]:
+    identities: set[tuple[str, CodexRuntimeReasoningEffort]] = set()
     for entry in catalog_entries:
         model_name = entry.model.strip()
         if not model_name:
             continue
-        for reasoning_option in _resolve_runtime_reasoning_options(entry):
-            key = make_codex_runtime_preset_key(
-                model_name,
-                reasoning_effort=reasoning_option.reasoning_effort,
-            )
-            if key in seen_keys:
-                continue
-            runtime_infos.append(
-                _build_runtime_codex_preset_info(
-                    model_name,
-                    display_name=entry.display_name,
-                    description=entry.description,
-                    reasoning_effort=reasoning_option.reasoning_effort,
-                    reasoning_description=reasoning_option.description,
-                )
-            )
-            seen_keys.add(key)
+        normalized_model_name = normalize_codex_runtime_model_name(model_name)
+        identities.add((normalized_model_name, None))
+        normalized_default_effort = _normalize_codex_reasoning_effort(entry.default_reasoning_effort)
+        if normalized_default_effort is not None:
+            identities.add((normalized_model_name, normalized_default_effort))
+        for option in entry.supported_reasoning_efforts:
+            normalized_effort = _normalize_codex_reasoning_effort(option.reasoning_effort)
+            if normalized_effort is not None:
+                identities.add((normalized_model_name, normalized_effort))
+    return frozenset(identities)
 
-    return runtime_infos
+
+def _build_runtime_codex_default_preset_info(
+    *,
+    display_name: str | None = None,
+    model_name: str | None = None,
+    default_reasoning_effort: CodexRuntimeReasoningEffort = None,
+    description: str | None = None,
+) -> PresetInfo:
+    details = "Follow the current default model from the live Codex app-server catalog."
+    current_model = (display_name or "").strip() or model_name
+    if current_model:
+        details = f"{details} Current default: {current_model}."
+    normalized_effort = _normalize_codex_reasoning_effort(default_reasoning_effort)
+    if normalized_effort is not None:
+        details = f"{details} Default reasoning effort: {_format_reasoning_description(normalized_effort)}."
+    if description:
+        details = f"{details} {description.strip()}".strip()
+    return PresetInfo(
+        key=CODEX_RUNTIME_DEFAULT_KEY,
+        label="Codex runtime default",
+        description=details,
+        provider=ModelProvider.CODEX,
+    )
 
 
 def _build_runtime_codex_preset_info(
@@ -352,13 +474,23 @@ def _build_runtime_codex_preset_info(
     )
 
 
+def _build_runtime_codex_default_model_config() -> ModelConfig:
+    template = _resolve_codex_runtime_template()
+    return template._replace(
+        model_name=CODEX_RUNTIME_DEFAULT_MODEL_NAME,
+        reasoning=ReasoningMode.DYNAMIC,
+    )
+
+
 def _build_runtime_codex_model_config(
     model_name: str,
     *,
     reasoning_effort: CodexRuntimeReasoningEffort = None,
 ) -> ModelConfig:
     template = _resolve_codex_runtime_template()
-    reasoning_mode = _reasoning_mode_from_effort(reasoning_effort, fallback=template.reasoning)
+    reasoning_mode = ReasoningMode.DYNAMIC
+    if reasoning_effort is not None:
+        reasoning_mode = _reasoning_mode_from_effort(reasoning_effort, fallback=template.reasoning)
     return template._replace(model_name=model_name, reasoning=reasoning_mode)
 
 
@@ -371,7 +503,7 @@ def _resolve_codex_runtime_template() -> ModelConfig:
 
 def _resolve_runtime_reasoning_options(
     entry: CodexRuntimeModelCatalogEntry,
-) -> tuple[CodexRuntimeModelReasoningOption, ...]:
+) -> tuple[_ResolvedCodexRuntimeReasoningOption, ...]:
     descriptions: dict[str, str | None] = {}
     for option in entry.supported_reasoning_efforts:
         normalized_effort = _normalize_codex_reasoning_effort(option.reasoning_effort)
@@ -380,21 +512,40 @@ def _resolve_runtime_reasoning_options(
         if normalized_effort not in descriptions:
             descriptions[normalized_effort] = option.description
 
-    default_effort = _normalize_codex_reasoning_effort(entry.default_reasoning_effort)
-    if default_effort is not None and default_effort not in descriptions:
-        descriptions[default_effort] = None
+    options: list[_ResolvedCodexRuntimeReasoningOption] = []
+    normalized_default_effort = _normalize_codex_reasoning_effort(entry.default_reasoning_effort)
+    if normalized_default_effort is None:
+        options.append(_ResolvedCodexRuntimeReasoningOption(reasoning_effort=None))
+    else:
+        options.append(
+            _ResolvedCodexRuntimeReasoningOption(
+                reasoning_effort=normalized_default_effort,
+                description=descriptions.get(normalized_default_effort),
+            )
+        )
 
-    if not descriptions:
-        return (CodexRuntimeModelReasoningOption(reasoning_effort=default_effort),)
-
-    ordered_efforts = [effort for effort in _CODEX_RUNTIME_REASONING_EFFORT_ORDER if effort in descriptions]
-    return tuple(
-        CodexRuntimeModelReasoningOption(
+    ordered_efforts = [
+        effort
+        for effort in _CODEX_RUNTIME_REASONING_EFFORT_ORDER
+        if effort in descriptions and effort != normalized_default_effort
+    ]
+    options.extend(
+        _ResolvedCodexRuntimeReasoningOption(
             reasoning_effort=cast(CodexRuntimeReasoningEffort, effort),
             description=descriptions.get(effort),
         )
         for effort in ordered_efforts
     )
+    return tuple(options)
+
+
+def _resolve_runtime_default_catalog_entry(
+    entries: Iterable[CodexRuntimeModelCatalogEntry],
+) -> CodexRuntimeModelCatalogEntry | None:
+    for entry in entries:
+        if entry.is_default and entry.model.strip():
+            return entry
+    return None
 
 
 def _normalize_codex_reasoning_effort(value: object) -> CodexRuntimeReasoningEffort:
@@ -404,6 +555,41 @@ def _normalize_codex_reasoning_effort(value: object) -> CodexRuntimeReasoningEff
     if normalized in _CODEX_RUNTIME_REASONING_EFFORT_SET:
         return normalized
     return None
+
+
+def normalize_codex_runtime_model_name(model_name: str) -> str:
+    normalized = model_name.strip()
+    return LEGACY_CODEX_RUNTIME_MODEL_ALIASES.get(normalized, normalized)
+
+
+def codex_runtime_model_alias_candidates(model_name: str) -> tuple[str, ...]:
+    normalized = model_name.strip()
+    if not normalized:
+        return ()
+
+    candidates: list[str] = []
+
+    def _append(value: str | None) -> None:
+        if value and value not in candidates:
+            candidates.append(value)
+
+    canonical_model_name = normalize_codex_runtime_model_name(normalized)
+    _append(normalized)
+    _append(canonical_model_name)
+    for legacy_model_name in _LEGACY_CODEX_RUNTIME_MODEL_NAMES_BY_CANONICAL.get(canonical_model_name, ()):
+        _append(legacy_model_name)
+    return tuple(candidates)
+
+
+def _prefer_runtime_catalog_model_name(
+    existing_model_name: str | None,
+    *,
+    candidate_model_name: str,
+    normalized_model_name: str,
+) -> bool:
+    if existing_model_name == normalized_model_name:
+        return False
+    return candidate_model_name == normalized_model_name
 
 
 def _reasoning_mode_from_effort(

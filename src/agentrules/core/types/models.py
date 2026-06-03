@@ -15,7 +15,7 @@ from agentrules.core.types.tool_config import ToolConfig
 # This section defines types for model configuration.
 # ====================================================
 
-AnthropicEffort = Literal["low", "medium", "high", "max"]
+AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
 
 
 class ModelConfig(NamedTuple):
@@ -116,6 +116,34 @@ CLAUDE_OPUS_46 = ModelConfig(
 CLAUDE_OPUS_46_WITH_REASONING = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
     model_name="claude-opus-4-6",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_47 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-7",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_47_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-7",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_48 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-8",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_48_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-8",
     reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None},
 )

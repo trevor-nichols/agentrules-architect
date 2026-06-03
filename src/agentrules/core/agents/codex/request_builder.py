@@ -18,6 +18,8 @@ class PreparedRequest:
     """Represents a fully prepared Codex request bundle."""
 
     launch_config: CodexProcessLaunchConfig
+    requested_model_name: str
+    requested_reasoning: ReasoningMode
     thread_params: dict[str, Any]
     turn_params: dict[str, Any]
     token_payload: dict[str, Any]
@@ -71,6 +73,8 @@ def prepare_request(
 
     return PreparedRequest(
         launch_config=launch_config,
+        requested_model_name=model_name,
+        requested_reasoning=reasoning,
         thread_params=thread_params,
         turn_params=turn_params,
         token_payload=token_payload,
@@ -83,6 +87,8 @@ def _normalize_cwd(cwd: str | None) -> str:
 
 
 def _resolve_reasoning_effort(reasoning: ReasoningMode) -> str | None:
+    if reasoning == ReasoningMode.DYNAMIC:
+        return None
     if reasoning in {
         ReasoningMode.MINIMAL,
         ReasoningMode.LOW,

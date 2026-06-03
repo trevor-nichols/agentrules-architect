@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 import questionary
 
@@ -16,6 +17,12 @@ from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_
 
 from .researcher import configure_researcher_phase
 from .utils import build_model_choice_state, current_labels, select_variant
+
+
+@dataclass(frozen=True)
+class _RuntimeCodexCatalog:
+    visible_presets: tuple[model_presets.PresetInfo, ...]
+    executable_identities: frozenset[tuple[str, str | None]] | None
 
 
 def configure_models(context: CliContext) -> None:
@@ -34,7 +41,8 @@ def configure_models(context: CliContext) -> None:
         active = configuration.get_active_presets()
         researcher_mode = configuration.get_researcher_mode()
         tavily_available = configuration.has_tavily_credentials()
-        runtime_codex_presets = _load_runtime_codex_presets(provider_availability)
+        runtime_codex_catalog = _load_runtime_codex_catalog(provider_availability)
+        runtime_codex_presets = runtime_codex_catalog.visible_presets
 
         offline_mode = bool(os.getenv("OFFLINE"))
 
@@ -62,14 +70,20 @@ def configure_models(context: CliContext) -> None:
 
         phase = phase_selection
         title = model_presets.get_phase_title(phase)
+        default_key = model_presets.get_default_preset_key(phase)
+        current_key = active.get(phase, default_key)
         presets = configuration.get_available_presets_for_phase(phase, provider_availability)
-        presets = _merge_presets_with_runtime_codex(presets, runtime_codex_presets)
+        presets = _filter_claude_code_presets_for_runtime(presets, preserved_key=current_key)
+        presets = _merge_presets_with_runtime_codex(
+            presets,
+            runtime_codex_presets,
+            executable_identities=runtime_codex_catalog.executable_identities,
+            preserved_key=current_key,
+        )
         if not presets:
             console.print(f"[yellow]No presets available for {title}; configure provider access first.[/]")
             continue
 
-        default_key = model_presets.get_default_preset_key(phase)
-        current_key = active.get(phase, default_key)
         current_key = _normalize_codex_selection_key(current_key, runtime_codex_presets)
         default_key = _normalize_codex_selection_key(default_key, runtime_codex_presets)
 
@@ -254,22 +268,70 @@ class _ConfigurationCancelled(Exception):
 def _load_runtime_codex_presets(
     provider_availability: Mapping[str, bool],
 ) -> tuple[model_presets.PresetInfo, ...]:
+    return _load_runtime_codex_catalog(provider_availability).visible_presets
+
+
+def _filter_claude_code_presets_for_runtime(
+    presets: list[model_presets.PresetInfo],
+    *,
+    preserved_key: str | None,
+) -> list[model_presets.PresetInfo]:
+    runtime_version = configuration.CONFIG_MANAGER.get_claude_code_runtime_version()
+    if runtime_version is None:
+        return presets
+
+    filtered: list[model_presets.PresetInfo] = []
+    for preset in presets:
+        if preset.provider != ModelProvider.CLAUDE_CODE:
+            filtered.append(preset)
+            continue
+
+        model_config = model_presets.get_model_config_for_preset_key(preset.key)
+        model_name = getattr(model_config, "model_name", None)
+        if not isinstance(model_name, str) or not model_name.strip():
+            filtered.append(preset)
+            continue
+
+        minimum_version = configuration.CONFIG_MANAGER.minimum_claude_code_version_for_model(model_name)
+        if minimum_version is None or runtime_version >= minimum_version:
+            filtered.append(preset)
+            continue
+
+        if preset.key == preserved_key:
+            filtered.append(
+                model_presets.PresetInfo(
+                    key=preset.key,
+                    label=f"{preset.label} [current runtime needs {minimum_version}+]",
+                    description=preset.description,
+                    provider=preset.provider,
+                )
+            )
+
+    return filtered
+
+
+def _load_runtime_codex_catalog(
+    provider_availability: Mapping[str, bool],
+) -> _RuntimeCodexCatalog:
     codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
     if not codex_available:
-        return ()
+        return _RuntimeCodexCatalog(visible_presets=(), executable_identities=None)
 
     try:
-        diagnostics = codex_runtime.get_codex_runtime_diagnostics(include_models=True)
+        diagnostics = codex_runtime.get_codex_runtime_diagnostics(include_models=True, include_hidden_models=True)
     except Exception:
-        return ()
-    if diagnostics.runtime_error or diagnostics.models_error or not diagnostics.models:
-        return ()
+        return _RuntimeCodexCatalog(visible_presets=(), executable_identities=None)
+    if diagnostics.runtime_error or diagnostics.models_error:
+        return _RuntimeCodexCatalog(visible_presets=(), executable_identities=None)
+    if not diagnostics.models:
+        return _RuntimeCodexCatalog(visible_presets=(), executable_identities=frozenset())
 
     catalog_entries = [
         model_presets.CodexRuntimeModelCatalogEntry(
             model=model.model,
             display_name=model.display_name,
             description=model.description or model.availability_message,
+            is_default=model.is_default,
             default_reasoning_effort=model.default_reasoning_effort,
             supported_reasoning_efforts=tuple(
                 model_presets.CodexRuntimeModelReasoningOption(
@@ -281,14 +343,38 @@ def _load_runtime_codex_presets(
         )
         for model in diagnostics.models
     ]
-    return tuple(model_presets.build_codex_runtime_preset_infos(catalog_entries))
+    visible_catalog_entries = [
+        entry for entry, model in zip(catalog_entries, diagnostics.models, strict=True) if not model.hidden
+    ]
+    visible_presets = list(model_presets.build_codex_runtime_preset_infos(visible_catalog_entries))
+    if not any(preset.key == model_presets.CODEX_RUNTIME_DEFAULT_KEY for preset in visible_presets):
+        default_entry = next((entry for entry in catalog_entries if entry.is_default and entry.model.strip()), None)
+        if default_entry is not None:
+            default_preset = next(
+                (
+                    preset
+                    for preset in model_presets.build_codex_runtime_preset_infos((default_entry,))
+                    if preset.key == model_presets.CODEX_RUNTIME_DEFAULT_KEY
+                ),
+                None,
+            )
+            if default_preset is not None:
+                visible_presets.insert(0, default_preset)
+    executable_identities = model_presets.build_codex_runtime_executable_identities(catalog_entries)
+    return _RuntimeCodexCatalog(
+        visible_presets=tuple(visible_presets),
+        executable_identities=executable_identities,
+    )
 
 
 def _merge_presets_with_runtime_codex(
     presets: list[model_presets.PresetInfo],
     runtime_codex_presets: tuple[model_presets.PresetInfo, ...],
+    *,
+    executable_identities: frozenset[tuple[str, str | None]] | None = None,
+    preserved_key: str | None = None,
 ) -> list[model_presets.PresetInfo]:
-    if not runtime_codex_presets:
+    if not runtime_codex_presets and executable_identities is None and preserved_key is None:
         return presets
 
     merged: list[model_presets.PresetInfo] = [preset for preset in presets if preset.provider != ModelProvider.CODEX]
@@ -298,6 +384,68 @@ def _merge_presets_with_runtime_codex(
             continue
         merged.append(runtime_preset)
         existing_keys.add(runtime_preset.key)
+
+    visible_runtime_identities = frozenset(
+        identity
+        for identity in (_codex_preset_identity(preset.key) for preset in runtime_codex_presets)
+        if identity is not None
+    )
+    normalized_preserved_key = _normalize_codex_selection_key(preserved_key, runtime_codex_presets)
+    if preserved_key is not None and preserved_key not in existing_keys:
+        preserved_preset = model_presets.get_preset_info(preserved_key)
+        if preserved_preset is not None and preserved_preset.provider == ModelProvider.CODEX:
+            if model_presets.is_codex_runtime_default_preset_key(preserved_key):
+                if executable_identities is None or executable_identities:
+                    merged.append(preserved_preset)
+                    existing_keys.add(preserved_preset.key)
+            elif executable_identities is None:
+                merged.append(preserved_preset)
+                existing_keys.add(preserved_preset.key)
+            else:
+                identity = _codex_preset_identity(preserved_key)
+                if identity is not None:
+                    represented_by_visible_runtime = (
+                        normalized_preserved_key != preserved_key and normalized_preserved_key in existing_keys
+                    )
+                    if not represented_by_visible_runtime and _is_codex_identity_executable(
+                        identity,
+                        executable_identities,
+                    ):
+                        merged.append(preserved_preset)
+                        existing_keys.add(preserved_preset.key)
+
+    for preset in presets:
+        if preset.provider != ModelProvider.CODEX or preset.key in existing_keys:
+            continue
+        identity = _codex_preset_identity(preset.key)
+        if identity is None:
+            if preserved_key is not None and preset.key == preserved_key and executable_identities is None:
+                merged.append(preset)
+                existing_keys.add(preset.key)
+                continue
+            if executable_identities is not None:
+                continue
+            merged.append(preset)
+            existing_keys.add(preset.key)
+            continue
+        represented_by_visible_runtime = _is_visible_runtime_representation(identity, visible_runtime_identities)
+        if preserved_key is not None and preset.key == preserved_key:
+            if executable_identities is None:
+                merged.append(preset)
+                existing_keys.add(preset.key)
+            elif (
+                normalized_preserved_key == preserved_key
+                and _is_codex_identity_executable(identity, executable_identities)
+            ):
+                merged.append(preset)
+                existing_keys.add(preset.key)
+            continue
+        if represented_by_visible_runtime:
+            continue
+        if executable_identities is not None:
+            continue
+        merged.append(preset)
+        existing_keys.add(preset.key)
     return merged
 
 
@@ -307,38 +455,83 @@ def _normalize_codex_selection_key(
 ) -> str | None:
     if key is None or not runtime_codex_presets:
         return key
+    if model_presets.is_codex_runtime_default_preset_key(key):
+        return (
+            model_presets.CODEX_RUNTIME_DEFAULT_KEY
+            if any(preset.key == model_presets.CODEX_RUNTIME_DEFAULT_KEY for preset in runtime_codex_presets)
+            else key
+        )
     runtime_by_model: dict[str, str] = {}
-    runtime_by_identity: dict[tuple[str, str | None], str] = {}
+    runtime_by_exact_identity: dict[tuple[str, str | None], str] = {}
+    runtime_by_normalized_identity: dict[tuple[str, str | None], str] = {}
     for runtime_preset in runtime_codex_presets:
-        model_name = model_presets.parse_codex_runtime_preset_key(runtime_preset.key)
-        if model_name is None:
+        raw_model_name = model_presets.resolve_raw_codex_model_name_for_preset_key(runtime_preset.key)
+        normalized_model_name = model_presets.resolve_codex_model_name_for_preset_key(runtime_preset.key)
+        if raw_model_name is None or normalized_model_name is None:
             continue
-        runtime_by_model.setdefault(model_name, runtime_preset.key)
+        runtime_by_model.setdefault(normalized_model_name, runtime_preset.key)
         effort = model_presets.parse_codex_runtime_reasoning_for_preset_key(runtime_preset.key)
-        runtime_by_identity[(model_name, effort)] = runtime_preset.key
+        runtime_by_exact_identity[(raw_model_name, effort)] = runtime_preset.key
+        runtime_by_normalized_identity[(normalized_model_name, effort)] = runtime_preset.key
 
+    raw_model_name = model_presets.resolve_raw_codex_model_name_for_preset_key(key)
     model_name = model_presets.resolve_codex_model_name_for_preset_key(key)
-    if model_name is None:
+    if raw_model_name is None or model_name is None:
         return key
     selected_effort = model_presets.resolve_codex_reasoning_effort_for_preset_key(key)
-    for effort in _preferred_codex_effort_order(selected_effort):
-        candidate = runtime_by_identity.get((model_name, effort))
-        if candidate is not None:
-            return candidate
+    exact_candidate = runtime_by_exact_identity.get((raw_model_name, selected_effort))
+    if exact_candidate is not None:
+        return exact_candidate
+    if raw_model_name != model_name:
+        return key
+    if selected_effort is not None:
+        candidate = runtime_by_normalized_identity.get((model_name, selected_effort))
+        return candidate if candidate is not None else key
+    candidate = runtime_by_normalized_identity.get((model_name, None))
+    if candidate is not None:
+        return candidate
     return runtime_by_model.get(model_name, key)
 
 
-def _preferred_codex_effort_order(selected_effort: str | None) -> tuple[str | None, ...]:
-    ordered_candidates: list[str | None] = []
+def _codex_preset_identity(key: str | None) -> tuple[str, str | None] | None:
+    model_name = model_presets.resolve_codex_model_name_for_preset_key(key)
+    if model_name is None:
+        return None
+    return (model_name, model_presets.resolve_codex_reasoning_effort_for_preset_key(key))
 
-    def _append(value: str | None) -> None:
-        if value not in ordered_candidates:
-            ordered_candidates.append(value)
 
-    _append(selected_effort)
-    for value in ("medium", "high", "low", "minimal", "none", "xhigh", None):
-        _append(value)
-    return tuple(ordered_candidates)
+def _is_visible_runtime_representation(
+    identity: tuple[str, str | None],
+    visible_runtime_identities: frozenset[tuple[str, str | None]],
+) -> bool:
+    if identity in visible_runtime_identities:
+        return True
+    model_name, effort = identity
+    return effort is None and (model_name, None) in visible_runtime_identities
+
+
+def _is_codex_identity_executable(
+    identity: tuple[str, str | None],
+    executable_identities: frozenset[tuple[str, str | None]],
+) -> bool:
+    model_name, reasoning_effort = identity
+    if identity in executable_identities:
+        return True
+    if reasoning_effort is None:
+        return False
+
+    known_efforts = {
+        effort
+        for executable_model_name, effort in executable_identities
+        if executable_model_name == model_name
+    }
+    if not known_efforts:
+        return False
+
+    explicit_efforts = {effort for effort in known_efforts if effort is not None}
+    if explicit_efforts:
+        return False
+    return (model_name, None) in executable_identities
 
 
 __all__ = ["configure_models"]

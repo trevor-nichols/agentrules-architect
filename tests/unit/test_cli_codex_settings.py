@@ -247,11 +247,163 @@ def test_model_settings_loads_runtime_codex_presets_from_catalog(monkeypatch) ->
     runtime_presets = model_settings._load_runtime_codex_presets({"codex": True})
     runtime_keys = {preset.key for preset in runtime_presets}
 
+    assert model_presets.CODEX_RUNTIME_DEFAULT_KEY in runtime_keys
     assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in runtime_keys
     assert (
-        model_presets.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="medium")
-        in runtime_keys
+        model_presets.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="medium") in runtime_keys
     )
+
+
+def test_model_settings_runtime_codex_catalog_marks_lookup_failures_unknown(monkeypatch) -> None:
+    monkeypatch.setattr(
+        model_settings.codex_runtime,
+        "get_codex_runtime_diagnostics",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("catalog unavailable")),
+    )
+
+    catalog = model_settings._load_runtime_codex_catalog({"codex": True})
+
+    assert catalog.visible_presets == ()
+    assert catalog.executable_identities is None
+
+
+def test_model_settings_runtime_codex_catalog_treats_unavailable_runtime_as_unknown() -> None:
+    catalog = model_settings._load_runtime_codex_catalog({"codex": False})
+
+    assert catalog.visible_presets == ()
+    assert catalog.executable_identities is None
+
+
+def test_model_settings_runtime_codex_catalog_treats_empty_results_as_known_unavailable(monkeypatch) -> None:
+    diagnostics = CodexRuntimeDiagnostics(
+        executable_path="/usr/local/bin/codex",
+        codex_home="/tmp/codex-home",
+        command=("codex", "app-server"),
+        user_agent="codex/1.0",
+        models=(),
+    )
+    monkeypatch.setattr(
+        model_settings.codex_runtime,
+        "get_codex_runtime_diagnostics",
+        lambda **_kwargs: diagnostics,
+    )
+
+    catalog = model_settings._load_runtime_codex_catalog({"codex": True})
+
+    assert catalog.visible_presets == ()
+    assert catalog.executable_identities == frozenset()
+
+
+def test_model_settings_runtime_codex_catalog_keeps_hidden_default_effort_identity(monkeypatch) -> None:
+    diagnostics = CodexRuntimeDiagnostics(
+        executable_path="/usr/local/bin/codex",
+        codex_home="/tmp/codex-home",
+        command=("codex", "app-server"),
+        user_agent="codex/1.0",
+        models=(
+            CodexModelInfo(
+                id="gpt-5.3-codex",
+                model="gpt-5.3-codex",
+                display_name="GPT-5.3 Codex",
+                description="Visible model",
+                hidden=False,
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=(
+                    CodexModelReasoningOption(reasoning_effort="low", description="Low"),
+                ),
+                input_modalities=("text",),
+                supports_personality=False,
+                is_default=True,
+                upgrade=None,
+                availability_message=None,
+                raw={},
+            ),
+            CodexModelInfo(
+                id="gpt-5.2-codex",
+                model="gpt-5.2-codex",
+                display_name="GPT-5.2 Codex",
+                description="Hidden compatibility model",
+                hidden=True,
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=(
+                    CodexModelReasoningOption(reasoning_effort="low", description="Low"),
+                ),
+                input_modalities=("text",),
+                supports_personality=False,
+                is_default=False,
+                upgrade=None,
+                availability_message=None,
+                raw={},
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        model_settings.codex_runtime,
+        "get_codex_runtime_diagnostics",
+        lambda **_kwargs: diagnostics,
+    )
+
+    catalog = model_settings._load_runtime_codex_catalog({"codex": True})
+
+    assert ("gpt-5.2-codex", "medium") in (catalog.executable_identities or frozenset())
+    assert all("gpt-5.2-codex" not in preset.key for preset in catalog.visible_presets)
+
+
+def test_model_settings_runtime_codex_catalog_keeps_runtime_default_when_only_hidden_default_exists(
+    monkeypatch,
+) -> None:
+    diagnostics = CodexRuntimeDiagnostics(
+        executable_path="/usr/local/bin/codex",
+        codex_home="/tmp/codex-home",
+        command=("codex", "app-server"),
+        user_agent="codex/1.0",
+        models=(
+            CodexModelInfo(
+                id="gpt-5.2-codex",
+                model="gpt-5.2-codex",
+                display_name="GPT-5.2 Codex",
+                description="Hidden default model",
+                hidden=True,
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=(
+                    CodexModelReasoningOption(reasoning_effort="low", description="Low"),
+                ),
+                input_modalities=("text",),
+                supports_personality=False,
+                is_default=True,
+                upgrade=None,
+                availability_message=None,
+                raw={},
+            ),
+            CodexModelInfo(
+                id="gpt-5.3-codex",
+                model="gpt-5.3-codex",
+                display_name="GPT-5.3 Codex",
+                description="Visible non-default model",
+                hidden=False,
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=(),
+                input_modalities=("text",),
+                supports_personality=False,
+                is_default=False,
+                upgrade=None,
+                availability_message=None,
+                raw={},
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        model_settings.codex_runtime,
+        "get_codex_runtime_diagnostics",
+        lambda **_kwargs: diagnostics,
+    )
+
+    catalog = model_settings._load_runtime_codex_catalog({"codex": True})
+    visible_keys = [preset.key for preset in catalog.visible_presets]
+
+    assert model_presets.CODEX_RUNTIME_DEFAULT_KEY in visible_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in visible_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.2-codex") not in visible_keys
 
 
 def test_model_settings_loads_runtime_codex_reasoning_variants(monkeypatch) -> None:
@@ -300,7 +452,51 @@ def test_model_settings_loads_runtime_codex_reasoning_variants(monkeypatch) -> N
     assert model_presets.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="xhigh") in runtime_keys
 
 
-def test_model_settings_merge_replaces_static_codex_choices() -> None:
+def test_model_settings_merge_drops_static_codex_presets_missing_from_executable_catalog() -> None:
+    static_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.3-codex",
+        label="Codex GPT-5.3 Codex",
+        description="Static preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    hidden_static_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.2-codex",
+        label="Codex GPT-5.2 Codex",
+        description="Static hidden compatibility preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        label="Codex: gpt-5.3-codex (medium)",
+        description="Runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset, static_codex_preset, hidden_static_codex_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.3-codex", None),
+                ("gpt-5.3-codex", "medium"),
+            }
+        ),
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert "codex-gpt-5.3-codex" not in merged_keys
+    assert "codex-gpt-5.2-codex" not in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in merged_keys
+
+
+def test_model_settings_merge_preserves_static_codex_presets_when_catalog_is_unknown() -> None:
     static_codex_preset = model_presets.PresetInfo(
         key="codex-gpt-5.3-codex",
         label="Codex GPT-5.3 Codex",
@@ -313,22 +509,308 @@ def test_model_settings_merge_replaces_static_codex_choices() -> None:
         description="Static OpenAI preset",
         provider=model_presets.ModelProvider.OPENAI,
     )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset, static_codex_preset],
+        (),
+        executable_identities=None,
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert "codex-gpt-5.3-codex" in merged_keys
+
+
+def test_model_settings_merge_drops_static_codex_presets_when_catalog_is_known_empty() -> None:
+    static_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.3-codex",
+        label="Codex GPT-5.3 Codex",
+        description="Static preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset, static_codex_preset],
+        (),
+        executable_identities=frozenset(),
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert "codex-gpt-5.3-codex" not in merged_keys
+
+
+def test_model_settings_merge_preserves_current_runtime_default_when_catalog_is_unknown() -> None:
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset],
+        (),
+        executable_identities=None,
+        preserved_key=model_presets.CODEX_RUNTIME_DEFAULT_KEY,
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert model_presets.CODEX_RUNTIME_DEFAULT_KEY in merged_keys
+
+
+def test_model_settings_merge_preserves_current_runtime_default_when_catalog_omits_default_hint() -> None:
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        label="Codex: gpt-5.3-codex (medium)",
+        description="Runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.3-codex", None),
+                ("gpt-5.3-codex", "medium"),
+            }
+        ),
+        preserved_key=model_presets.CODEX_RUNTIME_DEFAULT_KEY,
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in merged_keys
+    assert model_presets.CODEX_RUNTIME_DEFAULT_KEY in merged_keys
+
+
+def test_model_settings_merge_preserves_current_hidden_static_codex_selection() -> None:
+    hidden_static_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.2-codex",
+        label="Codex GPT-5.2 Codex",
+        description="Static hidden compatibility preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        label="Codex: gpt-5.3-codex (medium)",
+        description="Runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset, hidden_static_codex_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.3-codex", None),
+                ("gpt-5.3-codex", "medium"),
+                ("gpt-5.2-codex", "medium"),
+            }
+        ),
+        preserved_key="codex-gpt-5.2-codex",
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "codex-gpt-5.2-codex" in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in merged_keys
+
+
+def test_model_settings_merge_preserves_current_hidden_runtime_selection() -> None:
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        label="Codex: gpt-5.3-codex (medium)",
+        description="Visible runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    hidden_runtime_key = model_presets.make_codex_runtime_preset_key("gpt-5.2-codex")
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.3-codex", None),
+                ("gpt-5.3-codex", "medium"),
+                ("gpt-5.2-codex", None),
+                ("gpt-5.2-codex", "medium"),
+            }
+        ),
+        preserved_key=hidden_runtime_key,
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in merged_keys
+    assert hidden_runtime_key in merged_keys
+
+
+def test_model_settings_merge_drops_current_hidden_runtime_selection_with_unsupported_effort() -> None:
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        label="Codex: gpt-5.3-codex (medium)",
+        description="Visible runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    hidden_runtime_key = model_presets.make_codex_runtime_preset_key("gpt-5.2-codex", reasoning_effort="high")
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.3-codex", None),
+                ("gpt-5.3-codex", "medium"),
+                ("gpt-5.2-codex", None),
+                ("gpt-5.2-codex", "medium"),
+                ("gpt-5.2-codex", "low"),
+            }
+        ),
+        preserved_key=hidden_runtime_key,
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "gpt5-mini" in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in merged_keys
+    assert hidden_runtime_key not in merged_keys
+
+
+def test_model_settings_merge_preserves_current_explicit_selection_when_runtime_only_exposes_bare_model() -> None:
+    static_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.3-codex",
+        label="Codex GPT-5.3 Codex",
+        description="Static medium-reasoning preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
     runtime_codex_preset = model_presets.PresetInfo(
         key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex"),
         label="Codex: gpt-5.3-codex",
-        description="Runtime preset",
+        description="Visible runtime preset without explicit effort metadata",
         provider=model_presets.ModelProvider.CODEX,
     )
 
     merged = model_settings._merge_presets_with_runtime_codex(
         [openai_preset, static_codex_preset],
         (runtime_codex_preset,),
+        executable_identities=frozenset({("gpt-5.3-codex", None)}),
+        preserved_key="codex-gpt-5.3-codex",
     )
     merged_keys = [preset.key for preset in merged]
 
-    assert "gpt5-mini" in merged_keys
-    assert "codex-gpt-5.3-codex" not in merged_keys
+    assert "codex-gpt-5.3-codex" in merged_keys
     assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex") in merged_keys
+
+
+def test_model_settings_merge_preserves_current_legacy_snapshot_selection() -> None:
+    legacy_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.4",
+        label="Codex GPT-5.4",
+        description="Pinned GPT-5.4 snapshot routed through Codex.",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.4", reasoning_effort="medium"),
+        label="Codex: gpt-5.4 (medium)",
+        description="Canonical runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset, legacy_codex_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.4", None),
+                ("gpt-5.4", "medium"),
+            }
+        ),
+        preserved_key="codex-gpt-5.4",
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "codex-gpt-5.4" in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.4", reasoning_effort="medium") in merged_keys
+
+
+def test_model_settings_merge_drops_current_stale_static_codex_selection() -> None:
+    stale_static_codex_preset = model_presets.PresetInfo(
+        key="codex-gpt-5.2-codex",
+        label="Codex GPT-5.2 Codex",
+        description="Retired static compatibility preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+    openai_preset = model_presets.PresetInfo(
+        key="gpt5-mini",
+        label="GPT-5 Mini",
+        description="Static OpenAI preset",
+        provider=model_presets.ModelProvider.OPENAI,
+    )
+    runtime_codex_preset = model_presets.PresetInfo(
+        key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        label="Codex: gpt-5.3-codex (medium)",
+        description="Runtime preset",
+        provider=model_presets.ModelProvider.CODEX,
+    )
+
+    merged = model_settings._merge_presets_with_runtime_codex(
+        [openai_preset, stale_static_codex_preset],
+        (runtime_codex_preset,),
+        executable_identities=frozenset(
+            {
+                ("gpt-5.3-codex", None),
+                ("gpt-5.3-codex", "medium"),
+            }
+        ),
+        preserved_key="codex-gpt-5.2-codex",
+    )
+    merged_keys = [preset.key for preset in merged]
+
+    assert "codex-gpt-5.2-codex" not in merged_keys
+    assert model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium") in merged_keys
 
 
 def test_model_settings_normalizes_static_codex_selection_to_runtime_effort_variant() -> None:
@@ -352,8 +834,74 @@ def test_model_settings_normalizes_static_codex_selection_to_runtime_effort_vari
     assert normalized == model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium")
 
 
+def test_model_settings_preserves_legacy_codex_gpt54_selection_when_only_canonical_runtime_key_exists() -> None:
+    runtime_codex_presets = (
+        model_presets.PresetInfo(
+            key=model_presets.make_codex_runtime_preset_key("gpt-5.4", reasoning_effort="high"),
+            label="Codex: gpt-5.4 (high)",
+            description="Runtime preset",
+            provider=model_presets.ModelProvider.CODEX,
+        ),
+    )
+
+    normalized = model_settings._normalize_codex_selection_key("codex-gpt-5.4", runtime_codex_presets)
+
+    assert normalized == "codex-gpt-5.4"
+
+
+def test_model_settings_preserves_legacy_runtime_codex_gpt54_selection_when_only_canonical_runtime_key_exists() -> None:
+    runtime_codex_presets = (
+        model_presets.PresetInfo(
+            key=model_presets.make_codex_runtime_preset_key("gpt-5.4", reasoning_effort="medium"),
+            label="Codex: gpt-5.4 (medium)",
+            description="Runtime preset",
+            provider=model_presets.ModelProvider.CODEX,
+        ),
+    )
+
+    normalized = model_settings._normalize_codex_selection_key(
+        "codex-runtime:gpt-5.4-2026-03-05|effort=medium",
+        runtime_codex_presets,
+    )
+
+    assert normalized == "codex-runtime:gpt-5.4-2026-03-05|effort=medium"
+
+
+def test_model_settings_preserves_explicit_codex_selection_when_runtime_only_exposes_bare_model() -> None:
+    runtime_codex_presets = (
+        model_presets.PresetInfo(
+            key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex"),
+            label="Codex: gpt-5.3-codex",
+            description="Runtime preset without explicit effort metadata",
+            provider=model_presets.ModelProvider.CODEX,
+        ),
+    )
+
+    normalized = model_settings._normalize_codex_selection_key("codex-gpt-5.3-codex", runtime_codex_presets)
+
+    assert normalized == "codex-gpt-5.3-codex"
+
+
+def test_model_settings_preserves_explicit_runtime_selection_when_runtime_only_exposes_bare_model() -> None:
+    runtime_codex_presets = (
+        model_presets.PresetInfo(
+            key=model_presets.make_codex_runtime_preset_key("gpt-5.3-codex"),
+            label="Codex: gpt-5.3-codex",
+            description="Runtime preset without explicit effort metadata",
+            provider=model_presets.ModelProvider.CODEX,
+        ),
+    )
+
+    normalized = model_settings._normalize_codex_selection_key(
+        model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium"),
+        runtime_codex_presets,
+    )
+
+    assert normalized == model_presets.make_codex_runtime_preset_key("gpt-5.3-codex", reasoning_effort="medium")
+
+
 def test_researcher_status_supports_runtime_codex_key_without_tavily() -> None:
-    runtime_key = model_presets.make_codex_runtime_preset_key("gpt-6-codex-preview")
+    runtime_key = model_presets.make_codex_runtime_preset_key("gpt-6-codex-preview", reasoning_effort="medium")
 
     model_label, provider_label = describe_researcher_phase_status(
         researcher_key=runtime_key,

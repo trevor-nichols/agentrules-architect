@@ -19,6 +19,10 @@ from agentrules.core.types.models import (
     CLAUDE_OPUS_45_WITH_REASONING,
     CLAUDE_OPUS_46,
     CLAUDE_OPUS_46_WITH_REASONING,
+    CLAUDE_OPUS_47,
+    CLAUDE_OPUS_47_WITH_REASONING,
+    CLAUDE_OPUS_48,
+    CLAUDE_OPUS_48_WITH_REASONING,
     CLAUDE_OPUS_WITH_REASONING,
     CLAUDE_SONNET_46,
     CLAUDE_SONNET_46_WITH_REASONING,
@@ -107,7 +111,16 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     estimator_family: str | None = getattr(config, "estimator_family", None)
 
     if provider == ModelProvider.ANTHROPIC:
-        limit = limit or 200_000
+        if limit is None:
+            if (
+                name.startswith("claude-opus-4-6")
+                or name.startswith("claude-opus-4-7")
+                or name.startswith("claude-opus-4-8")
+                or name.startswith("claude-sonnet-4-6")
+            ):
+                limit = 1_000_000
+            else:
+                limit = 200_000
         estimator_family = estimator_family or "anthropic_api"
     elif provider == ModelProvider.GEMINI:
         estimator_family = estimator_family or "gemini_api"
@@ -333,6 +346,78 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=CLAUDE_OPUS_46_WITH_REASONING._replace(anthropic_effort="max"),
         label="Claude Opus 4.6 (Adaptive Thinking, Max Effort)",
         description="Opus 4.6 adaptive thinking with max effort for the absolute highest capability.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7": _preset(
+        config=CLAUDE_OPUS_47,
+        label="Claude Opus 4.7",
+        description="Claude Opus 4.7 release with adaptive-only thinking and 1M context support.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 4.7 (Adaptive Thinking, High Effort)",
+        description="Opus 4.7 adaptive thinking with the default high effort level.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 4.7 (Adaptive Thinking, Medium Effort)",
+        description="Opus 4.7 adaptive thinking with medium effort for balanced cost and quality.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-low": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 4.7 (Adaptive Thinking, Low Effort)",
+        description="Opus 4.7 adaptive thinking with low effort for faster iteration.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-xhigh": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Opus 4.7 (Adaptive Thinking, XHigh Effort)",
+        description="Opus 4.7 adaptive thinking with xhigh effort for coding and agentic work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-max": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 4.7 (Adaptive Thinking, Max Effort)",
+        description="Opus 4.7 adaptive thinking with max effort for the highest available capability.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8": _preset(
+        config=CLAUDE_OPUS_48,
+        label="Claude Opus 4.8",
+        description="Latest Claude Opus release with adaptive-only thinking, 1M context, and stronger agentic coding.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 4.8 (Adaptive Thinking, High Effort)",
+        description="Opus 4.8 adaptive thinking with the default high effort level.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 4.8 (Adaptive Thinking, Medium Effort)",
+        description="Opus 4.8 adaptive thinking with medium effort for balanced runs.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-low": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 4.8 (Adaptive Thinking, Low Effort)",
+        description="Opus 4.8 adaptive thinking with low effort for faster, cheaper runs.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-xhigh": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Opus 4.8 (Adaptive Thinking, XHigh Effort)",
+        description="Opus 4.8 adaptive thinking with xhigh effort for long-horizon coding and agentic tasks.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-max": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 4.8 (Adaptive Thinking, Max Effort)",
+        description="Opus 4.8 adaptive thinking with max effort for the deepest available reasoning.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "o3-low": _preset(
@@ -653,6 +738,38 @@ def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
         ),
         "claude-code-opus-4.6-reasoning-max": _derive_claude_code_runtime_preset(
             BASE_MODEL_PRESETS["claude-opus-4.6-reasoning-max"]
+        ),
+        "claude-code-opus-4.7": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-opus-4.7"]),
+        "claude-code-opus-4.7-reasoning": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning"]
+        ),
+        "claude-code-opus-4.7-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-medium"]
+        ),
+        "claude-code-opus-4.7-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-low"]
+        ),
+        "claude-code-opus-4.7-reasoning-xhigh": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-xhigh"]
+        ),
+        "claude-code-opus-4.7-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-max"]
+        ),
+        "claude-code-opus-4.8": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-opus-4.8"]),
+        "claude-code-opus-4.8-reasoning": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning"]
+        ),
+        "claude-code-opus-4.8-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-medium"]
+        ),
+        "claude-code-opus-4.8-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-low"]
+        ),
+        "claude-code-opus-4.8-reasoning-xhigh": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-xhigh"]
+        ),
+        "claude-code-opus-4.8-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-max"]
         ),
         "claude-code-haiku": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-haiku"]),
     }

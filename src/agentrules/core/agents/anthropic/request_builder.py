@@ -12,12 +12,13 @@ from .capabilities import (
     describe_profiles_with_effort,
     supported_effort_levels,
     supports_adaptive_thinking,
+    supports_manual_thinking,
     supports_structured_output_format,
 )
 
 DEFAULT_MAX_TOKENS = 20_000
 DEFAULT_THINKING_BUDGET = 16_000
-_SUPPORTED_EFFORT_LEVELS: set[str] = {"low", "medium", "high", "max"}
+_SUPPORTED_EFFORT_LEVELS: set[str] = {"low", "medium", "high", "xhigh", "max"}
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,13 @@ def prepare_request(
 
 def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dict[str, Any] | None:
     if reasoning == ReasoningMode.ENABLED:
-        return {"type": "enabled", "budget_tokens": DEFAULT_THINKING_BUDGET}
+        if supports_manual_thinking(model_name):
+            return {"type": "enabled", "budget_tokens": DEFAULT_THINKING_BUDGET}
+        if supports_adaptive_thinking(model_name):
+            return {"type": "adaptive"}
+        raise ValueError(
+            f"Model '{model_name}' does not support enabled or adaptive thinking."
+        )
 
     if reasoning == ReasoningMode.DYNAMIC:
         if supports_adaptive_thinking(model_name):

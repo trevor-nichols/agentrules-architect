@@ -21,6 +21,7 @@ class CapabilityProfile:
     display_name: str
     supports_structured_output_format: bool = False
     supports_adaptive_thinking: bool = False
+    supports_manual_thinking: bool = True
     supported_effort_levels: frozenset[AnthropicEffort] = frozenset()
 
     def matches(self, model_name: str) -> bool:
@@ -39,7 +40,7 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         display_name="Claude Sonnet 4.6",
         supports_structured_output_format=True,
         supports_adaptive_thinking=True,
-        supported_effort_levels=frozenset({"low", "medium", "high"}),
+        supported_effort_levels=frozenset({"low", "medium", "high", "max"}),
     ),
     CapabilityProfile(
         family_prefix="claude-sonnet-4-5",
@@ -50,6 +51,22 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         family_prefix="claude-haiku-4-5",
         display_name="Claude Haiku 4.5",
         supports_structured_output_format=True,
+    ),
+    CapabilityProfile(
+        family_prefix="claude-opus-4-8",
+        display_name="Claude Opus 4.8",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+    ),
+    CapabilityProfile(
+        family_prefix="claude-opus-4-7",
+        display_name="Claude Opus 4.7",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
     ),
     CapabilityProfile(
         family_prefix="claude-opus-4-6",
@@ -84,6 +101,12 @@ def supports_adaptive_thinking(model_name: str) -> bool:
     """Return True when the model supports thinking.type='adaptive'."""
 
     return resolve_capability_profile(model_name).supports_adaptive_thinking
+
+
+def supports_manual_thinking(model_name: str) -> bool:
+    """Return True when the model accepts thinking.type='enabled' with budget_tokens."""
+
+    return resolve_capability_profile(model_name).supports_manual_thinking
 
 
 def supported_effort_levels(model_name: str) -> frozenset[AnthropicEffort]:

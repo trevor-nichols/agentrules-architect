@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import shutil
+import subprocess
 from collections.abc import Mapping
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from .. import constants as configuration_constants
@@ -15,6 +19,23 @@ from ..utils import (
     coerce_positive_int,
     normalize_claude_code_auth_strategy,
     normalize_optional_string,
+)
+
+
+@dataclass(frozen=True, order=True)
+class ClaudeCodeVersion:
+    major: int
+    minor: int
+    patch: int
+
+    def __str__(self) -> str:
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+
+_CLAUDE_CODE_VERSION_PATTERN = re.compile(r"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)")
+_MINIMUM_CLAUDE_CODE_VERSIONS: tuple[tuple[str, ClaudeCodeVersion], ...] = (
+    ("claude-opus-4-8", ClaudeCodeVersion(2, 1, 154)),
+    ("claude-opus-4-7", ClaudeCodeVersion(2, 1, 111)),
 )
 
 
@@ -150,6 +171,60 @@ def is_claude_code_available(config: CLIConfig) -> bool:
     if not is_claude_agent_sdk_available():
         return False
     return resolve_claude_code_executable(config) is not None
+
+
+def parse_claude_code_version(version_text: str | None) -> ClaudeCodeVersion | None:
+    if not version_text:
+        return None
+    match = _CLAUDE_CODE_VERSION_PATTERN.search(version_text.strip())
+    if match is None:
+        return None
+    return ClaudeCodeVersion(*(int(part) for part in match.groups()))
+
+
+@lru_cache(maxsize=8)
+def _probe_claude_code_executable_version(executable_path: str) -> ClaudeCodeVersion | None:
+    try:
+        completed = subprocess.run(
+            [executable_path, "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2.0,
+        )
+    except Exception:
+        return None
+
+    if completed.returncode != 0:
+        return None
+    version_text = (completed.stdout or completed.stderr).strip()
+    return parse_claude_code_version(version_text)
+
+
+def get_claude_code_runtime_version(config: CLIConfig) -> ClaudeCodeVersion | None:
+    executable_path = resolve_claude_code_executable(config)
+    if executable_path is None:
+        return None
+    return _probe_claude_code_executable_version(executable_path)
+
+
+def minimum_claude_code_version_for_model(model_name: str) -> ClaudeCodeVersion | None:
+    normalized = model_name.strip().lower()
+    for family_prefix, minimum_version in _MINIMUM_CLAUDE_CODE_VERSIONS:
+        if normalized == family_prefix or normalized.startswith(f"{family_prefix}-"):
+            return minimum_version
+    return None
+
+
+def is_claude_code_model_supported(config: CLIConfig, model_name: str) -> bool | None:
+    minimum_version = minimum_claude_code_version_for_model(model_name)
+    if minimum_version is None:
+        return True
+
+    runtime_version = get_claude_code_runtime_version(config)
+    if runtime_version is None:
+        return None
+    return runtime_version >= minimum_version
 
 
 def build_claude_code_environment(

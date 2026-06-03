@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from agentrules.core.configuration.repository import TomlConfigRepository
+from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion, parse_claude_code_version
 
 
 class ConfigServiceTestCase(unittest.TestCase):
@@ -252,6 +253,32 @@ class ConfigServiceTestCase(unittest.TestCase):
             availability = self.config_manager.get_provider_availability()
 
         self.assertFalse(availability["claude_code"])
+
+    def test_parse_claude_code_version_extracts_semver_from_cli_output(self) -> None:
+        self.assertEqual(parse_claude_code_version("2.1.156 (Claude Code)"), ClaudeCodeVersion(2, 1, 156))
+        self.assertEqual(
+            parse_claude_code_version("Claude Code version 2.1.111\nCommit: abc123"),
+            ClaudeCodeVersion(2, 1, 111),
+        )
+        self.assertIsNone(parse_claude_code_version("Claude Code"))
+
+    def test_claude_code_model_support_checks_resolved_runtime_version(self) -> None:
+        with (
+            patch(
+                "agentrules.core.configuration.services.claude_code.is_claude_agent_sdk_available",
+                return_value=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code.resolve_claude_code_executable",
+                return_value="/usr/local/bin/claude",
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._probe_claude_code_executable_version",
+                return_value=ClaudeCodeVersion(2, 1, 128),
+            ),
+        ):
+            self.assertTrue(self.config_manager.is_claude_code_model_supported("claude-opus-4-7"))
+            self.assertFalse(self.config_manager.is_claude_code_model_supported("claude-opus-4-8"))
 
     def test_unknown_provider_key_round_trips_through_config_save(self) -> None:
         self.configuration.CONFIG_FILE.write_text(

@@ -43,6 +43,17 @@ def test_prepare_request_with_reasoning_includes_budget() -> None:
     }
 
 
+def test_prepare_request_enabled_reasoning_uses_adaptive_for_opus47() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-opus-4-7",
+        prompt="hello",
+        reasoning=ReasoningMode.ENABLED,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "adaptive"}
+
+
 def test_prepare_request_dynamic_reasoning_passthrough() -> None:
     prepared: PreparedRequest = prepare_request(
         model_name="claude-opus-4-6",
@@ -91,6 +102,18 @@ def test_prepare_request_effort_adds_output_config() -> None:
     assert prepared.payload["output_config"] == {"effort": "medium"}
 
 
+def test_prepare_request_effort_accepts_xhigh_for_opus47() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-opus-4-7",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort="xhigh",
+    )
+
+    assert prepared.payload["output_config"] == {"effort": "xhigh"}
+
+
 def test_prepare_request_effort_adds_output_config_for_sonnet46() -> None:
     prepared: PreparedRequest = prepare_request(
         model_name="claude-sonnet-4-6",
@@ -101,6 +124,18 @@ def test_prepare_request_effort_adds_output_config_for_sonnet46() -> None:
     )
 
     assert prepared.payload["output_config"] == {"effort": "medium"}
+
+
+def test_prepare_request_effort_accepts_max_for_sonnet46() -> None:
+    prepared: PreparedRequest = prepare_request(
+        model_name="claude-sonnet-4-6",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort="max",
+    )
+
+    assert prepared.payload["output_config"] == {"effort": "max"}
 
 
 def test_prepare_request_effort_unsupported_model_raises() -> None:
@@ -130,19 +165,34 @@ def test_prepare_request_effort_max_supported_for_opus_46() -> None:
     assert prepared.payload["output_config"] == {"effort": "max"}
 
 
-def test_prepare_request_effort_max_unsupported_model_raises() -> None:
+def test_prepare_request_effort_xhigh_unsupported_for_opus46_raises() -> None:
+    try:
+        prepare_request(
+            model_name="claude-opus-4-6",
+            prompt="hello",
+            reasoning=ReasoningMode.DYNAMIC,
+            tools=None,
+            effort="xhigh",
+        )
+    except ValueError as exc:
+        assert "Supported values for this model: high, low, max, medium" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for effort=xhigh on unsupported model")
+
+
+def test_prepare_request_effort_xhigh_unsupported_for_sonnet46_raises() -> None:
     try:
         prepare_request(
             model_name="claude-sonnet-4-6",
             prompt="hello",
             reasoning=ReasoningMode.DYNAMIC,
             tools=None,
-            effort="max",
+            effort="xhigh",
         )
     except ValueError as exc:
-        assert "Supported values for this model: high, low, medium" in str(exc)
+        assert "Supported values for this model: high, low, max, medium" in str(exc)
     else:
-        raise AssertionError("Expected ValueError for effort=max on unsupported model")
+        raise AssertionError("Expected ValueError for effort=xhigh on unsupported model")
 
 
 def test_prepare_request_effort_max_unsupported_for_opus45_raises() -> None:

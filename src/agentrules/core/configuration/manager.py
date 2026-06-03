@@ -199,6 +199,17 @@ class ConfigManager:
         config = self._repository.load()
         return claude_code.is_claude_code_available(config)
 
+    def get_claude_code_runtime_version(self) -> claude_code.ClaudeCodeVersion | None:
+        config = self._repository.load()
+        return claude_code.get_claude_code_runtime_version(config)
+
+    def minimum_claude_code_version_for_model(self, model_name: str) -> claude_code.ClaudeCodeVersion | None:
+        return claude_code.minimum_claude_code_version_for_model(model_name)
+
+    def is_claude_code_model_supported(self, model_name: str) -> bool | None:
+        config = self._repository.load()
+        return claude_code.is_claude_code_model_supported(config, model_name)
+
     def build_claude_code_environment(self) -> dict[str, str]:
         config = self._repository.load()
         return claude_code.build_claude_code_environment(config, self._environment.snapshot())
