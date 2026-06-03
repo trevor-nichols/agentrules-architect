@@ -66,7 +66,7 @@ def test_deepseek_token_log(caplog, fake_estimate):
 
 
 def test_xai_token_log(caplog, fake_estimate):
-    arch = xai_mod.XaiArchitect(model_name="grok-4-0709", model_config=_dummy_model_config())
+    arch = xai_mod.XaiArchitect(model_name="grok-4.3", model_config=_dummy_model_config())
     prepared = XaiPrepared(payload={"messages": [{"role": "user", "content": "hi"}]})
     arch._log_token_estimate(prepared)
     assert "Token preflight" in caplog.text

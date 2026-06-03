@@ -44,7 +44,7 @@ MODELS = [
         "displayName": "gpt-5.2-codex",
         "description": "Previous coding tier.",
         "hidden": True,
-        "defaultReasoningEffort": "low",
+        "defaultReasoningEffort": "medium",
         "supportedReasoningEfforts": [
             {"reasoningEffort": "low", "description": "Lower latency"},
         ],
@@ -53,6 +53,10 @@ MODELS = [
         "isDefault": False,
     },
 ]
+
+LEGACY_MODEL_ALIASES = {
+    "gpt-5.4-2026-03-05": "gpt-5.4",
+}
 
 state: dict[str, Any] = {
     "initialized": False,
@@ -154,7 +158,15 @@ def _build_agent_message(text_input: str, output_schema: Any) -> str:
     return f"Codex analyzed: {prompt_excerpt}"
 
 
+def _known_model_names() -> set[str]:
+    return {entry["model"] for entry in MODELS} | set(LEGACY_MODEL_ALIASES)
+
+
 def _handle_thread_start(request_id: int | str | None, params: dict[str, Any]) -> None:
+    requested_model = params.get("model")
+    if requested_model is not None and requested_model not in _known_model_names():
+        send_error(request_id, f"Unknown model: {requested_model}")
+        return
     thread_id = next_thread_id()
     thread = {
         "id": thread_id,

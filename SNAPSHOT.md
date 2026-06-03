@@ -107,6 +107,7 @@
 │       │   │   │   ├── architect.py  # BaseArchitect implementation for Codex
 │       │   │   │   ├── client.py  # JSON-RPC client for Codex app-server
 │       │   │   │   ├── errors.py  # Codex specific exceptions
+│       │   │   │   ├── model_selection.py
 │       │   │   │   ├── models.py  # Dataclasses for Codex protocol types
 │       │   │   │   ├── process.py  # Subprocess manager for Codex app-server
 │       │   │   │   ├── protocol.py  # JSON-RPC protocol encoder/decoder

@@ -320,6 +320,67 @@
         "docs"
       ],
       "updated": "2026-05-05"
+    },
+    {
+      "breaking": false,
+      "created": "2026-06-02",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260602-001",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/complete/2026/06/02/EP-20260602-001_codex-runtime-default-validation/EP-20260602-001_codex-runtime-default-validation.md",
+      "risk": "med",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "codex",
+        "models",
+        "validation"
+      ],
+      "title": "Codex runtime default and catalog validation",
+      "touches": [
+        "cli",
+        "agents",
+        "tests"
+      ],
+      "updated": "2026-06-02"
+    },
+    {
+      "breaking": false,
+      "created": "2026-06-02",
+      "depends_on": [],
+      "domain": "backend",
+      "id": "EP-20260602-002",
+      "kind": "feature",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": false,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/complete/2026/06/02/EP-20260602-002_anthropic-opus-47-48/EP-20260602-002_anthropic-opus-47-48.md",
+      "risk": "med",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "anthropic",
+        "claude",
+        "models"
+      ],
+      "title": "Add Anthropic Opus 4.7 and 4.8 support",
+      "touches": [
+        "agents",
+        "tests"
+      ],
+      "updated": "2026-06-02"
     }
   ],
   "schema_version": 1

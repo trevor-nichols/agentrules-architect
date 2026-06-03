@@ -11,6 +11,7 @@ from agentrules.core.agents.claude_code.request_builder import prepare_request
 from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.models import ClaudeCodeConfig
 from agentrules.core.configuration.repository import TomlConfigRepository
+from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
 
 
 def _build_config_manager(tmp_path: Path) -> ConfigManager:
@@ -172,6 +173,53 @@ def test_prepare_request_maps_xhigh_reasoning_to_max_effort(tmp_path: Path) -> N
     )
 
     assert prepared.options["effort"] == "max"
+
+
+def test_prepare_request_maps_xhigh_reasoning_to_xhigh_for_opus47(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name="claude-opus-4-7",
+        content="Deeply inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.XHIGH,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    assert prepared.options["effort"] == "xhigh"
+
+
+def test_prepare_request_enabled_reasoning_uses_adaptive_for_opus48(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name="claude-opus-4-8",
+        content="Deeply inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.ENABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    assert prepared.options["thinking"] == {"type": "adaptive"}
+
+
+def test_prepare_request_rejects_models_unsupported_by_resolved_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 150))
+
+    with pytest.raises(ValueError, match="requires Claude Code 2.1.154 or later"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-opus-4-8",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DISABLED,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
 
 
 def test_prepare_request_builds_sdk_accepted_system_prompt_preset(tmp_path: Path) -> None:

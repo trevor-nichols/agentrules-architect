@@ -74,6 +74,10 @@ def get_active_presets(overrides: Mapping[str, str] | None = None) -> dict[str, 
     return model_presets.get_active_presets(overrides)
 
 
+def get_configured_presets(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+    return model_presets.get_configured_presets(overrides)
+
+
 def get_available_presets_for_phase(
     phase: str,
     provider_availability: Mapping[str, bool] | None = None,
@@ -101,8 +105,12 @@ def is_researcher_active() -> bool:
     return CONFIG_MANAGER.is_researcher_enabled()
 
 
-def apply_model_overrides(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
-    return model_presets.apply_user_overrides(overrides)
+def apply_model_overrides(
+    overrides: Mapping[str, str] | None = None,
+    *,
+    warn_deprecated: bool = False,
+) -> dict[str, str]:
+    return model_presets.apply_user_overrides(overrides, warn_deprecated=warn_deprecated)
 
 
 def get_codex_runtime_state() -> CodexRuntimeState:

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.codex.request_builder import prepare_request
+from agentrules.core.configuration import model_presets
 from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.repository import TomlConfigRepository
 
@@ -59,3 +60,18 @@ def test_prepare_request_maps_enabled_reasoning_to_medium_effort(tmp_path: Path)
 
     assert prepared.turn_params["effort"] == "medium"
     assert prepared.turn_params["summary"] == "concise"
+
+
+def test_prepare_request_leaves_runtime_default_effort_unset(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name=model_presets.CODEX_RUNTIME_DEFAULT_MODEL_NAME,
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DYNAMIC,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    assert "effort" not in prepared.turn_params
+    assert prepared.turn_params["summary"] == "none"

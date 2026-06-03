@@ -19,14 +19,20 @@ from agentrules.core.types.models import (
     CLAUDE_OPUS_45_WITH_REASONING,
     CLAUDE_OPUS_46,
     CLAUDE_OPUS_46_WITH_REASONING,
+    CLAUDE_OPUS_47,
+    CLAUDE_OPUS_47_WITH_REASONING,
+    CLAUDE_OPUS_48,
+    CLAUDE_OPUS_48_WITH_REASONING,
     CLAUDE_OPUS_WITH_REASONING,
     CLAUDE_SONNET_46,
     CLAUDE_SONNET_46_WITH_REASONING,
     CLAUDE_WITH_REASONING,
     DEEPSEEK_CHAT,
     DEEPSEEK_REASONER,
+    GEMINI_3_1_FLASH_LITE,
     GEMINI_3_1_FLASH_LITE_PREVIEW,
     GEMINI_3_1_PRO_PREVIEW,
+    GEMINI_3_5_FLASH,
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
     GEMINI_FLASH,
@@ -67,8 +73,12 @@ from agentrules.core.types.models import (
     GROK_4_0709,
     GROK_4_1_FAST_NON_REASONING,
     GROK_4_1_FAST_REASONING,
+    GROK_4_3,
+    GROK_4_3_NON_REASONING,
+    GROK_4_3_REASONING_MEDIUM,
     GROK_4_FAST_NON_REASONING,
     GROK_4_FAST_REASONING,
+    GROK_BUILD_0_1,
     GROK_CODE_FAST,
     O3_HIGH,
     O3_LOW,
@@ -94,6 +104,44 @@ class PresetDefinition(TypedDict):
     provider: ModelProvider
 
 
+_XAI_1M_CONTEXT_MODELS: frozenset[str] = frozenset(
+    {
+        "grok-4.3",
+        "grok-4.3-latest",
+        "grok-latest",
+        "grok-3",
+        "grok-3-latest",
+        "grok-3-beta",
+        "grok-3-fast",
+        "grok-3-fast-latest",
+        "grok-3-fast-beta",
+        "grok-3-mini",
+        "grok-3-mini-latest",
+        "grok-3-mini-beta",
+        "grok-3-mini-fast",
+        "grok-3-mini-fast-latest",
+        "grok-3-mini-fast-beta",
+        "grok-3-mini-high",
+        "grok-3-mini-high-beta",
+        "grok-3-mini-fast-high",
+        "grok-3-mini-fast-high-beta",
+        "grok-4-0709",
+        "grok-4",
+        "grok-4-latest",
+        "grok-4-fast-reasoning",
+        "grok-4-fast",
+        "grok-4-fast-reasoning-latest",
+        "grok-4-fast-non-reasoning",
+        "grok-4-fast-non-reasoning-latest",
+        "grok-4-1-fast-reasoning",
+        "grok-4-1-fast",
+        "grok-4-1-fast-reasoning-latest",
+        "grok-4-1-fast-non-reasoning",
+        "grok-4-1-fast-non-reasoning-latest",
+    }
+)
+
+
 def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     """
     Attach provisional context window metadata and estimator hints to a ModelConfig.
@@ -107,7 +155,16 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     estimator_family: str | None = getattr(config, "estimator_family", None)
 
     if provider == ModelProvider.ANTHROPIC:
-        limit = limit or 200_000
+        if limit is None:
+            if (
+                name.startswith("claude-opus-4-6")
+                or name.startswith("claude-opus-4-7")
+                or name.startswith("claude-opus-4-8")
+                or name.startswith("claude-sonnet-4-6")
+            ):
+                limit = 1_000_000
+            else:
+                limit = 200_000
         estimator_family = estimator_family or "anthropic_api"
     elif provider == ModelProvider.GEMINI:
         estimator_family = estimator_family or "gemini_api"
@@ -129,7 +186,8 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
         limit = limit or 64_000
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
-        limit = limit or 256_000
+        if limit is None:
+            limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
         estimator_family = estimator_family or "tiktoken"
 
     return config._replace(
@@ -188,13 +246,10 @@ def _derive_claude_code_runtime_preset(
 
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
-    "gemini-3-pro-preview": _preset(
-        config=GEMINI_3_PRO_PREVIEW,
-        label="Gemini 3 Pro (Preview)",
-        description=(
-            "Newest Gemini tier with 1M token context, high reasoning depth, and "
-            "thinking_level controls."
-        ),
+    "gemini-3.5-flash": _preset(
+        config=GEMINI_3_5_FLASH,
+        label="Gemini 3.5 Flash",
+        description="Stable Gemini 3.5 Flash release for agentic coding and long-horizon tasks.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3-flash-preview": _preset(
@@ -203,10 +258,28 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Gemini 3 Flash with balanced thinking_level controls.",
         provider=ModelProvider.GEMINI,
     ),
+    "gemini-3-pro-preview": _preset(
+        config=GEMINI_3_PRO_PREVIEW,
+        label="Gemini 3 Pro (Preview, Deprecated)",
+        description=(
+            "Retired Gemini 3 Pro preview preserved for backwards compatibility. "
+            "Prefer Gemini 3.1 Pro (Preview) for new configurations."
+        ),
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.1-flash-lite": _preset(
+        config=GEMINI_3_1_FLASH_LITE,
+        label="Gemini 3.1 Flash-Lite",
+        description="Stable low-latency Gemini 3.1 tier for high-volume, lightweight tasks.",
+        provider=ModelProvider.GEMINI,
+    ),
     "gemini-3.1-flash-lite-preview": _preset(
         config=GEMINI_3_1_FLASH_LITE_PREVIEW,
-        label="Gemini 3.1 Flash-Lite (Preview)",
-        description="Fastest Gemini 3.1 preview tier with minimal thinking by default.",
+        label="Gemini 3.1 Flash-Lite (Preview, Deprecated)",
+        description=(
+            "Retired Gemini 3.1 Flash-Lite preview preserved for backwards compatibility. "
+            "Prefer Gemini 3.1 Flash-Lite for new configurations."
+        ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3.1-pro-preview": _preset(
@@ -333,6 +406,78 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=CLAUDE_OPUS_46_WITH_REASONING._replace(anthropic_effort="max"),
         label="Claude Opus 4.6 (Adaptive Thinking, Max Effort)",
         description="Opus 4.6 adaptive thinking with max effort for the absolute highest capability.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7": _preset(
+        config=CLAUDE_OPUS_47,
+        label="Claude Opus 4.7",
+        description="Claude Opus 4.7 release with adaptive-only thinking and 1M context support.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 4.7 (Adaptive Thinking, High Effort)",
+        description="Opus 4.7 adaptive thinking with the default high effort level.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 4.7 (Adaptive Thinking, Medium Effort)",
+        description="Opus 4.7 adaptive thinking with medium effort for balanced cost and quality.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-low": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 4.7 (Adaptive Thinking, Low Effort)",
+        description="Opus 4.7 adaptive thinking with low effort for faster iteration.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-xhigh": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Opus 4.7 (Adaptive Thinking, XHigh Effort)",
+        description="Opus 4.7 adaptive thinking with xhigh effort for coding and agentic work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.7-reasoning-max": _preset(
+        config=CLAUDE_OPUS_47_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 4.7 (Adaptive Thinking, Max Effort)",
+        description="Opus 4.7 adaptive thinking with max effort for the highest available capability.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8": _preset(
+        config=CLAUDE_OPUS_48,
+        label="Claude Opus 4.8",
+        description="Latest Claude Opus release with adaptive-only thinking, 1M context, and stronger agentic coding.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 4.8 (Adaptive Thinking, High Effort)",
+        description="Opus 4.8 adaptive thinking with the default high effort level.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 4.8 (Adaptive Thinking, Medium Effort)",
+        description="Opus 4.8 adaptive thinking with medium effort for balanced runs.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-low": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 4.8 (Adaptive Thinking, Low Effort)",
+        description="Opus 4.8 adaptive thinking with low effort for faster, cheaper runs.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-xhigh": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Opus 4.8 (Adaptive Thinking, XHigh Effort)",
+        description="Opus 4.8 adaptive thinking with xhigh effort for long-horizon coding and agentic tasks.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-4.8-reasoning-max": _preset(
+        config=CLAUDE_OPUS_48_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 4.8 (Adaptive Thinking, Max Effort)",
+        description="Opus 4.8 adaptive thinking with max effort for the deepest available reasoning.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "o3-low": _preset(
@@ -575,40 +720,79 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Conversational DeepSeek model.",
         provider=ModelProvider.DEEPSEEK,
     ),
+    "grok-4.3": _preset(
+        config=GROK_4_3,
+        label="Grok 4.3",
+        description="Canonical xAI flagship model with configurable reasoning effort and agentic tool calling.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.3-reasoning-medium": _preset(
+        config=GROK_4_3_REASONING_MEDIUM,
+        label="Grok 4.3 (Reasoning Medium)",
+        description="Canonical Grok 4.3 preset with balanced reasoning effort.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.3-non-reasoning": _preset(
+        config=GROK_4_3_NON_REASONING,
+        label="Grok 4.3 (Non-Reasoning)",
+        description="Canonical Grok 4.3 preset with explicit non-reasoning mode.",
+        provider=ModelProvider.XAI,
+    ),
     "grok-4-0709": _preset(
         config=GROK_4_0709,
-        label="Grok 4 (July 09)",
-        description="Latest Grok 4 release with balanced reasoning effort.",
+        label="Grok 4 (July 09, Legacy)",
+        description="Retired Grok 4 slug preserved for backwards compatibility; xAI routes requests to Grok 4.3.",
         provider=ModelProvider.XAI,
     ),
     "grok-4-fast-reasoning": _preset(
         config=GROK_4_FAST_REASONING,
-        label="Grok 4 Fast (Reasoning)",
-        description="Lower latency Grok 4 reasoning tier.",
+        label="Grok 4 Fast (Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4 fast reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4-fast-non-reasoning": _preset(
         config=GROK_4_FAST_NON_REASONING,
-        label="Grok 4 Fast (Non-Reasoning)",
-        description="Cost-efficient Grok tier without reasoning tokens.",
+        label="Grok 4 Fast (Non-Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4 fast non-reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4-1-fast-reasoning": _preset(
         config=GROK_4_1_FAST_REASONING,
-        label="Grok 4.1 Fast (Reasoning)",
-        description="Lower latency Grok 4.1 reasoning tier.",
+        label="Grok 4.1 Fast (Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4.1 fast reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4-1-fast-non-reasoning": _preset(
         config=GROK_4_1_FAST_NON_REASONING,
-        label="Grok 4.1 Fast (Non-Reasoning)",
-        description="Cost-efficient Grok 4.1 tier without reasoning tokens.",
+        label="Grok 4.1 Fast (Non-Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4.1 fast non-reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
+        provider=ModelProvider.XAI,
+    ),
+    "grok-build-0.1": _preset(
+        config=GROK_BUILD_0_1,
+        label="Grok Build 0.1",
+        description="Canonical xAI coding model for agentic coding workflows and web development.",
         provider=ModelProvider.XAI,
     ),
     "grok-code-fast": _preset(
         config=GROK_CODE_FAST,
-        label="Grok Code Fast",
-        description="Grok code assistant tuned for reasoning over codebases.",
+        label="Grok Code Fast (Legacy)",
+        description=(
+            "Retired Grok code slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok Build 0.1."
+        ),
         provider=ModelProvider.XAI,
     ),
 }
@@ -653,6 +837,38 @@ def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
         ),
         "claude-code-opus-4.6-reasoning-max": _derive_claude_code_runtime_preset(
             BASE_MODEL_PRESETS["claude-opus-4.6-reasoning-max"]
+        ),
+        "claude-code-opus-4.7": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-opus-4.7"]),
+        "claude-code-opus-4.7-reasoning": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning"]
+        ),
+        "claude-code-opus-4.7-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-medium"]
+        ),
+        "claude-code-opus-4.7-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-low"]
+        ),
+        "claude-code-opus-4.7-reasoning-xhigh": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-xhigh"]
+        ),
+        "claude-code-opus-4.7-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.7-reasoning-max"]
+        ),
+        "claude-code-opus-4.8": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-opus-4.8"]),
+        "claude-code-opus-4.8-reasoning": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning"]
+        ),
+        "claude-code-opus-4.8-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-medium"]
+        ),
+        "claude-code-opus-4.8-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-low"]
+        ),
+        "claude-code-opus-4.8-reasoning-xhigh": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-xhigh"]
+        ),
+        "claude-code-opus-4.8-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-4.8-reasoning-max"]
         ),
         "claude-code-haiku": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-haiku"]),
     }

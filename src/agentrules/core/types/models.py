@@ -15,7 +15,7 @@ from agentrules.core.types.tool_config import ToolConfig
 # This section defines types for model configuration.
 # ====================================================
 
-AnthropicEffort = Literal["low", "medium", "high", "max"]
+AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
 
 
 class ModelConfig(NamedTuple):
@@ -116,6 +116,34 @@ CLAUDE_OPUS_46 = ModelConfig(
 CLAUDE_OPUS_46_WITH_REASONING = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
     model_name="claude-opus-4-6",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_47 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-7",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_47_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-7",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_48 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-8",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_OPUS_48_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-opus-4-8",
     reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None},
 )
@@ -252,6 +280,27 @@ DEEPSEEK_CHAT = ModelConfig(
 )
 
 # xAI Grok models
+GROK_4_3 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.3",
+    reasoning=ReasoningMode.LOW,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_4_3_REASONING_MEDIUM = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.3",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_4_3_NON_REASONING = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.3",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GROK_4_0709 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4-0709",
@@ -290,7 +339,14 @@ GROK_4_1_FAST_NON_REASONING = ModelConfig(
 GROK_CODE_FAST = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-code-fast-1",
-    reasoning=ReasoningMode.MEDIUM,
+    reasoning=ReasoningMode.ENABLED,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_BUILD_0_1 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-build-0.1",
+    reasoning=ReasoningMode.ENABLED,
     tools_config={"enabled": False, "tools": None}
 )
 
@@ -316,6 +372,13 @@ GEMINI_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
+GEMINI_3_5_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.5-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GEMINI_3_FLASH_PREVIEW = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3-flash-preview",
@@ -333,6 +396,13 @@ GEMINI_3_PRO_PREVIEW = ModelConfig(
 GEMINI_3_1_FLASH_LITE_PREVIEW = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3.1-flash-lite-preview",
+    reasoning=ReasoningMode.MINIMAL,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GEMINI_3_1_FLASH_LITE = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.1-flash-lite",
     reasoning=ReasoningMode.MINIMAL,
     tools_config={"enabled": False, "tools": None}
 )

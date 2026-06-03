@@ -158,6 +158,26 @@ def test_apply_model_limits_openai_defaults():
     assert cfg.estimator_family == "tiktoken"
 
 
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.GROK_4_3,
+        agents_config.GROK_4_3_REASONING_MEDIUM,
+        agents_config.GROK_4_3_NON_REASONING,
+    ],
+)
+def test_apply_model_limits_xai_grok43_family_uses_documented_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+def test_apply_model_limits_xai_grok_build_uses_256k_context():
+    cfg = agents_config._apply_model_limits(agents_config.GROK_BUILD_0_1)
+    assert cfg.max_input_tokens == 256_000
+    assert cfg.estimator_family == "tiktoken"
+
+
 def test_apply_model_limits_preserves_existing():
     cfg = ModelConfig(
         provider=ModelProvider.OPENAI,

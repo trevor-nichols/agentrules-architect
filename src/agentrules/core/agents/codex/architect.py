@@ -11,7 +11,7 @@ from agentrules.config.prompts.final_analysis_prompt import format_final_analysi
 from agentrules.config.prompts.phase_2_prompts import format_phase2_structured_prompt
 from agentrules.config.prompts.phase_4_prompts import format_phase4_prompt
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
-from agentrules.core.configuration import ConfigManager, get_config_manager
+from agentrules.core.configuration import ConfigManager, get_config_manager, model_presets
 from agentrules.core.utils.structured_outputs import (
     extract_phase2_agents,
     parse_structured_output_text,
@@ -21,7 +21,8 @@ from agentrules.core.utils.system_prompt import build_agent_system_prompt, resol
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import CodexAppServerClient
-from .errors import CodexProtocolError
+from .errors import CodexError, CodexJsonRpcError, CodexProtocolError
+from .model_selection import resolve_model_selection
 from .process import CodexAppServerProcess
 from .request_builder import PreparedRequest, prepare_request
 from .response_parser import ParsedResponse, collect_turn_notifications, parse_turn_notifications
@@ -212,7 +213,8 @@ class CodexArchitect(BaseArchitect):
             process,
             request_timeout_seconds=self._request_timeout_seconds,
         ) as client:
-            thread = await client.start_thread(prepared.thread_params)
+            await self._resolve_runtime_model_selection(client, prepared)
+            thread = await self._start_thread(client, prepared)
             if not thread.thread.id:
                 raise CodexProtocolError("Codex thread/start response did not include a thread id.")
 
@@ -233,6 +235,91 @@ class CodexArchitect(BaseArchitect):
                 thread_id=thread.thread.id,
                 turn_id=turn.turn.id,
             )
+
+    async def _resolve_runtime_model_selection(
+        self,
+        client: CodexAppServerClient,
+        prepared: PreparedRequest,
+    ) -> None:
+        try:
+            models = await client.list_all_models(include_hidden=True)
+        except (CodexError, TimeoutError) as exc:
+            if prepared.requested_model_name == model_presets.CODEX_RUNTIME_DEFAULT_MODEL_NAME:
+                logger.warning(
+                    "Codex model catalog lookup failed for runtime default; "
+                    "continuing without explicit model override: %s",
+                    exc,
+                )
+                self._clear_runtime_model_override(prepared)
+                return
+            logger.warning(
+                "Codex model catalog lookup failed; continuing with configured model '%s': %s",
+                prepared.requested_model_name,
+                exc,
+            )
+            return
+
+        resolved = resolve_model_selection(
+            available_models=models,
+            requested_model_name=prepared.requested_model_name,
+            requested_reasoning=prepared.requested_reasoning,
+        )
+        if resolved.model_name is None:
+            logger.warning(
+                "Codex model catalog did not identify a default model; "
+                "continuing without explicit model override."
+            )
+            self._clear_runtime_model_override(prepared)
+            return
+        prepared.thread_params["model"] = resolved.model_name
+        prepared.turn_params["model"] = resolved.model_name
+        if resolved.reasoning_effort is None:
+            prepared.turn_params.pop("effort", None)
+            return
+        prepared.turn_params["effort"] = resolved.reasoning_effort
+        prepared.turn_params["summary"] = "none" if resolved.reasoning_effort == "none" else "concise"
+
+    def _clear_runtime_model_override(self, prepared: PreparedRequest) -> None:
+        prepared.thread_params.pop("model", None)
+        prepared.turn_params.pop("model", None)
+        prepared.turn_params.pop("effort", None)
+        prepared.turn_params["summary"] = "none"
+
+    async def _start_thread(
+        self,
+        client: CodexAppServerClient,
+        prepared: PreparedRequest,
+    ) -> Any:
+        try:
+            return await client.start_thread(prepared.thread_params)
+        except CodexJsonRpcError as exc:
+            retry_model_name = self._resolve_alias_retry_model_name(exc, prepared.thread_params.get("model"))
+            if retry_model_name is None:
+                raise
+            logger.warning(
+                "Codex thread/start rejected model '%s'; retrying once with alias '%s': %s",
+                prepared.thread_params.get("model"),
+                retry_model_name,
+                exc,
+            )
+            prepared.thread_params["model"] = retry_model_name
+            if "model" in prepared.turn_params:
+                prepared.turn_params["model"] = retry_model_name
+            return await client.start_thread(prepared.thread_params)
+
+    def _resolve_alias_retry_model_name(
+        self,
+        error: CodexJsonRpcError,
+        configured_model_name: object,
+    ) -> str | None:
+        if not isinstance(configured_model_name, str):
+            return None
+        if "unknown model" not in str(error).lower():
+            return None
+        candidates = model_presets.codex_runtime_model_alias_candidates(configured_model_name)
+        if len(candidates) < 2:
+            return None
+        return candidates[1]
 
     async def _run_phase_request(
         self,

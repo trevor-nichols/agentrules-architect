@@ -7,8 +7,10 @@ from pathlib import Path
 from agentrules.cli.services.claude_code_runtime import ClaudeCodeRuntimeDiagnostics
 from agentrules.cli.services.configuration import ClaudeCodeRuntimeState
 from agentrules.cli.ui.settings.claude_code import build_runtime_guidance
-from agentrules.core.configuration import ConfigManager
+from agentrules.cli.ui.settings.models import _filter_claude_code_presets_for_runtime
+from agentrules.core.configuration import ConfigManager, model_presets
 from agentrules.core.configuration.repository import TomlConfigRepository
+from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
 
 
 def _build_config_manager(tmp_path: Path, env: dict[str, str] | None = None) -> ConfigManager:
@@ -150,6 +152,42 @@ def test_claude_code_diagnostics_report_missing_sdk(tmp_path: Path, monkeypatch)
     assert diagnostics.sdk_available is False
     assert diagnostics.is_available is False
     assert "SDK package" in (diagnostics.runtime_error or "")
+
+
+def test_claude_code_model_picker_filters_opus48_when_runtime_is_too_old(tmp_path: Path, monkeypatch) -> None:
+    from agentrules.cli.services import configuration
+
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 128))
+    monkeypatch.setattr(configuration, "CONFIG_MANAGER", manager)
+
+    presets = [
+        model_presets.get_preset_info("claude-code-sonnet-4.6"),
+        model_presets.get_preset_info("claude-code-opus-4.7"),
+        model_presets.get_preset_info("claude-code-opus-4.8"),
+    ]
+    filtered = _filter_claude_code_presets_for_runtime([preset for preset in presets if preset is not None], preserved_key=None)
+
+    filtered_keys = {preset.key for preset in filtered}
+    assert "claude-code-sonnet-4.6" in filtered_keys
+    assert "claude-code-opus-4.7" in filtered_keys
+    assert "claude-code-opus-4.8" not in filtered_keys
+
+
+def test_claude_code_model_picker_preserves_current_unsupported_selection(tmp_path: Path, monkeypatch) -> None:
+    from agentrules.cli.services import configuration
+
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 128))
+    monkeypatch.setattr(configuration, "CONFIG_MANAGER", manager)
+
+    preset = model_presets.get_preset_info("claude-code-opus-4.8")
+    assert preset is not None
+
+    filtered = _filter_claude_code_presets_for_runtime([preset], preserved_key="claude-code-opus-4.8")
+
+    assert [entry.key for entry in filtered] == ["claude-code-opus-4.8"]
+    assert "needs 2.1.154+" in filtered[0].label
 
 
 def test_claude_code_runtime_guidance_explains_oauth_and_api_key_sanitization() -> None:
