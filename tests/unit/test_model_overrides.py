@@ -85,6 +85,36 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertTrue(any("gemini-3-pro-preview" in message for message in captured.output))
         self.assertTrue(any("gemini-3.1-flash-lite-preview" in message for message in captured.output))
 
+    def test_apply_user_overrides_remaps_legacy_xai_presets_without_warning_by_default(self) -> None:
+        self.config_manager.set_phase_model("phase3", "grok-4-0709")
+        self.config_manager.set_phase_model("phase4", "grok-code-fast")
+
+        with self.assertNoLogs("agentrules.core.configuration.model_presets", level="WARNING"):
+            applied = self.model_config.apply_user_overrides()
+
+        self.assertEqual(applied["phase3"], "grok-4.3-reasoning-medium")
+        self.assertEqual(applied["phase4"], "grok-build-0.1")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "grok-4.3")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.MEDIUM)
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "grok-build-0.1")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.ENABLED)
+
+    def test_apply_user_overrides_can_warn_for_legacy_xai_runtime_remap(self) -> None:
+        self.config_manager.set_phase_model("phase3", "grok-4-fast-non-reasoning")
+        self.config_manager.set_phase_model("phase4", "grok-code-fast")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "grok-4.3-non-reasoning")
+        self.assertEqual(applied["phase4"], "grok-build-0.1")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "grok-4.3")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.DISABLED)
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "grok-build-0.1")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.ENABLED)
+        self.assertTrue(any("grok-4-fast-non-reasoning" in message for message in captured.output))
+        self.assertTrue(any("grok-code-fast" in message for message in captured.output))
+
     def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         active = self.model_config.get_active_presets(
             {
@@ -95,6 +125,17 @@ class ModelOverrideTestCase(unittest.TestCase):
 
         self.assertEqual(active["phase3"], "gemini-3.1-pro-preview")
         self.assertEqual(active["phase4"], "gemini-3.1-flash-lite")
+
+    def test_get_active_presets_remaps_legacy_xai_presets_for_runtime(self) -> None:
+        active = self.model_config.get_active_presets(
+            {
+                "phase3": "grok-4-0709",
+                "phase4": "grok-code-fast",
+            }
+        )
+
+        self.assertEqual(active["phase3"], "grok-4.3-reasoning-medium")
+        self.assertEqual(active["phase4"], "grok-build-0.1")
 
     def test_get_active_presets_respects_explicit_empty_overrides(self) -> None:
         self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
@@ -113,6 +154,17 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(configured["phase3"], "gemini-3-pro-preview")
         self.assertEqual(configured["phase4"], "gemini-3.1-flash-lite-preview")
 
+    def test_get_configured_presets_preserves_legacy_xai_presets(self) -> None:
+        configured = self.model_config.get_configured_presets(
+            {
+                "phase3": "grok-4-fast-non-reasoning",
+                "phase4": "grok-code-fast",
+            }
+        )
+
+        self.assertEqual(configured["phase3"], "grok-4-fast-non-reasoning")
+        self.assertEqual(configured["phase4"], "grok-code-fast")
+
     def test_get_configured_presets_respects_explicit_empty_overrides(self) -> None:
         self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
         configured = self.model_config.get_configured_presets({})
@@ -129,6 +181,16 @@ class ModelOverrideTestCase(unittest.TestCase):
             "gemini-3.1-flash-lite",
         )
 
+    def test_get_active_preset_key_remaps_legacy_xai_presets_for_runtime(self) -> None:
+        self.assertEqual(
+            self.model_config.get_active_preset_key("phase3", {"phase3": "grok-4-0709"}),
+            "grok-4.3-reasoning-medium",
+        )
+        self.assertEqual(
+            self.model_config.get_active_preset_key("phase4", {"phase4": "grok-code-fast"}),
+            "grok-build-0.1",
+        )
+
     def test_get_model_config_for_preset_key_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         phase3_config = self.model_config.get_model_config_for_preset_key("gemini-3-pro-preview")
         phase4_config = self.model_config.get_model_config_for_preset_key("gemini-3.1-flash-lite-preview")
@@ -137,6 +199,17 @@ class ModelOverrideTestCase(unittest.TestCase):
         assert phase4_config is not None
         self.assertEqual(phase3_config.model_name, "gemini-3.1-pro-preview")
         self.assertEqual(phase4_config.model_name, "gemini-3.1-flash-lite")
+
+    def test_get_model_config_for_preset_key_remaps_legacy_xai_presets_for_runtime(self) -> None:
+        phase3_config = self.model_config.get_model_config_for_preset_key("grok-4-fast-non-reasoning")
+        phase4_config = self.model_config.get_model_config_for_preset_key("grok-code-fast")
+
+        assert phase3_config is not None
+        assert phase4_config is not None
+        self.assertEqual(phase3_config.model_name, "grok-4.3")
+        self.assertEqual(phase3_config.reasoning, ReasoningMode.DISABLED)
+        self.assertEqual(phase4_config.model_name, "grok-build-0.1")
+        self.assertEqual(phase4_config.reasoning, ReasoningMode.ENABLED)
 
     def test_apply_user_overrides_respects_explicit_empty_overrides(self) -> None:
         default_key = self.agents_module.MODEL_PRESET_DEFAULTS["phase3"]
@@ -519,6 +592,25 @@ class ModelOverrideTestCase(unittest.TestCase):
     def test_xai_registry_includes_new_grok41_fast_presets(self) -> None:
         self.assertIn("grok-4-1-fast-reasoning", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4-1-fast-non-reasoning", self.agents_module.MODEL_PRESETS)
+
+    def test_xai_registry_includes_canonical_grok43_and_build_presets(self) -> None:
+        self.assertIn("grok-4.3", self.agents_module.MODEL_PRESETS)
+        self.assertIn("grok-4.3-reasoning-medium", self.agents_module.MODEL_PRESETS)
+        self.assertIn("grok-4.3-non-reasoning", self.agents_module.MODEL_PRESETS)
+        self.assertIn("grok-build-0.1", self.agents_module.MODEL_PRESETS)
+        self.assertEqual(self.agents_module.MODEL_PRESETS["grok-4.3"]["config"].model_name, "grok-4.3")
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.3-reasoning-medium"]["config"].reasoning,
+            ReasoningMode.MEDIUM,
+        )
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.3-non-reasoning"]["config"].reasoning,
+            ReasoningMode.DISABLED,
+        )
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-build-0.1"]["config"].model_name,
+            "grok-build-0.1",
+        )
 
     def test_gemini_registry_includes_current_gemini3_presets(self) -> None:
         self.assertIn("gemini-3.5-flash", self.agents_module.MODEL_PRESETS)

@@ -280,6 +280,27 @@ DEEPSEEK_CHAT = ModelConfig(
 )
 
 # xAI Grok models
+GROK_4_3 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.3",
+    reasoning=ReasoningMode.LOW,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_4_3_REASONING_MEDIUM = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.3",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_4_3_NON_REASONING = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.3",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GROK_4_0709 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4-0709",
@@ -318,7 +339,14 @@ GROK_4_1_FAST_NON_REASONING = ModelConfig(
 GROK_CODE_FAST = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-code-fast-1",
-    reasoning=ReasoningMode.MEDIUM,
+    reasoning=ReasoningMode.ENABLED,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GROK_BUILD_0_1 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-build-0.1",
+    reasoning=ReasoningMode.ENABLED,
     tools_config={"enabled": False, "tools": None}
 )
 

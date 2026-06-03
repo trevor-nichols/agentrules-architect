@@ -73,8 +73,12 @@ from agentrules.core.types.models import (
     GROK_4_0709,
     GROK_4_1_FAST_NON_REASONING,
     GROK_4_1_FAST_REASONING,
+    GROK_4_3,
+    GROK_4_3_NON_REASONING,
+    GROK_4_3_REASONING_MEDIUM,
     GROK_4_FAST_NON_REASONING,
     GROK_4_FAST_REASONING,
+    GROK_BUILD_0_1,
     GROK_CODE_FAST,
     O3_HIGH,
     O3_LOW,
@@ -98,6 +102,44 @@ class PresetDefinition(TypedDict):
     label: str
     description: str
     provider: ModelProvider
+
+
+_XAI_1M_CONTEXT_MODELS: frozenset[str] = frozenset(
+    {
+        "grok-4.3",
+        "grok-4.3-latest",
+        "grok-latest",
+        "grok-3",
+        "grok-3-latest",
+        "grok-3-beta",
+        "grok-3-fast",
+        "grok-3-fast-latest",
+        "grok-3-fast-beta",
+        "grok-3-mini",
+        "grok-3-mini-latest",
+        "grok-3-mini-beta",
+        "grok-3-mini-fast",
+        "grok-3-mini-fast-latest",
+        "grok-3-mini-fast-beta",
+        "grok-3-mini-high",
+        "grok-3-mini-high-beta",
+        "grok-3-mini-fast-high",
+        "grok-3-mini-fast-high-beta",
+        "grok-4-0709",
+        "grok-4",
+        "grok-4-latest",
+        "grok-4-fast-reasoning",
+        "grok-4-fast",
+        "grok-4-fast-reasoning-latest",
+        "grok-4-fast-non-reasoning",
+        "grok-4-fast-non-reasoning-latest",
+        "grok-4-1-fast-reasoning",
+        "grok-4-1-fast",
+        "grok-4-1-fast-reasoning-latest",
+        "grok-4-1-fast-non-reasoning",
+        "grok-4-1-fast-non-reasoning-latest",
+    }
+)
 
 
 def _apply_model_limits(config: ModelConfig) -> ModelConfig:
@@ -144,7 +186,8 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
         limit = limit or 64_000
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
-        limit = limit or 256_000
+        if limit is None:
+            limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
         estimator_family = estimator_family or "tiktoken"
 
     return config._replace(
@@ -677,40 +720,79 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Conversational DeepSeek model.",
         provider=ModelProvider.DEEPSEEK,
     ),
+    "grok-4.3": _preset(
+        config=GROK_4_3,
+        label="Grok 4.3",
+        description="Canonical xAI flagship model with configurable reasoning effort and agentic tool calling.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.3-reasoning-medium": _preset(
+        config=GROK_4_3_REASONING_MEDIUM,
+        label="Grok 4.3 (Reasoning Medium)",
+        description="Canonical Grok 4.3 preset with balanced reasoning effort.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.3-non-reasoning": _preset(
+        config=GROK_4_3_NON_REASONING,
+        label="Grok 4.3 (Non-Reasoning)",
+        description="Canonical Grok 4.3 preset with explicit non-reasoning mode.",
+        provider=ModelProvider.XAI,
+    ),
     "grok-4-0709": _preset(
         config=GROK_4_0709,
-        label="Grok 4 (July 09)",
-        description="Latest Grok 4 release with balanced reasoning effort.",
+        label="Grok 4 (July 09, Legacy)",
+        description="Retired Grok 4 slug preserved for backwards compatibility; xAI routes requests to Grok 4.3.",
         provider=ModelProvider.XAI,
     ),
     "grok-4-fast-reasoning": _preset(
         config=GROK_4_FAST_REASONING,
-        label="Grok 4 Fast (Reasoning)",
-        description="Lower latency Grok 4 reasoning tier.",
+        label="Grok 4 Fast (Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4 fast reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4-fast-non-reasoning": _preset(
         config=GROK_4_FAST_NON_REASONING,
-        label="Grok 4 Fast (Non-Reasoning)",
-        description="Cost-efficient Grok tier without reasoning tokens.",
+        label="Grok 4 Fast (Non-Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4 fast non-reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4-1-fast-reasoning": _preset(
         config=GROK_4_1_FAST_REASONING,
-        label="Grok 4.1 Fast (Reasoning)",
-        description="Lower latency Grok 4.1 reasoning tier.",
+        label="Grok 4.1 Fast (Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4.1 fast reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4-1-fast-non-reasoning": _preset(
         config=GROK_4_1_FAST_NON_REASONING,
-        label="Grok 4.1 Fast (Non-Reasoning)",
-        description="Cost-efficient Grok 4.1 tier without reasoning tokens.",
+        label="Grok 4.1 Fast (Non-Reasoning, Legacy)",
+        description=(
+            "Retired Grok 4.1 fast non-reasoning slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok 4.3."
+        ),
+        provider=ModelProvider.XAI,
+    ),
+    "grok-build-0.1": _preset(
+        config=GROK_BUILD_0_1,
+        label="Grok Build 0.1",
+        description="Canonical xAI coding model for agentic coding workflows and web development.",
         provider=ModelProvider.XAI,
     ),
     "grok-code-fast": _preset(
         config=GROK_CODE_FAST,
-        label="Grok Code Fast",
-        description="Grok code assistant tuned for reasoning over codebases.",
+        label="Grok Code Fast (Legacy)",
+        description=(
+            "Retired Grok code slug preserved for backwards compatibility; "
+            "xAI routes requests to Grok Build 0.1."
+        ),
         provider=ModelProvider.XAI,
     ),
 }

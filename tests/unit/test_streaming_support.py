@@ -168,7 +168,7 @@ class ProviderStreamingTests(unittest.TestCase):
         self._assert_stream_chunks(events)
 
     def test_xai_stream_analyze_normalizes_events(self) -> None:
-        architect = XaiArchitect(model_name="grok-4-0709")
+        architect = XaiArchitect(model_name="grok-4.3")
         mock_chunks = iter(
             [
                 StreamChunk(StreamEventType.TEXT_DELTA, text="hello"),

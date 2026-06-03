@@ -128,6 +128,30 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         replacement_key="gemini-3.1-flash-lite",
         reason="Google retired this preview model.",
     ),
+    "grok-4-0709": PresetDeprecationInfo(
+        replacement_key="grok-4.3-reasoning-medium",
+        reason="xAI retired this Grok 4 alias; use the canonical Grok 4.3 preset.",
+    ),
+    "grok-4-fast-reasoning": PresetDeprecationInfo(
+        replacement_key="grok-4.3-reasoning-medium",
+        reason="xAI retired this Grok 4 alias; use the canonical Grok 4.3 preset.",
+    ),
+    "grok-4-fast-non-reasoning": PresetDeprecationInfo(
+        replacement_key="grok-4.3-non-reasoning",
+        reason="xAI retired this Grok 4 alias; use the canonical Grok 4.3 preset.",
+    ),
+    "grok-4-1-fast-reasoning": PresetDeprecationInfo(
+        replacement_key="grok-4.3-reasoning-medium",
+        reason="xAI retired this Grok 4.1 alias; use the canonical Grok 4.3 preset.",
+    ),
+    "grok-4-1-fast-non-reasoning": PresetDeprecationInfo(
+        replacement_key="grok-4.3-non-reasoning",
+        reason="xAI retired this Grok 4.1 alias; use the canonical Grok 4.3 preset.",
+    ),
+    "grok-code-fast": PresetDeprecationInfo(
+        replacement_key="grok-build-0.1",
+        reason="xAI retired this coding alias; use the canonical Grok Build 0.1 preset.",
+    ),
 }
 
 CONFIG_MANAGER = get_config_manager()
