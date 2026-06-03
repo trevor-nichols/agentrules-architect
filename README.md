@@ -1,4 +1,4 @@
-# 🤖 AgentRules Architect v3
+# 🤖 AgentRules Architect
 
 <div align="center">
 
@@ -7,14 +7,15 @@
 [![OpenAI](https://img.shields.io/badge/OpenAI-supported-blue.svg)](https://openai.com/)
 [![Codex Runtime](https://img.shields.io/badge/Codex%20app--server-supported-orange.svg)](https://github.com/openai/codex)
 [![Anthropic](https://img.shields.io/badge/Anthropic-supported-purple.svg)](https://www.anthropic.com/)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](docs/claude-code-runtime.md)
 [![DeepSeek](https://img.shields.io/badge/DeepSeek-supported-red.svg)](https://deepseek.com/)
 [![Google](https://img.shields.io/badge/Google-supported-green.svg)](https://ai.google.dev/)
 [![xAI](https://img.shields.io/badge/xAI-supported-black.svg)](https://x.ai/)
 [![Built By](https://img.shields.io/badge/Built%20By-trevor-nichols-orange.svg)](https://github.com/trevor-nichols)
 
-**Your multi-provider AI code analysis and AGENTS.md generator 🚀**
+**Multi-provider repository analysis, agent rules generation, and ExecPlan tooling.**
 
-[Demo](#-cli-demo) • [Highlights](#-v3-highlights) • [Features](#-feature-overview) • [Requirements](#-requirements) • [Installation](#-installation) • [Codex Runtime](#-configure-codex-runtime-optional) • [CLI](#-cli-at-a-glance) • [Configuration](#-configuration--preferences) • [Architecture](#-project-architecture) • [Outputs](#-output-artifacts) • [Development](#-development-workflow)
+[Demo](#-cli-demo) • [Highlights](#-highlights) • [Features](#-feature-overview) • [Requirements](#-requirements) • [Installation](#-installation) • [Local Runtimes](#-configure-local-runtimes-optional) • [CLI](#-cli-at-a-glance) • [Configuration](#-configuration--preferences) • [Architecture](#-project-architecture) • [Outputs](#-output-artifacts) • [Development](#-development-workflow)
 
 </div>
 
@@ -24,17 +25,17 @@
 
 ## Why AgentRules Architect?
 
-Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Architect** to match the standardized `AGENTS.md` contract used across modern AI coding agents. The rename comes with a fresh Typer-powered CLI, a persistent configuration service, broader provider support across Anthropic, OpenAI, Google, DeepSeek, xAI, and the local Codex app-server runtime, and a tooling layer that keeps the six-phase analysis reliably consistent yet flexibly extensible to your project's unique needs.
+AgentRules Architect analyzes a repository, coordinates specialized model-backed architects, and writes durable rules artifacts such as `AGENTS.md` or a custom rules filename like `CLAUDE.md`. It is built around a six-phase pipeline, a Rich/Typer CLI, persistent TOML configuration, provider-specific request adapters, local runtime integrations, and optional planning artifacts for longer agent-led work.
 
-## 🔥 v3 Highlights
+## 🔥 Highlights
 
-- ✨ **Rebrand & packaging** – ships on PyPI with console-script and `python -m agentrules` entry points.
-- 🧭 **Typer CLI overhaul** – `agentrules` launches an interactive main menu with subcommands for `analyze`, `configure`, and `keys`.
+- 📦 **PyPI package** – ships with console-script and `python -m agentrules` entry points.
+- 🧭 **Interactive CLI** – `agentrules` launches a guided main menu, while subcommands cover analysis, configuration, keys, snapshots, ExecPlans, scaffolds, and tree previews.
 - 🗂️ **Persistent settings** – API keys, model presets, logging, and output preferences live in `~/.config/agentrules/config.toml` (override with `AGENTRULES_CONFIG_DIR`).
-- 🧠 **Expanded provider matrix** – the preset catalog spans Anthropic, OpenAI, Google, DeepSeek, xAI, and Codex runtime presets, with phase-by-phase model selection from the CLI or config file.
-- 🧰 **Codex runtime support** – route phases through local `codex app-server` with ChatGPT auth via `CODEX_HOME` (no AgentRules-stored OpenAI API key required).
-- 🔌 **Unified tool management** – the new `ToolManager` adapts JSON tool schemas for each provider; Tavily web search is available to researcher agents with one toggle.
-- ✅ **Test & quality backbone** – 200+ unit/integration tests, Pyright, Ruff, and offline stubs provide confidence without hitting live APIs.
+- 🧠 **Broad provider matrix** – presets span Anthropic, Claude Code, OpenAI, Codex app-server, Google Gemini, DeepSeek, and xAI, with phase-by-phase model selection from the CLI or config file.
+- 🧰 **Local runtime support** – route phases through Codex app-server or Claude Code without treating those runtimes as ordinary API-key providers.
+- 🔌 **Unified tool management** – `ToolManager` adapts canonical JSON tool schemas for each provider; Tavily web search is available to researcher agents with one toggle.
+- ✅ **Test & quality backbone** – unit/integration tests, offline stubs, Pyright, and Ruff provide confidence without hitting live APIs.
 
 ## ✨ Feature Overview
 
@@ -43,6 +44,7 @@ Version 3 rebrands the project from **CursorRules Architect** to **AgentRules Ar
 - 🧩 Researcher tooling via Tavily search with provider-aware tool translation.
 - 📊 Rich terminal UI (Rich) showing per-agent progress, duration, and failures in real time.
 - 🪵 Configurable outputs: `AGENTS.md`, `SNAPSHOT.md` (enabled by default), `.cursorignore`, optional `.agent/` scaffold templates, and per-phase markdown/json snapshots.
+- 🧭 ExecPlan and milestone commands for long-running work with deterministic IDs and registry validation.
 - 🔧 Declarative model presets plus runtime overrides via CLI or TOML.
 
 ## 🧮 Analysis Pipeline
@@ -61,18 +63,18 @@ The pipeline captures metrics (elapsed time, agent counts) and hands them to the
 ## 🛠 Requirements
 
 - Python **3.11.9+** (matches Pyright target and packaged metadata).
-- API key(s) for at least one provider:
+- API key(s), OAuth runtime auth, or both for at least one model provider:
   - Anthropic
+  - Claude Code (local runtime via Claude OAuth / SDK)
   - OpenAI
+  - Codex app-server (local runtime via ChatGPT auth)
   - DeepSeek
-  - Google
+  - Google Gemini
   - xAI
   - Tavily (optional, enables live web search tooling)
-- Optional local runtime provider:
-  - Codex CLI (`codex`) for `codex app-server` integration
 - Current preset IDs live in `src/agentrules/config/agents.py`.
-- Core dependencies: `anthropic`, `openai`, `google-genai>=1.51.0`, `tavily-python`, `tiktoken`, `rich`, `typer`, `questionary`, `platformdirs`, `pathspec`, `python-dotenv`, `protobuf`.
-- Dev tooling: `pytest`, `pytest-asyncio`, `pytest-mock`, `flask`, `ruff`, `pyright`.
+- Dependency declarations live in `pyproject.toml`.
+- Dev tooling includes `pytest`, Ruff, and Pyright.
 
 ## 📦 Installation
 
@@ -123,7 +125,7 @@ pip install "git+https://github.com/trevor-nichols/agentrules-architect.git#egg=
 Need to validate against TestPyPI specifically?
 
 ```bash
-pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple agentrules==3.4.1
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple agentrules
 ```
 
 ## 🔐 Configure API Keys
@@ -143,9 +145,9 @@ agentrules configure
 agentrules keys
 ```
 
-## 🧰 Configure Codex Runtime (Optional)
+## 🧰 Configure Local Runtimes (Optional)
 
-AgentRules supports Codex as a local runtime provider via `codex app-server`, separate from API-key providers.
+AgentRules supports local runtime providers separately from API-key providers.
 
 - Open `agentrules` -> `Settings` -> `Codex runtime`
 - Configure:
@@ -153,10 +155,16 @@ AgentRules supports Codex as a local runtime provider via `codex app-server`, se
   - `CODEX_HOME` strategy (`managed` or `inherit`)
   - optional managed home override
 - Use `Sign in with ChatGPT` to authenticate runtime-backed model access.
+- Open `agentrules` -> `Settings` -> `Claude Code runtime`
+- Configure:
+  - Claude Agent SDK runtime resolution
+  - optional explicit `claude` executable path
+  - API-key environment sanitization for Claude Code child processes
+- Authenticate Claude Code outside AgentRules with Claude Code's OAuth flow.
 
-After runtime setup, choose Codex presets under `Settings -> Model presets per phase`.
+After runtime setup, choose Codex or Claude Code presets under `Settings -> Model presets per phase`.
 
-See [docs/codex-runtime.md](docs/codex-runtime.md) for complete setup, auth flow, model catalog behavior, and live smoke instructions.
+See [docs/codex-runtime.md](docs/codex-runtime.md) and [docs/claude-code-runtime.md](docs/claude-code-runtime.md) for setup, auth flow, model catalog behavior, and live smoke instructions.
 
 ## 🧭 CLI At A Glance
 
@@ -165,10 +173,10 @@ See [docs/codex-runtime.md](docs/codex-runtime.md) for complete setup, auth flow
 - `agentrules analyze /path/to/project --rules-filename CLAUDE.md` – one-run override for output rules filename.
 - `agentrules snapshot generate [path]` – create (or refresh) `SNAPSHOT.md` in the current directory by default.
 - `agentrules snapshot sync [path]` – sync an existing snapshot as project files evolve (also creates if missing).
-- `agentrules execplan new \"Title\"` – create a new ExecPlan markdown file under `.agent/exec_plans/active/<slug>/`.
+- `agentrules execplan new "Title"` – create a new ExecPlan markdown file under `.agent/exec_plans/active/<slug>/`.
 - `agentrules execplan complete EP-YYYYMMDD-NNN [--date YYYYMMDD]` – move a full ExecPlan directory under `.agent/exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/`.
 - `agentrules execplan list [--path]` – list active ExecPlans with compact milestone progress (`completed/total`).
-- `agentrules execplan milestone new EP-YYYYMMDD-NNN \"Title\" [--ms N]` – create a milestone under a specific ExecPlan (auto sequence by default, or explicit `MS###` when provided).
+- `agentrules execplan milestone new EP-YYYYMMDD-NNN "Title" [--ms N]` – create a milestone under a specific ExecPlan (auto sequence by default, or explicit `MS###` when provided).
 - `agentrules execplan milestone list EP-YYYYMMDD-NNN [--active-only]` – list milestones for one ExecPlan.
 - `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>` – move an active milestone sequence into the `milestones/complete/` directory.
 - `agentrules execplan milestone remaining EP-YYYYMMDD-NNN [--path]` – show active milestones left for one ExecPlan.
@@ -177,13 +185,14 @@ See [docs/codex-runtime.md](docs/codex-runtime.md) for complete setup, auth flow
 - `agentrules configure --models` – assign presets per phase with guided prompts; the Phase 1 → Researcher entry lets you toggle the agent On/Off once a Tavily key is configured.
 - `agentrules configure --outputs` – toggle `.cursorignore`, `.agent/` scaffold generation, `phases_output/`, and custom rules filename.
 - `agentrules configure --logging` – set verbosity (`quiet`, `standard`, `verbose`) or export via `AGENTRULES_LOG_LEVEL`.
+- `agentrules tree [path]` – preview the exclusion-aware project tree and optionally save it.
 
 ## 🧭 ExecPlan & Milestones
 
 ExecPlans are long-horizon execution artifacts for work that is too large for a single prompt/session and too risky to run as ad hoc edits.
 They give humans and agents a durable plan, explicit scope, and audit trail that can survive context switching across days or weeks.
 
-This follows the same general planning pattern OpenAI now recommends for larger Codex work: start with an implementation plan, then execute it iteratively in smaller scoped chunks (see [OpenAI Codex docs](https://developers.openai.com/codex) and [How OpenAI uses Codex](https://openai.com/index/how-openai-uses-codex/)).
+This follows the same general planning pattern used for larger Codex work: start with an implementation plan, then execute it iteratively in smaller scoped chunks (see [OpenAI Codex docs](https://developers.openai.com/codex) and [How OpenAI uses Codex](https://openai.com/index/how-openai-uses-codex/)).
 
 Think of the model in three layers:
 
@@ -250,6 +259,7 @@ agentrules execplan list
 - **Config file**: `~/.config/agentrules/config.toml`
   - `providers` – API keys per provider.
   - `codex` – local runtime settings (`cli_path`, `home_strategy`, `managed_home`).
+  - `claude_code` – Claude Code SDK runtime settings, request limits, and environment sanitization preferences.
   - `models` – preset IDs applied to each phase (`phase1`, `phase2`, `final`, `researcher`, …).
   - `outputs` – `generate_cursorignore`, `generate_agent_scaffold`, `generate_phase_outputs`, `generate_snapshot`, `rules_filename`, `snapshot_filename`.
     - `generate_snapshot` defaults to `true` and writes `SNAPSHOT.md` at project root after each analysis run (toggle anytime in `agentrules configure --outputs`).
@@ -263,6 +273,7 @@ agentrules execplan list
   - `AGENTRULES_LOG_LEVEL` – overrides persisted verbosity.
   - `AGENTRULES_RULES_FILENAME` – runtime override for generated rules filename (for example `CLAUDE.md`).
   - `CODEX_HOME` – used when Codex `home_strategy = "inherit"`.
+  - `CLAUDE_CODE_OAUTH_TOKEN` – optional Claude Code automation token for environments that cannot use an interactive login.
 - **Rules filename precedence**:
   1. `agentrules analyze --rules-filename <name>`
   2. `AGENTRULES_RULES_FILENAME`
@@ -280,24 +291,25 @@ Presets live in `config/agents.py` via the `MODEL_PRESETS` dictionary. Each pres
 The app currently exposes presets across these providers:
 
 - Anthropic
+- Claude Code (local runtime)
 - OpenAI
 - Codex App Server (local runtime)
-- Google
+- Google Gemini
 - DeepSeek
 - xAI
 
 Choose any available preset per phase through the CLI (`agentrules configure --models`) or by editing `config.toml` / `config/agents.py`. At runtime the values populate `MODEL_CONFIG`, which the pipeline consumes while resolving phase architects (`src/agentrules/core/agents/factory/factory.py`).
 
-> **Preset tip:** Legacy-friendly presets stay under the `gpt5-*` keys (backed by the `gpt-5` model name) so existing `config.toml` files continue to work. Newer GPT‑5.5 presets live under `gpt55-*`, GPT‑5.1 presets under `gpt51-*`, GPT‑5.2 presets under `gpt52-*`, and GPT‑5.4 Mini/Nano variants under the `gpt54-mini-*` and `gpt54-nano-*` keys. Codex selections in the settings UI come from the live app-server catalog rather than this static shorthand list.
+> **Preset tip:** Preset keys are compatibility IDs, not release markers. Static presets live in `config/agents.py`, while Codex runtime selections in the settings UI are discovered from the live app-server catalog.
 
 ## 🧠 Reasoning & Advanced Configuration
 
 - **Reasoning modes:** Anthropic presets use fixed-budget or adaptive thinking depending on the Claude family, Gemini presets use provider-native thinking controls, OpenAI presets map to reasoning effort or temperature based on model family, and DeepSeek/xAI presets keep their provider-native reasoning behavior (`src/agentrules/core/types/models.py`).
-- **Codex runtime modes:** Codex presets route the same model families through `codex app-server`, with runtime-discovered model/effort variants available from the live model catalog.
+- **Runtime modes:** Codex presets route phases through `codex app-server`, with runtime-discovered model/effort variants available from the live model catalog. Claude Code presets route phases through the Claude Agent SDK while preserving Claude Code's runtime behavior.
 - **Agent planning:** Phase 2 generates agent manifests that Phase 3 converts into live architects; when parsing fails the fallback extractor and default agents keep the pipeline running (`core/analysis/phase_2.py`, `core/analysis/phase_3.py`).
 - **Provider-specific tools:** `create_researcher_config` enables Tavily-backed tool use for whichever preset you promote to the Researcher role, and the CLI’s Researcher row simply flips that on/off (`core/types/models.py`, `config/tools.py`).
 - **Prompt customization:** Fine-tune behaviour by editing the phase prompts under `src/agentrules/config/prompts/`—heavy modifications should stay aligned with the YAML/XML formats expected by the parser utilities.
-- **Token-aware runs:** Architects now emit token preflight logs using configured context limits/estimators, and Phase 3 uses limit-aware batching plus summarization when a model’s max input tokens are provided.
+- **Token-aware runs:** Architects emit token preflight logs using configured context limits/estimators, and Phase 3 uses limit-aware batching plus summarization when a model’s max input tokens are provided.
 - **Direct overrides:** Advanced users can swap presets or tweak reasoning levels by modifying `MODEL_PRESETS`/`MODEL_PRESET_DEFAULTS` in `config/agents.py`; the configuration manager merges those with TOML overrides at runtime.
 
 ## 🔍 Tooling & Research Agents
@@ -330,14 +342,14 @@ Toggle outputs with `agentrules configure --outputs` or via the config TOML.
 
 ## 🛠 Development Workflow
 
-- Install dev extras: `pip install -e .[dev]`
+- Install dev extras: `pip install -e ".[dev]"`
 - Format & lint: `ruff format . && ruff check .`
 - Static typing: `pyright`
 - Run targeted tests: `python tests/phase_3_test/run_test.py`
 - Deterministic smoke runs (CI/local without API calls): `agentrules analyze --offline tests/tests_input`
-- Full suite: `python -m unittest discover tests -v`
+- Full suite: `pytest`
 - Releases are Release Please-driven: merges to `main` update/open a release PR, and merging that PR creates the `vX.Y.Z` tag + GitHub release automatically.
-- GitHub Actions now publishes package artifacts with Trusted Publishing (OIDC) via `.github/workflows/publish-pypi.yml` (no long-lived PyPI API token).
+- GitHub Actions publishes package artifacts with Trusted Publishing (OIDC) via `.github/workflows/publish-pypi.yml` (no long-lived PyPI API token).
 - Run a safe preflight publish first from Actions with `workflow_dispatch` and `repository = testpypi`; publish to production PyPI on release-tag push or manual `repository = pypi`.
 - Keep docs and presets in sync when adding providers (`config/agents.py`, `config/tools.py`, `core/agents/*`).
 
