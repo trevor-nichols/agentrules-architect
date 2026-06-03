@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal, cast
@@ -12,6 +13,8 @@ from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types.models import ModelConfig
 
 from . import get_config_manager
+
+logger = logging.getLogger(__name__)
 
 PHASE_TITLES: dict[str, str] = {
     "phase1": "Phase 1 – Initial Discovery",
@@ -68,6 +71,12 @@ class PresetInfo:
 
 
 @dataclass(frozen=True)
+class PresetDeprecationInfo:
+    replacement_key: str | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class CodexRuntimeModelCatalogEntry:
     model: str
     display_name: str | None = None
@@ -110,8 +119,25 @@ def _build_preset_infos(
 
 
 PRESET_INFOS: dict[str, PresetInfo] = _build_preset_infos(agent_settings.MODEL_PRESETS.items())
+DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
+    "gemini-3-pro-preview": PresetDeprecationInfo(
+        replacement_key="gemini-3.1-pro-preview",
+        reason="Google retired this preview model.",
+    ),
+    "gemini-3.1-flash-lite-preview": PresetDeprecationInfo(
+        replacement_key="gemini-3.1-flash-lite",
+        reason="Google retired this preview model.",
+    ),
+}
 
 CONFIG_MANAGER = get_config_manager()
+_WARNED_DEPRECATED_RUNTIME_PRESET_KEYS: set[str] = set()
+
+
+def _resolve_override_mapping(overrides: Mapping[str, str] | None) -> Mapping[str, str]:
+    if overrides is None:
+        return CONFIG_MANAGER.get_model_overrides()
+    return overrides
 
 
 def get_phase_title(phase: str) -> str:
@@ -140,12 +166,47 @@ def get_preset_info(key: str) -> PresetInfo | None:
     )
 
 
-def get_active_preset_key(phase: str, overrides: Mapping[str, str] | None = None) -> str | None:
-    overrides = overrides or CONFIG_MANAGER.get_model_overrides()
+def get_preset_deprecation_info(key: str | None) -> PresetDeprecationInfo | None:
+    if not isinstance(key, str):
+        return None
+    return DEPRECATED_PRESETS.get(key)
+
+
+def resolve_runtime_preset_key(preset_key: str | None, *, warn: bool = False) -> str | None:
+    if preset_key is None:
+        return None
+
+    deprecation = get_preset_deprecation_info(preset_key)
+    replacement_key = deprecation.replacement_key if deprecation is not None else None
+    if not replacement_key or replacement_key not in agent_settings.MODEL_PRESETS:
+        return preset_key
+
+    if warn and preset_key not in _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS:
+        reason_suffix = f" {deprecation.reason}" if deprecation and deprecation.reason else ""
+        logger.warning(
+            "Preset key '%s' is deprecated and will resolve to '%s' for runtime requests.%s",
+            preset_key,
+            replacement_key,
+            reason_suffix,
+        )
+        _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS.add(preset_key)
+
+    return replacement_key
+
+
+def get_configured_preset_key(phase: str, overrides: Mapping[str, str] | None = None) -> str | None:
+    overrides = _resolve_override_mapping(overrides)
     override = overrides.get(phase)
     if override is not None:
         return override
     return get_default_preset_key(phase)
+
+
+def get_active_preset_key(phase: str, overrides: Mapping[str, str] | None = None) -> str | None:
+    configured_key = get_configured_preset_key(phase, overrides)
+    if configured_key is None:
+        return None
+    return resolve_runtime_preset_key(configured_key)
 
 
 def get_model_config_for_phase(
@@ -160,17 +221,18 @@ def get_model_config_for_phase(
 
 
 def get_model_config_for_preset_key(preset_key: str | None):
-    if preset_key is None:
+    runtime_preset_key = resolve_runtime_preset_key(preset_key)
+    if runtime_preset_key is None:
         return None
 
-    preset = agent_settings.MODEL_PRESETS.get(preset_key)
+    preset = agent_settings.MODEL_PRESETS.get(runtime_preset_key)
     if preset is not None:
         return preset["config"]
 
-    if is_codex_runtime_default_preset_key(preset_key):
+    if is_codex_runtime_default_preset_key(runtime_preset_key):
         return _build_runtime_codex_default_model_config()
 
-    runtime_selection = parse_codex_runtime_preset_selection(preset_key)
+    runtime_selection = parse_codex_runtime_preset_selection(runtime_preset_key)
     if runtime_selection is not None:
         return _build_runtime_codex_model_config(
             runtime_selection.model_name,
@@ -204,12 +266,14 @@ def get_available_presets_for_phase(
 
 
 def get_active_presets(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
-    overrides = overrides or CONFIG_MANAGER.get_model_overrides()
+    overrides = _resolve_override_mapping(overrides)
     active: dict[str, str] = {}
     for phase in PHASE_SEQUENCE:
         override = overrides.get(phase)
         if override is not None:
-            active[phase] = override
+            resolved_override = resolve_runtime_preset_key(override)
+            if resolved_override is not None:
+                active[phase] = resolved_override
             continue
 
         default_key = get_default_preset_key(phase)
@@ -218,12 +282,31 @@ def get_active_presets(overrides: Mapping[str, str] | None = None) -> dict[str, 
     return active
 
 
-def apply_user_overrides(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+def get_configured_presets(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+    overrides = _resolve_override_mapping(overrides)
+    configured: dict[str, str] = {}
+    for phase in PHASE_SEQUENCE:
+        override = overrides.get(phase)
+        if override is not None:
+            configured[phase] = override
+            continue
+
+        default_key = get_default_preset_key(phase)
+        if default_key is not None:
+            configured[phase] = default_key
+    return configured
+
+
+def apply_user_overrides(
+    overrides: Mapping[str, str] | None = None,
+    *,
+    warn_deprecated: bool = False,
+) -> dict[str, str]:
     """
     Apply user-selected model presets to the global MODEL_CONFIG.
     Returns the applied preset mapping for further inspection.
     """
-    overrides = overrides or CONFIG_MANAGER.get_model_overrides()
+    overrides = _resolve_override_mapping(overrides)
     applied: dict[str, str] = {}
 
     # reset to defaults first
@@ -236,25 +319,30 @@ def apply_user_overrides(overrides: Mapping[str, str] | None = None) -> dict[str
     for phase, preset_key in overrides.items():
         if phase not in agent_settings.MODEL_PRESET_DEFAULTS:
             continue
-        override_preset: PresetDefinition | None = agent_settings.MODEL_PRESETS.get(preset_key)
+
+        runtime_preset_key = resolve_runtime_preset_key(preset_key, warn=warn_deprecated)
+        if runtime_preset_key is None:
+            continue
+
+        override_preset: PresetDefinition | None = agent_settings.MODEL_PRESETS.get(runtime_preset_key)
         if override_preset is not None:
             agent_settings.MODEL_CONFIG[phase] = override_preset["config"]
-            applied[phase] = preset_key
+            applied[phase] = runtime_preset_key
             continue
 
-        if is_codex_runtime_default_preset_key(preset_key):
+        if is_codex_runtime_default_preset_key(runtime_preset_key):
             agent_settings.MODEL_CONFIG[phase] = _build_runtime_codex_default_model_config()
-            applied[phase] = preset_key
+            applied[phase] = runtime_preset_key
             continue
 
-        runtime_selection = parse_codex_runtime_preset_selection(preset_key)
+        runtime_selection = parse_codex_runtime_preset_selection(runtime_preset_key)
         if runtime_selection is None:
             continue
         agent_settings.MODEL_CONFIG[phase] = _build_runtime_codex_model_config(
             runtime_selection.model_name,
             reasoning_effort=runtime_selection.reasoning_effort,
         )
-        applied[phase] = preset_key
+        applied[phase] = runtime_preset_key
 
     return applied
 

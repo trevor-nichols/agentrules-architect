@@ -29,8 +29,10 @@ from agentrules.core.types.models import (
     CLAUDE_WITH_REASONING,
     DEEPSEEK_CHAT,
     DEEPSEEK_REASONER,
+    GEMINI_3_1_FLASH_LITE,
     GEMINI_3_1_FLASH_LITE_PREVIEW,
     GEMINI_3_1_PRO_PREVIEW,
+    GEMINI_3_5_FLASH,
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
     GEMINI_FLASH,
@@ -201,13 +203,10 @@ def _derive_claude_code_runtime_preset(
 
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
-    "gemini-3-pro-preview": _preset(
-        config=GEMINI_3_PRO_PREVIEW,
-        label="Gemini 3 Pro (Preview)",
-        description=(
-            "Newest Gemini tier with 1M token context, high reasoning depth, and "
-            "thinking_level controls."
-        ),
+    "gemini-3.5-flash": _preset(
+        config=GEMINI_3_5_FLASH,
+        label="Gemini 3.5 Flash",
+        description="Stable Gemini 3.5 Flash release for agentic coding and long-horizon tasks.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3-flash-preview": _preset(
@@ -216,10 +215,28 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Gemini 3 Flash with balanced thinking_level controls.",
         provider=ModelProvider.GEMINI,
     ),
+    "gemini-3-pro-preview": _preset(
+        config=GEMINI_3_PRO_PREVIEW,
+        label="Gemini 3 Pro (Preview, Deprecated)",
+        description=(
+            "Retired Gemini 3 Pro preview preserved for backwards compatibility. "
+            "Prefer Gemini 3.1 Pro (Preview) for new configurations."
+        ),
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.1-flash-lite": _preset(
+        config=GEMINI_3_1_FLASH_LITE,
+        label="Gemini 3.1 Flash-Lite",
+        description="Stable low-latency Gemini 3.1 tier for high-volume, lightweight tasks.",
+        provider=ModelProvider.GEMINI,
+    ),
     "gemini-3.1-flash-lite-preview": _preset(
         config=GEMINI_3_1_FLASH_LITE_PREVIEW,
-        label="Gemini 3.1 Flash-Lite (Preview)",
-        description="Fastest Gemini 3.1 preview tier with minimal thinking by default.",
+        label="Gemini 3.1 Flash-Lite (Preview, Deprecated)",
+        description=(
+            "Retired Gemini 3.1 Flash-Lite preview preserved for backwards compatibility. "
+            "Prefer Gemini 3.1 Flash-Lite for new configurations."
+        ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3.1-pro-preview": _preset(

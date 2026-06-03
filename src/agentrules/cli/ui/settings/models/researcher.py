@@ -13,6 +13,7 @@ from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_
 from .utils import (
     build_model_choice_state,
     current_labels,
+    render_preset_deprecation_warning,
     select_variant,
 )
 
@@ -106,6 +107,7 @@ def configure_researcher_phase(
         console.print("[yellow]Researcher configuration cancelled.[/]")
         return False
 
+    effective_selection: str | None = None
     if selection in state.group_selection_map:
         group_selection = state.group_selection_map[selection]
         variant_choice = select_variant(group_selection)
@@ -135,19 +137,24 @@ def configure_researcher_phase(
         console.print("[green]Researcher preset reset to default.[/]")
         preset_changed = True
     else:
-        configuration.save_phase_model("researcher", selection)
-        preset_info = model_presets.get_preset_info(selection)
+        assert isinstance(selection, str)
+        resolved_selection = model_presets.resolve_runtime_preset_key(selection)
+        effective_selection = resolved_selection or selection
+        assert isinstance(effective_selection, str)
+        configuration.save_phase_model("researcher", effective_selection)
+        preset_info = model_presets.get_preset_info(effective_selection)
         if preset_info:
             console.print(
                 f"[green]Researcher agent will use {preset_info.label} [{preset_info.provider_display}].[/]"
             )
         else:
             console.print("[green]Researcher preset updated.[/]")
+        render_preset_deprecation_warning(console.print, selection, effective_key=effective_selection)
         preset_changed = True
 
     if mode_changed:
         configuration.save_researcher_mode(desired_mode)
-        selected_key = default_key if selection == "__RESET__" else selection
+        selected_key = default_key if selection == "__RESET__" else effective_selection
         _render_researcher_requirements_notice(
             console.print,
             desired_mode=desired_mode,

@@ -16,7 +16,13 @@ from agentrules.core.configuration import model_presets
 from agentrules.core.utils.provider_capabilities import uses_runtime_native_web_search
 
 from .researcher import configure_researcher_phase
-from .utils import build_model_choice_state, current_labels, select_variant
+from .utils import (
+    build_model_choice_state,
+    effective_current_labels,
+    filter_deprecated_presets_for_selection,
+    render_preset_deprecation_warning,
+    select_variant,
+)
 
 
 @dataclass(frozen=True)
@@ -38,6 +44,7 @@ def configure_models(context: CliContext) -> None:
 
     while True:
         provider_availability = configuration.get_provider_availability()
+        configured = configuration.get_configured_presets()
         active = configuration.get_active_presets()
         researcher_mode = configuration.get_researcher_mode()
         tavily_available = configuration.has_tavily_credentials()
@@ -47,6 +54,7 @@ def configure_models(context: CliContext) -> None:
         offline_mode = bool(os.getenv("OFFLINE"))
 
         phase_choices = _build_phase_choices(
+            configured,
             active,
             researcher_mode,
             tavily_available,
@@ -71,27 +79,28 @@ def configure_models(context: CliContext) -> None:
         phase = phase_selection
         title = model_presets.get_phase_title(phase)
         default_key = model_presets.get_default_preset_key(phase)
-        current_key = active.get(phase, default_key)
+        configured_key = configured.get(phase, default_key)
         presets = configuration.get_available_presets_for_phase(phase, provider_availability)
-        presets = _filter_claude_code_presets_for_runtime(presets, preserved_key=current_key)
+        presets = _filter_claude_code_presets_for_runtime(presets, preserved_key=configured_key)
         presets = _merge_presets_with_runtime_codex(
             presets,
             runtime_codex_presets,
             executable_identities=runtime_codex_catalog.executable_identities,
-            preserved_key=current_key,
+            preserved_key=configured_key,
         )
+        presets = filter_deprecated_presets_for_selection(presets, preserved_key=configured_key)
         if not presets:
             console.print(f"[yellow]No presets available for {title}; configure provider access first.[/]")
             continue
 
-        current_key = _normalize_codex_selection_key(current_key, runtime_codex_presets)
+        selection_current_key = _normalize_codex_selection_key(configured_key, runtime_codex_presets)
         default_key = _normalize_codex_selection_key(default_key, runtime_codex_presets)
 
         if phase == "researcher":
             if configure_researcher_phase(
                 context,
                 presets,
-                current_key,
+                selection_current_key,
                 default_key,
                 researcher_mode,
                 tavily_available,
@@ -106,7 +115,7 @@ def configure_models(context: CliContext) -> None:
                 phase,
                 title,
                 presets,
-                current_key,
+                selection_current_key,
                 default_key,
             ):
                 updated = True
@@ -124,6 +133,7 @@ def configure_models(context: CliContext) -> None:
 
 
 def _build_phase_choices(
+    configured: Mapping[str, str | None],
     active: Mapping[str, str | None],
     researcher_mode: str,
     tavily_available: bool,
@@ -141,14 +151,23 @@ def _build_phase_choices(
             header_title = model_presets.get_phase_title("phase1")
             phase_choices.append(questionary.Separator(header_title))
 
+            configured_general_key = configured.get("phase1", model_presets.get_default_preset_key("phase1"))
             general_key = active.get("phase1", model_presets.get_default_preset_key("phase1"))
-            general_model, general_provider = current_labels(general_key)
+            general_model, general_provider = effective_current_labels(
+                configured_key=configured_general_key,
+                effective_key=general_key,
+            )
             phase_choices.append(
                 model_display_choice("├─ General Agents", general_model, general_provider, value="phase1")
             )
 
+            configured_researcher_key = configured.get(
+                "researcher",
+                model_presets.get_default_preset_key("researcher"),
+            )
             researcher_key = active.get("researcher", model_presets.get_default_preset_key("researcher"))
             researcher_model, researcher_provider = describe_researcher_phase_status(
+                configured_researcher_key=configured_researcher_key,
                 researcher_key=researcher_key,
                 researcher_mode=researcher_mode,
                 tavily_available=tavily_available,
@@ -169,8 +188,12 @@ def _build_phase_choices(
             continue
 
         title = model_presets.get_phase_title(phase)
+        configured_key = configured.get(phase, model_presets.get_default_preset_key(phase))
         current_key = active.get(phase, model_presets.get_default_preset_key(phase))
-        model_label, provider_label = current_labels(current_key)
+        model_label, provider_label = effective_current_labels(
+            configured_key=configured_key,
+            effective_key=current_key,
+        )
         phase_choices.append(model_display_choice(title, model_label, provider_label, value=phase))
         handled_phases.add(phase)
 
@@ -179,6 +202,7 @@ def _build_phase_choices(
 
 def describe_researcher_phase_status(
     *,
+    configured_researcher_key: str | None = None,
     researcher_key: str | None,
     researcher_mode: str,
     tavily_available: bool,
@@ -187,7 +211,13 @@ def describe_researcher_phase_status(
 ) -> tuple[str, str]:
     """Return the researcher row labels for the model-settings menu."""
 
-    researcher_model, researcher_provider = current_labels(researcher_key)
+    if configured_researcher_key is None:
+        configured_researcher_key = researcher_key
+
+    researcher_model, researcher_provider = effective_current_labels(
+        configured_key=configured_researcher_key,
+        effective_key=researcher_key,
+    )
     researcher_info = model_presets.get_preset_info(researcher_key) if researcher_key else None
     researcher_uses_native_search = uses_runtime_native_web_search(researcher_info)
     codex_available = bool(provider_availability.get(ModelProvider.CODEX.value, False))
@@ -251,12 +281,14 @@ def _configure_general_phase(
         configuration.save_phase_model(phase, None)
         console.print(f"[green]{title} reset to default preset.[/]")
     else:
-        configuration.save_phase_model(phase, selection)
-        preset_info = model_presets.get_preset_info(selection)
+        effective_selection = model_presets.resolve_runtime_preset_key(selection) or selection
+        configuration.save_phase_model(phase, effective_selection)
+        preset_info = model_presets.get_preset_info(effective_selection)
         if preset_info:
             console.print(f"[green]{title} now uses {preset_info.label} [{preset_info.provider_display}].[/]")
         else:
             console.print(f"[green]{title} preset updated.[/]")
+        render_preset_deprecation_warning(console.print, selection, effective_key=effective_selection)
 
     return True
 

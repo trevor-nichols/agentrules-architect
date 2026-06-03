@@ -36,6 +36,20 @@ def test_researcher_status_mentions_codex_as_alternative_when_tavily_missing() -
     assert provider_label == ""
 
 
+def test_researcher_status_preserves_legacy_signature_without_configured_key() -> None:
+    model_label, provider_label = describe_researcher_phase_status(
+        researcher_key="codex-gpt-5.3-codex",
+        researcher_mode="on",
+        tavily_available=False,
+        offline_mode=False,
+        provider_availability={"codex": True},
+    )
+
+    assert model_label.startswith("Codex GPT-5.3 Codex")
+    assert model_label.endswith("(On)")
+    assert provider_label == "Codex App Server"
+
+
 def test_researcher_status_uses_selected_codex_preset_without_tavily() -> None:
     model_label, provider_label = describe_researcher_phase_status(
         researcher_key="codex-gpt-5.3-codex",

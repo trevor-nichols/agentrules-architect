@@ -118,8 +118,8 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         config = arch.client.models.last_call["config"]  # type: ignore[index]
         self.assertEqual(config.thinking_config.thinking_budget, -1)
 
-    async def test_gemini3_dynamic_maps_to_thinking_level_high(self):
-        arch = GeminiArchitect(model_name="gemini-3-pro-preview", reasoning=ReasoningMode.DYNAMIC)
+    async def test_gemini31_pro_dynamic_maps_to_thinking_level_high(self):
+        arch = GeminiArchitect(model_name="gemini-3.1-pro-preview", reasoning=ReasoningMode.DYNAMIC)
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]
@@ -128,8 +128,8 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(config.thinking_config.thinking_level, thinking_level.HIGH)
         self.assertIsNone(config.thinking_config.thinking_budget)
 
-    async def test_gemini3_disabled_maps_to_thinking_level_low(self):
-        arch = GeminiArchitect(model_name="gemini-3-pro-preview", reasoning=ReasoningMode.DISABLED)
+    async def test_gemini31_pro_disabled_maps_to_thinking_level_low(self):
+        arch = GeminiArchitect(model_name="gemini-3.1-pro-preview", reasoning=ReasoningMode.DISABLED)
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]
@@ -139,7 +139,7 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(config.thinking_config.thinking_budget)
 
     async def test_gemini31_flash_lite_disabled_maps_to_thinking_level_minimal(self):
-        arch = GeminiArchitect(model_name="gemini-3.1-flash-lite-preview", reasoning=ReasoningMode.DISABLED)
+        arch = GeminiArchitect(model_name="gemini-3.1-flash-lite", reasoning=ReasoningMode.DISABLED)
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]
@@ -149,8 +149,8 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(config.thinking_config.thinking_level, expected_level)
         self.assertIsNone(config.thinking_config.thinking_budget)
 
-    async def test_gemini3_flash_medium_maps_to_thinking_level_medium(self):
-        arch = GeminiArchitect(model_name="gemini-3-flash-preview", reasoning=ReasoningMode.MEDIUM)
+    async def test_gemini35_flash_medium_maps_to_thinking_level_medium(self):
+        arch = GeminiArchitect(model_name="gemini-3.5-flash", reasoning=ReasoningMode.MEDIUM)
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]
@@ -217,7 +217,7 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_phase_schema_request_keeps_tools_for_gemini3_models(self):
         arch = GeminiArchitect(
-            model_name="gemini-3-pro-preview",
+            model_name="gemini-3.5-flash",
             tools_config={
                 "enabled": True,
                 "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],
@@ -238,7 +238,7 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_phase_schema_request_keeps_tools_for_gemini31_flash_lite_models(self):
         arch = GeminiArchitect(
-            model_name="gemini-3.1-flash-lite-preview",
+            model_name="gemini-3.1-flash-lite",
             tools_config={
                 "enabled": True,
                 "tools": [{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],

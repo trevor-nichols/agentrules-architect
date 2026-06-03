@@ -4,6 +4,7 @@ import unittest
 from importlib import reload
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
+from agentrules.core.types import models as model_types
 
 
 class ModelOverrideTestCase(unittest.TestCase):
@@ -57,6 +58,101 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.config_manager.set_phase_model("phase1", None)
         self.model_config.apply_user_overrides()
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase1"], default_config)
+
+    def test_apply_user_overrides_remaps_legacy_gemini_preview_presets_without_warning_by_default(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
+        self.config_manager.set_phase_model("phase4", "gemini-3.1-flash-lite-preview")
+
+        with self.assertNoLogs("agentrules.core.configuration.model_presets", level="WARNING"):
+            applied = self.model_config.apply_user_overrides()
+
+        self.assertEqual(applied["phase3"], "gemini-3.1-pro-preview")
+        self.assertEqual(applied["phase4"], "gemini-3.1-flash-lite")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "gemini-3.1-pro-preview")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gemini-3.1-flash-lite")
+
+    def test_apply_user_overrides_can_warn_for_legacy_gemini_preview_runtime_remap(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
+        self.config_manager.set_phase_model("phase4", "gemini-3.1-flash-lite-preview")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "gemini-3.1-pro-preview")
+        self.assertEqual(applied["phase4"], "gemini-3.1-flash-lite")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "gemini-3.1-pro-preview")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gemini-3.1-flash-lite")
+        self.assertTrue(any("gemini-3-pro-preview" in message for message in captured.output))
+        self.assertTrue(any("gemini-3.1-flash-lite-preview" in message for message in captured.output))
+
+    def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
+        active = self.model_config.get_active_presets(
+            {
+                "phase3": "gemini-3-pro-preview",
+                "phase4": "gemini-3.1-flash-lite-preview",
+            }
+        )
+
+        self.assertEqual(active["phase3"], "gemini-3.1-pro-preview")
+        self.assertEqual(active["phase4"], "gemini-3.1-flash-lite")
+
+    def test_get_active_presets_respects_explicit_empty_overrides(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
+        active = self.model_config.get_active_presets({})
+
+        self.assertEqual(active["phase3"], self.agents_module.MODEL_PRESET_DEFAULTS["phase3"])
+
+    def test_get_configured_presets_preserves_legacy_gemini_preview_presets(self) -> None:
+        configured = self.model_config.get_configured_presets(
+            {
+                "phase3": "gemini-3-pro-preview",
+                "phase4": "gemini-3.1-flash-lite-preview",
+            }
+        )
+
+        self.assertEqual(configured["phase3"], "gemini-3-pro-preview")
+        self.assertEqual(configured["phase4"], "gemini-3.1-flash-lite-preview")
+
+    def test_get_configured_presets_respects_explicit_empty_overrides(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
+        configured = self.model_config.get_configured_presets({})
+
+        self.assertEqual(configured["phase3"], self.agents_module.MODEL_PRESET_DEFAULTS["phase3"])
+
+    def test_get_active_preset_key_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
+        self.assertEqual(
+            self.model_config.get_active_preset_key("phase3", {"phase3": "gemini-3-pro-preview"}),
+            "gemini-3.1-pro-preview",
+        )
+        self.assertEqual(
+            self.model_config.get_active_preset_key("phase4", {"phase4": "gemini-3.1-flash-lite-preview"}),
+            "gemini-3.1-flash-lite",
+        )
+
+    def test_get_model_config_for_preset_key_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
+        phase3_config = self.model_config.get_model_config_for_preset_key("gemini-3-pro-preview")
+        phase4_config = self.model_config.get_model_config_for_preset_key("gemini-3.1-flash-lite-preview")
+
+        assert phase3_config is not None
+        assert phase4_config is not None
+        self.assertEqual(phase3_config.model_name, "gemini-3.1-pro-preview")
+        self.assertEqual(phase4_config.model_name, "gemini-3.1-flash-lite")
+
+    def test_apply_user_overrides_respects_explicit_empty_overrides(self) -> None:
+        default_key = self.agents_module.MODEL_PRESET_DEFAULTS["phase3"]
+        default_config = self.agents_module.MODEL_PRESETS[default_key]["config"]
+
+        self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
+        self.model_config.apply_user_overrides({})
+
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"], default_config)
+
+    def test_legacy_exported_gemini_constants_preserve_original_model_names(self) -> None:
+        self.assertEqual(model_types.GEMINI_3_PRO_PREVIEW.model_name, "gemini-3-pro-preview")
+        self.assertEqual(
+            model_types.GEMINI_3_1_FLASH_LITE_PREVIEW.model_name,
+            "gemini-3.1-flash-lite-preview",
+        )
 
     def test_default_phase_presets_use_gpt55_default(self) -> None:
         self.assertTrue(self.agents_module.MODEL_PRESET_DEFAULTS)
@@ -424,7 +520,10 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("grok-4-1-fast-reasoning", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4-1-fast-non-reasoning", self.agents_module.MODEL_PRESETS)
 
-    def test_gemini_registry_includes_new_gemini3_preview_presets(self) -> None:
+    def test_gemini_registry_includes_current_gemini3_presets(self) -> None:
+        self.assertIn("gemini-3.5-flash", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-flash-preview", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gemini-3.1-flash-lite", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3.1-flash-lite-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3.1-pro-preview", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gemini-3-pro-preview", self.agents_module.MODEL_PRESETS)

@@ -27,7 +27,7 @@ def test_resolve_capability_profile_for_gemini31_pro() -> None:
 
 def test_flash_family_maps_disabled_to_minimal_when_supported() -> None:
     level = resolve_thinking_level(
-        model_name="gemini-3.1-flash-lite-preview",
+        model_name="gemini-3.1-flash-lite",
         reasoning_mode=ReasoningMode.DISABLED,
         thinking_level_enum=_THINKING_LEVELS,
     )
@@ -35,9 +35,9 @@ def test_flash_family_maps_disabled_to_minimal_when_supported() -> None:
     assert level == "minimal"
 
 
-def test_flash_family_maps_medium_to_medium() -> None:
+def test_gemini35_flash_maps_medium_to_medium() -> None:
     level = resolve_thinking_level(
-        model_name="gemini-3-flash-preview",
+        model_name="gemini-3.5-flash",
         reasoning_mode=ReasoningMode.MEDIUM,
         thinking_level_enum=_THINKING_LEVELS,
     )
@@ -57,5 +57,6 @@ def test_pro_family_maps_medium_to_high() -> None:
 
 def test_stable_model_name_and_schema_tool_support_follow_family_profile() -> None:
     assert stable_model_name("gemini-3.1-flash-lite-preview") == "gemini-3.1-flash-lite-preview"
-    assert model_supports_structured_output_with_tools("gemini-3.1-pro-preview")
+    assert stable_model_name("gemini-3.1-flash-lite") == "gemini-3.1-flash-lite"
+    assert model_supports_structured_output_with_tools("gemini-3.5-flash")
     assert not model_supports_structured_output_with_tools("gemini-2.5-flash")

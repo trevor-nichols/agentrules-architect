@@ -344,6 +344,13 @@ GEMINI_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
+GEMINI_3_5_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.5-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None}
+)
+
 GEMINI_3_FLASH_PREVIEW = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3-flash-preview",
@@ -361,6 +368,13 @@ GEMINI_3_PRO_PREVIEW = ModelConfig(
 GEMINI_3_1_FLASH_LITE_PREVIEW = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3.1-flash-lite-preview",
+    reasoning=ReasoningMode.MINIMAL,
+    tools_config={"enabled": False, "tools": None}
+)
+
+GEMINI_3_1_FLASH_LITE = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.1-flash-lite",
     reasoning=ReasoningMode.MINIMAL,
     tools_config={"enabled": False, "tools": None}
 )

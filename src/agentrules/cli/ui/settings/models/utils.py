@@ -62,6 +62,90 @@ def current_labels(key: str | None) -> tuple[str, str]:
     return info.label, info.provider_display
 
 
+def effective_current_labels(
+    *,
+    configured_key: str | None,
+    effective_key: str | None,
+) -> tuple[str, str]:
+    """Describe the runtime preset while surfacing deprecated saved selections."""
+
+    label, provider = current_labels(effective_key)
+    if label == "Not configured":
+        return label, provider
+
+    deprecation = model_presets.get_preset_deprecation_info(configured_key)
+    if deprecation is None or configured_key == effective_key:
+        return label, provider
+
+    return f"{label} [saved deprecated preset]", provider
+
+
+def filter_deprecated_presets_for_selection(
+    presets: Sequence[model_presets.PresetInfo],
+    *,
+    preserved_key: str | None,
+) -> list[model_presets.PresetInfo]:
+    """Hide deprecated presets from new selections, but keep the current one visible."""
+
+    visible: list[model_presets.PresetInfo] = []
+    for preset in presets:
+        deprecation = model_presets.get_preset_deprecation_info(preset.key)
+        if deprecation is None:
+            visible.append(preset)
+            continue
+
+        if preset.key != preserved_key:
+            continue
+
+        visible.append(
+            model_presets.PresetInfo(
+                key=preset.key,
+                label=f"{preset.label} [deprecated]",
+                description=preset.description,
+                provider=preset.provider,
+            )
+        )
+
+    return visible
+
+
+def render_preset_deprecation_warning(
+    printer,
+    preset_key: str | None,
+    *,
+    effective_key: str | None = None,
+) -> None:
+    """Emit a lightweight warning when the user selects a deprecated preset."""
+
+    deprecation = model_presets.get_preset_deprecation_info(preset_key)
+    if deprecation is None:
+        return
+
+    replacement_label = None
+    replacement_provider = None
+    if deprecation.replacement_key:
+        replacement = model_presets.get_preset_info(deprecation.replacement_key)
+        if replacement is not None:
+            replacement_label = replacement.label
+            replacement_provider = replacement.provider_display
+
+    message = "[yellow]Selected preset is deprecated.[/]"
+    if deprecation.reason:
+        message = f"{message} {deprecation.reason}"
+    replacement_applied = effective_key is not None and effective_key != preset_key
+    if replacement_label and replacement_provider and replacement_applied:
+        message = f"{message} Saved replacement {replacement_label} [{replacement_provider}]."
+    elif replacement_label and replacement_provider:
+        message = f"{message} Prefer {replacement_label} [{replacement_provider}] for new configurations."
+    elif replacement_label:
+        if replacement_applied:
+            message = f"{message} Saved replacement {replacement_label}."
+        else:
+            message = f"{message} Prefer {replacement_label} for new configurations."
+
+    printer(message)
+
+
 def build_model_choice_state(
     presets: Sequence[model_presets.PresetInfo],
     current_key: str | None,
