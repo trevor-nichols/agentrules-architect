@@ -42,6 +42,7 @@ class ModelConfig(NamedTuple):
     safety_margin_tokens: int | None = None  # Margin to reserve within the context window
     estimator_family: str | None = None  # Which estimator to use (anthropic_api, gemini_api, tiktoken, heuristic)
     anthropic_effort: AnthropicEffort | None = None  # output_config.effort for Claude families that support it
+    runtime_reasoning_effort: str | None = None  # Runtime-owned effort token for Codex catalog presets
 
 # ====================================================
 # Predefined Model Configurations

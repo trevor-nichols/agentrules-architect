@@ -5,11 +5,15 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Literal, cast
 
 from agentrules.config import agents as agent_settings
 from agentrules.config.agents import PresetDefinition
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
+from agentrules.core.agents.codex.reasoning import (
+    KNOWN_RUNTIME_REASONING_EFFORT_ORDER,
+    normalize_runtime_reasoning_effort,
+    require_runtime_reasoning_effort,
+)
 from agentrules.core.types.models import ModelConfig
 
 from . import get_config_manager
@@ -42,16 +46,7 @@ for _legacy_model_name, _canonical_model_name in LEGACY_CODEX_RUNTIME_MODEL_ALIA
         _legacy_model_name,
     )
 
-CodexRuntimeReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None
-_CODEX_RUNTIME_REASONING_EFFORT_ORDER: tuple[str, ...] = (
-    "none",
-    "minimal",
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-)
-_CODEX_RUNTIME_REASONING_EFFORT_SET = set(_CODEX_RUNTIME_REASONING_EFFORT_ORDER)
+CodexRuntimeReasoningEffort = str | None
 
 
 @dataclass(frozen=True)
@@ -385,7 +380,11 @@ def make_codex_runtime_preset_key(
 ) -> str:
     normalized_model_name = model_name.strip()
     base = f"{CODEX_RUNTIME_PRESET_PREFIX}{normalized_model_name}"
-    normalized_effort = _normalize_codex_reasoning_effort(reasoning_effort)
+    normalized_effort = (
+        require_runtime_reasoning_effort(reasoning_effort)
+        if reasoning_effort is not None
+        else None
+    )
     if normalized_effort is None:
         return base
     return f"{base}{CODEX_RUNTIME_PRESET_EFFORT_SEPARATOR}{normalized_effort}"
@@ -413,6 +412,8 @@ def parse_codex_runtime_preset_selection(key: str | None) -> CodexRuntimePresetS
         return None
 
     effort = _normalize_codex_reasoning_effort(raw_effort if separator else None)
+    if separator and effort is None:
+        return None
     return CodexRuntimePresetSelection(model_name=model_name, reasoning_effort=effort)
 
 
@@ -599,6 +600,7 @@ def _build_runtime_codex_default_model_config() -> ModelConfig:
     return template._replace(
         model_name=CODEX_RUNTIME_DEFAULT_MODEL_NAME,
         reasoning=ReasoningMode.DYNAMIC,
+        runtime_reasoning_effort=None,
     )
 
 
@@ -611,7 +613,11 @@ def _build_runtime_codex_model_config(
     reasoning_mode = ReasoningMode.DYNAMIC
     if reasoning_effort is not None:
         reasoning_mode = _reasoning_mode_from_effort(reasoning_effort, fallback=template.reasoning)
-    return template._replace(model_name=model_name, reasoning=reasoning_mode)
+    return template._replace(
+        model_name=model_name,
+        reasoning=reasoning_mode,
+        runtime_reasoning_effort=reasoning_effort,
+    )
 
 
 def _resolve_codex_runtime_template() -> ModelConfig:
@@ -646,12 +652,18 @@ def _resolve_runtime_reasoning_options(
 
     ordered_efforts = [
         effort
-        for effort in _CODEX_RUNTIME_REASONING_EFFORT_ORDER
+        for effort in KNOWN_RUNTIME_REASONING_EFFORT_ORDER
         if effort in descriptions and effort != normalized_default_effort
     ]
+    ordered_efforts.extend(
+        effort
+        for effort in descriptions
+        if effort not in KNOWN_RUNTIME_REASONING_EFFORT_ORDER
+        and effort != normalized_default_effort
+    )
     options.extend(
         _ResolvedCodexRuntimeReasoningOption(
-            reasoning_effort=cast(CodexRuntimeReasoningEffort, effort),
+            reasoning_effort=effort,
             description=descriptions.get(effort),
         )
         for effort in ordered_efforts
@@ -669,12 +681,7 @@ def _resolve_runtime_default_catalog_entry(
 
 
 def _normalize_codex_reasoning_effort(value: object) -> CodexRuntimeReasoningEffort:
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip().lower()
-    if normalized in _CODEX_RUNTIME_REASONING_EFFORT_SET:
-        return normalized
-    return None
+    return normalize_runtime_reasoning_effort(value)
 
 
 def normalize_codex_runtime_model_name(model_name: str) -> str:
@@ -724,6 +731,7 @@ def _reasoning_mode_from_effort(
         "medium": ReasoningMode.MEDIUM,
         "high": ReasoningMode.HIGH,
         "xhigh": ReasoningMode.XHIGH,
+        "max": ReasoningMode.MAX,
     }
     normalized_effort = _normalize_codex_reasoning_effort(effort)
     if normalized_effort is None:
@@ -744,6 +752,8 @@ def _reasoning_effort_from_mode(reasoning: ReasoningMode) -> CodexRuntimeReasoni
         return "high"
     if reasoning == ReasoningMode.XHIGH:
         return "xhigh"
+    if reasoning == ReasoningMode.MAX:
+        return "max"
     if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
         return "medium"
     return None
@@ -756,7 +766,7 @@ def _format_reasoning_variant_label(effort: CodexRuntimeReasoningEffort) -> str 
         return "no reasoning"
     if effort == "xhigh":
         return "very high"
-    return effort
+    return effort.replace("_", " ").replace("-", " ")
 
 
 def _format_reasoning_description(effort: CodexRuntimeReasoningEffort) -> str:
@@ -766,7 +776,7 @@ def _format_reasoning_description(effort: CodexRuntimeReasoningEffort) -> str:
         return "very high"
     if effort is None:
         return "default"
-    return effort
+    return effort.replace("_", " ").replace("-", " ")
 
 
 def _provider_display_name(provider: ModelProvider) -> str:

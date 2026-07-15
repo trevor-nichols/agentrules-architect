@@ -57,3 +57,18 @@ Official references:
 - [Grok 4.20 reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-reasoning)
 - [Grok 4.20 non-reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-non-reasoning)
 - [Multi-Agent endpoint limitations](https://docs.x.ai/developers/model-capabilities/text/multi-agent)
+
+## Google Gemini API
+
+`gemini-3.5-flash` is already AgentRules' stable current Flash choice and retains medium thinking.
+Gemini 2.5 Flash and Gemini 2.5 Pro remain selectable until their documented October 16, 2026
+shutdown because silently changing an explicit active selection could alter behavior or cost. Their picker
+labels disclose the date and recommend Gemini 3.5 Flash or Gemini 3.1 Pro Preview respectively.
+
+The saved keys `gemini-3-pro-preview` and `gemini-3.1-flash-lite-preview` remain loadable for backwards
+compatibility, but runtime resolution sends `gemini-3.1-pro-preview` and `gemini-3.1-flash-lite`. The
+picker labels disclose those redirects so operators do not mistake compatibility keys for live endpoints.
+
+Official reference:
+
+- [Gemini model deprecations](https://ai.google.dev/gemini-api/docs/deprecations)

@@ -309,16 +309,19 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-3-flash-preview": _preset(
         config=GEMINI_3_FLASH_PREVIEW,
-        label="Gemini 3 Flash (Preview)",
-        description="Gemini 3 Flash with balanced thinking_level controls.",
+        label="Gemini 3 Flash (Preview, Deprecated)",
+        description=(
+            "Deprecated Gemini 3 Flash preview with no announced shutdown date. "
+            "Prefer stable Gemini 3.5 Flash for new configurations."
+        ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3-pro-preview": _preset(
         config=GEMINI_3_PRO_PREVIEW,
-        label="Gemini 3 Pro (Preview, Deprecated)",
+        label="Gemini 3 Pro (Retired → Gemini 3.1 Pro Preview)",
         description=(
-            "Retired Gemini 3 Pro preview preserved for backwards compatibility. "
-            "Prefer Gemini 3.1 Pro (Preview) for new configurations."
+            "Compatibility key for the retired Gemini 3 Pro preview. Runtime requests are redirected "
+            "to Gemini 3.1 Pro Preview."
         ),
         provider=ModelProvider.GEMINI,
     ),
@@ -330,10 +333,10 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-3.1-flash-lite-preview": _preset(
         config=GEMINI_3_1_FLASH_LITE_PREVIEW,
-        label="Gemini 3.1 Flash-Lite (Preview, Deprecated)",
+        label="Gemini 3.1 Flash-Lite Preview (Retired → Stable)",
         description=(
-            "Retired Gemini 3.1 Flash-Lite preview preserved for backwards compatibility. "
-            "Prefer Gemini 3.1 Flash-Lite for new configurations."
+            "Compatibility key for the retired Gemini 3.1 Flash-Lite preview. Runtime requests are "
+            "redirected to stable Gemini 3.1 Flash-Lite."
         ),
         provider=ModelProvider.GEMINI,
     ),
@@ -345,20 +348,29 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-flash": _preset(
         config=GEMINI_FLASH,
-        label="Gemini 2.5 Flash",
-        description="Fast, low-cost summarization and planning.",
+        label="Gemini 2.5 Flash (Deprecated; shuts down 2026-10-16)",
+        description=(
+            "Still available until October 16, 2026. Migrate new configurations to stable "
+            "Gemini 3.5 Flash."
+        ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-flash-thinking": _preset(
         config=GEMINI_FLASH_DYNAMIC,
-        label="Gemini 2.5 Flash (Thinking)",
-        description="Flash with dynamic thinking enabled (auto thinking budget).",
+        label="Gemini 2.5 Flash Thinking (Deprecated; shuts down 2026-10-16)",
+        description=(
+            "Gemini 2.5 Flash with dynamic thinking, available until October 16, 2026. "
+            "Migrate new configurations to stable Gemini 3.5 Flash."
+        ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-pro": _preset(
         config=GEMINI_PRO,
-        label="Gemini 2.5 Pro",
-        description="Gemini Pro with dynamic thinking (auto thinking budget).",
+        label="Gemini 2.5 Pro (Deprecated; shuts down 2026-10-16)",
+        description=(
+            "Gemini 2.5 Pro with dynamic thinking, available until October 16, 2026. "
+            "Migrate new configurations to Gemini 3.1 Pro Preview."
+        ),
         provider=ModelProvider.GEMINI,
     ),
     "claude-sonnet": _preset(

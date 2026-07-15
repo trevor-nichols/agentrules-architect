@@ -112,6 +112,7 @@
 │       │   │   │   ├── models.py  # Dataclasses for Codex protocol types
 │       │   │   │   ├── process.py  # Subprocess manager for Codex app-server
 │       │   │   │   ├── protocol.py  # JSON-RPC protocol encoder/decoder
+│       │   │   │   ├── reasoning.py
 │       │   │   │   ├── request_builder.py  # Request construction for Codex
 │       │   │   │   └── response_parser.py  # Codex turn notifications parser
 │       │   │   ├── deepseek/  # DeepSeek integration

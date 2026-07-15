@@ -102,7 +102,10 @@ class ArchitectFactory:
             return XaiArchitect(**common_args)
         elif provider == ModelProvider.CODEX:
             from ..codex.architect import CodexArchitect  # noqa: E402
-            return CodexArchitect(**common_args)
+            return CodexArchitect(
+                runtime_reasoning_effort=model_config.runtime_reasoning_effort,
+                **common_args,
+            )
         else:
             raise ValueError(f"Unknown model provider: {provider}")
 

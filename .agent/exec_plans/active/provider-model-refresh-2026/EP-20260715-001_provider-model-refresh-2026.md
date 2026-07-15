@@ -97,6 +97,7 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - [x] (2026-07-15 America/New_York) MS003 completed: direct Claude 5 capability policies, safe refusal handling, Opus 4.8 migration, and lifecycle guidance are validated.
 - [x] (2026-07-15 America/New_York) MS004 completed: moving aliases, pinned Claude 5 choices, SDK 0.2.119/CLI 2.1.210, fail-closed gates, diagnostics, and refusal handling are validated.
 - [x] (2026-07-15 America/New_York) MS005 completed: Grok 4.5, compatible pinned 4.20 variants, explicit effort contracts, exact context limits, and the Multi-Agent transport deferral are validated.
+- [x] (2026-07-15 America/New_York) MS006 completed: runtime-advertised Codex efforts round-trip safely, Gemini redirects and shutdown labels are current, and all validation gates pass.
 - [ ] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
 - [ ] Complete full validation and record exact evidence.
 - [ ] Mark the ExecPlan done only after every acceptance condition is met.

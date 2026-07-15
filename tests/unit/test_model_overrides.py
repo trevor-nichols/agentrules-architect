@@ -526,6 +526,63 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(selection.model_name, "gpt-6-codex-preview")
         self.assertEqual(selection.reasoning_effort, "xhigh")
 
+    def test_runtime_codex_catalog_preserves_max_ultra_and_future_efforts_in_order(self) -> None:
+        catalog_entries = [
+            self.model_config.CodexRuntimeModelCatalogEntry(
+                model="gpt-5.6-sol",
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=tuple(
+                    self.model_config.CodexRuntimeModelReasoningOption(reasoning_effort=effort)
+                    for effort in ("extreme", "ultra", "max", "low")
+                ),
+            )
+        ]
+
+        presets = self.model_config.build_codex_runtime_preset_infos(catalog_entries)
+        efforts = [
+            self.model_config.parse_codex_runtime_reasoning_for_preset_key(preset.key)
+            for preset in presets
+        ]
+
+        self.assertEqual(efforts, ["medium", "low", "max", "ultra", "extreme"])
+
+    def test_runtime_codex_future_effort_survives_preset_config(self) -> None:
+        runtime_key = self.model_config.make_codex_runtime_preset_key(
+            "gpt-5.6-sol",
+            reasoning_effort="extreme",
+        )
+
+        config = self.model_config.get_model_config_for_preset_key(runtime_key)
+
+        self.assertIsNotNone(config)
+        assert config is not None
+        self.assertEqual(config.runtime_reasoning_effort, "extreme")
+
+    def test_runtime_codex_rejects_malformed_effort_tokens(self) -> None:
+        for effort in ("UPPER", "bad effort", "", "a" * 33, "semi;colon"):
+            with self.subTest(effort=effort):
+                with self.assertRaises(ValueError):
+                    self.model_config.make_codex_runtime_preset_key(
+                        "gpt-5.6-sol",
+                        reasoning_effort=effort,
+                    )
+                self.assertIsNone(
+                    self.model_config.parse_codex_runtime_preset_selection(
+                        f"codex-runtime:gpt-5.6-sol|effort={effort}"
+                    )
+                )
+
+    def test_codex_gpt56_models_remain_runtime_discovered(self) -> None:
+        static_codex_model_names = {
+            preset["config"].model_name
+            for preset in self.agents_module.BASE_MODEL_PRESETS.values()
+            if preset["provider"] == ModelProvider.CODEX
+        }
+
+        self.assertFalse(
+            {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} & static_codex_model_names
+        )
+
     def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
         self.assertIn("gpt55-none", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-default", self.agents_module.MODEL_PRESETS)
@@ -791,3 +848,25 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("gemini-3.1-flash-lite-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3.1-pro-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-pro-preview", self.agents_module.MODEL_PRESETS)
+
+        gemini35 = self.agents_module.MODEL_PRESETS["gemini-3.5-flash"]
+        self.assertEqual(gemini35["config"].model_name, "gemini-3.5-flash")
+        self.assertEqual(gemini35["config"].reasoning, ReasoningMode.MEDIUM)
+        self.assertEqual(gemini35["label"], "Gemini 3.5 Flash")
+
+    def test_gemini_lifecycle_labels_disclose_shutdowns_and_redirects(self) -> None:
+        for key in ("gemini-flash", "gemini-flash-thinking"):
+            preset = self.agents_module.MODEL_PRESETS[key]
+            self.assertIn("2026-10-16", preset["label"])
+            self.assertIn("Gemini 3.5 Flash", preset["description"])
+
+        pro = self.agents_module.MODEL_PRESETS["gemini-pro"]
+        self.assertIn("2026-10-16", pro["label"])
+        self.assertIn("Gemini 3.1 Pro Preview", pro["description"])
+
+        retired_pro = self.agents_module.MODEL_PRESETS["gemini-3-pro-preview"]
+        retired_lite = self.agents_module.MODEL_PRESETS["gemini-3.1-flash-lite-preview"]
+        self.assertIn("Retired", retired_pro["label"])
+        self.assertIn("redirected", retired_pro["description"])
+        self.assertIn("Retired", retired_lite["label"])
+        self.assertIn("redirected", retired_lite["description"])

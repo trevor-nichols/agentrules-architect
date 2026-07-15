@@ -64,7 +64,7 @@ After the runtime is available:
 
 1. Open `Settings -> Model presets per phase`
 2. Pick a `Codex: <model>` option for any phase you want to route through Codex
-3. If the model exposes multiple runtime efforts, choose the desired reasoning variant (`no reasoning`, `minimal`, `low`, `medium`, `high`, or `very high`) in the variant picker
+3. If the model exposes multiple runtime efforts, choose the desired reasoning variant in the variant picker
 4. For Phase 1 researcher, choose a `Codex: <model>` option if you want runtime-native web search instead of Tavily
 
 Notes:
@@ -72,8 +72,11 @@ Notes:
 - Codex-backed researchers do not require Tavily credentials
 - Non-Codex researcher presets still require Tavily unless you are in offline mode
 - Codex-backed Phase 3 agents inspect files from the repository directly instead of receiving embedded file contents
-- `Codex: <model>` options come from live app-server `model/list` output and track runtime model availability directly
-- Model availability is account- and runtime-dependent; current signed-in runtimes commonly expose models such as `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, and `gpt-5.2`
+- `Codex: <model>` options and their reasoning efforts come from live app-server `model/list` output and track runtime model availability directly
+- The `Codex runtime default` choice follows whichever catalog model the installed runtime and account mark as default
+- Known effort labels are ordered consistently; new short lowercase effort labels advertised by the runtime remain selectable instead of being silently dropped
+- Current Codex builds may expose GPT-5.6 Sol, Terra, and Luna plus efforts such as `max` or `ultra`, but AgentRules does not hard-code those moving choices
+- Model and effort availability are account- and runtime-dependent; update the installed Codex build when an expected choice is absent
 
 ## Optional live smoke
 

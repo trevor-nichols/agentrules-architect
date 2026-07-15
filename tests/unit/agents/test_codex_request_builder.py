@@ -75,3 +75,20 @@ def test_prepare_request_leaves_runtime_default_effort_unset(tmp_path: Path) -> 
 
     assert "effort" not in prepared.turn_params
     assert prepared.turn_params["summary"] == "none"
+
+
+def test_prepare_request_preserves_safe_runtime_effort(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name="gpt-6-codex-preview",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DYNAMIC,
+        phase_name=None,
+        cwd=str(tmp_path),
+        runtime_reasoning_effort="extreme",
+    )
+
+    assert prepared.requested_runtime_reasoning_effort == "extreme"
+    assert prepared.turn_params["effort"] == "extreme"
+    assert prepared.turn_params["summary"] == "concise"
