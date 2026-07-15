@@ -41,7 +41,7 @@ Official reference:
 
 Fable 5 is a Covered Model: it requires 30-day data retention and is unavailable to a workspace that remains under zero data retention. Operators must enable the documented 30-day workspace retention policy before selecting it. AgentRules does not change retention settings or automatically fall back to another model.
 
-Fable 5 and Sonnet 5 can return HTTP 200 with `stop_reason="refusal"`. AgentRules treats that as an error result, includes only the provider's bounded category/explanation summary when present, and never treats empty refusal content as successful analysis. Direct Anthropic streams buffer response chunks until the terminal stop reason is validated, so partial refused output is never exposed; streaming refusals terminate with the same typed error. Automatic fallback is intentionally not configured because it would change model behavior and cost.
+Fable 5 can return HTTP 200 with `stop_reason="refusal"`. AgentRules treats that as an error result, includes only the provider's bounded category/explanation summary when present, and never treats empty refusal content as successful analysis. For Fable 5, direct Anthropic streams buffer response chunks until the terminal stop reason is validated, so partial refused output is never exposed; streaming refusals terminate with the same typed error. Models without this refusal capability, including Sonnet 5, continue to stream response chunks immediately. Automatic fallback is intentionally not configured because it would change model behavior and cost.
 
 ### Opus compatibility keys
 
