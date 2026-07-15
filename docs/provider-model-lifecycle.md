@@ -2,6 +2,33 @@
 
 This guide records model-selection and lifecycle constraints that affect AgentRules operators. It complements the preset labels shown by `agentrules configure --models` and focuses on behavior that cannot be inferred safely from a model ID alone.
 
+## Direct OpenAI API
+
+GPT-5.6 Sol is the default AgentRules preset. Terra and Luna remain explicit alternative tiers, and all
+three use the Responses API with a 1,050,000-token context. Sol accepts `none`, `low`, `medium`, `high`,
+`xhigh`, and `max` reasoning; AgentRules sends the selected value without reducing `max` to an older
+effort. GPT-5.5 presets remain available as the immediate fallback when account availability or behavior
+requires a conservative rollback.
+
+Official reference:
+
+- [OpenAI latest model guide](https://developers.openai.com/api/docs/guides/latest-model)
+
+## Direct DeepSeek API
+
+DeepSeek V4 Flash and V4 Pro are the canonical direct-API choices. Both have 1,000,000-token contexts.
+AgentRules sends explicit `thinking.type` and, for thinking modes, the selected effort rather than relying
+on a provider default.
+
+The saved preset keys `deepseek-chat` and `deepseek-reasoner` redirect to V4 Flash with disabled and
+enabled/high thinking respectively. DeepSeek scheduled those legacy identifiers to become inaccessible
+on July 24, 2026, so they are compatibility keys rather than valid rollback endpoints. If a V4 Pro issue
+appears, use V4 Flash; do not restore the retired wire identifiers.
+
+Official reference:
+
+- [DeepSeek V4 API announcement](https://api-docs.deepseek.com/news/news260424/)
+
 ## Direct Anthropic API
 
 ### Claude Sonnet 5
@@ -60,7 +87,7 @@ Official references:
 
 ## Google Gemini API
 
-`gemini-3.5-flash` is already AgentRules' stable current Flash choice and retains medium thinking.
+`gemini-3.5-flash` is AgentRules' stable current Flash choice and retains medium thinking.
 Gemini 2.5 Flash and Gemini 2.5 Pro remain selectable until their documented October 16, 2026
 shutdown because silently changing an explicit active selection could alter behavior or cost. Their picker
 labels disclose the date and recommend Gemini 3.5 Flash or Gemini 3.1 Pro Preview respectively.
@@ -72,3 +99,49 @@ picker labels disclose those redirects so operators do not mistake compatibility
 Official reference:
 
 - [Gemini model deprecations](https://ai.google.dev/gemini-api/docs/deprecations)
+
+## Local runtime providers
+
+Codex and Claude Code are runtime providers, not static API model catalogs. Codex choices and reasoning
+efforts come from app-server `model/list`; the runtime default follows the installed build and account.
+AgentRules preserves new short lowercase effort values reported by that catalog, including values newer
+than the application, but rejects malformed tokens. It does not add static Codex GPT-5.6 presets.
+
+Claude Code offers a runtime-owned default and moving `best`, `sonnet`, `opus`, and `fable` aliases as
+well as pinned model IDs. Pinned Claude 5 choices fail closed when AgentRules cannot prove that the exact
+resolved bundled or configured Claude Code executable meets the model's minimum version. A newer global
+binary does not upgrade the SDK-bundled runtime automatically.
+
+See [`codex-runtime.md`](codex-runtime.md) and [`claude-code-runtime.md`](claude-code-runtime.md) for
+configuration, authentication, version diagnostics, and runtime-specific live smokes.
+
+## Optional direct-provider live smoke
+
+The direct-provider smoke suite is disabled unless all three gates are satisfied: `pytest --run-live`, a
+provider-specific `AGENTRULES_RUN_<PROVIDER>_LIVE=1` flag, and that provider's API key. Every request is
+limited to 32 output tokens, assertions retain only a response identifier or boolean evidence, and the
+suite does not print credentials or raw responses. Account-, region-, or quota-specific 403/404/429
+responses are recorded as skips; request-contract errors still fail.
+
+Example for OpenAI:
+
+```bash
+AGENTRULES_RUN_OPENAI_LIVE=1 \
+  .venv/bin/pytest --run-live tests/live/test_provider_model_live_smoke.py -k openai
+```
+
+Equivalent enable flags are available for `ANTHROPIC`, `GEMINI`, `DEEPSEEK`, and `XAI`. Override the
+default smoke model with `AGENTRULES_<PROVIDER>_LIVE_MODEL`. Running the file without those flags must
+skip every provider and make no paid request.
+
+## Rollback and fallback summary
+
+| Provider | Preferred fallback | Important restriction |
+| --- | --- | --- |
+| OpenAI | GPT-5.5 | Saved GPT-5.6 configurations require the new presets to remain registered. |
+| DeepSeek | V4 Flash | Never roll the wire model back to `deepseek-chat` or `deepseek-reasoner` after retirement. |
+| Anthropic | Claude Opus 4.8 | Do not map generic Opus back to retiring Opus 4.1; do not auto-fallback from a Fable refusal. |
+| xAI | Grok 4.3 | Do not select Multi-Agent through the Chat Completions adapter. |
+| Google | Gemini 3.5 Flash | Keep explicit 2.5 selections only until the documented shutdown. |
+| Codex | Runtime default | Let the authenticated runtime catalog choose; do not synthesize a static model ID. |
+| Claude Code | Runtime default | Use a pinned model only after the resolved runtime passes its minimum-version gate. |

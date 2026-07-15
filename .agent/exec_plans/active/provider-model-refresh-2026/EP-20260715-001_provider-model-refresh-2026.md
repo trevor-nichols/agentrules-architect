@@ -98,8 +98,9 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - [x] (2026-07-15 America/New_York) MS004 completed: moving aliases, pinned Claude 5 choices, SDK 0.2.119/CLI 2.1.210, fail-closed gates, diagnostics, and refusal handling are validated.
 - [x] (2026-07-15 America/New_York) MS005 completed: Grok 4.5, compatible pinned 4.20 variants, explicit effort contracts, exact context limits, and the Multi-Agent transport deferral are validated.
 - [x] (2026-07-15 America/New_York) MS006 completed: runtime-advertised Codex efforts round-trip safely, Gemini redirects and shutdown labels are current, and all validation gates pass.
-- [ ] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
-- [ ] Complete full validation and record exact evidence.
+- [x] (2026-07-15 America/New_York) MS007 completed: cross-provider contracts, independently gated direct live smokes, lifecycle documentation, dependency consistency, and all deterministic gates are validated; the milestone is archived.
+- [x] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
+- [x] Complete full validation and record exact evidence.
 - [ ] Mark the ExecPlan done only after every acceptance condition is met.
 
 ## Surprises & Discoveries
@@ -112,6 +113,8 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
   Evidence: The live catalog returned `max` and `ultra`, while `CodexRuntimeReasoningEffort` accepts only `none`, `minimal`, `low`, `medium`, `high`, and `xhigh`, causing the newer values to be dropped.
 - Observation: AgentRules does not necessarily use the Claude Code version installed by the user.
   Evidence: executable resolution prefers the SDK-bundled binary; this workspace resolves version 2.1.161 even though the global command reports 2.1.207.
+- Observation: The repository has release and publication automation but no test workflow declaring the required validation jobs.
+  Evidence: `.github/workflows/` contains only `publish-pypi.yml` and `release-please.yml`; MS007 therefore ran import, offline, prompt/template, pytest, Ruff, and Pyright gates explicitly.
 - Observation: The Claude Code version probe can fail open.
   Evidence: the bundled binary took longer than the hard-coded two-second timeout locally, the probe returned `None`, and model support validation treats an unknown version as allowed.
 - Observation: Gemini 3.5 Flash was already added in an earlier model refresh.
@@ -171,7 +174,13 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 
 ## Outcomes & Retrospective
 
-Planning is complete and implementation is active under the user's approved sequential-milestone workflow. No outcome is claimed until each milestone's validation evidence is recorded. When the plan is complete, replace this paragraph with a comparison of shipped behavior against the Purpose section, exact test and live-smoke evidence, dependency versions chosen, compatibility redirects applied, remaining model-lifecycle risks, and any follow-up work intentionally deferred.
+The implementation fulfills the Purpose section across all seven providers. New/default phases select GPT-5.6 Sol; DeepSeek uses V4 with explicit thinking semantics; direct Anthropic supports Sonnet 5 and Fable 5 with capability-driven thinking and refusal safety; xAI exposes Grok 4.5 and the compatible pinned 4.20 variants; Gemini lifecycle labels and redirects are current; Codex preserves runtime-advertised efforts; and Claude Code separates moving aliases from version-gated pinned models.
+
+Compatibility remains intentional and auditable. Saved DeepSeek chat/reasoner keys resolve to equivalent V4 Flash modes, retired Gemini preview keys resolve to active 3.1 endpoints, and generic Opus keys select Opus 4.8. Explicit GPT-5.5, Grok 4.3, and active Gemini 2.5 selections remain available. Codex model IDs stay runtime-owned, while Claude Code's exact resolved bundled or configured executable controls pinned-model gates.
+
+The final environment uses OpenAI 2.45.0, Anthropic 0.83.0, Google GenAI 1.64.0, and Claude Agent SDK 0.2.119 with bundled Claude Code 2.1.210. The cross-provider matrix passes 47 cases. The repository suite passes 867 tests with 7 expected live skips and 36 subtests; Ruff, Pyright, import smoke, offline pipeline, prompt/template, redaction, lock consistency, diff checks, and snapshot idempotence are green. No paid live request was made; direct live checks are independently triple-gated and limited to 32 output tokens.
+
+Remaining lifecycle risks are upstream rather than hidden: direct model access can vary by account/region, Fable requires 30-day retention and is incompatible with ZDR, Gemini 2.5 shuts down October 16, and runtime aliases can move. Grok 4.20 Multi-Agent remains intentionally deferred until AgentRules has an xAI Responses transport. The repository also has no test workflow despite documented CI-equivalent requirements; this plan ran all gates locally but deliberately did not add unrelated CI automation.
 
 ## Plan of Work
 

@@ -302,6 +302,20 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 
 > **Preset tip:** Preset keys are compatibility IDs, not release markers. Static presets live in `config/agents.py`, while Codex runtime selections in the settings UI are discovered from the live app-server catalog.
 
+### Current model lifecycle
+
+| Provider | Current or recommended selection | Compatibility and fallback |
+| --- | --- | --- |
+| OpenAI | GPT-5.6 Sol (the default), with Terra and Luna tiers | GPT-5.5 remains selectable as the immediate direct-API fallback. |
+| DeepSeek | V4 Flash or V4 Pro | Saved `deepseek-chat` and `deepseek-reasoner` keys redirect to matching V4 Flash modes; do not restore the retired aliases after July 24, 2026. |
+| Anthropic | Claude Sonnet 5 or Fable 5; generic Opus keys use Opus 4.8 | Opus 4.8 is the conservative fallback. Fable 5 requires the provider's 30-day retention policy. |
+| xAI | Grok 4.5; pinned Grok 4.20 reasoning and non-reasoning variants are available | Grok 4.3 remains selectable. The 4.20 Multi-Agent model is intentionally excluded because this adapter uses Chat Completions. |
+| Google | Gemini 3.5 Flash | Gemini 2.5 remains selectable until October 16, 2026; retired preview keys redirect to active 3.1 endpoints. |
+| Codex | Runtime default or a model/effort discovered from app-server | Availability follows the installed runtime and account. AgentRules does not maintain a static Codex GPT-5.6 list. |
+| Claude Code | Runtime default/moving aliases or a supported pinned Claude model | Moving choices follow runtime/account policy; pinned Claude 5 choices are guarded by the exact resolved runtime version. |
+
+See [`docs/provider-model-lifecycle.md`](docs/provider-model-lifecycle.md) for reasoning contracts, retirements, data-retention caveats, safe live-smoke commands, and rollback choices.
+
 ## 🧠 Reasoning & Advanced Configuration
 
 - **Reasoning modes:** Anthropic presets use fixed-budget or adaptive thinking depending on the Claude family, Gemini presets use provider-native thinking controls, OpenAI presets map to reasoning effort or temperature based on model family, DeepSeek V4 presets explicitly select thinking/non-thinking plus high/max effort, and xAI presets keep their model-specific reasoning behavior (`src/agentrules/core/types/models.py`). Saved `deepseek-chat` and `deepseek-reasoner` preset keys are redirected to equivalent V4 Flash modes before those aliases retire on July 24, 2026.
