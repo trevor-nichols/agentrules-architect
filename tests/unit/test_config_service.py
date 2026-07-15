@@ -350,6 +350,40 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(probe.error_code, "parse")
         self.assertIn("did not contain a semantic version", probe.error_message or "")
 
+    def test_claude_code_runtime_version_probe_uses_sanitized_environment(self) -> None:
+        probe_claude_code_executable_version.cache_clear()
+        self.config_manager.set_claude_code_cli_path(sys.executable)
+        completed = subprocess.CompletedProcess(
+            args=[sys.executable, "--version"],
+            returncode=0,
+            stdout="2.1.197",
+            stderr="",
+        )
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "ANTHROPIC_API_KEY": "api-key",
+                    "ANTHROPIC_AUTH_TOKEN": "auth-token",
+                    "CLAUDE_CODE_OAUTH_TOKEN": "oauth-token",
+                },
+                clear=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code.subprocess.run",
+                return_value=completed,
+            ) as run_mock,
+        ):
+            probe = self.config_manager.get_claude_code_runtime_version_probe()
+        probe_claude_code_executable_version.cache_clear()
+
+        self.assertIsNotNone(probe)
+        self.assertEqual(probe.version if probe else None, ClaudeCodeVersion(2, 1, 197))
+        child_env = run_mock.call_args.kwargs["env"]
+        self.assertNotIn("ANTHROPIC_API_KEY", child_env)
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", child_env)
+        self.assertEqual(child_env["CLAUDE_CODE_OAUTH_TOKEN"], "oauth-token")
+
     def test_unknown_provider_key_round_trips_through_config_save(self) -> None:
         self.configuration.CONFIG_FILE.write_text(
             "\n".join(

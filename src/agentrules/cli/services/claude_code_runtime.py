@@ -71,14 +71,14 @@ def get_claude_code_runtime_diagnostics(
         else:
             runtime_error = "Configured Claude Code executable could not be resolved from the current settings."
     else:
-        probe = claude_code_service.probe_claude_code_executable_version(
-            executable_path,
-            timeout_seconds,
-        )
-        version = str(probe.version) if probe.version is not None else None
-        version_error_code = probe.error_code
-        version_error = probe.error_message
-        unavailable_model_reasons = _unavailable_model_reasons(manager, probe.version)
+        probe = manager.get_claude_code_runtime_version_probe(timeout_seconds=timeout_seconds)
+        if probe is None:
+            runtime_error = "Claude Code executable could not be resolved during the version probe."
+        else:
+            version = str(probe.version) if probe.version is not None else None
+            version_error_code = probe.error_code
+            version_error = probe.error_message
+            unavailable_model_reasons = _unavailable_model_reasons(manager, probe.version)
 
     return ClaudeCodeRuntimeDiagnostics(
         cli_path=runtime_config.cli_path,

@@ -162,8 +162,9 @@ def test_claude_code_diagnostics_explain_version_gated_models(tmp_path: Path, mo
     manager.set_claude_code_cli_path(sys.executable)
     monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
     monkeypatch.setattr(
-        "agentrules.cli.services.claude_code_runtime.claude_code_service.probe_claude_code_executable_version",
-        lambda *_args: ClaudeCodeVersionProbe(version=ClaudeCodeVersion(2, 1, 169)),
+        manager,
+        "get_claude_code_runtime_version_probe",
+        lambda **_kwargs: ClaudeCodeVersionProbe(version=ClaudeCodeVersion(2, 1, 169)),
     )
 
     diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)

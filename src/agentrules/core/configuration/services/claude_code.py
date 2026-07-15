@@ -223,8 +223,14 @@ def parse_claude_code_version(version_text: str | None) -> ClaudeCodeVersion | N
 def probe_claude_code_executable_version(
     executable_path: str,
     timeout_seconds: float = CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS,
+    *,
+    env_vars_to_remove: tuple[str, ...] = (),
 ) -> ClaudeCodeVersionProbe:
     """Return a cached, diagnostic version probe for one resolved executable."""
+
+    child_env = os.environ.copy()
+    for env_var in env_vars_to_remove:
+        child_env.pop(env_var, None)
 
     try:
         completed = subprocess.run(
@@ -233,6 +239,7 @@ def probe_claude_code_executable_version(
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
+            env=child_env,
         )
     except subprocess.TimeoutExpired:
         return ClaudeCodeVersionProbe(
@@ -276,17 +283,27 @@ def _bounded_probe_output(value: str | None, *, limit: int = 300) -> str:
     return f"{normalized[: limit - 1]}…"
 
 
-def _probe_claude_code_executable_version(executable_path: str) -> ClaudeCodeVersion | None:
+def _probe_claude_code_executable_version(
+    executable_path: str,
+    *,
+    env_vars_to_remove: tuple[str, ...] = (),
+) -> ClaudeCodeVersion | None:
     """Compatibility wrapper for callers that only need the parsed version."""
 
-    return probe_claude_code_executable_version(executable_path).version
+    return probe_claude_code_executable_version(
+        executable_path,
+        env_vars_to_remove=env_vars_to_remove,
+    ).version
 
 
 def get_claude_code_runtime_version(config: CLIConfig) -> ClaudeCodeVersion | None:
     executable_path = resolve_claude_code_executable(config)
     if executable_path is None:
         return None
-    return _probe_claude_code_executable_version(executable_path)
+    return _probe_claude_code_executable_version(
+        executable_path,
+        env_vars_to_remove=_claude_code_env_vars_to_remove(config),
+    )
 
 
 def get_claude_code_runtime_version_probe(
@@ -297,7 +314,11 @@ def get_claude_code_runtime_version_probe(
     executable_path = resolve_claude_code_executable(config)
     if executable_path is None:
         return None
-    return probe_claude_code_executable_version(executable_path, timeout_seconds)
+    return probe_claude_code_executable_version(
+        executable_path,
+        timeout_seconds,
+        env_vars_to_remove=_claude_code_env_vars_to_remove(config),
+    )
 
 
 def minimum_claude_code_version_for_model(model_name: str) -> ClaudeCodeVersion | None:
@@ -336,8 +357,13 @@ def build_claude_code_environment(
     environ: Mapping[str, str],
 ) -> dict[str, str]:
     env = dict(environ)
+    for env_var in _claude_code_env_vars_to_remove(config):
+        env.pop(env_var, None)
+    return env
+
+
+def _claude_code_env_vars_to_remove(config: CLIConfig) -> tuple[str, ...]:
     claude_code_config = get_claude_code_config(config)
     if claude_code_config.auth_strategy == "oauth" and claude_code_config.sanitize_api_key_env:
-        for env_var in configuration_constants.CLAUDE_CODE_API_KEY_ENV_VARS:
-            env.pop(env_var, None)
-    return env
+        return configuration_constants.CLAUDE_CODE_API_KEY_ENV_VARS
+    return ()

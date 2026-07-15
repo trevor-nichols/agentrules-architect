@@ -338,6 +338,7 @@ class AnthropicArchitect(BaseArchitect):
     def _stream_messages(self, prepared: PreparedRequest) -> Iterator[StreamChunk]:
         payload = dict(prepared.payload)
         active_tool_inputs: dict[int, dict[str, Any]] = {}
+        pending_chunks: list[StreamChunk] = []
 
         with execute_message_stream(payload) as stream:  # type: ignore[arg-type]
             for event in stream:
@@ -366,28 +367,32 @@ class AnthropicArchitect(BaseArchitect):
                     if delta_type == "text_delta":
                         text = getattr(delta, "text", None)
                         if text:
-                            yield StreamChunk(
-                                StreamEventType.TEXT_DELTA,
-                                str(text),
-                                None,
-                                None,
-                                None,
-                                None,
-                                event,
+                            pending_chunks.append(
+                                StreamChunk(
+                                    StreamEventType.TEXT_DELTA,
+                                    str(text),
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    event,
+                                )
                             )
                         continue
 
                     if delta_type == "thinking_delta":
                         thinking = getattr(delta, "thinking", None)
                         if thinking:
-                            yield StreamChunk(
-                                StreamEventType.REASONING_DELTA,
-                                None,
-                                str(thinking),
-                                None,
-                                None,
-                                None,
-                                event,
+                            pending_chunks.append(
+                                StreamChunk(
+                                    StreamEventType.REASONING_DELTA,
+                                    None,
+                                    str(thinking),
+                                    None,
+                                    None,
+                                    None,
+                                    event,
+                                )
                             )
                         continue
 
@@ -399,18 +404,20 @@ class AnthropicArchitect(BaseArchitect):
                         partial = getattr(delta, "partial_json", None)
                         if partial:
                             active_tool_inputs[index_obj]["buffer"].append(partial)
-                            yield StreamChunk(
-                                StreamEventType.TOOL_CALL_DELTA,
-                                None,
-                                None,
-                                {
-                                    "partial_json": partial,
-                                    "id": active_tool_inputs[index_obj].get("id"),
-                                    "name": active_tool_inputs[index_obj].get("name"),
-                                },
-                                None,
-                                None,
-                                event,
+                            pending_chunks.append(
+                                StreamChunk(
+                                    StreamEventType.TOOL_CALL_DELTA,
+                                    None,
+                                    None,
+                                    {
+                                        "partial_json": partial,
+                                        "id": active_tool_inputs[index_obj].get("id"),
+                                        "name": active_tool_inputs[index_obj].get("name"),
+                                    },
+                                    None,
+                                    None,
+                                    event,
+                                )
                             )
                         continue
 
@@ -430,14 +437,16 @@ class AnthropicArchitect(BaseArchitect):
                                 tool_payload["input"] = json.loads(full_json)
                             except json.JSONDecodeError:
                                 tool_payload["input"] = full_json
-                        yield StreamChunk(
-                            StreamEventType.TOOL_CALL_DELTA,
-                            None,
-                            None,
-                            tool_payload,
-                            None,
-                            None,
-                            event,
+                        pending_chunks.append(
+                            StreamChunk(
+                                StreamEventType.TOOL_CALL_DELTA,
+                                None,
+                                None,
+                                tool_payload,
+                                None,
+                                None,
+                                event,
+                            )
                         )
                     continue
 
@@ -446,15 +455,20 @@ class AnthropicArchitect(BaseArchitect):
                     raise_for_refusal(delta_event)
                     usage = getattr(delta_event, "usage", None)
                     if usage:
-                        yield StreamChunk(
-                            StreamEventType.MESSAGE_DELTA,
-                            None,
-                            None,
-                            None,
-                            None,
-                            self._to_dict(usage),
-                            event,
+                        pending_chunks.append(
+                            StreamChunk(
+                                StreamEventType.MESSAGE_DELTA,
+                                None,
+                                None,
+                                None,
+                                None,
+                                self._to_dict(usage),
+                                event,
+                            )
                         )
+                    if getattr(delta_event, "stop_reason", None) is not None:
+                        yield from pending_chunks
+                        pending_chunks.clear()
                     continue
 
                 if event_type == "message_stop":
@@ -462,6 +476,8 @@ class AnthropicArchitect(BaseArchitect):
                     raise_for_refusal(final)
                     usage = getattr(final, "usage", None)
                     stop_reason = getattr(final, "stop_reason", None)
+                    yield from pending_chunks
+                    pending_chunks.clear()
                     yield StreamChunk(
                         StreamEventType.MESSAGE_END,
                         None,
@@ -476,6 +492,7 @@ class AnthropicArchitect(BaseArchitect):
                 if event_type == "error":
                     error = getattr(event, "error", None)
                     message = str(getattr(error, "message", error))
+                    pending_chunks.clear()
                     yield StreamChunk(StreamEventType.ERROR, message, None, None, None, None, event)
                     continue
 
