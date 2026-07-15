@@ -28,3 +28,32 @@ Official references:
 - [Refusals and fallback](https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback)
 - [API and data retention](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)
 - [Model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+
+## Direct xAI API
+
+### Grok 4.5
+
+`grok-4.5` is the recommended direct xAI model and the default for a directly constructed
+`XaiArchitect`. It has a 500,000-token context and accepts only low, medium, or high reasoning effort;
+high is the provider default. Reasoning cannot be disabled. AgentRules rejects disabled, minimal,
+xhigh, and max configurations before network dispatch rather than translating them to an unsupported
+wire value.
+
+### Grok 4.20 pinned variants
+
+AgentRules exposes `grok-4.20-0309-reasoning` and `grok-4.20-0309-non-reasoning` as specialized,
+pinned Chat Completions choices with 1,000,000-token contexts. Their reasoning behavior is selected by
+the model ID, so AgentRules does not add a `reasoning_effort` field that xAI has not documented for
+those variants.
+
+Grok 4.20 Multi-Agent is not exposed. xAI explicitly states that it does not work with Chat
+Completions and requires the xAI SDK or Responses API. AgentRules' current xAI adapter intentionally
+remains Chat-Completions-only, so adding a Multi-Agent preset would guarantee a runtime failure.
+
+Official references:
+
+- [Grok 4.5](https://docs.x.ai/developers/grok-4-5)
+- [xAI reasoning controls](https://docs.x.ai/developers/model-capabilities/text/reasoning)
+- [Grok 4.20 reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-reasoning)
+- [Grok 4.20 non-reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-non-reasoning)
+- [Multi-Agent endpoint limitations](https://docs.x.ai/developers/model-capabilities/text/multi-agent)

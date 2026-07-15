@@ -758,6 +758,32 @@ class ModelOverrideTestCase(unittest.TestCase):
             "grok-build-0.1",
         )
 
+    def test_xai_registry_includes_grok45_and_compatible_grok420_presets(self) -> None:
+        grok45_keys = {
+            "grok-4.5",
+            "grok-4.5-reasoning-medium",
+            "grok-4.5-reasoning-low",
+        }
+        self.assertTrue(grok45_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.5"]["config"].reasoning,
+            ReasoningMode.HIGH,
+        )
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.5"]["config"].max_input_tokens,
+            500_000,
+        )
+
+        reasoning = self.agents_module.MODEL_PRESETS["grok-4.20-reasoning"]
+        non_reasoning = self.agents_module.MODEL_PRESETS["grok-4.20-non-reasoning"]
+        self.assertEqual(reasoning["config"].model_name, "grok-4.20-0309-reasoning")
+        self.assertEqual(non_reasoning["config"].model_name, "grok-4.20-0309-non-reasoning")
+        self.assertEqual(reasoning["config"].max_input_tokens, 1_000_000)
+        self.assertEqual(non_reasoning["config"].max_input_tokens, 1_000_000)
+        self.assertIn("Pinned 0309", reasoning["label"])
+        self.assertIn("Pinned 0309", non_reasoning["label"])
+        self.assertNotIn("grok-4.20-multi-agent", self.agents_module.MODEL_PRESETS)
+
     def test_gemini_registry_includes_current_gemini3_presets(self) -> None:
         self.assertIn("gemini-3.5-flash", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-flash-preview", self.agents_module.MODEL_PRESETS)

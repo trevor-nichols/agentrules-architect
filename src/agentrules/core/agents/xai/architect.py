@@ -36,7 +36,7 @@ class XaiArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "grok-4.3",
+        model_name: str = "grok-4.5",
         reasoning: ReasoningMode | None = None,
         temperature: float | None = None,
         name: str | None = None,

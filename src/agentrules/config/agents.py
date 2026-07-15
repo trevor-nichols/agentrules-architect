@@ -95,6 +95,11 @@ from agentrules.core.types.models import (
     GROK_4_3,
     GROK_4_3_NON_REASONING,
     GROK_4_3_REASONING_MEDIUM,
+    GROK_4_5,
+    GROK_4_5_LOW,
+    GROK_4_5_MEDIUM,
+    GROK_4_20_NON_REASONING,
+    GROK_4_20_REASONING,
     GROK_4_FAST_NON_REASONING,
     GROK_4_FAST_REASONING,
     GROK_BUILD_0_1,
@@ -125,6 +130,8 @@ class PresetDefinition(TypedDict):
 
 _XAI_1M_CONTEXT_MODELS: frozenset[str] = frozenset(
     {
+        "grok-4.20-0309-reasoning",
+        "grok-4.20-0309-non-reasoning",
         "grok-4.3",
         "grok-4.3-latest",
         "grok-latest",
@@ -211,7 +218,10 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
         if limit is None:
-            limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
+            if name.startswith("grok-4.5"):
+                limit = 500_000
+            else:
+                limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
         estimator_family = estimator_family or "tiktoken"
 
     return config._replace(
@@ -926,6 +936,36 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
             "with thinking disabled because deepseek-chat retires July 24, 2026."
         ),
         provider=ModelProvider.DEEPSEEK,
+    ),
+    "grok-4.5": _preset(
+        config=GROK_4_5,
+        label="Grok 4.5 (Reasoning High, Recommended)",
+        description="Recommended general xAI model with default high reasoning and 500k context.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.5-reasoning-medium": _preset(
+        config=GROK_4_5_MEDIUM,
+        label="Grok 4.5 (Reasoning Medium)",
+        description="Grok 4.5 with medium reasoning for balanced latency and depth.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.5-reasoning-low": _preset(
+        config=GROK_4_5_LOW,
+        label="Grok 4.5 (Reasoning Low)",
+        description="Grok 4.5 with low reasoning for latency-sensitive agentic work.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.20-reasoning": _preset(
+        config=GROK_4_20_REASONING,
+        label="Grok 4.20 (Specialized, Pinned 0309, Reasoning)",
+        description="Pinned Grok 4.20 reasoning model with identity-owned reasoning and 1M context.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.20-non-reasoning": _preset(
+        config=GROK_4_20_NON_REASONING,
+        label="Grok 4.20 (Specialized, Pinned 0309, Non-Reasoning)",
+        description="Pinned Grok 4.20 non-reasoning model with 1M context.",
+        provider=ModelProvider.XAI,
     ),
     "grok-4.3": _preset(
         config=GROK_4_3,

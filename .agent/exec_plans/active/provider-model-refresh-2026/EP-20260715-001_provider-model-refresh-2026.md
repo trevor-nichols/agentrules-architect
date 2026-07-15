@@ -36,7 +36,7 @@ This plan intentionally stops at planning until the user approves it. No provide
 
 In scope are the active providers represented by `ModelProvider`: direct Anthropic, Claude Code, direct OpenAI, Codex, DeepSeek, Gemini, and xAI. The work includes model constants, preset definitions, default phase selections, context-window metadata, provider capability metadata, request construction, response/refusal parsing where a new model changes the response contract, local-runtime discovery and version gating, dependency and lockfile updates required by those contracts, migration behavior for saved preset keys, focused and integration tests, operator documentation, and snapshot synchronization.
 
-The direct-provider additions are `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `claude-sonnet-5`, `claude-fable-5`, `deepseek-v4-pro`, `deepseek-v4-flash`, `grok-4.5`, `grok-4.20-0309-reasoning`, `grok-4.20-0309-non-reasoning`, and `grok-4.20-multi-agent-0309`. Gemini 3.5 Flash is already implemented and is not re-added.
+The direct-provider additions are `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `claude-sonnet-5`, `claude-fable-5`, `deepseek-v4-pro`, `deepseek-v4-flash`, `grok-4.5`, `grok-4.20-0309-reasoning`, and `grok-4.20-0309-non-reasoning`. Gemini 3.5 Flash is already implemented and is not re-added. Grok 4.20 Multi-Agent is deferred to a future xAI Responses transport because it explicitly rejects Chat Completions.
 
 Out of scope are image, audio, video, embedding, translation, and realtime-only model families; Anthropic's invitation-only Mythos models; OpenAI GPT-5.6 pro mode; server-side web/search tool integrations that AgentRules does not currently expose; a generic provider catalog service; changes to API-key storage; and unrelated provider refactors. Optional live smokes must remain opt-in and must never make default CI depend on credentials or paid provider calls.
 
@@ -55,7 +55,7 @@ The provider audit performed on 2026-07-15 established these upstream contracts,
 - Anthropic's current public additions are `claude-sonnet-5` and `claude-fable-5`. Both use a 1,000,000-token context and adaptive thinking. Fable thinking cannot be disabled, supports effort values through `max`, and can return HTTP 200 with `stop_reason="refusal"`; Fable is unavailable under zero-data-retention arrangements and has a 30-day retention requirement. Sonnet 5 no longer accepts fixed manual thinking budgets and must be explicitly disabled if a non-thinking request is desired. Claude Opus 4.1 is deprecated and retires on 2026-08-05; the generic existing Opus preset should no longer select it.
 - Claude Code can follow moving model aliases such as `default`, `best`, `sonnet`, `opus`, and `fable`, but full model identifiers remain pinned. Fable 5 requires Claude Code 2.1.170 or newer and Sonnet 5 requires 2.1.197 or newer. The currently locked Claude Agent SDK bundles Claude Code 2.1.161 in this workspace, while a newer global CLI does not take precedence. The two-second version-probe timeout has already returned `None` locally and can bypass version gates.
 - Gemini 3.5 Flash already exists as the stable `gemini-3.5-flash` preset. Gemini 2.5 Flash and Pro are scheduled to shut down on 2026-10-16. The Gemini 3.1 Flash-Lite preview endpoint is already shut down, so it must not remain an apparently selectable dead endpoint even though its saved preset key should continue to load.
-- xAI's recommended general and coding model is `grok-4.5`, with a 500,000-token context and only `low`, `medium`, and `high` reasoning efforts, defaulting to `high`. The Grok 4.20 reasoning, non-reasoning, and multi-agent variants use a 1,000,000-token context and remain specialized choices. Grok 4.3 remains available and is not removed.
+- xAI's recommended general and coding model is `grok-4.5`, with a 500,000-token context and only `low`, `medium`, and `high` reasoning efforts, defaulting to `high`. The Grok 4.20 reasoning and non-reasoning variants use a 1,000,000-token context and remain specialized choices. Grok 4.20 Multi-Agent also has a 1M context but does not support the adapter's Chat Completions endpoint, so it is not exposed. Grok 4.3 remains available and is not removed.
 - The local Codex runtime already returned GPT-5.6 Sol, Terra, and Luna from `model/list`; therefore Codex model identifiers must remain runtime-owned. The same catalog returned effort labels `max` and `ultra`, which the current closed literal silently normalizes to `None`.
 
 ## Compatibility and Migration Policy
@@ -76,7 +76,7 @@ Milestone 3, `EP-20260715-001/MS003 Add Claude Sonnet 5 and Fable 5 safely`, add
 
 Milestone 4, `EP-20260715-001/MS004 Modernize Claude Code model selection and runtime gating`, adds pinned Sonnet 5 and Fable 5 choices plus runtime-managed aliases, upgrades the Claude Agent SDK to a release whose bundled executable meets the Sonnet 5 minimum, fixes the unreliable version probe, and documents when user-installed Claude Code does and does not control AgentRules behavior.
 
-Milestone 5, `EP-20260715-001/MS005 Add xAI Grok 4.5 and 4.20 model families`, adds Grok 4.5 as the recommended general xAI preset, adds explicit specialized Grok 4.20 variants, replaces the boolean xAI reasoning-support flag with model-specific accepted efforts, and assigns exact 500k/1M context limits without removing Grok 4.3.
+Milestone 5, `EP-20260715-001/MS005 Add xAI Grok 4.5 and 4.20 model families`, adds Grok 4.5 as the recommended general xAI preset, adds the Chat-Completions-compatible specialized Grok 4.20 reasoning and non-reasoning variants, replaces the boolean xAI reasoning-support flag with model-specific accepted efforts, and assigns exact 500k/1M context limits without removing Grok 4.3. Multi-Agent is deferred because xAI documents it as incompatible with Chat Completions.
 
 Milestone 6, `EP-20260715-001/MS006 Preserve dynamic Codex compatibility and update Gemini lifecycle`, keeps Codex runtime-owned while preventing new catalog effort labels from being silently discarded, adds fixtures for `max`, `ultra`, and a future unknown-but-safe effort token, and updates Gemini labels and compatibility redirects without reimplementing Gemini 3.5 Flash.
 
@@ -96,6 +96,7 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - [x] (2026-07-15 America/New_York) MS002 completed: GPT-5.6 direct presets, max effort, 1.05M context, Sol defaults, and SDK 2.45.0 are validated.
 - [x] (2026-07-15 America/New_York) MS003 completed: direct Claude 5 capability policies, safe refusal handling, Opus 4.8 migration, and lifecycle guidance are validated.
 - [x] (2026-07-15 America/New_York) MS004 completed: moving aliases, pinned Claude 5 choices, SDK 0.2.119/CLI 2.1.210, fail-closed gates, diagnostics, and refusal handling are validated.
+- [x] (2026-07-15 America/New_York) MS005 completed: Grok 4.5, compatible pinned 4.20 variants, explicit effort contracts, exact context limits, and the Multi-Agent transport deferral are validated.
 - [ ] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
 - [ ] Complete full validation and record exact evidence.
 - [ ] Mark the ExecPlan done only after every acceptance condition is met.
@@ -128,6 +129,8 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
   Evidence: SDK 0.2.119 bundles Claude Code 2.1.210, satisfying both new-model floors; the exact resolved binary reports that version directly.
 - Observation: Importing data-only constants from a provider package can trigger the package's eager architect export and re-enter configuration.
   Evidence: The first repository-wide collection pass exposed a circular import; moving the sentinel and alias set to the existing model-types module restored clean import order.
+- Observation: Grok 4.20 Multi-Agent cannot run through AgentRules' current xAI adapter.
+  Evidence: xAI's official Multi-Agent documentation explicitly states that Chat Completions is unsupported and requires the xAI SDK or Responses API.
 
 ## Decision Log
 
@@ -161,6 +164,9 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - Decision: Pin the Claude Agent SDK floor at 0.2.119 and continue bundled-first executable resolution.
   Rationale: Its bundled Claude Code 2.1.210 satisfies the documented model floors and preserves the existing SDK-owned runtime architecture; operators can still opt into a separately managed runtime through `cli_path`.
   Date/Author: 2026-07-15 / @codex
+- Decision: Do not expose Grok 4.20 Multi-Agent in MS005.
+  Rationale: Adding a preset to a Chat-Completions-only adapter would create a guaranteed runtime failure; adding a second xAI transport is a material expansion explicitly outside this milestone.
+  Date/Author: 2026-07-15 / @codex
 
 ## Outcomes & Retrospective
 
@@ -174,7 +180,7 @@ Implement MS002 and MS003 as separate direct-provider changes. OpenAI work updat
 
 Implement MS004 after the direct Anthropic capability matrix is stable so Claude Code can reuse it where the wire semantics match. Keep pinned presets, add runtime alias presets, upgrade and verify the SDK-bundled CLI, and make version detection fail closed for model gates when an explicit minimum is known. Do not assume a global `claude update` changes the bundled runtime.
 
-Implement MS005 independently in the xAI adapter. Replace `reasoning_effort_supported: bool` with an immutable set of accepted values or an equivalent explicit representation, so Grok 4.5 can reject `none` while Grok 4.3 keeps its existing behavior. Add exact context metadata and specialized 4.20 presets without making the beta multi-agent model the default.
+Implement MS005 independently in the xAI adapter. Replace `reasoning_effort_supported: bool` with an immutable set of accepted values or an equivalent explicit representation, so Grok 4.5 can reject `none` while Grok 4.3 keeps its existing behavior. Add exact context metadata and the two Chat-Completions-compatible specialized 4.20 presets; leave Multi-Agent for a separately designed Responses transport.
 
 Implement MS006 as a compatibility maintenance slice. Allow safe runtime-supplied Codex effort tokens, order known labels predictably, preserve unknown safe values instead of dropping them, and add catalog fixtures. Update Gemini's user-facing lifecycle state and redirect only endpoints that are already shut down; keep still-operational 2.5 IDs selectable but visibly deprecated until their scheduled shutdown.
 

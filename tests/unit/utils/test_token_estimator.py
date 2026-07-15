@@ -216,6 +216,33 @@ def test_apply_model_limits_xai_grok43_family_uses_documented_1m_context(config)
     assert cfg.estimator_family == "tiktoken"
 
 
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.GROK_4_5,
+        agents_config.GROK_4_5_MEDIUM,
+        agents_config.GROK_4_5_LOW,
+    ],
+)
+def test_apply_model_limits_xai_grok45_family_uses_documented_500k_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 500_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.GROK_4_20_REASONING,
+        agents_config.GROK_4_20_NON_REASONING,
+    ],
+)
+def test_apply_model_limits_xai_grok420_family_uses_documented_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "tiktoken"
+
+
 def test_apply_model_limits_xai_grok_build_uses_256k_context():
     cfg = agents_config._apply_model_limits(agents_config.GROK_BUILD_0_1)
     assert cfg.max_input_tokens == 256_000

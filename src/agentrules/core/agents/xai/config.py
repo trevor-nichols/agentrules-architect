@@ -17,47 +17,73 @@ class ModelDefaults:
 
     default_reasoning: ReasoningMode
     tools_allowed: bool = True
-    reasoning_effort_supported: bool = False
+    accepted_reasoning_efforts: frozenset[str] = frozenset()
+    enabled_reasoning_effort: str | None = None
+    normalize_higher_efforts_to_high: bool = False
+
+
+_LEGACY_ACCEPTED_REASONING_EFFORTS = frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
+    "grok-4.5": ModelDefaults(
+        default_reasoning=ReasoningMode.HIGH,
+        accepted_reasoning_efforts=frozenset({"low", "medium", "high"}),
+        enabled_reasoning_effort="high",
+    ),
+    "grok-4.20-0309-reasoning": ModelDefaults(
+        default_reasoning=ReasoningMode.ENABLED,
+    ),
+    "grok-4.20-0309-non-reasoning": ModelDefaults(
+        default_reasoning=ReasoningMode.DISABLED,
+    ),
     "grok-4.3": ModelDefaults(
         default_reasoning=ReasoningMode.LOW,
-        reasoning_effort_supported=True,
+        accepted_reasoning_efforts=_LEGACY_ACCEPTED_REASONING_EFFORTS,
+        enabled_reasoning_effort="medium",
+        normalize_higher_efforts_to_high=True,
     ),
     # Grok Build reasons by default, but the chat-completions API rejects the
     # explicit reasoning_effort parameter for this model family.
     "grok-build-0.1": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
-        reasoning_effort_supported=False,
     ),
     # Legacy alias retained for backwards compatibility with grok-build-0.1.
     "grok-code-fast-1": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
-        reasoning_effort_supported=False,
     ),
     "grok-4-1-fast-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
-        reasoning_effort_supported=True,
+        accepted_reasoning_efforts=_LEGACY_ACCEPTED_REASONING_EFFORTS,
+        enabled_reasoning_effort="medium",
+        normalize_higher_efforts_to_high=True,
     ),
     # Legacy alias retained for backwards compatibility with Grok 4.3.
     "grok-4-1-fast-non-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.DISABLED,
-        reasoning_effort_supported=True,
+        accepted_reasoning_efforts=_LEGACY_ACCEPTED_REASONING_EFFORTS,
+        enabled_reasoning_effort="medium",
+        normalize_higher_efforts_to_high=True,
     ),
     "grok-4-fast-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
-        reasoning_effort_supported=True,
+        accepted_reasoning_efforts=_LEGACY_ACCEPTED_REASONING_EFFORTS,
+        enabled_reasoning_effort="medium",
+        normalize_higher_efforts_to_high=True,
     ),
     # Legacy alias retained for backwards compatibility with Grok 4.3.
     "grok-4-fast-non-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.DISABLED,
-        reasoning_effort_supported=True,
+        accepted_reasoning_efforts=_LEGACY_ACCEPTED_REASONING_EFFORTS,
+        enabled_reasoning_effort="medium",
+        normalize_higher_efforts_to_high=True,
     ),
     # Legacy alias retained for backwards compatibility with Grok 4.3.
     "grok-4-0709": ModelDefaults(
         default_reasoning=ReasoningMode.MEDIUM,
-        reasoning_effort_supported=True,
+        accepted_reasoning_efforts=_LEGACY_ACCEPTED_REASONING_EFFORTS,
+        enabled_reasoning_effort="medium",
+        normalize_higher_efforts_to_high=True,
     ),
 }
 
