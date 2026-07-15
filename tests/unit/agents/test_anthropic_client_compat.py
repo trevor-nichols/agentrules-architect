@@ -229,6 +229,37 @@ def test_anthropic_stream_does_not_expose_partial_refusal_content() -> None:
         set_client(None)
 
 
+def test_anthropic_stream_yields_immediately_without_partial_refusal_capability() -> None:
+    text_event = SimpleNamespace(
+        type="content_block_delta",
+        index=0,
+        delta=SimpleNamespace(type="text_delta", text="incremental output"),
+    )
+    error_event = SimpleNamespace(
+        type="error",
+        error=SimpleNamespace(message="later stream error"),
+    )
+
+    set_client(_EventClient(text_event, error_event))
+    try:
+        arch = AnthropicArchitect(model_name="claude-sonnet-5", reasoning=ReasoningMode.DYNAMIC)
+        prepared = PreparedRequest(
+            payload={
+                "model": "claude-sonnet-5",
+                "max_tokens": 1,
+                "messages": [{"role": "user", "content": "hi"}],
+            }
+        )
+
+        stream = arch._stream_messages(prepared)
+        first_chunk = next(stream)
+
+        assert first_chunk.event_type == StreamEventType.TEXT_DELTA
+        assert first_chunk.text == "incremental output"
+    finally:
+        set_client(None)
+
+
 def test_anthropic_stream_releases_content_after_terminal_stop_reason() -> None:
     text_event = SimpleNamespace(
         type="content_block_delta",

@@ -2,6 +2,7 @@ import pytest
 
 from agentrules.core.agents.anthropic.request_builder import (
     DEFAULT_THINKING_BUDGET,
+    EXTENDED_EFFORT_MAX_TOKENS,
     PreparedRequest,
     prepare_request,
 )
@@ -17,6 +18,7 @@ def test_prepare_request_without_reasoning_skips_thinking() -> None:
     )
 
     assert "thinking" not in prepared.payload
+    assert prepared.payload["max_tokens"] == 20_000
 
 
 def test_prepare_request_sets_top_level_system_prompt() -> None:
@@ -140,6 +142,36 @@ def test_prepare_request_claude5_accepts_documented_efforts(
     )
 
     assert prepared.payload["output_config"] == {"effort": effort}
+
+
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_prepare_request_claude5_uses_extended_output_budget(
+    model_name: str,
+    effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name=model_name,
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort=effort,
+    )
+
+    assert prepared.payload["max_tokens"] == EXTENDED_EFFORT_MAX_TOKENS
+
+
+def test_prepare_request_preserves_explicit_output_budget() -> None:
+    prepared = prepare_request(
+        model_name="claude-sonnet-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        max_tokens=8_192,
+        tools=None,
+        effort="max",
+    )
+
+    assert prepared.payload["max_tokens"] == 8_192
 
 
 @pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])

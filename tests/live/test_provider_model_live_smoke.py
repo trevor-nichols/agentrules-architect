@@ -14,7 +14,8 @@ from google.genai import types as genai_types
 from openai import OpenAI
 
 from agentrules.core.agents.deepseek.config import DEFAULT_BASE_URL as DEEPSEEK_BASE_URL
-from agentrules.core.agents.xai.config import DEFAULT_BASE_URL as XAI_BASE_URL
+from agentrules.core.agents.xai import config as xai_config
+from agentrules.core.agents.xai.request_builder import prepare_request as prepare_xai_request
 
 MAX_LIVE_OUTPUT_TOKENS = 32
 LIVE_PROMPT = "Reply with exactly: OK"
@@ -141,14 +142,41 @@ def _run_deepseek(api_key: str, model: str) -> object:
 
 
 def _run_xai(api_key: str, model: str) -> object:
-    with OpenAI(api_key=api_key, base_url=XAI_BASE_URL) as client:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": LIVE_PROMPT}],
-            max_tokens=MAX_LIVE_OUTPUT_TOKENS,
-            reasoning_effort="low",
-        )
+    payload = _build_xai_live_payload(model)
+    with OpenAI(api_key=api_key, base_url=xai_config.DEFAULT_BASE_URL) as client:
+        response = client.chat.completions.create(**payload)
     return response.id
+
+
+def _build_xai_live_payload(model: str) -> dict[str, Any]:
+    defaults = xai_config.resolve_model_defaults(model)
+    prepared = prepare_xai_request(
+        model_name=model,
+        content=LIVE_PROMPT,
+        reasoning=defaults.default_reasoning,
+        defaults=defaults,
+        tools=None,
+    )
+    return {**prepared.payload, "max_tokens": MAX_LIVE_OUTPUT_TOKENS}
+
+
+@pytest.mark.parametrize(
+    ("model", "expected_effort"),
+    [
+        ("grok-4.5", "high"),
+        ("grok-4.20-0309-reasoning", None),
+        ("grok-4.20-0309-non-reasoning", None),
+    ],
+)
+def test_xai_live_payload_uses_production_model_contract(
+    model: str,
+    expected_effort: str | None,
+) -> None:
+    payload = _build_xai_live_payload(model)
+
+    assert payload["model"] == model
+    assert payload["max_tokens"] == MAX_LIVE_OUTPUT_TOKENS
+    assert payload.get("reasoning_effort") == expected_effort
 
 
 def _status_code(exc: Exception) -> int | None:

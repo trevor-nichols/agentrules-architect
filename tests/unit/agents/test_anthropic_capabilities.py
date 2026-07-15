@@ -1,5 +1,6 @@
 from agentrules.core.agents.anthropic.capabilities import (
     ThinkingPolicy,
+    may_return_midstream_refusal,
     resolve_capability_profile,
     supported_effort_levels,
     supports_adaptive_thinking,
@@ -74,3 +75,10 @@ def test_claude_5_thinking_policies_are_explicit() -> None:
         resolve_capability_profile("claude-fable-5").thinking_policy
         == ThinkingPolicy.ALWAYS_ADAPTIVE
     )
+
+
+def test_only_fable_requires_midstream_refusal_buffering() -> None:
+    assert may_return_midstream_refusal("claude-fable-5")
+    assert may_return_midstream_refusal("claude-fable-5-20260609")
+    assert not may_return_midstream_refusal("claude-sonnet-5")
+    assert not may_return_midstream_refusal("claude-opus-4-8")

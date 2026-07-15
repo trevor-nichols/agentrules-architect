@@ -34,6 +34,7 @@ class CapabilityProfile:
     supports_manual_thinking: bool = True
     supported_effort_levels: frozenset[AnthropicEffort] = frozenset()
     thinking_policy: ThinkingPolicy = ThinkingPolicy.LEGACY
+    may_return_midstream_refusal: bool = False
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -54,6 +55,7 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         supports_manual_thinking=False,
         supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
         thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
+        may_return_midstream_refusal=True,
     ),
     CapabilityProfile(
         family_prefix="claude-sonnet-5",
@@ -168,6 +170,12 @@ def supports_structured_output_format(model_name: str) -> bool:
     """Return True when the model supports output_config.format JSON schemas."""
 
     return resolve_capability_profile(model_name).supports_structured_output_format
+
+
+def may_return_midstream_refusal(model_name: str) -> bool:
+    """Return True when streamed output must be held until refusal status is known."""
+
+    return resolve_capability_profile(model_name).may_return_midstream_refusal
 
 
 def describe_profiles_with_adaptive_thinking() -> str:
