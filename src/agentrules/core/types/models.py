@@ -264,20 +264,47 @@ GPT4_1_PRECISE = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# DeepSeek configurations
-DEEPSEEK_REASONER = ModelConfig(
+# DeepSeek V4 configurations. V4 exposes thinking and non-thinking modes on the
+# same model identifier; ReasoningMode selects the wire-level thinking toggle.
+DEEPSEEK_V4_FLASH = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-reasoner",
-    reasoning=ReasoningMode.ENABLED,  # Always enabled for reasoner
-    tools_config={"enabled": False, "tools": None}
+    model_name="deepseek-v4-flash",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
 )
 
-DEEPSEEK_CHAT = ModelConfig(
+DEEPSEEK_V4_FLASH_NON_REASONING = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-chat",
+    model_name="deepseek-v4-flash",
     reasoning=ReasoningMode.DISABLED,
-    tools_config={"enabled": False, "tools": None}
+    tools_config={"enabled": False, "tools": None},
 )
+
+DEEPSEEK_V4_PRO = ModelConfig(
+    provider=ModelProvider.DEEPSEEK,
+    model_name="deepseek-v4-pro",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+DEEPSEEK_V4_PRO_MAX = ModelConfig(
+    provider=ModelProvider.DEEPSEEK,
+    model_name="deepseek-v4-pro",
+    reasoning=ReasoningMode.XHIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+DEEPSEEK_V4_PRO_NON_REASONING = ModelConfig(
+    provider=ModelProvider.DEEPSEEK,
+    model_name="deepseek-v4-pro",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+# Compatibility constants preserve public imports while ensuring callers do not
+# send the retired deepseek-chat/deepseek-reasoner wire identifiers.
+DEEPSEEK_REASONER = DEEPSEEK_V4_FLASH
+DEEPSEEK_CHAT = DEEPSEEK_V4_FLASH_NON_REASONING
 
 # xAI Grok models
 GROK_4_3 = ModelConfig(

@@ -115,6 +115,47 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertTrue(any("grok-4-fast-non-reasoning" in message for message in captured.output))
         self.assertTrue(any("grok-code-fast" in message for message in captured.output))
 
+    def test_apply_user_overrides_remaps_legacy_deepseek_presets(self) -> None:
+        self.config_manager.set_phase_model("phase3", "deepseek-chat")
+        self.config_manager.set_phase_model("phase4", "deepseek-reasoner")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "deepseek-v4-flash-non-reasoning")
+        self.assertEqual(applied["phase4"], "deepseek-v4-flash")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "deepseek-v4-flash")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.DISABLED)
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "deepseek-v4-flash")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.HIGH)
+        self.assertTrue(any("deepseek-chat" in message for message in captured.output))
+        self.assertTrue(any("deepseek-reasoner" in message for message in captured.output))
+
+    def test_get_configured_presets_preserves_legacy_deepseek_keys(self) -> None:
+        configured = self.model_config.get_configured_presets(
+            {"phase3": "deepseek-chat", "phase4": "deepseek-reasoner"}
+        )
+
+        self.assertEqual(configured["phase3"], "deepseek-chat")
+        self.assertEqual(configured["phase4"], "deepseek-reasoner")
+
+    def test_deepseek_registry_includes_v4_presets_and_legacy_configs_use_v4(self) -> None:
+        expected_keys = {
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-non-reasoning",
+            "deepseek-v4-pro",
+            "deepseek-v4-pro-max",
+            "deepseek-v4-pro-non-reasoning",
+            "deepseek-chat",
+            "deepseek-reasoner",
+        }
+        self.assertTrue(expected_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(self.agents_module.MODEL_PRESETS["deepseek-chat"]["config"].model_name, "deepseek-v4-flash")
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["deepseek-reasoner"]["config"].model_name,
+            "deepseek-v4-flash",
+        )
+
     def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         active = self.model_config.get_active_presets(
             {

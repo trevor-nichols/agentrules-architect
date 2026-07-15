@@ -29,6 +29,11 @@ from agentrules.core.types.models import (
     CLAUDE_WITH_REASONING,
     DEEPSEEK_CHAT,
     DEEPSEEK_REASONER,
+    DEEPSEEK_V4_FLASH,
+    DEEPSEEK_V4_FLASH_NON_REASONING,
+    DEEPSEEK_V4_PRO,
+    DEEPSEEK_V4_PRO_MAX,
+    DEEPSEEK_V4_PRO_NON_REASONING,
     GEMINI_3_1_FLASH_LITE,
     GEMINI_3_1_FLASH_LITE_PREVIEW,
     GEMINI_3_1_PRO_PREVIEW,
@@ -183,7 +188,8 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
             elif "gpt-5.1" in name or "gpt-5" in name:
                 limit = 400_000
     elif provider == ModelProvider.DEEPSEEK:
-        limit = limit or 64_000
+        if limit is None:
+            limit = 1_000_000 if name.startswith("deepseek-v4-") else 64_000
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
         if limit is None:
@@ -708,16 +714,52 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="GPT-5.4 Nano with maximum supported reasoning depth and high verbosity.",
         provider=ModelProvider.OPENAI,
     ),
+    "deepseek-v4-flash": _preset(
+        config=DEEPSEEK_V4_FLASH,
+        label="DeepSeek V4 Flash (Thinking, High)",
+        description="Fast, cost-efficient DeepSeek V4 model with thinking enabled at high effort and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-flash-non-reasoning": _preset(
+        config=DEEPSEEK_V4_FLASH_NON_REASONING,
+        label="DeepSeek V4 Flash (Non-Thinking)",
+        description="Fast, cost-efficient DeepSeek V4 model with thinking explicitly disabled and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-pro": _preset(
+        config=DEEPSEEK_V4_PRO,
+        label="DeepSeek V4 Pro (Thinking, High)",
+        description="Highest-capability DeepSeek V4 model with thinking enabled at high effort and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-pro-max": _preset(
+        config=DEEPSEEK_V4_PRO_MAX,
+        label="DeepSeek V4 Pro (Thinking, Max)",
+        description="DeepSeek V4 Pro with maximum reasoning effort and 1M context for the hardest tasks.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-pro-non-reasoning": _preset(
+        config=DEEPSEEK_V4_PRO_NON_REASONING,
+        label="DeepSeek V4 Pro (Non-Thinking)",
+        description="DeepSeek V4 Pro with thinking explicitly disabled and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
     "deepseek-reasoner": _preset(
         config=DEEPSEEK_REASONER,
-        label="DeepSeek Reasoner",
-        description="DeepSeek reasoning agent.",
+        label="DeepSeek Reasoner (Legacy Key → V4 Flash)",
+        description=(
+            "Compatibility preset for saved configurations. Uses DeepSeek V4 Flash "
+            "with thinking enabled at high effort because deepseek-reasoner retires July 24, 2026."
+        ),
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-chat": _preset(
         config=DEEPSEEK_CHAT,
-        label="DeepSeek Chat",
-        description="Conversational DeepSeek model.",
+        label="DeepSeek Chat (Legacy Key → V4 Flash Non-Thinking)",
+        description=(
+            "Compatibility preset for saved configurations. Uses DeepSeek V4 Flash "
+            "with thinking disabled because deepseek-chat retires July 24, 2026."
+        ),
         provider=ModelProvider.DEEPSEEK,
     ),
     "grok-4.3": _preset(

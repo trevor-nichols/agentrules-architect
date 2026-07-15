@@ -18,6 +18,9 @@ class ModelDefaults:
     default_reasoning: ReasoningMode
     max_output_tokens: int | None = None
     tools_allowed: bool = True
+    supports_sampling: bool = True
+    supports_thinking_toggle: bool = False
+    accepted_reasoning_efforts: frozenset[str] = frozenset()
 
 
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
@@ -29,13 +32,41 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
         default_reasoning=ReasoningMode.ENABLED,
         max_output_tokens=32_000,
         tools_allowed=False,
+        supports_sampling=False,
     ),
+    "deepseek-v4-flash": ModelDefaults(
+        default_reasoning=ReasoningMode.HIGH,
+        max_output_tokens=32_000,
+        tools_allowed=True,
+        supports_thinking_toggle=True,
+        accepted_reasoning_efforts=frozenset({"high", "max"}),
+    ),
+    "deepseek-v4-pro": ModelDefaults(
+        default_reasoning=ReasoningMode.HIGH,
+        max_output_tokens=32_000,
+        tools_allowed=True,
+        supports_thinking_toggle=True,
+        accepted_reasoning_efforts=frozenset({"high", "max"}),
+    ),
+}
+
+_LEGACY_MODEL_ALIASES: dict[str, tuple[str, ReasoningMode]] = {
+    "deepseek-chat": ("deepseek-v4-flash", ReasoningMode.DISABLED),
+    "deepseek-reasoner": ("deepseek-v4-flash", ReasoningMode.HIGH),
 }
 
 _FALLBACK_DEFAULTS = ModelDefaults(
     default_reasoning=ReasoningMode.DISABLED,
     tools_allowed=True,
 )
+
+
+def resolve_model_alias(model_name: str) -> tuple[str, ReasoningMode | None]:
+    """Return the active wire model and legacy-compatible reasoning mode."""
+    resolved = _LEGACY_MODEL_ALIASES.get(model_name.lower())
+    if resolved is None:
+        return model_name, None
+    return resolved
 
 
 def resolve_model_defaults(model_name: str) -> ModelDefaults:

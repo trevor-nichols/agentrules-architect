@@ -381,6 +381,40 @@
         "tests"
       ],
       "updated": "2026-06-02"
+    },
+    {
+      "breaking": false,
+      "created": "2026-07-15",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260715-001",
+      "kind": "migration",
+      "links": {
+        "docs": ".agent/exec_plans/active/provider-model-refresh-2026/milestones/active",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": true,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/provider-model-refresh-2026/EP-20260715-001_provider-model-refresh-2026.md",
+      "risk": "high",
+      "status": "active",
+      "supersedes": [],
+      "tags": [
+        "providers",
+        "models",
+        "lifecycle",
+        "compatibility"
+      ],
+      "title": "Refresh AI provider models for 2026",
+      "touches": [
+        "api",
+        "cli",
+        "agents",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-07-15"
     }
   ],
   "schema_version": 1

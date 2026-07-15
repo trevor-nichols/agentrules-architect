@@ -10,9 +10,8 @@ class _DeepSeekFakeChatAPI:
 
     def create(self, **params):
         self.last_params = params
-        # Return reasoning content for reasoner, and a tool call for chat
-        model = params.get("model")
-        if model == "deepseek-reasoner":
+        thinking_type = params.get("extra_body", {}).get("thinking", {}).get("type")
+        if thinking_type == "enabled":
             return DeepSeekChatCompletionFake(content="final", reasoning="chain of thought")
         tc = _ToolCallFake("call1", "tavily_web_search", '{"query":"flask"}')
         return DeepSeekChatCompletionFake(content=None, tool_calls=[tc])
@@ -36,6 +35,18 @@ class DeepSeekArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         res = await arch.analyze({"ctx": 1})
         self.assertEqual(res.get("findings"), "final")
         self.assertEqual(res.get("reasoning"), "chain of thought")
+        self.assertEqual(self.fake_client.chat.completions.last_params["model"], "deepseek-v4-flash")
+
+    async def test_v4_thinking_includes_reasoning_content(self):
+        arch = DeepSeekArchitect(model_name="deepseek-v4-pro")
+        arch.client = self.fake_client  # type: ignore
+        res = await arch.analyze({"ctx": 1})
+        self.assertEqual(res.get("findings"), "final")
+        self.assertEqual(res.get("reasoning"), "chain of thought")
+        self.assertEqual(
+            self.fake_client.chat.completions.last_params["extra_body"],
+            {"thinking": {"type": "enabled"}},
+        )
 
     async def test_chat_tool_call(self):
         arch = DeepSeekArchitect(model_name="deepseek-chat")
@@ -44,4 +55,3 @@ class DeepSeekArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(res.get("findings"))
         self.assertIn("tool_calls", res)
         self.assertEqual(res["tool_calls"][0]["function"]["name"], "tavily_web_search")
-

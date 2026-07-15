@@ -161,6 +161,22 @@ def test_apply_model_limits_openai_defaults():
 @pytest.mark.parametrize(
     "config",
     [
+        agents_config.DEEPSEEK_V4_FLASH,
+        agents_config.DEEPSEEK_V4_FLASH_NON_REASONING,
+        agents_config.DEEPSEEK_V4_PRO,
+        agents_config.DEEPSEEK_V4_PRO_MAX,
+        agents_config.DEEPSEEK_V4_PRO_NON_REASONING,
+    ],
+)
+def test_apply_model_limits_deepseek_v4_uses_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
         agents_config.GROK_4_3,
         agents_config.GROK_4_3_REASONING_MEDIUM,
         agents_config.GROK_4_3_NON_REASONING,

@@ -31,12 +31,9 @@ def prepare_request(
     """
     Construct the request payload sent to the DeepSeek Chat Completions API.
 
-    DeepSeek exposes an OpenAI-compatible interface. Reasoning behaviour is
-    driven by the selected model, so the ``reasoning`` argument is currently
-    advisory but retained for future parity with other providers.
+    DeepSeek V4 exposes thinking and non-thinking modes on the same model ID.
+    The OpenAI-compatible SDK carries the thinking toggle in ``extra_body``.
     """
-    del reasoning  # Reasoning mode is inferred by the model; retained for parity.
-
     messages: list[dict[str, Any]] = []
     if system_prompt:
         messages.append(
@@ -57,6 +54,21 @@ def prepare_request(
         "messages": messages,
     }
 
+    thinking_enabled = False
+    if defaults.supports_thinking_toggle:
+        thinking_enabled, effort = _resolve_v4_reasoning(reasoning)
+        payload["extra_body"] = {
+            "thinking": {"type": "enabled" if thinking_enabled else "disabled"}
+        }
+        if effort is not None:
+            if effort not in defaults.accepted_reasoning_efforts:
+                accepted = ", ".join(sorted(defaults.accepted_reasoning_efforts))
+                raise ValueError(
+                    f"Reasoning effort '{effort}' is not supported by {model_name}. "
+                    f"Supported efforts: {accepted}."
+                )
+            payload["reasoning_effort"] = effort
+
     if defaults.max_output_tokens:
         payload["max_tokens"] = defaults.max_output_tokens
 
@@ -64,10 +76,18 @@ def prepare_request(
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
 
-    if temperature is not None and defaults.tools_allowed:
+    if temperature is not None and defaults.supports_sampling and not thinking_enabled:
         payload["temperature"] = temperature
 
     if response_format is not None:
         payload["response_format"] = response_format
 
     return PreparedRequest(payload=payload)
+
+
+def _resolve_v4_reasoning(reasoning: ReasoningMode) -> tuple[bool, str | None]:
+    if reasoning in {ReasoningMode.DISABLED, ReasoningMode.TEMPERATURE}:
+        return False, None
+    if reasoning == ReasoningMode.XHIGH:
+        return True, "max"
+    return True, "high"

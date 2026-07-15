@@ -10,6 +10,7 @@ from agentrules.core.agents.deepseek.config import (
     API_BASE_ENV_VAR,
     DEFAULT_BASE_URL,
     resolve_base_url,
+    resolve_model_alias,
     resolve_model_defaults,
 )
 from agentrules.core.agents.deepseek.request_builder import prepare_request
@@ -18,6 +19,32 @@ from agentrules.core.agents.deepseek.tooling import resolve_tool_config
 
 
 class DeepSeekConfigTests(unittest.TestCase):
+    def test_resolve_legacy_model_aliases(self) -> None:
+        self.assertEqual(
+            resolve_model_alias("deepseek-chat"),
+            ("deepseek-v4-flash", ReasoningMode.DISABLED),
+        )
+        self.assertEqual(
+            resolve_model_alias("deepseek-reasoner"),
+            ("deepseek-v4-flash", ReasoningMode.HIGH),
+        )
+
+    def test_resolve_defaults_for_v4_flash(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-flash")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.HIGH)
+        self.assertTrue(defaults.tools_allowed)
+        self.assertTrue(defaults.supports_sampling)
+        self.assertTrue(defaults.supports_thinking_toggle)
+        self.assertEqual(defaults.accepted_reasoning_efforts, frozenset({"high", "max"}))
+        self.assertEqual(defaults.max_output_tokens, 32_000)
+
+    def test_resolve_defaults_for_v4_pro(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-pro")
+        self.assertEqual(defaults.default_reasoning, ReasoningMode.HIGH)
+        self.assertTrue(defaults.tools_allowed)
+        self.assertTrue(defaults.supports_thinking_toggle)
+        self.assertEqual(defaults.accepted_reasoning_efforts, frozenset({"high", "max"}))
+
     def test_resolve_defaults_for_chat(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.DISABLED)
@@ -44,6 +71,75 @@ class DeepSeekConfigTests(unittest.TestCase):
 
 
 class DeepSeekRequestBuilderTests(unittest.TestCase):
+    def test_prepare_v4_thinking_request_includes_high_effort_and_tools(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-flash")
+        tools = [
+            {
+                "type": "function",
+                "function": {"name": "lookup", "description": "", "parameters": {"type": "object"}},
+            }
+        ]
+
+        prepared = prepare_request(
+            model_name="deepseek-v4-flash",
+            content="Analyze this project",
+            reasoning=ReasoningMode.HIGH,
+            defaults=defaults,
+            tools=tools,
+            temperature=0.6,
+        )
+
+        self.assertEqual(prepared.payload["extra_body"], {"thinking": {"type": "enabled"}})
+        self.assertEqual(prepared.payload["reasoning_effort"], "high")
+        self.assertEqual(prepared.payload["max_tokens"], 32_000)
+        self.assertEqual(prepared.payload["tools"], tools)
+        self.assertEqual(prepared.payload["tool_choice"], "auto")
+        self.assertNotIn("temperature", prepared.payload)
+
+    def test_prepare_v4_xhigh_request_maps_to_max_effort(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-pro")
+
+        prepared = prepare_request(
+            model_name="deepseek-v4-pro",
+            content="Analyze this project",
+            reasoning=ReasoningMode.XHIGH,
+            defaults=defaults,
+            tools=None,
+        )
+
+        self.assertEqual(prepared.payload["extra_body"], {"thinking": {"type": "enabled"}})
+        self.assertEqual(prepared.payload["reasoning_effort"], "max")
+
+    def test_prepare_v4_non_thinking_request_explicitly_disables_thinking(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-flash")
+
+        prepared = prepare_request(
+            model_name="deepseek-v4-flash",
+            content="Analyze this project",
+            reasoning=ReasoningMode.DISABLED,
+            defaults=defaults,
+            tools=None,
+            temperature=0.6,
+        )
+
+        self.assertEqual(prepared.payload["extra_body"], {"thinking": {"type": "disabled"}})
+        self.assertNotIn("reasoning_effort", prepared.payload)
+        self.assertEqual(prepared.payload["temperature"], 0.6)
+
+    def test_prepare_v4_low_and_medium_efforts_normalize_to_high(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-flash")
+
+        for reasoning in (ReasoningMode.MINIMAL, ReasoningMode.LOW, ReasoningMode.MEDIUM):
+            with self.subTest(reasoning=reasoning):
+                prepared = prepare_request(
+                    model_name="deepseek-v4-flash",
+                    content="Analyze this project",
+                    reasoning=reasoning,
+                    defaults=defaults,
+                    tools=None,
+                )
+                self.assertEqual(prepared.payload["reasoning_effort"], "high")
+
     def test_prepare_request_prepends_system_message(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")
         prepared = prepare_request(
@@ -117,6 +213,26 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
         self.assertNotIn("tools", payload)
         self.assertNotIn("tool_choice", payload)
         self.assertNotIn("temperature", payload)
+
+    def test_prepare_request_rejects_effort_missing_from_model_capabilities(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-pro")
+        restricted_defaults = defaults.__class__(
+            default_reasoning=defaults.default_reasoning,
+            max_output_tokens=defaults.max_output_tokens,
+            tools_allowed=defaults.tools_allowed,
+            supports_sampling=defaults.supports_sampling,
+            supports_thinking_toggle=True,
+            accepted_reasoning_efforts=frozenset({"high"}),
+        )
+
+        with self.assertRaisesRegex(ValueError, "not supported"):
+            prepare_request(
+                model_name="deepseek-v4-pro",
+                content="Analyze this project",
+                reasoning=ReasoningMode.XHIGH,
+                defaults=restricted_defaults,
+                tools=None,
+            )
 
     def test_prepare_request_adds_response_format(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")

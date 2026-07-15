@@ -120,6 +120,14 @@ def _build_preset_infos(
 
 PRESET_INFOS: dict[str, PresetInfo] = _build_preset_infos(agent_settings.MODEL_PRESETS.items())
 DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
+    "deepseek-chat": PresetDeprecationInfo(
+        replacement_key="deepseek-v4-flash-non-reasoning",
+        reason="DeepSeek retires this alias on July 24, 2026.",
+    ),
+    "deepseek-reasoner": PresetDeprecationInfo(
+        replacement_key="deepseek-v4-flash",
+        reason="DeepSeek retires this alias on July 24, 2026.",
+    ),
     "gemini-3-pro-preview": PresetDeprecationInfo(
         replacement_key="gemini-3.1-pro-preview",
         reason="Google retired this preview model.",
