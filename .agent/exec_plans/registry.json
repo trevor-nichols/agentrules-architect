@@ -390,15 +390,15 @@
       "id": "EP-20260715-001",
       "kind": "migration",
       "links": {
-        "docs": ".agent/exec_plans/active/provider-model-refresh-2026/milestones/active",
+        "docs": ".agent/exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/milestones/complete",
         "issue": "",
         "pr": ""
       },
       "migration": true,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/provider-model-refresh-2026/EP-20260715-001_provider-model-refresh-2026.md",
+      "path": ".agent/exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/EP-20260715-001_provider-model-refresh-2026.md",
       "risk": "high",
-      "status": "active",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "providers",

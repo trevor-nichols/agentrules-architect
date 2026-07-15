@@ -1,21 +1,30 @@
 ---
 id: EP-20260715-001
-title: "Refresh AI provider models for 2026"
-status: active
+title: Refresh AI provider models for 2026
+status: done
 kind: migration
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-07-15
-updated: 2026-07-15
-tags: [providers, models, lifecycle, compatibility]
-touches: [api, cli, agents, tests, docs]
+updated: '2026-07-15'
+tags:
+- providers
+- models
+- lifecycle
+- compatibility
+touches:
+- api
+- cli
+- agents
+- tests
+- docs
 risk: high
 breaking: false
 migration: true
 links:
-  issue: ""
-  pr: ""
-  docs: ".agent/exec_plans/active/provider-model-refresh-2026/milestones/active"
+  issue: ''
+  pr: ''
+  docs: .agent/exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/milestones/complete
 depends_on: []
 supersedes: []
 ---
@@ -82,7 +91,7 @@ Milestone 6, `EP-20260715-001/MS006 Preserve dynamic Codex compatibility and upd
 
 Milestone 7, `EP-20260715-001/MS007 Complete cross-provider validation documentation and rollout`, performs the cross-provider regression pass, refreshes dependency locks and documentation coherently, adds or updates opt-in live smokes, runs the complete quality gates, synchronizes `SNAPSHOT.md`, updates the ExecPlan registry, and records final rollout and rollback evidence.
 
-Each milestone has a detailed file under `.agent/exec_plans/active/provider-model-refresh-2026/milestones/active/`. Complete milestone files with `agentrules execplan milestone complete EP-20260715-001 --ms <N>` only after their Definition of Done is satisfied.
+Each milestone has a detailed archived file under `.agent/exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/milestones/complete/`. Milestone files were completed with `agentrules execplan milestone complete EP-20260715-001 --ms <N>` only after their Definition of Done was satisfied.
 
 ## Progress
 
@@ -101,7 +110,7 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - [x] (2026-07-15 America/New_York) MS007 completed: cross-provider contracts, independently gated direct live smokes, lifecycle documentation, dependency consistency, and all deterministic gates are validated; the milestone is archived.
 - [x] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
 - [x] Complete full validation and record exact evidence.
-- [ ] Mark the ExecPlan done only after every acceptance condition is met.
+- [x] Mark the ExecPlan done only after every acceptance condition is met.
 
 ## Surprises & Discoveries
 
@@ -271,6 +280,16 @@ The local runtime audit observed:
 
 These observations are diagnostics, not hard-coded production defaults. Runtime catalogs and installed versions remain environment-specific.
 
+The implementation was delivered as seven independently validated milestone commits:
+
+    ea4cdc7 feat(deepseek): migrate provider presets to V4
+    c58d036 feat(openai): add GPT-5.6 model family
+    369ecdc feat(anthropic): add Claude Sonnet 5 and Fable 5
+    5806034 feat(claude-code): modernize model selection and gating
+    80bf441 feat(xai): add Grok 4.5 and compatible 4.20 models
+    9c7fae6 feat(codex): preserve runtime efforts and refresh Gemini lifecycle
+    9561d44 test(providers): add cross-provider release validation
+
 ## Interfaces and Dependencies
 
 In `src/agentrules/core/agents/base.py`, extend `ReasoningMode` with a direct `MAX = "max"` member only if MS002 confirms it is needed by shared preset configuration. Do not add `ultra` to this provider-neutral enum; Codex owns that runtime-specific label.
@@ -288,3 +307,5 @@ The committed dependency constraints in `pyproject.toml` and resolved versions i
 ## Revision Note
 
 2026-07-15: Replaced the generated skeleton with the initial review-ready plan. The revision records the provider audit, compatibility policy, seven ordered milestones, exact validation gates, runtime-specific recovery paths, and the explicit approval boundary requested by the user.
+
+2026-07-15: Completed all seven milestones under the approved sequential workflow. Finalized provider behavior, compatibility migrations, dependency versions, full validation evidence, operator guidance, rollback choices, and the milestone commit ledger; the plan is ready for CLI archival.
