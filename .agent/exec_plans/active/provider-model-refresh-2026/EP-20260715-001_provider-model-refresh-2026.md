@@ -95,6 +95,7 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - [x] (2026-07-15 America/New_York) MS001 completed: DeepSeek V4 migration, compatibility redirects, and focused validation are green.
 - [x] (2026-07-15 America/New_York) MS002 completed: GPT-5.6 direct presets, max effort, 1.05M context, Sol defaults, and SDK 2.45.0 are validated.
 - [x] (2026-07-15 America/New_York) MS003 completed: direct Claude 5 capability policies, safe refusal handling, Opus 4.8 migration, and lifecycle guidance are validated.
+- [x] (2026-07-15 America/New_York) MS004 completed: moving aliases, pinned Claude 5 choices, SDK 0.2.119/CLI 2.1.210, fail-closed gates, diagnostics, and refusal handling are validated.
 - [ ] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
 - [ ] Complete full validation and record exact evidence.
 - [ ] Mark the ExecPlan done only after every acceptance condition is met.
@@ -123,6 +124,10 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
   Evidence: Anthropic documents omission of `thinking` as the canonical Fable request; Sonnet 5 requires an explicit disabled payload when reasoning is turned off.
 - Observation: The locked Anthropic SDK already exposes refusal stop reasons but does not type every refusal detail field.
   Evidence: SDK 0.83.0 types `stop_reason="refusal"`; the implementation safely duck-types bounded `stop_details` fields without requiring a dependency update.
+- Observation: The latest Claude Agent SDK release provides a materially newer bundled runtime than the initially audited lock.
+  Evidence: SDK 0.2.119 bundles Claude Code 2.1.210, satisfying both new-model floors; the exact resolved binary reports that version directly.
+- Observation: Importing data-only constants from a provider package can trigger the package's eager architect export and re-enter configuration.
+  Evidence: The first repository-wide collection pass exposed a circular import; moving the sentinel and alias set to the existing model-types module restored clean import order.
 
 ## Decision Log
 
@@ -152,6 +157,9 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
   Date/Author: 2026-07-15 / @codex
 - Decision: Represent Anthropic thinking behavior with an explicit provider-local policy and reject impossible Fable configurations before dispatch.
   Rationale: Sonnet 5, Fable 5, and older Claude families require materially different omission, disable, adaptive, and manual-budget wire shapes that booleans cannot express safely.
+  Date/Author: 2026-07-15 / @codex
+- Decision: Pin the Claude Agent SDK floor at 0.2.119 and continue bundled-first executable resolution.
+  Rationale: Its bundled Claude Code 2.1.210 satisfies the documented model floors and preserves the existing SDK-owned runtime architecture; operators can still opt into a separately managed runtime through `cli_path`.
   Date/Author: 2026-07-15 / @codex
 
 ## Outcomes & Retrospective

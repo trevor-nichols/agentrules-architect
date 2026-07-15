@@ -4,7 +4,7 @@ AgentRules supports Claude Code as a local runtime provider through the Anthropi
 
 ## What this integration does
 
-- Uses the Claude Agent SDK runtime through `claude-agent-sdk`; by default AgentRules does not force a specific `claude` executable path.
+- Uses `claude-agent-sdk` 0.2.119 or newer. The 0.2.119 wheel bundles Claude Code 2.1.210, which is new enough for pinned Sonnet 5 and Fable 5 selections.
 - Reuses Claude Code OAuth state instead of asking AgentRules for an Anthropic API key.
 - Adds `Claude Code ...` model presets that route AgentRules phases through `ModelProvider.CLAUDE_CODE`.
 - Keeps structured outputs enabled for schema-backed phases.
@@ -19,7 +19,7 @@ That menu controls:
 
 - `Claude executable path`: defaults to SDK resolution. Leave it blank unless you need to force a specific command or binary path.
 - `Strip Anthropic API-key env`: defaults to yes. This removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from Claude Code child processes.
-- Runtime diagnostics: SDK importability, optional explicit executable resolution, `claude --version` for explicit executables, `CLAUDE_CODE_OAUTH_TOKEN` presence, and API-key env visibility after sanitization.
+- Runtime diagnostics: SDK importability, executable source (`configured`, `sdk_bundled`, or `path`), exact resolved path, parsed Claude Code version, model-gate reasons, `CLAUDE_CODE_OAUTH_TOKEN` presence, and API-key env visibility after sanitization.
 - OAuth guidance: local login and automation setup commands.
 
 ## Sign in locally
@@ -86,6 +86,15 @@ explicit commands and paths before passing them to the SDK. If the configured ex
 resolved, Claude Code presets are gated off and request preparation fails fast until the path is fixed
 or cleared.
 
+The SDK-bundled executable takes precedence when `cli_path` is unset. A newer global `claude` command
+does not replace that bundle. To use a global or separately managed installation deliberately, set
+`claude_code.cli_path`; diagnostics then report the executable source as `configured`.
+
+Version probing runs the exact resolved binary with `--version`, uses a bounded ten-second timeout, and
+caches the parsed result by executable path. Timeout, execution, nonzero-exit, and parse failures remain
+distinct diagnostics. A pinned model with a documented minimum is unavailable when its runtime version
+cannot be verified; AgentRules does not fail open.
+
 ## Select Claude Code presets
 
 After the runtime is available:
@@ -96,6 +105,15 @@ After the runtime is available:
 
 Notes:
 
+- `Claude Code Runtime Default (Moving)` omits the SDK `model` option. Claude Code applies the account,
+  organization, and runtime default rather than receiving a literal sentinel or pinned model.
+- `Best`, `Sonnet`, `Opus`, and `Fable` alias presets pass those aliases verbatim. Aliases can move as
+  Claude Code and account policy evolve, so their model, price, and availability are not reproducible.
+- Full model-ID presets are pinned and reproducible. Pinned Fable 5 requires Claude Code 2.1.170 or newer;
+  pinned Sonnet 5 requires 2.1.197 or newer. The `fable` alias is gated at its own introduction version,
+  while older aliases are not treated as if they always resolve to the newest full model.
+- Fable uses runtime-owned always-adaptive thinking. No non-thinking Fable preset exists. A headless
+  refusal is returned as an AgentRules error; AgentRules never assumes Claude Code silently switched to Opus.
 - Claude Code-backed researchers do not require Tavily credentials.
 - Non-runtime researcher presets still require Tavily unless you are in offline mode.
 - Claude Code-backed Phase 3 agents inspect files from the repository directly instead of receiving embedded file contents.
@@ -138,13 +156,24 @@ Environment variables:
 - `AGENTRULES_CLAUDE_CODE_MODEL`: optional explicit live-smoke model override.
 - `CLAUDE_CODE_OAUTH_TOKEN`: optional token for automation environments.
 
-The live smoke skips itself if the runtime is unavailable or if Claude Code reports an authentication-related failure.
+The live smoke records the resolved executable source, path, and parsed version. It skips itself if the
+runtime or version probe is unavailable, or if Claude Code reports an authentication-related failure.
 
 ## Troubleshooting
 
 - Missing Claude executable: install a resolvable Claude Code runtime, clear a broken explicit path to use SDK default resolution, or set `Claude executable path` to the correct command.
 - Missing SDK package: install dependencies so `claude-agent-sdk` is available in the AgentRules environment.
+- Pinned model hidden: inspect the parsed runtime version and model-gate reason. Upgrade the Agent SDK bundle,
+  or configure and verify an explicit `cli_path` at or above the model's minimum.
+- Version probe timeout or parse failure: run the exact displayed executable path with `--version`; fix that
+  runtime or choose an ungated moving alias/default only when automatic model movement is acceptable.
 - Auth failure: run `claude auth login` locally, or use `claude setup-token` and export `CLAUDE_CODE_OAUTH_TOKEN` for automation.
 - API-key precedence: keep `Strip Anthropic API-key env` enabled unless you intentionally want API-key variables to reach Claude Code.
 - Permission denial: AgentRules uses non-interactive, read-oriented runtime permissions by default. Confirm the selected preset and runtime have access to the repository path.
 - Structured output failure: retry with a current Claude Code preset and inspect the provider result error; schema-backed phases expect valid JSON matching the phase schema.
+
+## Upstream references
+
+- [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
+- [Claude Code changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
+- [Claude Agent SDK Python releases](https://github.com/anthropics/claude-agent-sdk-python/releases)

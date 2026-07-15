@@ -2,18 +2,22 @@
 id: EP-20260715-001/MS004
 execplan_id: EP-20260715-001
 ms: 4
-title: "Modernize Claude Code model selection and runtime gating"
-status: planned
+title: Modernize Claude Code model selection and runtime gating
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-07-15
-updated: 2026-07-15
-tags: [claude-code, agent-sdk, runtime, models]
+updated: '2026-07-15'
+tags:
+- claude-code
+- agent-sdk
+- runtime
+- models
 risk: high
 links:
-  issue: ""
-  docs: "https://code.claude.com/docs/en/model-config"
-  pr: ""
+  issue: ''
+  docs: https://code.claude.com/docs/en/model-config
+  pr: ''
 ---
 
 # Modernize Claude Code model selection and runtime gating
@@ -26,15 +30,15 @@ Give Claude Code users an explicit choice between runtime-managed model movement
 
 ## Definition of Done
 
-- [ ] Existing pinned Claude Code presets remain available and pinned Sonnet 5 and Fable 5 presets are added only when their thinking policies are valid.
-- [ ] Runtime-managed presets exist for the SDK/account default and the `best`, `sonnet`, `opus`, and `fable` aliases, with labels explaining that aliases can move.
-- [ ] The runtime-default preset omits a model override rather than pinning a model accidentally; alias presets pass the intended alias.
-- [ ] The locked Claude Agent SDK bundles a Claude Code executable at or above 2.1.197, verified by running that exact binary with `--version`.
-- [ ] Full Fable 5 is gated at 2.1.170 and full Sonnet 5 at 2.1.197; alias gates reflect whether the alias itself exists rather than assuming which provider model it resolves to.
-- [ ] Version probing uses a realistic bounded timeout, reports timeout/parse failures distinctly, and treats an unknown version as unsupported when the chosen model has a known minimum.
-- [ ] CLI diagnostics show the resolved executable source, path, parsed version, and why a model is unavailable.
-- [ ] Non-interactive/SDK Fable refusals are surfaced as errors and never assumed to have switched automatically to Opus.
-- [ ] Focused Claude Code request, response, client, configuration, CLI, dependency, Ruff, Pyright, and gated live-smoke tests pass.
+- [x] Existing pinned Claude Code presets remain available and pinned Sonnet 5 and Fable 5 presets are added only when their thinking policies are valid.
+- [x] Runtime-managed presets exist for the SDK/account default and the `best`, `sonnet`, `opus`, and `fable` aliases, with labels explaining that aliases can move.
+- [x] The runtime-default preset omits a model override rather than pinning a model accidentally; alias presets pass the intended alias.
+- [x] The locked Claude Agent SDK bundles a Claude Code executable at or above 2.1.197, verified by running that exact binary with `--version`.
+- [x] Full Fable 5 is gated at 2.1.170 and full Sonnet 5 at 2.1.197; alias gates reflect whether the alias itself exists rather than assuming which provider model it resolves to.
+- [x] Version probing uses a realistic bounded timeout, reports timeout/parse failures distinctly, and treats an unknown version as unsupported when the chosen model has a known minimum.
+- [x] CLI diagnostics show the resolved executable source, path, parsed version, and why a model is unavailable.
+- [x] Non-interactive/SDK Fable refusals are surfaced as errors and never assumed to have switched automatically to Opus.
+- [x] Focused Claude Code request, response, client, configuration, CLI, dependency, Ruff, Pyright, and gated live-smoke tests pass.
 
 ## Scope
 
@@ -60,10 +64,10 @@ Give Claude Code users an explicit choice between runtime-managed model movement
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Architecture/design | Mixed | Runtime boundary is clean, but model choices are static and always explicit. |
-| Runtime dependency | Stale | Locked SDK bundles Claude Code 2.1.161. |
-| Version gating | Unsafe | Two-second probe returned unknown locally and unknown currently bypasses gates. |
-| Tests & docs | Good foundation | Focused request/config/runtime tests and a gated live smoke already exist. |
+| Architecture/design | Complete | Moving aliases/defaults and pinned full IDs have distinct request semantics. |
+| Runtime dependency | Current | SDK 0.2.119 bundles Claude Code 2.1.210. |
+| Version gating | Fail closed | Ten-second typed probes distinguish failure modes and enforce known floors. |
+| Tests & docs | Green | Focused, repository-wide, picker, diagnostic, refusal, and gated live coverage passes. |
 
 ## Architecture / Design Snapshot
 
@@ -79,28 +83,28 @@ Executable resolution remains bundled-first unless the user configures `cli_path
 
 | ID | Area | Description | Status |
 | --- | --- | --- | --- |
-| A1 | Default | Add a sentinel that omits the SDK model override. | Planned |
-| A2 | Aliases | Add best/sonnet/opus/fable moving choices with clear labels. | Planned |
-| A3 | Pinned | Add full Sonnet 5 and Fable 5 presets with capability-safe efforts. | Planned |
-| A4 | Compatibility | Preserve all existing pinned preset keys. | Planned |
+| A1 | Default | Add a sentinel that omits the SDK model override. | Complete |
+| A2 | Aliases | Add best/sonnet/opus/fable moving choices with clear labels. | Complete |
+| A3 | Pinned | Add full Sonnet 5 and Fable 5 presets with capability-safe efforts. | Complete |
+| A4 | Compatibility | Preserve all existing pinned preset keys. | Complete |
 
 ### Workstream B - Runtime and dependency gates
 
 | ID | Area | Description | Status |
 | --- | --- | --- | --- |
-| B1 | Dependency | Upgrade SDK and verify its exact bundled CLI version. | Planned |
-| B2 | Probe | Replace the unreliable two-second fail-open behavior. | Planned |
-| B3 | Versions | Add full-ID and alias-specific minimum rules. | Planned |
-| B4 | Diagnostics | Report executable source/path/version and support reason. | Planned |
+| B1 | Dependency | Upgrade SDK and verify its exact bundled CLI version. | Complete |
+| B2 | Probe | Replace the unreliable two-second fail-open behavior. | Complete |
+| B3 | Versions | Add full-ID and alias-specific minimum rules. | Complete |
+| B4 | Diagnostics | Report executable source/path/version and support reason. | Complete |
 
 ### Workstream C - Safety and evidence
 
 | ID | Area | Description | Status |
 | --- | --- | --- | --- |
-| C1 | Refusal | Surface non-interactive Fable refusal without assumed fallback. | Planned |
-| C2 | Unit tests | Cover omitted default, aliases, pins, gates, and timeout paths. | Planned |
-| C3 | Live smoke | Keep live execution opt-in and verify the resolved runtime in evidence. | Planned |
-| C4 | Docs | Explain automatic movement, pinning, bundling, and overrides. | Planned |
+| C1 | Refusal | Surface non-interactive Fable refusal without assumed fallback. | Complete |
+| C2 | Unit tests | Cover omitted default, aliases, pins, gates, and timeout paths. | Complete |
+| C3 | Live smoke | Keep live execution opt-in and verify the resolved runtime in evidence. | Complete |
+| C4 | Docs | Explain automatic movement, pinning, bundling, and overrides. | Complete |
 
 ## Dependencies
 
@@ -131,6 +135,16 @@ Run from the repository root:
 
 Also run a read-only diagnostic that prints the resolved executable source, path, and version. Green means the path is the same path AgentRules sends to the SDK, the version is at least 2.1.197, the runtime-default request omits `model`, aliases remain aliases, pins remain pins, and the live test skips without opt-in.
 
+Validation evidence recorded on 2026-07-15:
+
+- `uv lock` and `uv sync --extra dev` upgraded `claude-agent-sdk` from 0.2.88 to 0.2.119; `uv lock --check` is clean.
+- Running the exact default executable reported source `sdk_bundled`, the installed wheel's `_bundled/claude` path, Claude Code `2.1.210`, and no probe error.
+- Focused Claude Code, configuration, picker, model-override, and live-smoke suite: `152 passed, 1 skipped in 1.83s`; the skip is the expected opt-in live test.
+- Repository-wide pytest: `792 passed, 7 skipped, 31 subtests passed in 10.87s`; four existing `pathspec` deprecation warnings remain.
+- Repository-wide Ruff: `All checks passed!`.
+- Repository-wide Pyright: `0 errors, 0 warnings, 0 informations`.
+- Import smoke exits zero after moving data-only runtime selection constants out of the eager Claude Code package initializer.
+
 ## Rollout / Ops Notes
 
 Alias presets are opt-in and may change model, price, or availability as Claude Code and the user's provider evolve. Pinned presets are the reproducible path. The upgraded bundled runtime becomes the default because the integration already prefers it; release notes must mention the version change. Rollback must restore the prior SDK and hide any pinned choices its bundled CLI cannot select. Explicit `cli_path` remains the operator escape hatch and must be validated rather than silently ignored.
@@ -139,3 +153,7 @@ Alias presets are opt-in and may change model, price, or availability as Claude 
 
 - 2026-07-15 — Created milestone scaffold.
 - 2026-07-15 — Added the dual alias/pin model strategy, bundled-runtime dependency gate, reliable version probing, refusal behavior, and verification plan.
+- 2026-07-15 — Marked the milestone in progress after MS003 passed all validation, was archived, and was committed.
+- 2026-07-15 — Upgraded to Claude Agent SDK 0.2.119 and verified its exact bundled Claude Code 2.1.210 executable.
+- 2026-07-15 — Added moving runtime default/alias choices, pinned Claude 5 presets, fail-closed version gates, executable-source diagnostics, refusal handling, and operator guidance.
+- 2026-07-15 — Completed focused and repository-wide validation and marked the milestone complete for archival.

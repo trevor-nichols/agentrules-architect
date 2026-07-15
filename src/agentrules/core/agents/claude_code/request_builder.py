@@ -8,12 +8,18 @@ from pathlib import Path
 from typing import Any
 
 from agentrules.core.agents.anthropic.capabilities import (
+    ThinkingPolicy,
     supported_effort_levels,
     supports_adaptive_thinking,
     supports_manual_thinking,
+    thinking_policy,
 )
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.configuration import CLAUDE_CODE_API_KEY_ENV_VARS, ConfigManager
+from agentrules.core.types.models import (
+    CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
+    is_claude_code_runtime_managed_model,
+)
 from agentrules.core.utils.structured_outputs import build_claude_code_output_format
 
 DEFAULT_THINKING_BUDGET = 16_000
@@ -61,6 +67,10 @@ def prepare_request(
         auth_strategy=runtime_config.auth_strategy,
         sanitize_api_key_env=runtime_config.sanitize_api_key_env,
     )
+    resolved_cli_path = _resolve_cli_path(
+        config_manager,
+        configured_cli_path=runtime_config.cli_path,
+    )
     _validate_runtime_model_support(config_manager, model_name)
 
     options: dict[str, Any] = {
@@ -69,27 +79,25 @@ def prepare_request(
         "disallowed_tools": list(DEFAULT_DISALLOWED_TOOLS),
         "env": config_manager.build_claude_code_environment(),
         "max_turns": runtime_config.max_turns,
-        "model": model_name,
         "permission_mode": "dontAsk",
         "setting_sources": [],
         "system_prompt": _build_system_prompt_option(system_prompt),
         "tools": {"type": "preset", "preset": "claude_code"},
     }
+    if model_name != CLAUDE_CODE_RUNTIME_DEFAULT_MODEL:
+        options["model"] = model_name
 
-    resolved_cli_path = _resolve_cli_path(
-        config_manager,
-        configured_cli_path=runtime_config.cli_path,
-    )
     if resolved_cli_path is not None:
         options["cli_path"] = resolved_cli_path
 
-    thinking = _build_thinking_config(model_name, reasoning)
-    if thinking is not None:
-        options["thinking"] = thinking
+    if not is_claude_code_runtime_managed_model(model_name):
+        thinking = _build_thinking_config(model_name, reasoning)
+        if thinking is not None:
+            options["thinking"] = thinking
 
-    resolved_effort = _resolve_effort(model_name, reasoning, effort)
-    if resolved_effort is not None:
-        options["effort"] = resolved_effort
+        resolved_effort = _resolve_effort(model_name, reasoning, effort)
+        if resolved_effort is not None:
+            options["effort"] = resolved_effort
 
     if output_format is not None:
         options["output_format"] = output_format
@@ -132,6 +140,19 @@ def _build_system_prompt_option(system_prompt: str) -> dict[str, Any]:
 
 
 def _build_thinking_config(model_name: str, reasoning: ReasoningMode) -> dict[str, Any] | None:
+    policy = thinking_policy(model_name)
+    if policy == ThinkingPolicy.ALWAYS_ADAPTIVE:
+        if reasoning == ReasoningMode.DISABLED:
+            raise ValueError(
+                f"Model '{model_name}' always uses adaptive thinking and cannot disable it in Claude Code."
+            )
+        return None
+    if policy == ThinkingPolicy.ADAPTIVE_DEFAULT:
+        if reasoning == ReasoningMode.DISABLED:
+            return {"type": "disabled"}
+        if reasoning in {ReasoningMode.DYNAMIC, ReasoningMode.ENABLED}:
+            return {"type": "adaptive"}
+
     if reasoning == ReasoningMode.DYNAMIC:
         if not supports_adaptive_thinking(model_name):
             raise ValueError(
@@ -194,13 +215,16 @@ def _validate_runtime_model_support(config_manager: ConfigManager, model_name: s
         return
 
     runtime_version = config_manager.get_claude_code_runtime_version()
-    if runtime_version is None or runtime_version >= minimum_version:
-        return
-
-    raise ValueError(
-        f"Model '{model_name}' requires Claude Code {minimum_version} or later, "
-        f"but the resolved runtime reports {runtime_version}."
-    )
+    if runtime_version is None:
+        raise ValueError(
+            f"Model '{model_name}' requires Claude Code {minimum_version} or later, but the resolved "
+            "runtime version could not be verified."
+        )
+    if runtime_version < minimum_version:
+        raise ValueError(
+            f"Model '{model_name}' requires Claude Code {minimum_version} or later, "
+            f"but the resolved runtime reports {runtime_version}."
+        )
 
 
 def _resolve_sanitized_env_vars(

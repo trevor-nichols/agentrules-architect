@@ -9,9 +9,10 @@ Users can specify a different model for each phase and whether to use reasoning.
 
 from typing import TypedDict
 
-from agentrules.core.agents.base import ModelProvider
+from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types.models import (
     CLAUDE_BASIC,
+    CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
     CLAUDE_FABLE_5,
     CLAUDE_HAIKU,
     CLAUDE_HAIKU_WITH_REASONING,
@@ -264,6 +265,27 @@ def _derive_claude_code_runtime_preset(
         config=create_claude_code_config(base_preset["config"]),
         label=label or f"Claude Code {base_label}",
         description=description or f"{base_description} Routed through the Claude Code Agent SDK runtime.",
+        provider=ModelProvider.CLAUDE_CODE,
+    )
+
+
+def _claude_code_runtime_managed_preset(
+    *,
+    model_name: str,
+    label: str,
+    description: str,
+    reasoning: ReasoningMode = ReasoningMode.DISABLED,
+) -> PresetDefinition:
+    config = create_claude_code_config(CLAUDE_SONNET_5)._replace(
+        model_name=model_name,
+        reasoning=reasoning,
+        max_input_tokens=1_000_000,
+        anthropic_effort=None,
+    )
+    return _preset(
+        config=config,
+        label=label,
+        description=description,
         provider=ModelProvider.CLAUDE_CODE,
     )
 
@@ -1000,6 +1022,69 @@ def _build_codex_runtime_presets() -> dict[str, PresetDefinition]:
 
 def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
     return {
+        "claude-code-default": _claude_code_runtime_managed_preset(
+            model_name=CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
+            label="Claude Code Runtime Default (Moving)",
+            description=(
+                "Omits the model override so Claude Code uses the account or organization default. "
+                "The resolved model can change with runtime and account policy."
+            ),
+        ),
+        "claude-code-best": _claude_code_runtime_managed_preset(
+            model_name="best",
+            label="Claude Code Best Alias (Moving)",
+            description="Uses Claude Code's moving best alias; model, availability, and cost can change.",
+        ),
+        "claude-code-sonnet": _claude_code_runtime_managed_preset(
+            model_name="sonnet",
+            label="Claude Code Sonnet Alias (Moving)",
+            description="Uses Claude Code's moving sonnet alias rather than a reproducible model ID.",
+        ),
+        "claude-code-opus": _claude_code_runtime_managed_preset(
+            model_name="opus",
+            label="Claude Code Opus Alias (Moving)",
+            description="Uses Claude Code's moving opus alias rather than a reproducible model ID.",
+        ),
+        "claude-code-fable": _claude_code_runtime_managed_preset(
+            model_name="fable",
+            reasoning=ReasoningMode.DYNAMIC,
+            label="Claude Code Fable Alias (Moving, Always Adaptive)",
+            description=(
+                "Uses Claude Code's moving fable alias with runtime-owned adaptive thinking; "
+                "requires Claude Code 2.1.170 or later."
+            ),
+        ),
+        "claude-code-sonnet-5": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-sonnet-5"]),
+        "claude-code-sonnet-5-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-5-reasoning-low"]
+        ),
+        "claude-code-sonnet-5-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-5-reasoning-medium"]
+        ),
+        "claude-code-sonnet-5-reasoning-high": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-5-reasoning-high"]
+        ),
+        "claude-code-sonnet-5-reasoning-xhigh": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-5-reasoning-xhigh"]
+        ),
+        "claude-code-sonnet-5-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-5-reasoning-max"]
+        ),
+        "claude-code-fable-5-reasoning-low": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5-reasoning-low"]
+        ),
+        "claude-code-fable-5-reasoning-medium": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5-reasoning-medium"]
+        ),
+        "claude-code-fable-5-reasoning-high": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5-reasoning-high"]
+        ),
+        "claude-code-fable-5-reasoning-xhigh": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5-reasoning-xhigh"]
+        ),
+        "claude-code-fable-5-reasoning-max": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5-reasoning-max"]
+        ),
         "claude-code-sonnet-4.6": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-sonnet-4.6"]),
         "claude-code-sonnet-4.6-reasoning-high": _derive_claude_code_runtime_preset(
             BASE_MODEL_PRESETS["claude-sonnet-4.6-reasoning-high"]

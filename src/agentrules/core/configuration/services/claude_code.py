@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from .. import constants as configuration_constants
 from ..models import ClaudeCodeAuthStrategy, ClaudeCodeConfig, CLIConfig
@@ -32,8 +33,29 @@ class ClaudeCodeVersion:
         return f"{self.major}.{self.minor}.{self.patch}"
 
 
+ClaudeCodeExecutableSource = Literal["configured", "sdk_bundled", "path"]
+ClaudeCodeVersionProbeError = Literal["timeout", "execution", "nonzero_exit", "parse"]
+
+
+@dataclass(frozen=True)
+class ClaudeCodeExecutable:
+    path: str
+    source: ClaudeCodeExecutableSource
+
+
+@dataclass(frozen=True)
+class ClaudeCodeVersionProbe:
+    version: ClaudeCodeVersion | None
+    error_code: ClaudeCodeVersionProbeError | None = None
+    error_message: str | None = None
+
+
 _CLAUDE_CODE_VERSION_PATTERN = re.compile(r"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)")
+CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS = 10.0
 _MINIMUM_CLAUDE_CODE_VERSIONS: tuple[tuple[str, ClaudeCodeVersion], ...] = (
+    ("claude-sonnet-5", ClaudeCodeVersion(2, 1, 197)),
+    ("claude-fable-5", ClaudeCodeVersion(2, 1, 170)),
+    ("fable", ClaudeCodeVersion(2, 1, 170)),
     ("claude-opus-4-8", ClaudeCodeVersion(2, 1, 154)),
     ("claude-opus-4-7", ClaudeCodeVersion(2, 1, 111)),
 )
@@ -122,6 +144,21 @@ def resolve_claude_code_executable(config: CLIConfig) -> str | None:
     return str(Path(resolved).resolve())
 
 
+def resolve_claude_code_executable_info(config: CLIConfig) -> ClaudeCodeExecutable | None:
+    """Resolve the exact executable and describe which resolution branch selected it."""
+
+    executable_path = resolve_claude_code_executable(config)
+    if executable_path is None:
+        return None
+    if get_claude_code_config(config).cli_path is not None:
+        return ClaudeCodeExecutable(path=executable_path, source="configured")
+
+    bundled_path = _resolve_sdk_bundled_executable()
+    if bundled_path == executable_path:
+        return ClaudeCodeExecutable(path=executable_path, source="sdk_bundled")
+    return ClaudeCodeExecutable(path=executable_path, source="path")
+
+
 def _resolve_sdk_default_executable() -> str | None:
     bundled = _resolve_sdk_bundled_executable()
     if bundled is not None:
@@ -183,22 +220,66 @@ def parse_claude_code_version(version_text: str | None) -> ClaudeCodeVersion | N
 
 
 @lru_cache(maxsize=8)
-def _probe_claude_code_executable_version(executable_path: str) -> ClaudeCodeVersion | None:
+def probe_claude_code_executable_version(
+    executable_path: str,
+    timeout_seconds: float = CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS,
+) -> ClaudeCodeVersionProbe:
+    """Return a cached, diagnostic version probe for one resolved executable."""
+
     try:
         completed = subprocess.run(
             [executable_path, "--version"],
             check=False,
             capture_output=True,
             text=True,
-            timeout=2.0,
+            timeout=timeout_seconds,
         )
-    except Exception:
-        return None
+    except subprocess.TimeoutExpired:
+        return ClaudeCodeVersionProbe(
+            version=None,
+            error_code="timeout",
+            error_message=f"Version probe timed out after {timeout_seconds:g} seconds.",
+        )
+    except OSError as exc:
+        return ClaudeCodeVersionProbe(
+            version=None,
+            error_code="execution",
+            error_message=f"Version probe could not execute the resolved runtime: {exc}",
+        )
 
     if completed.returncode != 0:
-        return None
+        detail = _bounded_probe_output(completed.stderr or completed.stdout)
+        message = f"Version probe exited with status {completed.returncode}."
+        if detail:
+            message = f"{message} {detail}"
+        return ClaudeCodeVersionProbe(
+            version=None,
+            error_code="nonzero_exit",
+            error_message=message,
+        )
     version_text = (completed.stdout or completed.stderr).strip()
-    return parse_claude_code_version(version_text)
+    version = parse_claude_code_version(version_text)
+    if version is None:
+        detail = _bounded_probe_output(version_text) or "empty output"
+        return ClaudeCodeVersionProbe(
+            version=None,
+            error_code="parse",
+            error_message=f"Version probe output did not contain a semantic version: {detail}",
+        )
+    return ClaudeCodeVersionProbe(version=version)
+
+
+def _bounded_probe_output(value: str | None, *, limit: int = 300) -> str:
+    normalized = " ".join((value or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[: limit - 1]}…"
+
+
+def _probe_claude_code_executable_version(executable_path: str) -> ClaudeCodeVersion | None:
+    """Compatibility wrapper for callers that only need the parsed version."""
+
+    return probe_claude_code_executable_version(executable_path).version
 
 
 def get_claude_code_runtime_version(config: CLIConfig) -> ClaudeCodeVersion | None:
@@ -206,6 +287,17 @@ def get_claude_code_runtime_version(config: CLIConfig) -> ClaudeCodeVersion | No
     if executable_path is None:
         return None
     return _probe_claude_code_executable_version(executable_path)
+
+
+def get_claude_code_runtime_version_probe(
+    config: CLIConfig,
+    *,
+    timeout_seconds: float = CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS,
+) -> ClaudeCodeVersionProbe | None:
+    executable_path = resolve_claude_code_executable(config)
+    if executable_path is None:
+        return None
+    return probe_claude_code_executable_version(executable_path, timeout_seconds)
 
 
 def minimum_claude_code_version_for_model(model_name: str) -> ClaudeCodeVersion | None:
@@ -216,15 +308,27 @@ def minimum_claude_code_version_for_model(model_name: str) -> ClaudeCodeVersion 
     return None
 
 
-def is_claude_code_model_supported(config: CLIConfig, model_name: str) -> bool | None:
+def claude_code_model_support_error(config: CLIConfig, model_name: str) -> str | None:
     minimum_version = minimum_claude_code_version_for_model(model_name)
     if minimum_version is None:
-        return True
+        return None
 
     runtime_version = get_claude_code_runtime_version(config)
     if runtime_version is None:
-        return None
-    return runtime_version >= minimum_version
+        return (
+            f"Model '{model_name}' requires Claude Code {minimum_version} or later, but the resolved "
+            "runtime version could not be verified."
+        )
+    if runtime_version < minimum_version:
+        return (
+            f"Model '{model_name}' requires Claude Code {minimum_version} or later, "
+            f"but the resolved runtime reports {runtime_version}."
+        )
+    return None
+
+
+def is_claude_code_model_supported(config: CLIConfig, model_name: str) -> bool:
+    return claude_code_model_support_error(config, model_name) is None
 
 
 def build_claude_code_environment(

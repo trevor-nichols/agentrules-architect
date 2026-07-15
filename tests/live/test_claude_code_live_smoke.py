@@ -28,6 +28,8 @@ def _select_live_model() -> tuple[str, object | None, ReasoningMode]:
         return explicit_model, None, ReasoningMode.DYNAMIC
 
     preferred_presets = (
+        "claude-code-default",
+        "claude-code-sonnet-5-reasoning-medium",
         "claude-code-sonnet-4.6",
         "claude-code-sonnet-4.6-reasoning-medium",
         "claude-code-haiku",
@@ -57,6 +59,12 @@ async def test_live_claude_code_structured_output_smoke(tmp_path: Path) -> None:
     diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
     if diagnostics.runtime_error:
         pytest.skip(f"Claude Code runtime unavailable: {diagnostics.runtime_error}")
+    if diagnostics.version_error:
+        pytest.skip(f"Claude Code runtime version unavailable: {diagnostics.version_error}")
+
+    assert diagnostics.executable_path
+    assert diagnostics.executable_source
+    assert diagnostics.version
 
     model_name, model_config, reasoning = _select_live_model()
     repo_root = Path(__file__).resolve().parents[2]

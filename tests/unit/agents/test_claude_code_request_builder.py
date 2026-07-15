@@ -12,6 +12,7 @@ from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.models import ClaudeCodeConfig
 from agentrules.core.configuration.repository import TomlConfigRepository
 from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
+from agentrules.core.types.models import CLAUDE_CODE_RUNTIME_DEFAULT_MODEL
 
 
 def _build_config_manager(tmp_path: Path) -> ConfigManager:
@@ -217,6 +218,145 @@ def test_prepare_request_rejects_models_unsupported_by_resolved_runtime(
             content="Inspect repository architecture.",
             system_prompt="Keep responses concise.",
             reasoning=ReasoningMode.DISABLED,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+
+
+def test_prepare_request_omits_model_for_runtime_default(tmp_path: Path) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name=CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    sdk_options = ClaudeAgentOptions(**prepared.options)
+    assert "model" not in prepared.options
+    assert sdk_options.model is None
+    assert "thinking" not in prepared.options
+    assert "effort" not in prepared.options
+
+
+@pytest.mark.parametrize("alias", ["best", "sonnet", "opus", "fable"])
+def test_prepare_request_preserves_runtime_managed_aliases(tmp_path: Path, alias: str) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name=alias,
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DYNAMIC if alias == "fable" else ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    sdk_options = ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["model"] == alias
+    assert sdk_options.model == alias
+    assert "thinking" not in prepared.options
+    assert "effort" not in prepared.options
+
+
+def test_prepare_request_sonnet5_disabled_is_explicit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 210))
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-sonnet-5",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DISABLED,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["thinking"] == {"type": "disabled"}
+
+
+def test_prepare_request_sonnet5_adaptive_max_effort(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 210))
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-sonnet-5",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DYNAMIC,
+        effort="max",
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["thinking"] == {"type": "adaptive"}
+    assert prepared.options["effort"] == "max"
+
+
+def test_prepare_request_fable5_omits_thinking_and_preserves_effort(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 210))
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-fable-5",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DYNAMIC,
+        effort="max",
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert "thinking" not in prepared.options
+    assert prepared.options["effort"] == "max"
+
+
+def test_prepare_request_rejects_fable5_disabled_before_dispatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 210))
+
+    with pytest.raises(ValueError, match="always uses adaptive thinking"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-fable-5",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DISABLED,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+
+
+def test_prepare_request_fails_closed_when_pinned_model_version_is_unknown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: None)
+
+    with pytest.raises(ValueError, match="runtime version could not be verified"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-sonnet-5",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
             phase_name=None,
             cwd=str(tmp_path),
         )

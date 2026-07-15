@@ -5,6 +5,7 @@ from importlib import reload
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types import models as model_types
+from agentrules.core.types.models import CLAUDE_CODE_RUNTIME_DEFAULT_MODEL
 
 
 class ModelOverrideTestCase(unittest.TestCase):
@@ -616,6 +617,44 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(
             self.agents_module.MODEL_PRESETS["claude-code-sonnet-4.6-reasoning-high"]["config"].estimator_family,
             "tiktoken",
+        )
+
+    def test_claude_code_registry_includes_moving_aliases_and_claude5_pins(self) -> None:
+        alias_models = {
+            "claude-code-default": CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
+            "claude-code-best": "best",
+            "claude-code-sonnet": "sonnet",
+            "claude-code-opus": "opus",
+            "claude-code-fable": "fable",
+        }
+        for preset_key, model_name in alias_models.items():
+            preset = self.agents_module.MODEL_PRESETS[preset_key]
+            self.assertEqual(preset["provider"], ModelProvider.CLAUDE_CODE)
+            self.assertEqual(preset["config"].model_name, model_name)
+            self.assertIn("Moving", preset["label"])
+
+        sonnet_keys = {
+            "claude-code-sonnet-5",
+            "claude-code-sonnet-5-reasoning-low",
+            "claude-code-sonnet-5-reasoning-medium",
+            "claude-code-sonnet-5-reasoning-high",
+            "claude-code-sonnet-5-reasoning-xhigh",
+            "claude-code-sonnet-5-reasoning-max",
+        }
+        fable_keys = {
+            "claude-code-fable-5-reasoning-low",
+            "claude-code-fable-5-reasoning-medium",
+            "claude-code-fable-5-reasoning-high",
+            "claude-code-fable-5-reasoning-xhigh",
+            "claude-code-fable-5-reasoning-max",
+        }
+        self.assertTrue(sonnet_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertTrue(fable_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertFalse(
+            any(
+                key.startswith("claude-code-fable-5") and "non-reasoning" in key
+                for key in self.agents_module.MODEL_PRESETS
+            )
         )
 
     def test_claude_code_presets_are_gated_by_runtime_availability(self) -> None:

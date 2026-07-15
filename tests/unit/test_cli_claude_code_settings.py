@@ -10,7 +10,7 @@ from agentrules.cli.ui.settings.claude_code import build_runtime_guidance
 from agentrules.cli.ui.settings.models import _filter_claude_code_presets_for_runtime
 from agentrules.core.configuration import ConfigManager, model_presets
 from agentrules.core.configuration.repository import TomlConfigRepository
-from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
+from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion, ClaudeCodeVersionProbe
 
 
 def _build_config_manager(tmp_path: Path, env: dict[str, str] | None = None) -> ConfigManager:
@@ -74,6 +74,7 @@ def test_claude_code_diagnostics_use_sanitized_child_environment(tmp_path: Path,
     diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
 
     assert diagnostics.executable_path == str(Path(sys.executable).resolve())
+    assert diagnostics.executable_source == "configured"
     assert diagnostics.sdk_available is True
     assert diagnostics.is_available is True
     assert diagnostics.oauth_token_present is True
@@ -154,6 +155,26 @@ def test_claude_code_diagnostics_report_missing_sdk(tmp_path: Path, monkeypatch)
     assert "SDK package" in (diagnostics.runtime_error or "")
 
 
+def test_claude_code_diagnostics_explain_version_gated_models(tmp_path: Path, monkeypatch) -> None:
+    from agentrules.cli.services.claude_code_runtime import get_claude_code_runtime_diagnostics
+
+    manager = _build_config_manager(tmp_path)
+    manager.set_claude_code_cli_path(sys.executable)
+    monkeypatch.setattr(manager, "is_claude_agent_sdk_available", lambda: True)
+    monkeypatch.setattr(
+        "agentrules.cli.services.claude_code_runtime.claude_code_service.probe_claude_code_executable_version",
+        lambda *_args: ClaudeCodeVersionProbe(version=ClaudeCodeVersion(2, 1, 169)),
+    )
+
+    diagnostics = get_claude_code_runtime_diagnostics(config_manager=manager)
+
+    assert diagnostics.version == "2.1.169"
+    assert diagnostics.unavailable_model_reasons == (
+        "claude-fable-5: needs 2.1.170+; resolved runtime is 2.1.169",
+        "claude-sonnet-5: needs 2.1.197+; resolved runtime is 2.1.169",
+    )
+
+
 def test_claude_code_model_picker_filters_opus48_when_runtime_is_too_old(tmp_path: Path, monkeypatch) -> None:
     from agentrules.cli.services import configuration
 
@@ -188,6 +209,36 @@ def test_claude_code_model_picker_preserves_current_unsupported_selection(tmp_pa
 
     assert [entry.key for entry in filtered] == ["claude-code-opus-4.8"]
     assert "needs 2.1.154+" in filtered[0].label
+
+
+def test_claude_code_model_picker_fails_closed_when_runtime_version_is_unknown(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from agentrules.cli.services import configuration
+
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: None)
+    monkeypatch.setattr(configuration, "CONFIG_MANAGER", manager)
+
+    presets = [
+        model_presets.get_preset_info("claude-code-sonnet-4.6"),
+        model_presets.get_preset_info("claude-code-fable"),
+        model_presets.get_preset_info("claude-code-sonnet-5"),
+    ]
+    available = _filter_claude_code_presets_for_runtime(
+        [preset for preset in presets if preset is not None],
+        preserved_key=None,
+    )
+
+    assert {preset.key for preset in available} == {"claude-code-sonnet-4.6"}
+
+    preserved = _filter_claude_code_presets_for_runtime(
+        [preset for preset in presets if preset is not None],
+        preserved_key="claude-code-sonnet-5",
+    )
+    preserved_sonnet = next(preset for preset in preserved if preset.key == "claude-code-sonnet-5")
+    assert "runtime version unverified; needs 2.1.197+" in preserved_sonnet.label
 
 
 def test_claude_code_runtime_guidance_explains_oauth_and_api_key_sanitization() -> None:

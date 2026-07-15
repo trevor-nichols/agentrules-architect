@@ -57,7 +57,8 @@ def _render_runtime_summary(
     live_table.add_column("Signal", style="bold")
     live_table.add_column("Value")
     live_table.add_row("Status", _format_status(diagnostics))
-    live_table.add_row("Version", diagnostics.version or "[dim]-[/]")
+    live_table.add_row("Executable source", diagnostics.executable_source or "[dim]-[/]")
+    live_table.add_row("Parsed version", diagnostics.version or "[dim]-[/]")
     live_table.add_row("OAuth token present", _format_bool(diagnostics.oauth_token_present))
     live_table.add_row(
         "API-key env visible to child",
@@ -71,7 +72,10 @@ def _render_runtime_summary(
     if diagnostics.runtime_error:
         context.console.print(f"\n[red]Runtime error:[/] {diagnostics.runtime_error}")
     if diagnostics.version_error:
-        context.console.print(f"\n[yellow]Version check:[/] {diagnostics.version_error}")
+        error_kind = f" ({diagnostics.version_error_code})" if diagnostics.version_error_code else ""
+        context.console.print(f"\n[yellow]Version check{error_kind}:[/] {diagnostics.version_error}")
+    for reason in diagnostics.unavailable_model_reasons:
+        context.console.print(f"\n[yellow]Unavailable model:[/] {reason}")
     for note in build_runtime_guidance(state, diagnostics):
         context.console.print(note)
     context.console.print("")
