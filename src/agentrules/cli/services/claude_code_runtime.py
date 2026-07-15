@@ -97,6 +97,12 @@ def get_claude_code_runtime_diagnostics(
     )
 
 
+def clear_claude_code_runtime_version_probe_cache() -> None:
+    """Invalidate version data before an operator-requested runtime refresh."""
+
+    claude_code_service.clear_claude_code_version_probe_cache()
+
+
 def _unavailable_model_reasons(
     manager: ConfigManager,
     runtime_version: claude_code_service.ClaudeCodeVersion | None,
@@ -113,4 +119,8 @@ def _unavailable_model_reasons(
     return tuple(reasons)
 
 
-__all__ = ["ClaudeCodeRuntimeDiagnostics", "get_claude_code_runtime_diagnostics"]
+__all__ = [
+    "ClaudeCodeRuntimeDiagnostics",
+    "clear_claude_code_runtime_version_probe_cache",
+    "get_claude_code_runtime_diagnostics",
+]

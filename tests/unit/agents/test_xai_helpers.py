@@ -154,27 +154,21 @@ def test_resolve_defaults_for_grok41_fast_non_reasoning() -> None:
     defaults = resolve_model_defaults("grok-4-1-fast-non-reasoning")
 
     assert defaults.default_reasoning == ReasoningMode.DISABLED
-    assert defaults.accepted_reasoning_efforts == frozenset(
-        {"none", "minimal", "low", "medium", "high"}
-    )
+    assert defaults.accepted_reasoning_efforts == frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 def test_resolve_defaults_for_grok43() -> None:
     defaults = resolve_model_defaults("grok-4.3")
 
     assert defaults.default_reasoning == ReasoningMode.LOW
-    assert defaults.accepted_reasoning_efforts == frozenset(
-        {"none", "minimal", "low", "medium", "high"}
-    )
+    assert defaults.accepted_reasoning_efforts == frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 def test_resolve_defaults_for_grok_0709_alias() -> None:
     defaults = resolve_model_defaults("grok-4-0709")
 
     assert defaults.default_reasoning == ReasoningMode.MEDIUM
-    assert defaults.accepted_reasoning_efforts == frozenset(
-        {"none", "minimal", "low", "medium", "high"}
-    )
+    assert defaults.accepted_reasoning_efforts == frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 def test_resolve_defaults_for_grok_build() -> None:
@@ -257,6 +251,30 @@ def test_prepare_request_uses_grok420_identity_without_invented_effort(
 
     assert prepared.payload["model"] == model_name
     assert "reasoning_effort" not in prepared.payload
+
+
+@pytest.mark.parametrize(
+    ("model_name", "reasoning"),
+    [
+        ("grok-4.20-0309-reasoning", ReasoningMode.DISABLED),
+        ("grok-4.20-0309-reasoning", ReasoningMode.HIGH),
+        ("grok-4.20-0309-non-reasoning", ReasoningMode.ENABLED),
+        ("grok-4.20-0309-non-reasoning", ReasoningMode.HIGH),
+    ],
+)
+def test_prepare_request_rejects_non_fixed_grok420_reasoning_modes(
+    model_name: str,
+    reasoning: ReasoningMode,
+) -> None:
+    fixed_mode = resolve_model_defaults(model_name).default_reasoning.value
+    with pytest.raises(ValueError, match=f"fixed reasoning mode.*{fixed_mode}"):
+        prepare_request(
+            model_name=model_name,
+            content="Analyze",
+            reasoning=reasoning,
+            defaults=resolve_model_defaults(model_name),
+            tools=None,
+        )
 
 
 def test_xai_architect_defaults_to_grok45_high() -> None:

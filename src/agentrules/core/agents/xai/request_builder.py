@@ -74,6 +74,14 @@ def _map_reasoning_effort(
     *,
     model_name: str,
 ) -> str | None:
+    if defaults.fixed_reasoning_mode is not None:
+        if reasoning != defaults.fixed_reasoning_mode:
+            raise ValueError(
+                f"Reasoning mode '{reasoning.value}' is not supported for xAI model '{model_name}'. "
+                f"This model has fixed reasoning mode '{defaults.fixed_reasoning_mode.value}'."
+            )
+        return None
+
     accepted_efforts = defaults.accepted_reasoning_efforts
     if not accepted_efforts:
         return None
@@ -82,11 +90,7 @@ def _map_reasoning_effort(
     if reasoning == ReasoningMode.DISABLED:
         effort = "none"
     elif reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
-        effort = (
-            ReasoningMode.HIGH.value
-            if defaults.normalize_higher_efforts_to_high
-            else reasoning.value
-        )
+        effort = ReasoningMode.HIGH.value if defaults.normalize_higher_efforts_to_high else reasoning.value
     elif reasoning in {
         ReasoningMode.MINIMAL,
         ReasoningMode.LOW,

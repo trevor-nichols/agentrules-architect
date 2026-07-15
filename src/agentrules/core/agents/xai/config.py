@@ -20,6 +20,7 @@ class ModelDefaults:
     accepted_reasoning_efforts: frozenset[str] = frozenset()
     enabled_reasoning_effort: str | None = None
     normalize_higher_efforts_to_high: bool = False
+    fixed_reasoning_mode: ReasoningMode | None = None
 
 
 _LEGACY_ACCEPTED_REASONING_EFFORTS = frozenset({"none", "minimal", "low", "medium", "high"})
@@ -33,9 +34,11 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
     ),
     "grok-4.20-0309-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.ENABLED,
+        fixed_reasoning_mode=ReasoningMode.ENABLED,
     ),
     "grok-4.20-0309-non-reasoning": ModelDefaults(
         default_reasoning=ReasoningMode.DISABLED,
+        fixed_reasoning_mode=ReasoningMode.DISABLED,
     ),
     "grok-4.3": ModelDefaults(
         default_reasoning=ReasoningMode.LOW,

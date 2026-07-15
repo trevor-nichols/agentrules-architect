@@ -203,14 +203,13 @@ def configure_claude_code_runtime(context: CliContext) -> None:
 
         if selection == "__LOGIN_HELP__":
             console.print("[cyan]Run this in your terminal:[/] claude auth login")
-            console.print(
-                "[cyan]For automation/CI:[/] claude setup-token, then export CLAUDE_CODE_OAUTH_TOKEN"
-            )
+            console.print("[cyan]For automation/CI:[/] claude setup-token, then export CLAUDE_CODE_OAUTH_TOKEN")
             console.print(
                 "[dim]Complete the Claude.ai OAuth flow in Claude Code, then return here and refresh status.[/]"
             )
             continue
 
         if selection == "__REFRESH__":
+            claude_code_runtime.clear_claude_code_runtime_version_probe_cache()
             console.print("[green]Claude Code runtime status refreshed.[/]")
             continue

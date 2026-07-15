@@ -35,6 +35,7 @@ class ClaudeCodeVersion:
 
 ClaudeCodeExecutableSource = Literal["configured", "sdk_bundled", "path"]
 ClaudeCodeVersionProbeError = Literal["timeout", "execution", "nonzero_exit", "parse"]
+_ClaudeCodeExecutableFingerprint = tuple[int, int, int, int]
 
 
 @dataclass(frozen=True)
@@ -219,15 +220,28 @@ def parse_claude_code_version(version_text: str | None) -> ClaudeCodeVersion | N
     return ClaudeCodeVersion(*(int(part) for part in match.groups()))
 
 
-@lru_cache(maxsize=8)
-def probe_claude_code_executable_version(
+def _claude_code_executable_fingerprint(
     executable_path: str,
-    timeout_seconds: float = CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS,
-    *,
-    env_vars_to_remove: tuple[str, ...] = (),
-) -> ClaudeCodeVersionProbe:
-    """Return a cached, diagnostic version probe for one resolved executable."""
+) -> _ClaudeCodeExecutableFingerprint | None:
+    try:
+        executable_stat = Path(executable_path).stat()
+    except OSError:
+        return None
+    return (
+        executable_stat.st_dev,
+        executable_stat.st_ino,
+        executable_stat.st_size,
+        executable_stat.st_mtime_ns,
+    )
 
+
+@lru_cache(maxsize=8)
+def _cached_claude_code_version_probe(
+    executable_path: str,
+    timeout_seconds: float,
+    env_vars_to_remove: tuple[str, ...],
+    _executable_fingerprint: _ClaudeCodeExecutableFingerprint | None,
+) -> ClaudeCodeVersionProbe:
     child_env = os.environ.copy()
     for env_var in env_vars_to_remove:
         child_env.pop(env_var, None)
@@ -274,6 +288,31 @@ def probe_claude_code_executable_version(
             error_message=f"Version probe output did not contain a semantic version: {detail}",
         )
     return ClaudeCodeVersionProbe(version=version)
+
+
+def clear_claude_code_version_probe_cache() -> None:
+    """Invalidate cached Claude Code executable version probes."""
+
+    _cached_claude_code_version_probe.cache_clear()
+
+
+def probe_claude_code_executable_version(
+    executable_path: str,
+    timeout_seconds: float = CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS,
+    *,
+    env_vars_to_remove: tuple[str, ...] = (),
+) -> ClaudeCodeVersionProbe:
+    """Return a diagnostic version probe for one resolved executable."""
+
+    probe = _cached_claude_code_version_probe(
+        executable_path,
+        timeout_seconds,
+        env_vars_to_remove,
+        _claude_code_executable_fingerprint(executable_path),
+    )
+    if probe.version is None:
+        clear_claude_code_version_probe_cache()
+    return probe
 
 
 def _bounded_probe_output(value: str | None, *, limit: int = 300) -> str:
