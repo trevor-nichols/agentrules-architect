@@ -13,6 +13,7 @@
 │   │       └── phase5_consolidation.md
 │   ├── claude-code-runtime.md
 │   ├── codex-runtime.md
+│   ├── provider-model-lifecycle.md
 │   ├── provider-system-prompts.md
 │   └── structured-output-contracts.md
 ├── internal-docs/  # Internal documentation

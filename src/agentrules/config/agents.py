@@ -12,6 +12,7 @@ from typing import TypedDict
 from agentrules.core.agents.base import ModelProvider
 from agentrules.core.types.models import (
     CLAUDE_BASIC,
+    CLAUDE_FABLE_5,
     CLAUDE_HAIKU,
     CLAUDE_HAIKU_WITH_REASONING,
     CLAUDE_OPUS,
@@ -24,6 +25,8 @@ from agentrules.core.types.models import (
     CLAUDE_OPUS_48,
     CLAUDE_OPUS_48_WITH_REASONING,
     CLAUDE_OPUS_WITH_REASONING,
+    CLAUDE_SONNET_5,
+    CLAUDE_SONNET_5_WITH_REASONING,
     CLAUDE_SONNET_46,
     CLAUDE_SONNET_46_WITH_REASONING,
     CLAUDE_WITH_REASONING,
@@ -172,7 +175,9 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     if provider == ModelProvider.ANTHROPIC:
         if limit is None:
             if (
-                name.startswith("claude-opus-4-6")
+                name.startswith("claude-fable-5")
+                or name.startswith("claude-sonnet-5")
+                or name.startswith("claude-opus-4-6")
                 or name.startswith("claude-opus-4-7")
                 or name.startswith("claude-opus-4-8")
                 or name.startswith("claude-sonnet-4-6")
@@ -360,6 +365,72 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Claude Sonnet 4.6 adaptive thinking with low effort for faster iteration.",
         provider=ModelProvider.ANTHROPIC,
     ),
+    "claude-sonnet-5": _preset(
+        config=CLAUDE_SONNET_5,
+        label="Claude Sonnet 5 (Thinking Disabled)",
+        description="Claude Sonnet 5 with thinking explicitly disabled, structured output, and 1M context.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-sonnet-5-reasoning-low": _preset(
+        config=CLAUDE_SONNET_5_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Sonnet 5 (Adaptive Thinking, Low Effort)",
+        description="Claude Sonnet 5 adaptive thinking at low effort for scoped, latency-sensitive work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-sonnet-5-reasoning-medium": _preset(
+        config=CLAUDE_SONNET_5_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Sonnet 5 (Adaptive Thinking, Medium Effort)",
+        description="Claude Sonnet 5 adaptive thinking at medium effort for balanced cost and quality.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-sonnet-5-reasoning-high": _preset(
+        config=CLAUDE_SONNET_5_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Sonnet 5 (Adaptive Thinking, High Effort)",
+        description="Claude Sonnet 5 adaptive thinking at its default high effort for complex work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-sonnet-5-reasoning-xhigh": _preset(
+        config=CLAUDE_SONNET_5_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Sonnet 5 (Adaptive Thinking, XHigh Effort)",
+        description="Claude Sonnet 5 adaptive thinking at xhigh effort for difficult coding and agentic work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-sonnet-5-reasoning-max": _preset(
+        config=CLAUDE_SONNET_5_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Sonnet 5 (Adaptive Thinking, Max Effort)",
+        description="Claude Sonnet 5 adaptive thinking at maximum effort for quality-first workloads.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-fable-5-reasoning-low": _preset(
+        config=CLAUDE_FABLE_5._replace(anthropic_effort="low"),
+        label="Claude Fable 5 (Always-Adaptive, Low Effort)",
+        description="Claude Fable 5 always-on adaptive thinking at low effort with 1M context.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-fable-5-reasoning-medium": _preset(
+        config=CLAUDE_FABLE_5._replace(anthropic_effort="medium"),
+        label="Claude Fable 5 (Always-Adaptive, Medium Effort)",
+        description="Claude Fable 5 always-on adaptive thinking at medium effort with 1M context.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-fable-5-reasoning-high": _preset(
+        config=CLAUDE_FABLE_5._replace(anthropic_effort="high"),
+        label="Claude Fable 5 (Always-Adaptive, High Effort)",
+        description="Claude Fable 5 always-on adaptive thinking at high effort with 1M context.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-fable-5-reasoning-xhigh": _preset(
+        config=CLAUDE_FABLE_5._replace(anthropic_effort="xhigh"),
+        label="Claude Fable 5 (Always-Adaptive, XHigh Effort)",
+        description="Claude Fable 5 always-on adaptive thinking at xhigh effort for long-horizon agentic work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-fable-5-reasoning-max": _preset(
+        config=CLAUDE_FABLE_5._replace(anthropic_effort="max"),
+        label="Claude Fable 5 (Always-Adaptive, Max Effort)",
+        description="Claude Fable 5 always-on adaptive thinking at maximum effort for the hardest workloads.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
     "claude-haiku": _preset(
         config=CLAUDE_HAIKU,
         label="Claude Haiku 4.5",
@@ -374,14 +445,14 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-opus": _preset(
         config=CLAUDE_OPUS,
-        label="Claude Opus 4.1",
-        description="Premium Claude tier prioritizing accuracy over latency.",
+        label="Claude Opus 4.8 (Generic Key)",
+        description="Generic Opus compatibility key updated to Claude Opus 4.8 before Opus 4.1 retirement.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-reasoning": _preset(
         config=CLAUDE_OPUS_WITH_REASONING,
-        label="Claude Opus 4.1 (Thinking)",
-        description="Most capable Claude model with extended thinking.",
+        label="Claude Opus 4.8 (Generic Key, Adaptive Thinking)",
+        description="Generic Opus reasoning key updated to Claude Opus 4.8 adaptive thinking at provider defaults.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.5": _preset(

@@ -2,18 +2,22 @@
 id: EP-20260715-001/MS003
 execplan_id: EP-20260715-001
 ms: 3
-title: "Add Claude Sonnet 5 and Fable 5 safely"
-status: planned
+title: Add Claude Sonnet 5 and Fable 5 safely
+status: completed
 domain: backend
-owner: "@codex"
+owner: '@codex'
 created: 2026-07-15
-updated: 2026-07-15
-tags: [anthropic, sonnet-5, fable-5, safety]
+updated: '2026-07-15'
+tags:
+- anthropic
+- sonnet-5
+- fable-5
+- safety
 risk: high
 links:
-  issue: ""
-  docs: "https://platform.claude.com/docs/en/about-claude/models/overview"
-  pr: ""
+  issue: ''
+  docs: https://platform.claude.com/docs/en/about-claude/models/overview
+  pr: ''
 ---
 
 # Add Claude Sonnet 5 and Fable 5 safely
@@ -26,15 +30,15 @@ Add direct Anthropic API support for Claude Sonnet 5 and Claude Fable 5 without 
 
 ## Definition of Done
 
-- [ ] `claude-sonnet-5` and `claude-fable-5` have canonical model configs and presets with 1,000,000-token context metadata.
-- [ ] Sonnet 5 uses adaptive thinking when enabled/dynamic and sends an explicit disabled-thinking payload when `ReasoningMode.DISABLED` is selected.
-- [ ] Fable 5 always uses adaptive thinking; no disabled-thinking preset exists, and a programmatic disabled configuration fails before network I/O with an actionable message.
-- [ ] Sonnet 5 and Fable 5 expose only their documented effort values through `max`, and neither sends a fixed manual `budget_tokens` payload.
-- [ ] Both families participate in Anthropic structured JSON output where the existing phase schema system requests it.
-- [ ] A response with `stop_reason="refusal"` becomes an explicit error result or typed error path, including a safe stop-detail summary when available, rather than `findings=None` success.
-- [ ] Generic Claude Opus presets stop selecting Opus 4.1 before its 2026-08-05 retirement and resolve to Opus 4.8; compatibility is covered by tests and descriptions.
-- [ ] Fable's 30-day retention and zero-data-retention incompatibility are documented for operators.
-- [ ] Focused Anthropic, structured-output, model-override, import, Ruff, and Pyright validation passes.
+- [x] `claude-sonnet-5` and `claude-fable-5` have canonical model configs and presets with 1,000,000-token context metadata.
+- [x] Sonnet 5 uses adaptive thinking when enabled/dynamic and sends an explicit disabled-thinking payload when `ReasoningMode.DISABLED` is selected.
+- [x] Fable 5 always uses adaptive thinking; no disabled-thinking preset exists, and a programmatic disabled configuration fails before network I/O with an actionable message.
+- [x] Sonnet 5 and Fable 5 expose only their documented effort values through `max`, and neither sends a fixed manual `budget_tokens` payload.
+- [x] Both families participate in Anthropic structured JSON output where the existing phase schema system requests it.
+- [x] A response with `stop_reason="refusal"` becomes an explicit error result or typed error path, including a safe stop-detail summary when available, rather than `findings=None` success.
+- [x] Generic Claude Opus presets stop selecting Opus 4.1 before its 2026-08-05 retirement and resolve to Opus 4.8; compatibility is covered by tests and descriptions.
+- [x] Fable's 30-day retention and zero-data-retention incompatibility are documented for operators.
+- [x] Focused Anthropic, structured-output, model-override, import, Ruff, and Pyright validation passes.
 
 ## Scope
 
@@ -61,15 +65,15 @@ Add direct Anthropic API support for Claude Sonnet 5 and Claude Fable 5 without 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Architecture/design | Good foundation | Capability profiles already centralize newer Claude family differences. |
-| Implementation | Stale | Direct catalog ends at Sonnet 4.6 and Opus 4.8; Fable/Sonnet 5 absent. |
-| Safety handling | Gap | Response parser ignores `stop_reason` and `stop_details`. |
-| Lifecycle | Urgent | Generic Opus config still points at Opus 4.1, retiring August 5. |
+| Implementation | Complete | Sonnet 5 and Fable 5 use explicit capability policies and valid preset sets. |
+| Safety handling | Complete | Standard and streaming refusal metadata reaches a typed error boundary. |
+| Lifecycle | Current | Generic Opus now resolves to Opus 4.8, and Fable retention limits are documented. |
 
 ## Architecture / Design Snapshot
 
 Replace ambiguous thinking booleans with an explicit policy. A practical representation is a small provider-local enum or literal with three states: legacy/manual-or-omitted, adaptive-with-explicit-disable, and always-adaptive. Keep `supports_manual_thinking` only if older callers need it, but derive behavior from one coherent profile rather than contradictory flags.
 
-For an adaptive-with-explicit-disable family, `DYNAMIC` and `ENABLED` both send `{"type": "adaptive"}`, while `DISABLED` sends `{"type": "disabled"}`. For always-adaptive Fable, `DYNAMIC` and `ENABLED` send adaptive and `DISABLED` raises `ValueError` before dispatch. Older Claude families retain their proven wire shapes.
+For an adaptive-with-explicit-disable family, `DYNAMIC` and `ENABLED` both send `{"type": "adaptive"}`, while `DISABLED` sends `{"type": "disabled"}`. For always-adaptive Fable, `DYNAMIC` and `ENABLED` omit `thinking` because the provider documents omission as the canonical always-adaptive request shape, while `DISABLED` raises `ValueError` before dispatch. Older Claude families retain their proven wire shapes.
 
 Add a provider-specific refusal error type if that keeps parsing and orchestration clean. The parser should inspect top-level `stop_reason` before returning `ParsedResponse`. The existing architect may convert the typed exception to its normal `{"agent": ..., "error": ...}` result boundary, but it must never report an empty successful finding. Streaming must inspect the SDK's final message/event and raise the same semantic error when possible.
 
@@ -79,28 +83,28 @@ Add a provider-specific refusal error type if that keeps parsing and orchestrati
 
 | ID | Area | Description | Status |
 | --- | --- | --- | --- |
-| A1 | Models | Add Sonnet 5 and Fable 5 configs and exact 1M limits. | Planned |
-| A2 | Capabilities | Encode adaptive default, disable support, efforts, and structured output. | Planned |
-| A3 | Presets | Add valid variants and deliberately omit Fable non-thinking. | Planned |
-| A4 | Lifecycle | Move generic Opus keys to Opus 4.8 and update labels. | Planned |
+| A1 | Models | Add Sonnet 5 and Fable 5 configs and exact 1M limits. | Complete |
+| A2 | Capabilities | Encode adaptive default, disable support, efforts, and structured output. | Complete |
+| A3 | Presets | Add valid variants and deliberately omit Fable non-thinking. | Complete |
+| A4 | Lifecycle | Move generic Opus keys to Opus 4.8 and update labels. | Complete |
 
 ### Workstream B - Request and response safety
 
 | ID | Area | Description | Status |
 | --- | --- | --- | --- |
-| B1 | Request | Emit adaptive or explicit disabled thinking from policy. | Planned |
-| B2 | Validation | Reject Fable disabled and all unsupported effort combinations. | Planned |
-| B3 | Parsing | Detect refusal stop reasons and safe detail fields. | Planned |
-| B4 | Streaming | Prevent streaming refusals from appearing as successful completion. | Planned |
+| B1 | Request | Emit adaptive or explicit disabled thinking from policy. | Complete |
+| B2 | Validation | Reject Fable disabled and all unsupported effort combinations. | Complete |
+| B3 | Parsing | Detect refusal stop reasons and safe detail fields. | Complete |
+| B4 | Streaming | Prevent streaming refusals from appearing as successful completion. | Complete |
 
 ### Workstream C - Evidence and guidance
 
 | ID | Area | Description | Status |
 | --- | --- | --- | --- |
-| C1 | Unit tests | Cover every new thinking, effort, refusal, and structured path. | Planned |
-| C2 | Regression | Prove older Claude family payloads remain stable. | Planned |
-| C3 | Docs | Record retention, ZDR, model choice, and Opus migration. | Planned |
-| C4 | Quality | Run focused pytest, Ruff, Pyright, and import smoke. | Planned |
+| C1 | Unit tests | Cover every new thinking, effort, refusal, and structured path. | Complete |
+| C2 | Regression | Prove older Claude family payloads remain stable. | Complete |
+| C3 | Docs | Record retention, ZDR, model choice, and Opus migration. | Complete |
+| C4 | Quality | Run focused pytest, Ruff, Pyright, and import smoke. | Complete |
 
 ## Dependencies
 
@@ -131,6 +135,15 @@ Run from the repository root:
 
 Green means request tests prove adaptive, explicit disabled, fixed-budget rejection, supported efforts, structured output, and preflight Fable rejection; parser tests prove refusal handling for object and dict fixtures; and all older-family regressions pass. Optional live requests remain explicitly gated and Fable availability failures under ZDR are reported as expected availability constraints.
 
+Validation evidence recorded on 2026-07-15:
+
+- Focused Anthropic, structured-output, model-override, context-limit, and Claude Code regression suite: `163 passed in 1.52s`.
+- Repository-wide pytest: `773 passed, 7 skipped, 31 subtests passed in 7.77s`; the four warnings are pre-existing `pathspec` deprecations.
+- Repository-wide Ruff: `All checks passed!`.
+- Repository-wide Pyright: `0 errors, 0 warnings, 0 informations`.
+- Import smoke exited zero.
+- Exact request tests cover Sonnet explicit disable, adaptive efforts through max, Fable thinking omission and disabled-mode rejection, older Claude payloads, structured output, and both object and dictionary refusal metadata.
+
 ## Rollout / Ops Notes
 
 The direct model additions are additive. The generic Opus key advances in place to avoid retirement failure. Operators must be told that Fable can incur adaptive-thinking cost on every request, is not compatible with ZDR, and may refuse safety-classified work without automatic fallback in this direct API path. Rollback may restore the old generic Opus mapping only before August 5; afterward fix forward to an active Opus model.
@@ -139,3 +152,7 @@ The direct model additions are additive. The generic Opus key advances in place 
 
 - 2026-07-15 — Created milestone scaffold.
 - 2026-07-15 — Added direct Claude 5 capability policy, refusal contract, Opus retirement migration, retention guidance, and verification criteria.
+- 2026-07-15 — Marked the milestone in progress after MS002 was validated, archived, and committed.
+- 2026-07-15 — Updated the Fable request design to omit `thinking` for normal requests after official guidance confirmed omission is the canonical always-adaptive wire shape; disabled thinking remains a preflight error.
+- 2026-07-15 — Added Sonnet 5 and Fable 5 configs, capability-driven thinking policies, supported effort presets, exact context metadata, refusal handling, Opus 4.8 migration, and operator lifecycle guidance.
+- 2026-07-15 — Completed focused and repository-wide validation and marked the milestone complete for archival.

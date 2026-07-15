@@ -8,6 +8,9 @@ from .agent_config import AgentConfig
 from .models import (
     # Predefined model configurations
     CLAUDE_BASIC,
+    CLAUDE_FABLE_5,
+    CLAUDE_SONNET_5,
+    CLAUDE_SONNET_5_WITH_REASONING,
     CLAUDE_WITH_REASONING,
     DEEPSEEK_CHAT,
     DEEPSEEK_REASONER,
@@ -40,6 +43,9 @@ from .models import (
 __all__ = [
     "AgentConfig",
     "CLAUDE_BASIC",
+    "CLAUDE_FABLE_5",
+    "CLAUDE_SONNET_5",
+    "CLAUDE_SONNET_5_WITH_REASONING",
     "CLAUDE_WITH_REASONING",
     "DEEPSEEK_CHAT",
     "DEEPSEEK_REASONER",

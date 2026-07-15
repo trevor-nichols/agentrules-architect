@@ -9,8 +9,18 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from enum import Enum
 
 from agentrules.core.types.models import AnthropicEffort
+
+
+class ThinkingPolicy(Enum):
+    """Provider-native thinking behavior for a Claude model family."""
+
+    LEGACY = "legacy"
+    ADAPTIVE_OPT_IN = "adaptive_opt_in"
+    ADAPTIVE_DEFAULT = "adaptive_default"
+    ALWAYS_ADAPTIVE = "always_adaptive"
 
 
 @dataclass(frozen=True)
@@ -23,6 +33,7 @@ class CapabilityProfile:
     supports_adaptive_thinking: bool = False
     supports_manual_thinking: bool = True
     supported_effort_levels: frozenset[AnthropicEffort] = frozenset()
+    thinking_policy: ThinkingPolicy = ThinkingPolicy.LEGACY
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -35,6 +46,24 @@ _DEFAULT_PROFILE = CapabilityProfile(
 )
 
 _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
+    CapabilityProfile(
+        family_prefix="claude-fable-5",
+        display_name="Claude Fable 5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
+    ),
+    CapabilityProfile(
+        family_prefix="claude-sonnet-5",
+        display_name="Claude Sonnet 5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        thinking_policy=ThinkingPolicy.ADAPTIVE_DEFAULT,
+    ),
     CapabilityProfile(
         family_prefix="claude-sonnet-4-6",
         display_name="Claude Sonnet 4.6",
@@ -59,6 +88,7 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         supports_adaptive_thinking=True,
         supports_manual_thinking=False,
         supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        thinking_policy=ThinkingPolicy.ADAPTIVE_OPT_IN,
     ),
     CapabilityProfile(
         family_prefix="claude-opus-4-7",
@@ -67,6 +97,7 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         supports_adaptive_thinking=True,
         supports_manual_thinking=False,
         supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        thinking_policy=ThinkingPolicy.ADAPTIVE_OPT_IN,
     ),
     CapabilityProfile(
         family_prefix="claude-opus-4-6",
@@ -107,6 +138,12 @@ def supports_manual_thinking(model_name: str) -> bool:
     """Return True when the model accepts thinking.type='enabled' with budget_tokens."""
 
     return resolve_capability_profile(model_name).supports_manual_thinking
+
+
+def thinking_policy(model_name: str) -> ThinkingPolicy:
+    """Return the model family's explicit thinking policy."""
+
+    return resolve_capability_profile(model_name).thinking_policy
 
 
 def supported_effort_levels(model_name: str) -> frozenset[AnthropicEffort]:

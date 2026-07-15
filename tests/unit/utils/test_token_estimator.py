@@ -175,6 +175,20 @@ def test_apply_model_limits_gpt56_uses_official_context(config):
 @pytest.mark.parametrize(
     "config",
     [
+        agents_config.CLAUDE_SONNET_5,
+        agents_config.CLAUDE_SONNET_5_WITH_REASONING,
+        agents_config.CLAUDE_FABLE_5,
+    ],
+)
+def test_apply_model_limits_claude5_uses_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "anthropic_api"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
         agents_config.DEEPSEEK_V4_FLASH,
         agents_config.DEEPSEEK_V4_FLASH_NON_REASONING,
         agents_config.DEEPSEEK_V4_PRO,

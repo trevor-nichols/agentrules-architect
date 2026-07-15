@@ -22,7 +22,7 @@ from agentrules.core.utils.token_estimator import compute_effective_limits, esti
 from .client import execute_message_request, execute_message_stream, get_client
 from .prompting import default_prompt_template, format_prompt
 from .request_builder import PreparedRequest, prepare_request
-from .response_parser import parse_response
+from .response_parser import parse_response, raise_for_refusal
 from .tooling import resolve_tool_config
 
 logger = logging.getLogger("project_extractor")
@@ -443,6 +443,7 @@ class AnthropicArchitect(BaseArchitect):
 
                 if event_type == "message_delta":
                     delta_event = getattr(event, "delta", None)
+                    raise_for_refusal(delta_event)
                     usage = getattr(delta_event, "usage", None)
                     if usage:
                         yield StreamChunk(
@@ -458,6 +459,7 @@ class AnthropicArchitect(BaseArchitect):
 
                 if event_type == "message_stop":
                     final = getattr(event, "message", None) or stream.get_final_message()
+                    raise_for_refusal(final)
                     usage = getattr(final, "usage", None)
                     stop_reason = getattr(final, "stop_reason", None)
                     yield StreamChunk(

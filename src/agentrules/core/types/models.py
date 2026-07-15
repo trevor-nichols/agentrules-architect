@@ -64,6 +64,27 @@ CLAUDE_SONNET_46_WITH_REASONING = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+CLAUDE_SONNET_5 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-sonnet-5",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_SONNET_5_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-sonnet-5",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_FABLE_5 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-fable-5",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
 CLAUDE_HAIKU = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
     model_name="claude-haiku-4-5",
@@ -80,15 +101,15 @@ CLAUDE_HAIKU_WITH_REASONING = ModelConfig(
 
 CLAUDE_OPUS = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-1",
+    model_name="claude-opus-4-8",
     reasoning=ReasoningMode.DISABLED,
     tools_config={"enabled": False, "tools": None}
 )
 
 CLAUDE_OPUS_WITH_REASONING = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-1",
-    reasoning=ReasoningMode.ENABLED,
+    model_name="claude-opus-4-8",
+    reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None}
 )
 

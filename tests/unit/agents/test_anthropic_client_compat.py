@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
+
+import pytest
 
 from agentrules.core.agents.anthropic.architect import AnthropicArchitect
 from agentrules.core.agents.anthropic.client import execute_message_request, execute_message_stream, set_client
 from agentrules.core.agents.anthropic.request_builder import PreparedRequest
+from agentrules.core.agents.anthropic.response_parser import AnthropicRefusalError
 from agentrules.core.agents.base import ReasoningMode
 
 
@@ -127,5 +131,55 @@ def test_anthropic_architect_stream_does_not_pass_output_config_kwarg() -> None:
         assert "output_config" not in kwargs
         assert kwargs.get("extra_body") == {"output_config": {"effort": "low"}}
         assert "stream" not in kwargs
+    finally:
+        set_client(None)
+
+
+def test_anthropic_stream_raises_for_refusal_message_delta() -> None:
+    refusal_event = SimpleNamespace(
+        type="message_delta",
+        delta=SimpleNamespace(
+            stop_reason="refusal",
+            stop_details=SimpleNamespace(
+                category="cyber",
+                explanation="Request declined.",
+            ),
+            usage=None,
+        ),
+    )
+
+    class FakeStream:
+        def __enter__(self):  # type: ignore[no-untyped-def]
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # type: ignore[no-untyped-def]
+            return None
+
+        def __iter__(self):  # type: ignore[no-untyped-def]
+            return iter((refusal_event,))
+
+        def get_final_message(self):  # pragma: no cover
+            raise AssertionError("not used in this test")
+
+    class FakeMessages:
+        def stream(self, **_kwargs):  # type: ignore[no-untyped-def]
+            return FakeStream()
+
+    class FakeClient:
+        messages = FakeMessages()
+
+    set_client(FakeClient())
+    try:
+        arch = AnthropicArchitect(model_name="claude-fable-5", reasoning=ReasoningMode.DYNAMIC)
+        prepared = PreparedRequest(
+            payload={
+                "model": "claude-fable-5",
+                "max_tokens": 1,
+                "messages": [{"role": "user", "content": "hi"}],
+            }
+        )
+
+        with pytest.raises(AnthropicRefusalError, match="category: cyber"):
+            list(arch._stream_messages(prepared))
     finally:
         set_client(None)

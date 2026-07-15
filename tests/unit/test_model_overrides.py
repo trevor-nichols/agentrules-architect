@@ -661,6 +661,41 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("claude-opus-4.8", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.8-reasoning-max", self.agents_module.MODEL_PRESETS)
 
+    def test_anthropic_registry_includes_claude5_presets_without_fable_disabled(self) -> None:
+        sonnet_keys = {
+            "claude-sonnet-5",
+            "claude-sonnet-5-reasoning-low",
+            "claude-sonnet-5-reasoning-medium",
+            "claude-sonnet-5-reasoning-high",
+            "claude-sonnet-5-reasoning-xhigh",
+            "claude-sonnet-5-reasoning-max",
+        }
+        fable_keys = {
+            "claude-fable-5-reasoning-low",
+            "claude-fable-5-reasoning-medium",
+            "claude-fable-5-reasoning-high",
+            "claude-fable-5-reasoning-xhigh",
+            "claude-fable-5-reasoning-max",
+        }
+
+        self.assertTrue(sonnet_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertTrue(fable_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertFalse(
+            any(
+                key.startswith("claude-fable-5") and "non-reasoning" in key
+                for key in self.agents_module.MODEL_PRESETS
+            )
+        )
+
+    def test_generic_opus_presets_use_opus48_semantics(self) -> None:
+        basic = self.agents_module.MODEL_PRESETS["claude-opus"]["config"]
+        reasoning = self.agents_module.MODEL_PRESETS["claude-opus-reasoning"]["config"]
+
+        self.assertEqual(basic.model_name, "claude-opus-4-8")
+        self.assertEqual(basic.reasoning, ReasoningMode.DISABLED)
+        self.assertEqual(reasoning.model_name, "claude-opus-4-8")
+        self.assertEqual(reasoning.reasoning, ReasoningMode.DYNAMIC)
+
     def test_xai_registry_includes_new_grok41_fast_presets(self) -> None:
         self.assertIn("grok-4-1-fast-reasoning", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4-1-fast-non-reasoning", self.agents_module.MODEL_PRESETS)

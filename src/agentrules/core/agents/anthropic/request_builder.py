@@ -8,8 +8,10 @@ from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.types.models import AnthropicEffort
 
 from .capabilities import (
+    ThinkingPolicy,
     describe_profiles_with_adaptive_thinking,
     describe_profiles_with_effort,
+    resolve_capability_profile,
     supported_effort_levels,
     supports_adaptive_thinking,
     supports_manual_thinking,
@@ -71,6 +73,25 @@ def prepare_request(
 
 
 def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dict[str, Any] | None:
+    profile = resolve_capability_profile(model_name)
+
+    if profile.thinking_policy == ThinkingPolicy.ALWAYS_ADAPTIVE:
+        if reasoning == ReasoningMode.DISABLED:
+            raise ValueError(
+                f"Model '{model_name}' always uses adaptive thinking and does not support "
+                "ReasoningMode.DISABLED. Select a valid effort level instead."
+            )
+        # Adaptive thinking is automatic for this policy. Omitting the field is
+        # the provider-recommended request shape.
+        return None
+
+    if profile.thinking_policy == ThinkingPolicy.ADAPTIVE_DEFAULT:
+        if reasoning == ReasoningMode.DISABLED:
+            return {"type": "disabled"}
+        if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
+            return {"type": "adaptive"}
+        return None
+
     if reasoning == ReasoningMode.ENABLED:
         if supports_manual_thinking(model_name):
             return {"type": "enabled", "budget_tokens": DEFAULT_THINKING_BUDGET}
