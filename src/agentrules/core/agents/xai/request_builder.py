@@ -73,7 +73,7 @@ def _map_reasoning_effort(reasoning: ReasoningMode, defaults: ModelDefaults) -> 
         return None
     if reasoning == ReasoningMode.DISABLED:
         return "none"
-    if reasoning == ReasoningMode.XHIGH:
+    if reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
         return ReasoningMode.HIGH.value
     if reasoning in {
         ReasoningMode.MINIMAL,

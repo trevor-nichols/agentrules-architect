@@ -9,6 +9,7 @@ from agentrules.core.agents.base import ReasoningMode
 ApiType = Literal["responses", "chat"]
 
 _GPT5_RESPONSES_REASONING_SUPPORT: tuple[tuple[str, frozenset[str]], ...] = (
+    ("gpt-5.6", frozenset({"none", "low", "medium", "high", "xhigh", "max"})),
     ("gpt-5.5-pro", frozenset()),
     ("gpt-5.5", frozenset({"none", "low", "medium", "high", "xhigh"})),
     ("gpt-5.4-pro", frozenset({"medium", "high", "xhigh"})),
@@ -119,7 +120,7 @@ def _build_responses_reasoning_payload(
     supported_efforts = _resolve_supported_responses_efforts(model_name)
 
     if not supported_efforts:
-        if reasoning == ReasoningMode.XHIGH:
+        if reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
             return {"effort": ReasoningMode.HIGH.value}
         if reasoning in {
             ReasoningMode.MINIMAL,
@@ -166,6 +167,12 @@ def _select_supported_responses_effort(
                 return effort
         return None
 
+    if reasoning == ReasoningMode.MAX:
+        for effort in ("max", "xhigh", "high"):
+            if effort in supported_efforts:
+                return effort
+        return None
+
     if reasoning == ReasoningMode.XHIGH:
         for effort in ("xhigh", "high"):
             if effort in supported_efforts:
@@ -207,8 +214,14 @@ def _build_chat_reasoning_params(
         effort = "high"
     elif reasoning == ReasoningMode.MINIMAL:
         effort = ReasoningMode.LOW.value
-    elif reasoning in {ReasoningMode.LOW, ReasoningMode.MEDIUM, ReasoningMode.HIGH, ReasoningMode.XHIGH}:
-        if reasoning == ReasoningMode.XHIGH:
+    elif reasoning in {
+        ReasoningMode.LOW,
+        ReasoningMode.MEDIUM,
+        ReasoningMode.HIGH,
+        ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
+    }:
+        if reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
             effort = ReasoningMode.HIGH.value
         else:
             effort = reasoning.value

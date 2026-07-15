@@ -35,12 +35,14 @@ class ReasoningMode(Enum):
     DISABLED = "disabled"
     DYNAMIC = "dynamic"
 
-    # OpenAI-specific reasoning effort levels (for o3, o4-mini, gpt-5.1)
+    # Provider reasoning effort levels. Individual adapters validate or
+    # normalize values against each model's supported effort set.
     MINIMAL = "minimal"
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     XHIGH = "xhigh"
+    MAX = "max"
 
     # For temperature-based models like gpt-4.1, use TEMPERATURE mode
     # and specify the actual temperature value separately

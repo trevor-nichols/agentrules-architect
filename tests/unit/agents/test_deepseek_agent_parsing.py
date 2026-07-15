@@ -19,7 +19,12 @@ class _DeepSeekFakeChatAPI:
 
 class _DeepSeekFakeClient:
     def __init__(self):
-        self.chat = type("C", (), {"completions": _DeepSeekFakeChatAPI()})()
+        self.chat = _DeepSeekFakeChat()
+
+
+class _DeepSeekFakeChat:
+    def __init__(self):
+        self.completions = _DeepSeekFakeChatAPI()
 
 
 class DeepSeekArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
@@ -35,7 +40,10 @@ class DeepSeekArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         res = await arch.analyze({"ctx": 1})
         self.assertEqual(res.get("findings"), "final")
         self.assertEqual(res.get("reasoning"), "chain of thought")
-        self.assertEqual(self.fake_client.chat.completions.last_params["model"], "deepseek-v4-flash")
+        params = self.fake_client.chat.completions.last_params
+        self.assertIsNotNone(params)
+        assert params is not None
+        self.assertEqual(params["model"], "deepseek-v4-flash")
 
     async def test_v4_thinking_includes_reasoning_content(self):
         arch = DeepSeekArchitect(model_name="deepseek-v4-pro")
@@ -43,8 +51,11 @@ class DeepSeekArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         res = await arch.analyze({"ctx": 1})
         self.assertEqual(res.get("findings"), "final")
         self.assertEqual(res.get("reasoning"), "chain of thought")
+        params = self.fake_client.chat.completions.last_params
+        self.assertIsNotNone(params)
+        assert params is not None
         self.assertEqual(
-            self.fake_client.chat.completions.last_params["extra_body"],
+            params["extra_body"],
             {"thinking": {"type": "enabled"}},
         )
 

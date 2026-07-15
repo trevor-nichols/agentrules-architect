@@ -515,6 +515,68 @@ GPT5_5_XHIGH = _gpt5_responses_model(
     text_verbosity="high",
 )
 
+# GPT-5.6 configurations. Direct-provider presets use explicit tier IDs rather
+# than the moving gpt-5.6 alias so behavior and billing remain auditable.
+GPT5_6_SOL_NONE = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.DISABLED,
+    text_verbosity="low",
+)
+
+GPT5_6_SOL_LOW = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_6_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_6_SOL_HIGH = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_6_SOL_XHIGH = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.XHIGH,
+    text_verbosity="high",
+)
+
+GPT5_6_SOL_MAX = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.MAX,
+    text_verbosity="high",
+)
+
+GPT5_6_TERRA_DEFAULT = _gpt5_responses_model(
+    "gpt-5.6-terra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_6_TERRA_HIGH = _gpt5_responses_model(
+    "gpt-5.6-terra",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_6_LUNA_LOW = _gpt5_responses_model(
+    "gpt-5.6-luna",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_6_LUNA_DEFAULT = _gpt5_responses_model(
+    "gpt-5.6-luna",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
 # GPT-5.1 configurations
 GPT5_1_DEFAULT = _gpt5_responses_model(
     "gpt-5.1",

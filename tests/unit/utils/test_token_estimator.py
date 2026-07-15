@@ -161,6 +161,20 @@ def test_apply_model_limits_openai_defaults():
 @pytest.mark.parametrize(
     "config",
     [
+        agents_config.GPT5_6_SOL_DEFAULT,
+        agents_config.GPT5_6_TERRA_DEFAULT,
+        agents_config.GPT5_6_LUNA_DEFAULT,
+    ],
+)
+def test_apply_model_limits_gpt56_uses_official_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_050_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
         agents_config.DEEPSEEK_V4_FLASH,
         agents_config.DEEPSEEK_V4_FLASH_NON_REASONING,
         agents_config.DEEPSEEK_V4_PRO,

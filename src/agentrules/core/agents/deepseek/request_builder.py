@@ -88,6 +88,6 @@ def prepare_request(
 def _resolve_v4_reasoning(reasoning: ReasoningMode) -> tuple[bool, str | None]:
     if reasoning in {ReasoningMode.DISABLED, ReasoningMode.TEMPERATURE}:
         return False, None
-    if reasoning == ReasoningMode.XHIGH:
+    if reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
         return True, "max"
     return True, "high"

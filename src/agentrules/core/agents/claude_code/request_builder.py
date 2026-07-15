@@ -178,6 +178,13 @@ def _resolve_effort(model_name: str, reasoning: ReasoningMode, effort: str | Non
             return "max"
         if "high" in allowed_effort_levels:
             return "high"
+    if reasoning == ReasoningMode.MAX:
+        if "max" in allowed_effort_levels:
+            return "max"
+        if "xhigh" in allowed_effort_levels:
+            return "xhigh"
+        if "high" in allowed_effort_levels:
+            return "high"
     return None
 
 

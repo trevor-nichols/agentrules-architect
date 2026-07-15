@@ -110,6 +110,19 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
         self.assertEqual(prepared.payload["extra_body"], {"thinking": {"type": "enabled"}})
         self.assertEqual(prepared.payload["reasoning_effort"], "max")
 
+    def test_prepare_v4_max_request_maps_to_max_effort(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-pro")
+
+        prepared = prepare_request(
+            model_name="deepseek-v4-pro",
+            content="Analyze this project",
+            reasoning=ReasoningMode.MAX,
+            defaults=defaults,
+            tools=None,
+        )
+
+        self.assertEqual(prepared.payload["reasoning_effort"], "max")
+
     def test_prepare_v4_non_thinking_request_explicitly_disables_thinking(self) -> None:
         defaults = resolve_model_defaults("deepseek-v4-flash")
 

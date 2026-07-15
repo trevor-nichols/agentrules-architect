@@ -141,6 +141,7 @@ def _requested_reasoning_effort(reasoning: ReasoningMode) -> str | None:
         ReasoningMode.MEDIUM,
         ReasoningMode.HIGH,
         ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
     }:
         return reasoning.value
     if reasoning == ReasoningMode.ENABLED:

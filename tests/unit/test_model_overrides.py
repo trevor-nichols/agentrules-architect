@@ -268,9 +268,22 @@ class ModelOverrideTestCase(unittest.TestCase):
             "gemini-3.1-flash-lite-preview",
         )
 
-    def test_default_phase_presets_use_gpt55_default(self) -> None:
+    def test_default_phase_presets_use_gpt56_sol_default(self) -> None:
         self.assertTrue(self.agents_module.MODEL_PRESET_DEFAULTS)
-        self.assertTrue(all(value == "gpt55-default" for value in self.agents_module.MODEL_PRESET_DEFAULTS.values()))
+        self.assertTrue(
+            all(
+                value == "gpt56-sol-default"
+                for value in self.agents_module.MODEL_PRESET_DEFAULTS.values()
+            )
+        )
+
+    def test_explicit_gpt55_preset_remains_unchanged(self) -> None:
+        config = self.model_config.get_model_config_for_preset_key("gpt55-default")
+
+        self.assertIsNotNone(config)
+        assert config is not None
+        self.assertEqual(config.model_name, "gpt-5.5")
+        self.assertEqual(config.reasoning, ReasoningMode.MEDIUM)
 
     def test_apply_user_overrides_accepts_dynamic_codex_runtime_model(self) -> None:
         runtime_model_key = self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview")
@@ -523,6 +536,24 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("gpt54-mini-xhigh", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt54-nano-none", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt54-nano-xhigh", self.agents_module.MODEL_PRESETS)
+
+        gpt56_keys = {
+            "gpt56-sol-none",
+            "gpt56-sol-low",
+            "gpt56-sol-default",
+            "gpt56-sol-high",
+            "gpt56-sol-xhigh",
+            "gpt56-sol-max",
+            "gpt56-terra-default",
+            "gpt56-terra-high",
+            "gpt56-luna-low",
+            "gpt56-luna-default",
+        }
+        self.assertTrue(gpt56_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["gpt56-sol-max"]["config"].reasoning,
+            ReasoningMode.MAX,
+        )
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)

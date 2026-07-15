@@ -19,6 +19,19 @@ def test_prepare_request_sets_reasoning_effort_when_supported() -> None:
     assert payload["reasoning_effort"] == "high"
 
 
+def test_prepare_request_normalizes_max_to_high_for_existing_xai_models() -> None:
+    defaults = resolve_model_defaults("grok-4.3")
+    prepared = prepare_request(
+        model_name="grok-4.3",
+        content="Analyze",
+        reasoning=ReasoningMode.MAX,
+        defaults=defaults,
+        tools=None,
+    )
+
+    assert prepared.payload["reasoning_effort"] == "high"
+
+
 def test_prepare_request_sets_reasoning_effort_for_grok41_when_supported() -> None:
     defaults = resolve_model_defaults("grok-4-1-fast-reasoning")
     prepared = prepare_request(

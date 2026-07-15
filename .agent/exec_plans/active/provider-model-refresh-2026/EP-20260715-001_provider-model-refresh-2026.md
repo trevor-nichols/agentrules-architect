@@ -93,7 +93,8 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
 - [x] (2026-07-15 America/New_York) Drafted the implementation, compatibility, validation, rollout, and recovery strategy for review.
 - [x] (2026-07-15 America/New_York) User approved the full ExecPlan and directed sequential milestone implementation, validation, archival, and commits.
 - [x] (2026-07-15 America/New_York) MS001 completed: DeepSeek V4 migration, compatibility redirects, and focused validation are green.
-- [ ] (2026-07-15 America/New_York) MS002 pending: add the OpenAI GPT-5.6 model family.
+- [x] (2026-07-15 America/New_York) MS002 completed: GPT-5.6 direct presets, max effort, 1.05M context, Sol defaults, and SDK 2.45.0 are validated.
+- [ ] (2026-07-15 America/New_York) MS003 pending: add Claude Sonnet 5 and Fable 5 safely.
 - [ ] Complete MS001 through MS007 in order, keeping this plan and each milestone current.
 - [ ] Complete full validation and record exact evidence.
 - [ ] Mark the ExecPlan done only after every acceptance condition is met.
@@ -116,6 +117,8 @@ Each milestone has a detailed file under `.agent/exec_plans/active/provider-mode
   Evidence: 129 focused OpenAI, Anthropic, Claude Code, Codex, DeepSeek, Gemini, xAI, and model-override tests passed before planning changes.
 - Observation: DeepSeek tool iterations do not replay provider-native assistant messages.
   Evidence: Phase 1 reconstructs each follow-up from `base_context` plus normalized `tool_feedback`; therefore V4 `reasoning_content` is parsed for reporting but is not required as continuation history.
+- Observation: GPT-5.6 support required an SDK floor, not only registry changes.
+  Evidence: OpenAI SDK 2.21.0 typed reasoning efforts only through `xhigh`; SDK 2.45.0 includes `max` and remains compatible with the DeepSeek and xAI regression suites.
 
 ## Decision Log
 

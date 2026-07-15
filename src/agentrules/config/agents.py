@@ -71,6 +71,16 @@ from agentrules.core.types.models import (
     GPT5_5_LOW,
     GPT5_5_NONE,
     GPT5_5_XHIGH,
+    GPT5_6_LUNA_DEFAULT,
+    GPT5_6_LUNA_LOW,
+    GPT5_6_SOL_DEFAULT,
+    GPT5_6_SOL_HIGH,
+    GPT5_6_SOL_LOW,
+    GPT5_6_SOL_MAX,
+    GPT5_6_SOL_NONE,
+    GPT5_6_SOL_XHIGH,
+    GPT5_6_TERRA_DEFAULT,
+    GPT5_6_TERRA_HIGH,
     GPT5_DEFAULT,
     GPT5_HIGH,
     GPT5_MINI,
@@ -185,6 +195,8 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
                 limit = 200_000
             elif "gpt-4.1" in name:
                 limit = 128_000
+            elif name.startswith("gpt-5.6"):
+                limit = 1_050_000
             elif "gpt-5.1" in name or "gpt-5" in name:
                 limit = 400_000
     elif provider == ModelProvider.DEEPSEEK:
@@ -582,6 +594,66 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="GPT-5.5 via Responses API with maximum supported reasoning depth and high verbosity.",
         provider=ModelProvider.OPENAI,
     ),
+    "gpt56-sol-none": _preset(
+        config=GPT5_6_SOL_NONE,
+        label="GPT-5.6 Sol (no reasoning)",
+        description="Flagship GPT-5.6 Sol with reasoning disabled, low verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-sol-low": _preset(
+        config=GPT5_6_SOL_LOW,
+        label="GPT-5.6 Sol (low reasoning)",
+        description="Flagship GPT-5.6 Sol with low reasoning, low verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-sol-default": _preset(
+        config=GPT5_6_SOL_DEFAULT,
+        label="GPT-5.6 Sol (medium reasoning)",
+        description="Default flagship GPT-5.6 Sol with balanced reasoning, verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-sol-high": _preset(
+        config=GPT5_6_SOL_HIGH,
+        label="GPT-5.6 Sol (high reasoning)",
+        description="Flagship GPT-5.6 Sol with high reasoning depth, high verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-sol-xhigh": _preset(
+        config=GPT5_6_SOL_XHIGH,
+        label="GPT-5.6 Sol (xhigh reasoning)",
+        description="Flagship GPT-5.6 Sol with xhigh reasoning, high verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-sol-max": _preset(
+        config=GPT5_6_SOL_MAX,
+        label="GPT-5.6 Sol (max reasoning)",
+        description="Flagship GPT-5.6 Sol at maximum reasoning effort for the hardest quality-first workloads.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-terra-default": _preset(
+        config=GPT5_6_TERRA_DEFAULT,
+        label="GPT-5.6 Terra (medium reasoning)",
+        description="Balanced-cost GPT-5.6 Terra with medium reasoning, medium verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-terra-high": _preset(
+        config=GPT5_6_TERRA_HIGH,
+        label="GPT-5.6 Terra (high reasoning)",
+        description="Balanced-cost GPT-5.6 Terra with high reasoning, high verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-luna-low": _preset(
+        config=GPT5_6_LUNA_LOW,
+        label="GPT-5.6 Luna (low reasoning)",
+        description="High-volume GPT-5.6 Luna with low reasoning, low verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-luna-default": _preset(
+        config=GPT5_6_LUNA_DEFAULT,
+        label="GPT-5.6 Luna (medium reasoning)",
+        description="High-volume GPT-5.6 Luna with balanced reasoning, verbosity, and 1.05M context.",
+        provider=ModelProvider.OPENAI,
+    ),
     "gpt5-minimal": _preset(
         config=GPT5_MINIMAL,
         label="GPT-5 (minimal reasoning)",
@@ -923,13 +995,13 @@ MODEL_PRESETS: dict[str, PresetDefinition] = {
 }
 
 MODEL_PRESET_DEFAULTS: dict[str, str] = {
-    "phase1": "gpt55-default",
-    "phase2": "gpt55-default",
-    "phase3": "gpt55-default",
-    "phase4": "gpt55-default",
-    "phase5": "gpt55-default",
-    "final": "gpt55-default",
-    "researcher": "gpt55-default",
+    "phase1": "gpt56-sol-default",
+    "phase2": "gpt56-sol-default",
+    "phase3": "gpt56-sol-default",
+    "phase4": "gpt56-sol-default",
+    "phase5": "gpt56-sol-default",
+    "final": "gpt56-sol-default",
+    "researcher": "gpt56-sol-default",
 }
 
 
