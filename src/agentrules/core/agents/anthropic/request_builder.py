@@ -18,7 +18,7 @@ from .capabilities import (
     supports_structured_output_format,
 )
 
-DEFAULT_MAX_TOKENS = 20_000
+DEFAULT_NONSTREAMING_MAX_TOKENS = 20_000
 EXTENDED_EFFORT_MAX_TOKENS = 64_000
 DEFAULT_THINKING_BUDGET = 16_000
 _SUPPORTED_EFFORT_LEVELS: set[str] = {"low", "medium", "high", "xhigh", "max"}
@@ -80,7 +80,7 @@ def _resolve_max_tokens(max_tokens: int | None, effort: str | None) -> int:
         return max_tokens
     if effort in _EXTENDED_EFFORT_LEVELS:
         return EXTENDED_EFFORT_MAX_TOKENS
-    return DEFAULT_MAX_TOKENS
+    return DEFAULT_NONSTREAMING_MAX_TOKENS
 
 
 def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dict[str, Any] | None:

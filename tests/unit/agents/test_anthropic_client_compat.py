@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from typing import Any
 
+import httpx
 import pytest
+from anthropic import Anthropic
 
 from agentrules.core.agents.anthropic.architect import AnthropicArchitect
 from agentrules.core.agents.anthropic.client import execute_message_request, execute_message_stream, set_client
-from agentrules.core.agents.anthropic.request_builder import PreparedRequest
+from agentrules.core.agents.anthropic.request_builder import PreparedRequest, prepare_request
 from agentrules.core.agents.anthropic.response_parser import AnthropicRefusalError
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.streaming import StreamEventType
@@ -43,6 +46,63 @@ class _EventClient:
         self.messages = _EventMessages(events)
 
 
+def _message_sse_response(request: httpx.Request) -> httpx.Response:
+    events = (
+        (
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    "id": "msg_test",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "claude-fable-5",
+                    "content": [],
+                    "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 1, "output_tokens": 0},
+                },
+            },
+        ),
+        (
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": {"type": "text", "text": ""},
+            },
+        ),
+        (
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "text_delta", "text": "ok"},
+            },
+        ),
+        ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        (
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                "usage": {"output_tokens": 1},
+            },
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    )
+    body = "".join(
+        f"event: {event_name}\ndata: {json.dumps(event)}\n\n"
+        for event_name, event in events
+    )
+    return httpx.Response(
+        200,
+        request=request,
+        headers={"content-type": "text/event-stream"},
+        content=body,
+    )
+
+
 def test_execute_message_request_moves_output_config_to_extra_body() -> None:
     captured: dict[str, Any] = {}
 
@@ -70,6 +130,43 @@ def test_execute_message_request_moves_output_config_to_extra_body() -> None:
         assert kwargs.get("extra_body") == {"output_config": {"effort": "low"}}
     finally:
         set_client(None)
+
+
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_execute_message_request_streams_extended_effort_budgets(effort: str) -> None:
+    captured_bodies: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_bodies.append(json.loads(request.content))
+        return _message_sse_response(request)
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Anthropic(api_key="test", http_client=http_client)
+    set_client(client)
+    try:
+        prepared = prepare_request(
+            model_name="claude-fable-5",
+            prompt="hi",
+            reasoning=ReasoningMode.DYNAMIC,
+            tools=None,
+            effort=effort,
+        )
+
+        response = execute_message_request(prepared.payload)
+
+        assert response.content[0].text == "ok"
+        assert captured_bodies == [
+            {
+                "max_tokens": 64_000,
+                "messages": [{"role": "user", "content": "hi"}],
+                "model": "claude-fable-5",
+                "stream": True,
+                "output_config": {"effort": effort},
+            }
+        ]
+    finally:
+        set_client(None)
+        client.close()
 
 
 def test_execute_message_stream_moves_output_config_to_extra_body() -> None:
