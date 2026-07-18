@@ -9,6 +9,7 @@ from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.configuration import model_presets
 
 from .models import CodexModelInfo
+from .reasoning import require_runtime_reasoning_effort
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ def resolve_model_selection(
     available_models: Sequence[CodexModelInfo],
     requested_model_name: str,
     requested_reasoning: ReasoningMode,
+    requested_runtime_reasoning_effort: str | None = None,
 ) -> ResolvedCodexModelSelection:
     """Resolve a configured Codex selection using the live runtime model catalog."""
 
@@ -53,7 +55,12 @@ def resolve_model_selection(
             f"Available models: {available}."
         )
 
-    requested_effort = _requested_reasoning_effort(requested_reasoning)
+    if requested_runtime_reasoning_effort is not None:
+        requested_effort = require_runtime_reasoning_effort(
+            requested_runtime_reasoning_effort
+        )
+    else:
+        requested_effort = _requested_reasoning_effort(requested_reasoning)
     if requested_effort is None:
         requested_effort = selected_model.default_reasoning_effort
     supported_efforts = _allowed_reasoning_efforts(selected_model)
@@ -141,6 +148,7 @@ def _requested_reasoning_effort(reasoning: ReasoningMode) -> str | None:
         ReasoningMode.MEDIUM,
         ReasoningMode.HIGH,
         ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
     }:
         return reasoning.value
     if reasoning == ReasoningMode.ENABLED:

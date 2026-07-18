@@ -16,6 +16,18 @@ from agentrules.core.types.tool_config import ToolConfig
 # ====================================================
 
 AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
+CLAUDE_CODE_RUNTIME_DEFAULT_MODEL = "__claude_code_runtime_default__"
+CLAUDE_CODE_RUNTIME_MANAGED_ALIASES = frozenset({"best", "sonnet", "opus", "fable"})
+
+
+def is_claude_code_runtime_managed_model(model_name: str) -> bool:
+    """Return whether Claude Code, rather than AgentRules, owns model resolution."""
+
+    normalized = model_name.strip().lower()
+    return (
+        normalized == CLAUDE_CODE_RUNTIME_DEFAULT_MODEL
+        or normalized in CLAUDE_CODE_RUNTIME_MANAGED_ALIASES
+    )
 
 
 class ModelConfig(NamedTuple):
@@ -30,6 +42,7 @@ class ModelConfig(NamedTuple):
     safety_margin_tokens: int | None = None  # Margin to reserve within the context window
     estimator_family: str | None = None  # Which estimator to use (anthropic_api, gemini_api, tiktoken, heuristic)
     anthropic_effort: AnthropicEffort | None = None  # output_config.effort for Claude families that support it
+    runtime_reasoning_effort: str | None = None  # Runtime-owned effort token for Codex catalog presets
 
 # ====================================================
 # Predefined Model Configurations
@@ -64,6 +77,27 @@ CLAUDE_SONNET_46_WITH_REASONING = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+CLAUDE_SONNET_5 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-sonnet-5",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_SONNET_5_WITH_REASONING = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-sonnet-5",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
+CLAUDE_FABLE_5 = ModelConfig(
+    provider=ModelProvider.ANTHROPIC,
+    model_name="claude-fable-5",
+    reasoning=ReasoningMode.DYNAMIC,
+    tools_config={"enabled": False, "tools": None},
+)
+
 CLAUDE_HAIKU = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
     model_name="claude-haiku-4-5",
@@ -80,15 +114,15 @@ CLAUDE_HAIKU_WITH_REASONING = ModelConfig(
 
 CLAUDE_OPUS = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-1",
+    model_name="claude-opus-4-8",
     reasoning=ReasoningMode.DISABLED,
     tools_config={"enabled": False, "tools": None}
 )
 
 CLAUDE_OPUS_WITH_REASONING = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-1",
-    reasoning=ReasoningMode.ENABLED,
+    model_name="claude-opus-4-8",
+    reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None}
 )
 
@@ -264,22 +298,73 @@ GPT4_1_PRECISE = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# DeepSeek configurations
-DEEPSEEK_REASONER = ModelConfig(
+# DeepSeek V4 configurations. V4 exposes thinking and non-thinking modes on the
+# same model identifier; ReasoningMode selects the wire-level thinking toggle.
+DEEPSEEK_V4_FLASH = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-reasoner",
-    reasoning=ReasoningMode.ENABLED,  # Always enabled for reasoner
-    tools_config={"enabled": False, "tools": None}
+    model_name="deepseek-v4-flash",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
 )
 
-DEEPSEEK_CHAT = ModelConfig(
+DEEPSEEK_V4_FLASH_NON_REASONING = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-chat",
+    model_name="deepseek-v4-flash",
     reasoning=ReasoningMode.DISABLED,
-    tools_config={"enabled": False, "tools": None}
+    tools_config={"enabled": False, "tools": None},
 )
+
+DEEPSEEK_V4_PRO = ModelConfig(
+    provider=ModelProvider.DEEPSEEK,
+    model_name="deepseek-v4-pro",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+DEEPSEEK_V4_PRO_MAX = ModelConfig(
+    provider=ModelProvider.DEEPSEEK,
+    model_name="deepseek-v4-pro",
+    reasoning=ReasoningMode.XHIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+DEEPSEEK_V4_PRO_NON_REASONING = ModelConfig(
+    provider=ModelProvider.DEEPSEEK,
+    model_name="deepseek-v4-pro",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+# Compatibility constants preserve public imports while ensuring callers do not
+# send the retired deepseek-chat/deepseek-reasoner wire identifiers.
+DEEPSEEK_REASONER = DEEPSEEK_V4_FLASH
+DEEPSEEK_CHAT = DEEPSEEK_V4_FLASH_NON_REASONING
 
 # xAI Grok models
+GROK_4_5 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.5",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GROK_4_5_MEDIUM = GROK_4_5._replace(reasoning=ReasoningMode.MEDIUM)
+GROK_4_5_LOW = GROK_4_5._replace(reasoning=ReasoningMode.LOW)
+
+GROK_4_20_REASONING = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.20-0309-reasoning",
+    reasoning=ReasoningMode.ENABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GROK_4_20_NON_REASONING = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.20-0309-non-reasoning",
+    reasoning=ReasoningMode.DISABLED,
+    tools_config={"enabled": False, "tools": None},
+)
+
 GROK_4_3 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4.3",
@@ -486,6 +571,68 @@ GPT5_5_XHIGH = _gpt5_responses_model(
     "gpt-5.5",
     reasoning=ReasoningMode.XHIGH,
     text_verbosity="high",
+)
+
+# GPT-5.6 configurations. Direct-provider presets use explicit tier IDs rather
+# than the moving gpt-5.6 alias so behavior and billing remain auditable.
+GPT5_6_SOL_NONE = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.DISABLED,
+    text_verbosity="low",
+)
+
+GPT5_6_SOL_LOW = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_6_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_6_SOL_HIGH = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_6_SOL_XHIGH = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.XHIGH,
+    text_verbosity="high",
+)
+
+GPT5_6_SOL_MAX = _gpt5_responses_model(
+    "gpt-5.6-sol",
+    reasoning=ReasoningMode.MAX,
+    text_verbosity="high",
+)
+
+GPT5_6_TERRA_DEFAULT = _gpt5_responses_model(
+    "gpt-5.6-terra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
+GPT5_6_TERRA_HIGH = _gpt5_responses_model(
+    "gpt-5.6-terra",
+    reasoning=ReasoningMode.HIGH,
+    text_verbosity="high",
+)
+
+GPT5_6_LUNA_LOW = _gpt5_responses_model(
+    "gpt-5.6-luna",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_6_LUNA_DEFAULT = _gpt5_responses_model(
+    "gpt-5.6-luna",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
 )
 
 # GPT-5.1 configurations

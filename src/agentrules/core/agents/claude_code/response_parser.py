@@ -30,9 +30,14 @@ def parse_response(messages: Sequence[Any]) -> ParsedResponse:
     tool_calls: list[dict[str, Any]] = []
     usage: dict[str, Any] | None = None
     errors: list[str] = []
+    refusal_seen = False
 
     for message in messages:
         message_type = message.__class__.__name__
+
+        if getattr(message, "stop_reason", None) == "refusal" and not refusal_seen:
+            errors.append("Claude Code returned a model refusal; no automatic fallback was assumed.")
+            refusal_seen = True
 
         if message_type == "AssistantMessage":
             assistant_error = getattr(message, "error", None)

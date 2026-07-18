@@ -82,6 +82,20 @@ class OpenAIResponsesTests(unittest.TestCase):
         self.assertEqual(params.get("reasoning"), {"effort": "xhigh"})
         self.assertEqual(params.get("text"), {"verbosity": "high"})
 
+    def test_prepare_request_preserves_max_effort_for_gpt56_sol(self) -> None:
+        architect = OpenAIArchitect(
+            model_name="gpt-5.6-sol",
+            reasoning=ReasoningMode.MAX,
+            text_verbosity="high",
+        )
+        prepared = architect._prepare_request("Verify this migration")
+        params = prepared.payload
+
+        self.assertEqual(prepared.api, "responses")
+        self.assertEqual(params["model"], "gpt-5.6-sol")
+        self.assertEqual(params.get("reasoning"), {"effort": "max"})
+        self.assertEqual(params.get("text"), {"verbosity": "high"})
+
     def test_prepare_request_uses_responses_api_for_gpt54_snapshot(self) -> None:
         architect = OpenAIArchitect(
             model_name="gpt-5.4-2026-03-05",

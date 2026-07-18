@@ -97,6 +97,10 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
 - Tool payloads from ToolManager must be dicts.
 - Providers must accept dicts and convert them to SDK objects only immediately prior to sending requests.
 - For unit tests, provider clients should expose set_client/get_client injection points for test doubles.
+- Model-family behavior must come from explicit immutable capability metadata: accepted reasoning values, thinking policy, context limit, transport, and structured-output/tool compatibility. Reject unsupported combinations before network dispatch instead of silently coercing them.
+- Saved preset keys are public compatibility IDs. When an upstream endpoint retires, preserve the saved key through the centralized deprecation map, resolve it to an active canonical preset, and disclose the redirect in labels and lifecycle documentation.
+- Direct API providers own a reviewed static model registry. Codex and Claude Code own moving runtime defaults and aliases; discover Codex models/efforts from app-server and never hard-code a newly observed Codex model as a static preset.
+- Runtime model gates with a documented minimum version must fail closed when the exact resolved bundled or configured executable cannot be versioned. Do not infer compatibility from a different global executable.
 - Codex is a local runtime provider, not an API-key provider. Persist Codex settings in the dedicated `CLIConfig.codex` section and gate Codex presets on runtime readiness (`codex` executable plus resolved `CODEX_HOME` policy), not on `providers.<name>.api_key`.
 - The Codex app-server transport lives under `src/agentrules/core/agents/codex/`. All CLI and runtime callers must construct launch settings through `ConfigManager.build_codex_launch_config()` so executable resolution and `CODEX_HOME` policy stay centralized.
 - `CodexArchitect` must keep `developer_instructions` request-scoped by passing them through launch-config overrides to a short-lived app-server process, and structured phases must use app-server `outputSchema` rather than prompt-only JSON guidance.

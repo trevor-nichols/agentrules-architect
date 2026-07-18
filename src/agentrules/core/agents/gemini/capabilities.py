@@ -199,7 +199,13 @@ def _choose_level(
             return "low"
         return supported_levels[0] if supported_levels else None
 
-    if reasoning_mode in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC, ReasoningMode.HIGH, ReasoningMode.XHIGH}:
+    if reasoning_mode in {
+        ReasoningMode.ENABLED,
+        ReasoningMode.DYNAMIC,
+        ReasoningMode.HIGH,
+        ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
+    }:
         if "high" in level_set:
             return "high"
         if "medium" in level_set:

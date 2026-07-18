@@ -6,6 +6,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
+from .reasoning import normalize_runtime_reasoning_effort
+
 RequestId = int | str
 CodexAuthMode = Literal["apikey", "chatgpt", "chatgptAuthTokens"] | None
 CodexAccountType = Literal["apiKey", "chatgpt"] | None
@@ -20,7 +22,7 @@ CodexPlanType = Literal[
     "edu",
     "unknown",
 ] | None
-CodexReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None
+CodexReasoningEffort = str | None
 
 
 def _as_mapping(value: object) -> Mapping[str, Any]:
@@ -240,7 +242,7 @@ class CodexModelReasoningOption:
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> CodexModelReasoningOption:
         return cls(
-            reasoning_effort=cast(CodexReasoningEffort, _as_str(payload.get("reasoningEffort"))),
+            reasoning_effort=normalize_runtime_reasoning_effort(payload.get("reasoningEffort")),
             description=_as_str(payload.get("description")),
         )
 
@@ -264,20 +266,24 @@ class CodexModelInfo:
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> CodexModelInfo:
         availability_nux = _as_mapping(payload.get("availabilityNux"))
+        reasoning_options = tuple(
+            option
+            for option in (
+                CodexModelReasoningOption.from_payload(entry)
+                for entry in _iter_mappings(payload.get("supportedReasoningEfforts"))
+            )
+            if option.reasoning_effort is not None
+        )
         return cls(
             id=_as_str(payload.get("id")) or "",
             model=_as_str(payload.get("model")) or _as_str(payload.get("id")) or "",
             display_name=_as_str(payload.get("displayName")) or _as_str(payload.get("id")) or "",
             description=_as_str(payload.get("description")) or "",
             hidden=_as_bool(payload.get("hidden")),
-            default_reasoning_effort=cast(
-                CodexReasoningEffort,
-                _as_str(payload.get("defaultReasoningEffort")),
+            default_reasoning_effort=normalize_runtime_reasoning_effort(
+                payload.get("defaultReasoningEffort")
             ),
-            supported_reasoning_efforts=tuple(
-                CodexModelReasoningOption.from_payload(entry)
-                for entry in _iter_mappings(payload.get("supportedReasoningEfforts"))
-            ),
+            supported_reasoning_efforts=reasoning_options,
             input_modalities=_iter_strings(payload.get("inputModalities"), default=("text", "image")),
             supports_personality=_as_bool(payload.get("supportsPersonality")),
             is_default=_as_bool(payload.get("isDefault")),

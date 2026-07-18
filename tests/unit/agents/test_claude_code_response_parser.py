@@ -12,6 +12,7 @@ def _result_message(
     is_error: bool = False,
     subtype: str = "success",
     errors: list[str] | None = None,
+    stop_reason: str | None = None,
 ) -> ResultMessage:
     return ResultMessage(
         subtype=subtype,
@@ -20,7 +21,7 @@ def _result_message(
         is_error=is_error,
         num_turns=1,
         session_id="session-1",
-        stop_reason=None,
+        stop_reason=stop_reason,
         total_cost_usd=None,
         usage={"input_tokens": 3, "output_tokens": 5},
         result=result,
@@ -121,3 +122,11 @@ def test_parse_response_formats_result_errors() -> None:
     parsed = parse_response((_result_message(is_error=True, subtype="error_during_execution", errors=["boom"]),))
 
     assert parsed.error_message == "boom"
+
+
+def test_parse_response_surfaces_fable_refusal_without_assuming_fallback() -> None:
+    parsed = parse_response((_result_message(stop_reason="refusal"),))
+
+    assert parsed.error_message == (
+        "Claude Code returned a model refusal; no automatic fallback was assumed."
+    )

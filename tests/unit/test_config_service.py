@@ -1,6 +1,7 @@
 import logging
 import os
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -9,11 +10,18 @@ from pathlib import Path
 from unittest.mock import patch
 
 from agentrules.core.configuration.repository import TomlConfigRepository
-from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion, parse_claude_code_version
+from agentrules.core.configuration.services.claude_code import (
+    ClaudeCodeVersion,
+    clear_claude_code_version_probe_cache,
+    minimum_claude_code_version_for_model,
+    parse_claude_code_version,
+    probe_claude_code_executable_version,
+)
 
 
 class ConfigServiceTestCase(unittest.TestCase):
     def setUp(self) -> None:
+        clear_claude_code_version_probe_cache()
         self.temp_dir = tempfile.TemporaryDirectory()
         os.environ["AGENTRULES_CONFIG_DIR"] = self.temp_dir.name
         self._codex_home_backup = os.environ.pop("CODEX_HOME", None)
@@ -39,6 +47,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         self._offline_backup = os.environ.pop("OFFLINE", None)
 
     def tearDown(self) -> None:
+        clear_claude_code_version_probe_cache()
         self.temp_dir.cleanup()
         self.configuration.get_config_manager.cache_clear()
         os.environ.pop("AGENTRULES_CONFIG_DIR", None)
@@ -279,6 +288,171 @@ class ConfigServiceTestCase(unittest.TestCase):
         ):
             self.assertTrue(self.config_manager.is_claude_code_model_supported("claude-opus-4-7"))
             self.assertFalse(self.config_manager.is_claude_code_model_supported("claude-opus-4-8"))
+
+    def test_claude_code_model_minimums_distinguish_aliases_and_full_ids(self) -> None:
+        self.assertEqual(
+            minimum_claude_code_version_for_model("claude-fable-5"),
+            ClaudeCodeVersion(2, 1, 170),
+        )
+        self.assertEqual(
+            minimum_claude_code_version_for_model("claude-sonnet-5"),
+            ClaudeCodeVersion(2, 1, 197),
+        )
+        self.assertEqual(
+            minimum_claude_code_version_for_model("fable"),
+            ClaudeCodeVersion(2, 1, 170),
+        )
+        self.assertIsNone(minimum_claude_code_version_for_model("best"))
+        self.assertIsNone(minimum_claude_code_version_for_model("sonnet"))
+        self.assertIsNone(minimum_claude_code_version_for_model("opus"))
+
+    def test_claude_code_model_support_fails_closed_for_unknown_version(self) -> None:
+        with (
+            patch(
+                "agentrules.core.configuration.services.claude_code.resolve_claude_code_executable",
+                return_value="/usr/local/bin/claude",
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._probe_claude_code_executable_version",
+                return_value=None,
+            ),
+        ):
+            self.assertFalse(self.config_manager.is_claude_code_model_supported("claude-sonnet-5"))
+            error = self.config_manager.claude_code_model_support_error("claude-sonnet-5")
+
+        self.assertIn("could not be verified", error or "")
+
+    def test_claude_code_version_probe_reports_timeout_distinctly(self) -> None:
+        with patch(
+            "agentrules.core.configuration.services.claude_code.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd="claude --version", timeout=0.1),
+        ):
+            probe = probe_claude_code_executable_version("/tmp/timeout-claude", 0.1)
+
+        self.assertIsNone(probe.version)
+        self.assertEqual(probe.error_code, "timeout")
+        self.assertIn("0.1 seconds", probe.error_message or "")
+
+    def test_claude_code_version_probe_retries_after_transient_failure(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["/tmp/claude", "--version"],
+            returncode=0,
+            stdout="2.1.197",
+            stderr="",
+        )
+        with patch(
+            "agentrules.core.configuration.services.claude_code.subprocess.run",
+            side_effect=[
+                subprocess.TimeoutExpired(cmd="claude --version", timeout=0.1),
+                completed,
+            ],
+        ) as run_mock:
+            first_probe = probe_claude_code_executable_version("/tmp/claude", 0.1)
+            second_probe = probe_claude_code_executable_version("/tmp/claude", 0.1)
+
+        self.assertEqual(first_probe.error_code, "timeout")
+        self.assertEqual(second_probe.version, ClaudeCodeVersion(2, 1, 197))
+        self.assertEqual(run_mock.call_count, 2)
+
+    def test_claude_code_version_probe_rechecks_changed_executable(self) -> None:
+        executable = Path(self.temp_dir.name) / "claude"
+        executable.write_text("first", encoding="utf-8")
+        with patch(
+            "agentrules.core.configuration.services.claude_code.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(
+                    args=[str(executable), "--version"],
+                    returncode=0,
+                    stdout="2.1.170",
+                    stderr="",
+                ),
+                subprocess.CompletedProcess(
+                    args=[str(executable), "--version"],
+                    returncode=0,
+                    stdout="2.1.197",
+                    stderr="",
+                ),
+            ],
+        ) as run_mock:
+            first_probe = probe_claude_code_executable_version(str(executable))
+            executable.write_text("second-version", encoding="utf-8")
+            second_probe = probe_claude_code_executable_version(str(executable))
+
+        self.assertEqual(first_probe.version, ClaudeCodeVersion(2, 1, 170))
+        self.assertEqual(second_probe.version, ClaudeCodeVersion(2, 1, 197))
+        self.assertEqual(run_mock.call_count, 2)
+
+    def test_clear_claude_code_version_probe_cache_forces_refresh(self) -> None:
+        completed_probes = [
+            subprocess.CompletedProcess(
+                args=["/tmp/claude", "--version"],
+                returncode=0,
+                stdout=version,
+                stderr="",
+            )
+            for version in ("2.1.170", "2.1.197")
+        ]
+        with patch(
+            "agentrules.core.configuration.services.claude_code.subprocess.run",
+            side_effect=completed_probes,
+        ) as run_mock:
+            first_probe = probe_claude_code_executable_version("/tmp/claude")
+            cached_probe = probe_claude_code_executable_version("/tmp/claude")
+            clear_claude_code_version_probe_cache()
+            refreshed_probe = probe_claude_code_executable_version("/tmp/claude")
+
+        self.assertEqual(first_probe.version, ClaudeCodeVersion(2, 1, 170))
+        self.assertEqual(cached_probe.version, ClaudeCodeVersion(2, 1, 170))
+        self.assertEqual(refreshed_probe.version, ClaudeCodeVersion(2, 1, 197))
+        self.assertEqual(run_mock.call_count, 2)
+
+    def test_claude_code_version_probe_reports_parse_failure_distinctly(self) -> None:
+        with patch(
+            "agentrules.core.configuration.services.claude_code.subprocess.run",
+            return_value=subprocess.CompletedProcess(
+                args=["/tmp/unparseable-claude", "--version"],
+                returncode=0,
+                stdout="Claude Code development build",
+                stderr="",
+            ),
+        ):
+            probe = probe_claude_code_executable_version("/tmp/unparseable-claude")
+
+        self.assertIsNone(probe.version)
+        self.assertEqual(probe.error_code, "parse")
+        self.assertIn("did not contain a semantic version", probe.error_message or "")
+
+    def test_claude_code_runtime_version_probe_uses_sanitized_environment(self) -> None:
+        self.config_manager.set_claude_code_cli_path(sys.executable)
+        completed = subprocess.CompletedProcess(
+            args=[sys.executable, "--version"],
+            returncode=0,
+            stdout="2.1.197",
+            stderr="",
+        )
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "ANTHROPIC_API_KEY": "api-key",
+                    "ANTHROPIC_AUTH_TOKEN": "auth-token",
+                    "CLAUDE_CODE_OAUTH_TOKEN": "oauth-token",
+                },
+                clear=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code.subprocess.run",
+                return_value=completed,
+            ) as run_mock,
+        ):
+            probe = self.config_manager.get_claude_code_runtime_version_probe()
+
+        self.assertIsNotNone(probe)
+        self.assertEqual(probe.version if probe else None, ClaudeCodeVersion(2, 1, 197))
+        child_env = run_mock.call_args.kwargs["env"]
+        self.assertNotIn("ANTHROPIC_API_KEY", child_env)
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", child_env)
+        self.assertEqual(child_env["CLAUDE_CODE_OAUTH_TOKEN"], "oauth-token")
 
     def test_unknown_provider_key_round_trips_through_config_save(self) -> None:
         self.configuration.CONFIG_FILE.write_text(

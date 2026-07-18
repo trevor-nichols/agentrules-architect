@@ -13,6 +13,7 @@
 │   │       └── phase5_consolidation.md
 │   ├── claude-code-runtime.md
 │   ├── codex-runtime.md
+│   ├── provider-model-lifecycle.md
 │   ├── provider-system-prompts.md
 │   └── structured-output-contracts.md
 ├── internal-docs/  # Internal documentation
@@ -111,6 +112,7 @@
 │       │   │   │   ├── models.py  # Dataclasses for Codex protocol types
 │       │   │   │   ├── process.py  # Subprocess manager for Codex app-server
 │       │   │   │   ├── protocol.py  # JSON-RPC protocol encoder/decoder
+│       │   │   │   ├── reasoning.py
 │       │   │   │   ├── request_builder.py  # Request construction for Codex
 │       │   │   │   └── response_parser.py  # Codex turn notifications parser
 │       │   │   ├── deepseek/  # DeepSeek integration
@@ -287,12 +289,11 @@
 │   │   ├── fa_test_input.json  # Mock input data for final analysis
 │   │   ├── run_test.py  # Standalone final analysis runner
 │   │   ├── test_date.py  # Date format testing
-│   │   ├── test_final_analysis.py  # Live tests for final analysis
 │   │   └── test_final_offline.py  # Offline tests for final analysis
 │   ├── live/  # Tests hitting live APIs
 │   │   ├── test_claude_code_live_smoke.py
 │   │   ├── test_codex_live_smoke.py  # Live smoke tests for Codex integration
-│   │   └── test_live_smoke.py  # Live smoke test across multiple providers
+│   │   └── test_provider_model_live_smoke.py
 │   ├── offline/  # Offline pipeline tests
 │   │   ├── __init__.py  # Test package
 │   │   └── test_offline_smoke.py  # Offline pipeline tests using DummyArchitect
@@ -410,6 +411,7 @@
 │   │   ├── test_pipeline_output_writer.py  # Unit tests for full pipeline execution output
 │   │   ├── test_pipeline_snapshot.py  # Unit tests for grabbing project state before pipeline runs
 │   │   ├── test_project_profile.py
+│   │   ├── test_provider_model_compatibility_matrix.py
 │   │   ├── test_release_metadata.py  # Unit tests for the release script
 │   │   ├── test_settings_output_validation.py  # Unit tests for validating custom output filenames
 │   │   ├── test_snapshot_artifact.py  # Unit tests for writing the snapshot

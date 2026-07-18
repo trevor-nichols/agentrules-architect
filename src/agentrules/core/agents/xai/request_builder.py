@@ -55,7 +55,7 @@ def prepare_request(
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
 
-    effort = _map_reasoning_effort(reasoning, defaults)
+    effort = _map_reasoning_effort(reasoning, defaults, model_name=model_name)
     if effort is not None:
         payload["reasoning_effort"] = effort
 
@@ -68,22 +68,47 @@ def prepare_request(
     return PreparedRequest(payload=payload)
 
 
-def _map_reasoning_effort(reasoning: ReasoningMode, defaults: ModelDefaults) -> str | None:
-    if not defaults.reasoning_effort_supported:
+def _map_reasoning_effort(
+    reasoning: ReasoningMode,
+    defaults: ModelDefaults,
+    *,
+    model_name: str,
+) -> str | None:
+    if defaults.fixed_reasoning_mode is not None:
+        if reasoning != defaults.fixed_reasoning_mode:
+            raise ValueError(
+                f"Reasoning mode '{reasoning.value}' is not supported for xAI model '{model_name}'. "
+                f"This model has fixed reasoning mode '{defaults.fixed_reasoning_mode.value}'."
+            )
         return None
+
+    accepted_efforts = defaults.accepted_reasoning_efforts
+    if not accepted_efforts:
+        return None
+
+    effort: str | None
     if reasoning == ReasoningMode.DISABLED:
-        return "none"
-    if reasoning == ReasoningMode.XHIGH:
-        return ReasoningMode.HIGH.value
-    if reasoning in {
+        effort = "none"
+    elif reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
+        effort = ReasoningMode.HIGH.value if defaults.normalize_higher_efforts_to_high else reasoning.value
+    elif reasoning in {
         ReasoningMode.MINIMAL,
         ReasoningMode.LOW,
         ReasoningMode.MEDIUM,
         ReasoningMode.HIGH,
     }:
-        return reasoning.value
+        effort = reasoning.value
+    elif reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
+        effort = defaults.enabled_reasoning_effort
+    else:
+        effort = None
 
-    if reasoning == ReasoningMode.ENABLED:
-        return ReasoningMode.MEDIUM.value
-
-    return None
+    if effort is None:
+        return None
+    if effort not in accepted_efforts:
+        supported = ", ".join(sorted(accepted_efforts))
+        raise ValueError(
+            f"Reasoning mode '{reasoning.value}' is not supported for xAI model '{model_name}'. "
+            f"Accepted reasoning efforts: {supported}."
+        )
+    return effort

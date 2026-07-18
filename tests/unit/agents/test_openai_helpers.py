@@ -23,6 +23,14 @@ class OpenAIConfigTests(unittest.TestCase):
         self.assertTrue(defaults.use_responses_api)
         self.assertIsNone(defaults.default_temperature)
 
+    def test_resolve_defaults_for_gpt56_tiers_and_alias(self) -> None:
+        for model_name in ("gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"):
+            with self.subTest(model_name=model_name):
+                defaults = resolve_model_defaults(model_name)
+                self.assertEqual(defaults.default_reasoning, ReasoningMode.MEDIUM)
+                self.assertTrue(defaults.use_responses_api)
+                self.assertIsNone(defaults.default_temperature)
+
     def test_resolve_defaults_for_gpt51_prefix(self) -> None:
         defaults = resolve_model_defaults("gpt-5.1-large")
         self.assertEqual(defaults.default_reasoning, ReasoningMode.DISABLED)
@@ -198,6 +206,42 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["input"], "Hello gpt-5.5")
         self.assertEqual(payload["reasoning"], {"effort": "xhigh"})
         self.assertEqual(payload["text"], {"verbosity": "high"})
+
+    def test_prepare_request_for_responses_api_gpt56_preserves_every_effort(self) -> None:
+        expected_efforts = {
+            ReasoningMode.DISABLED: "none",
+            ReasoningMode.LOW: "low",
+            ReasoningMode.MEDIUM: "medium",
+            ReasoningMode.HIGH: "high",
+            ReasoningMode.XHIGH: "xhigh",
+            ReasoningMode.MAX: "max",
+        }
+        for model_name in ("gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"):
+            for reasoning, expected_effort in expected_efforts.items():
+                with self.subTest(model_name=model_name, reasoning=reasoning):
+                    prepared = prepare_request(
+                        model_name=model_name,
+                        content="Hello GPT-5.6",
+                        reasoning=reasoning,
+                        temperature=None,
+                        tools=None,
+                        text_verbosity="medium",
+                        use_responses_api=True,
+                    )
+                    self.assertEqual(prepared.payload["reasoning"], {"effort": expected_effort})
+
+    def test_prepare_request_for_gpt55_max_downgrades_to_xhigh(self) -> None:
+        prepared = prepare_request(
+            model_name="gpt-5.5",
+            content="Hello GPT-5.5",
+            reasoning=ReasoningMode.MAX,
+            temperature=None,
+            tools=None,
+            text_verbosity="high",
+            use_responses_api=True,
+        )
+
+        self.assertEqual(prepared.payload["reasoning"], {"effort": "xhigh"})
 
     def test_prepare_request_for_responses_api_gpt55_minimal_downgrades_to_none(self) -> None:
         prepared = prepare_request(

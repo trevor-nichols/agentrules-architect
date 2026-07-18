@@ -9,6 +9,7 @@ from typing import Any
 
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.codex.process import CodexProcessLaunchConfig
+from agentrules.core.agents.codex.reasoning import require_runtime_reasoning_effort
 from agentrules.core.configuration import ConfigManager
 from agentrules.core.utils.structured_outputs import build_codex_output_schema
 
@@ -20,6 +21,7 @@ class PreparedRequest:
     launch_config: CodexProcessLaunchConfig
     requested_model_name: str
     requested_reasoning: ReasoningMode
+    requested_runtime_reasoning_effort: str | None
     thread_params: dict[str, Any]
     turn_params: dict[str, Any]
     token_payload: dict[str, Any]
@@ -34,6 +36,7 @@ def prepare_request(
     reasoning: ReasoningMode,
     phase_name: str | None,
     cwd: str | None = None,
+    runtime_reasoning_effort: str | None = None,
 ) -> PreparedRequest:
     """Build the launch config and thread/turn payloads for one Codex request."""
 
@@ -42,7 +45,12 @@ def prepare_request(
         cwd=normalized_cwd,
         config_overrides={"developer_instructions": system_prompt},
     )
-    effort = _resolve_reasoning_effort(reasoning)
+    normalized_runtime_effort = (
+        require_runtime_reasoning_effort(runtime_reasoning_effort)
+        if runtime_reasoning_effort is not None
+        else None
+    )
+    effort = normalized_runtime_effort or _resolve_reasoning_effort(reasoning)
     output_schema = build_codex_output_schema(phase_name)
 
     thread_params: dict[str, Any] = {
@@ -75,6 +83,7 @@ def prepare_request(
         launch_config=launch_config,
         requested_model_name=model_name,
         requested_reasoning=reasoning,
+        requested_runtime_reasoning_effort=normalized_runtime_effort,
         thread_params=thread_params,
         turn_params=turn_params,
         token_payload=token_payload,
@@ -95,6 +104,7 @@ def _resolve_reasoning_effort(reasoning: ReasoningMode) -> str | None:
         ReasoningMode.MEDIUM,
         ReasoningMode.HIGH,
         ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
     }:
         return reasoning.value
     if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:

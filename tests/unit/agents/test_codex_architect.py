@@ -32,10 +32,12 @@ def _build_architect(
     *,
     model_name: str = "gpt-5.3-codex",
     reasoning: ReasoningMode = ReasoningMode.MEDIUM,
+    runtime_reasoning_effort: str | None = None,
 ) -> CodexArchitect:
     model_config = MODEL_PRESETS["codex-gpt-5.3-codex"]["config"]._replace(
         model_name=model_name,
         reasoning=reasoning,
+        runtime_reasoning_effort=runtime_reasoning_effort,
     )
     return CodexArchitect(
         model_name=model_name,
@@ -63,6 +65,28 @@ def test_factory_creates_codex_architect() -> None:
     )
 
     assert isinstance(architect, CodexArchitect)
+
+
+def test_factory_carries_runtime_reasoning_effort_into_codex_architect() -> None:
+    config = model_presets.get_model_config_for_preset_key(
+        model_presets.make_codex_runtime_preset_key(
+            "gpt-5.6-sol",
+            reasoning_effort="extreme",
+        )
+    )
+    assert config is not None
+
+    architect = ArchitectFactory.create_architect(
+        model_config=config,
+        name="Codex Future Effort Agent",
+        role="analysis",
+        responsibilities=["Review the repository"],
+        prompt_template="{context}",
+        system_prompt="Use concise bullets.",
+    )
+
+    assert isinstance(architect, CodexArchitect)
+    assert architect._runtime_reasoning_effort == "extreme"
 
 
 def test_codex_prepare_request_sets_launch_overrides_and_output_schema(tmp_path: Path) -> None:
@@ -353,6 +377,35 @@ def test_resolve_model_selection_rejects_unsupported_non_default_explicit_effort
         )
 
 
+def test_resolve_model_selection_preserves_safe_runtime_effort() -> None:
+    selection = resolve_model_selection(
+        available_models=(
+            CodexModelInfo(
+                id="gpt-6-codex-preview",
+                model="gpt-6-codex-preview",
+                display_name="GPT-6 Codex Preview",
+                description="Runtime-only model.",
+                hidden=False,
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=(
+                    CodexModelReasoningOption(reasoning_effort="extreme", description="Future effort"),
+                ),
+                input_modalities=("text",),
+                supports_personality=True,
+                is_default=False,
+                upgrade=None,
+                availability_message=None,
+                raw={},
+            ),
+        ),
+        requested_model_name="gpt-6-codex-preview",
+        requested_reasoning=ReasoningMode.DYNAMIC,
+        requested_runtime_reasoning_effort="extreme",
+    )
+
+    assert selection.reasoning_effort == "extreme"
+
+
 @pytest.mark.asyncio
 async def test_codex_analyze_returns_plain_text_findings(tmp_path: Path) -> None:
     architect = _build_architect(tmp_path)
@@ -367,6 +420,24 @@ async def test_codex_analyze_returns_plain_text_findings(tmp_path: Path) -> None
     assert result["agent"] == "Codex Tester"
     assert result["error"] if "error" in result else None is None
     assert "Codex analyzed: Inspect the main module." in result["findings"]
+
+
+@pytest.mark.asyncio
+async def test_codex_analyze_sends_future_runtime_effort_unchanged(tmp_path: Path) -> None:
+    architect = _build_architect(
+        tmp_path,
+        reasoning=ReasoningMode.DYNAMIC,
+        runtime_reasoning_effort="extreme",
+    )
+
+    result = await architect.analyze(
+        {
+            "formatted_prompt": "REPORT_EFFORT",
+            "_codex_cwd": str(tmp_path),
+        }
+    )
+
+    assert result["findings"] == "Codex effort: extreme"
 
 
 @pytest.mark.asyncio

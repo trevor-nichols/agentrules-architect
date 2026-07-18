@@ -24,6 +24,7 @@ def _result_message(
     is_error: bool = False,
     subtype: str = "success",
     errors: list[str] | None = None,
+    stop_reason: str | None = None,
 ) -> ResultMessage:
     return ResultMessage(
         subtype=subtype,
@@ -32,7 +33,7 @@ def _result_message(
         is_error=is_error,
         num_turns=1,
         session_id="session-1",
-        stop_reason=None,
+        stop_reason=stop_reason,
         total_cost_usd=None,
         usage={"input_tokens": 3, "output_tokens": 5},
         result=result,
@@ -208,3 +209,14 @@ async def test_claude_code_analyze_maps_sdk_error_result(tmp_path: Path) -> None
 
     assert result["agent"] == "Claude Code Tester"
     assert "SDK failed" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_claude_code_analyze_maps_model_refusal_to_error(tmp_path: Path) -> None:
+    architect = _build_architect(tmp_path, (_result_message(stop_reason="refusal"),))
+
+    result = await architect.analyze({"formatted_prompt": "Inspect repository architecture."})
+
+    assert result["agent"] == "Claude Code Tester"
+    assert "model refusal" in result["error"]
+    assert "automatic fallback" in result["error"]

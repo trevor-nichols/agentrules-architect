@@ -67,6 +67,22 @@ def test_resolve_structured_output_mode_for_phase_and_provider() -> None:
     assert (
         resolve_structured_output_mode(
             provider=ModelProvider.ANTHROPIC,
+            model_name="claude-sonnet-5",
+            phase="phase2",
+        )
+        == "json_schema"
+    )
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.ANTHROPIC,
+            model_name="claude-fable-5",
+            phase="phase2",
+        )
+        == "json_schema"
+    )
+    assert (
+        resolve_structured_output_mode(
+            provider=ModelProvider.ANTHROPIC,
             model_name="claude-opus-4-1",
             phase="phase2",
         )

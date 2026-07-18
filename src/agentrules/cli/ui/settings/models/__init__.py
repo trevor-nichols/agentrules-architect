@@ -309,8 +309,6 @@ def _filter_claude_code_presets_for_runtime(
     preserved_key: str | None,
 ) -> list[model_presets.PresetInfo]:
     runtime_version = configuration.CONFIG_MANAGER.get_claude_code_runtime_version()
-    if runtime_version is None:
-        return presets
 
     filtered: list[model_presets.PresetInfo] = []
     for preset in presets:
@@ -325,15 +323,20 @@ def _filter_claude_code_presets_for_runtime(
             continue
 
         minimum_version = configuration.CONFIG_MANAGER.minimum_claude_code_version_for_model(model_name)
-        if minimum_version is None or runtime_version >= minimum_version:
+        if minimum_version is None or (runtime_version is not None and runtime_version >= minimum_version):
             filtered.append(preset)
             continue
 
         if preset.key == preserved_key:
+            runtime_note = (
+                f"runtime needs {minimum_version}+"
+                if runtime_version is not None
+                else f"runtime version unverified; needs {minimum_version}+"
+            )
             filtered.append(
                 model_presets.PresetInfo(
                     key=preset.key,
-                    label=f"{preset.label} [current runtime needs {minimum_version}+]",
+                    label=f"{preset.label} [current {runtime_note}]",
                     description=preset.description,
                     provider=preset.provider,
                 )

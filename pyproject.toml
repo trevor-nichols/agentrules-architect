@@ -20,7 +20,7 @@ classifiers = [
 dependencies = [
   "anthropic>=0.78.0",
   "rich",
-  "openai",
+  "openai>=2.45.0",
   "google-genai>=1.51.0",
   "protobuf>=4.25",
   "python-dotenv",
@@ -33,7 +33,7 @@ dependencies = [
   "tomli; python_version < '3.11'",
   "tomli-w",
   "tiktoken>=0.7.0",
-  "claude-agent-sdk>=0.2.88",
+  "claude-agent-sdk>=0.2.119",
 ]
 
 [project.optional-dependencies]

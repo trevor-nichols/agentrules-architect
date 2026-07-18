@@ -5,6 +5,8 @@ from typing import Any
 
 from anthropic import Anthropic
 
+from .request_builder import DEFAULT_NONSTREAMING_MAX_TOKENS
+
 _client: Anthropic | Any | None = None
 
 
@@ -47,13 +49,19 @@ def _coerce_sdk_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     return kwargs
 
 
-def execute_message_request(payload: dict) -> Any:
+def execute_message_request(payload: dict[str, Any]) -> Any:
     """Execute a Claude Messages API call with the provided payload."""
     client = get_client()
-    return client.messages.create(**_coerce_sdk_kwargs(payload))
+    kwargs = _coerce_sdk_kwargs(payload)
+    if kwargs["max_tokens"] > DEFAULT_NONSTREAMING_MAX_TOKENS:
+        # Anthropic rejects long non-streaming requests under the SDK's default
+        # timeout. Accumulate the stream so callers still receive one Message.
+        with client.messages.stream(**kwargs) as stream:
+            return stream.get_final_message()
+    return client.messages.create(**kwargs)
 
 
-def execute_message_stream(payload: dict) -> Any:
+def execute_message_stream(payload: dict[str, Any]) -> Any:
     """Execute a Claude Messages API streaming call with the provided payload."""
     client = get_client()
     return client.messages.stream(**_coerce_sdk_kwargs(payload))

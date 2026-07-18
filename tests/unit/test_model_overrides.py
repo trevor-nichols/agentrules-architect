@@ -5,6 +5,7 @@ from importlib import reload
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types import models as model_types
+from agentrules.core.types.models import CLAUDE_CODE_RUNTIME_DEFAULT_MODEL
 
 
 class ModelOverrideTestCase(unittest.TestCase):
@@ -114,6 +115,47 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.ENABLED)
         self.assertTrue(any("grok-4-fast-non-reasoning" in message for message in captured.output))
         self.assertTrue(any("grok-code-fast" in message for message in captured.output))
+
+    def test_apply_user_overrides_remaps_legacy_deepseek_presets(self) -> None:
+        self.config_manager.set_phase_model("phase3", "deepseek-chat")
+        self.config_manager.set_phase_model("phase4", "deepseek-reasoner")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "deepseek-v4-flash-non-reasoning")
+        self.assertEqual(applied["phase4"], "deepseek-v4-flash")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "deepseek-v4-flash")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.DISABLED)
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "deepseek-v4-flash")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.HIGH)
+        self.assertTrue(any("deepseek-chat" in message for message in captured.output))
+        self.assertTrue(any("deepseek-reasoner" in message for message in captured.output))
+
+    def test_get_configured_presets_preserves_legacy_deepseek_keys(self) -> None:
+        configured = self.model_config.get_configured_presets(
+            {"phase3": "deepseek-chat", "phase4": "deepseek-reasoner"}
+        )
+
+        self.assertEqual(configured["phase3"], "deepseek-chat")
+        self.assertEqual(configured["phase4"], "deepseek-reasoner")
+
+    def test_deepseek_registry_includes_v4_presets_and_legacy_configs_use_v4(self) -> None:
+        expected_keys = {
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-non-reasoning",
+            "deepseek-v4-pro",
+            "deepseek-v4-pro-max",
+            "deepseek-v4-pro-non-reasoning",
+            "deepseek-chat",
+            "deepseek-reasoner",
+        }
+        self.assertTrue(expected_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(self.agents_module.MODEL_PRESETS["deepseek-chat"]["config"].model_name, "deepseek-v4-flash")
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["deepseek-reasoner"]["config"].model_name,
+            "deepseek-v4-flash",
+        )
 
     def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         active = self.model_config.get_active_presets(
@@ -227,9 +269,22 @@ class ModelOverrideTestCase(unittest.TestCase):
             "gemini-3.1-flash-lite-preview",
         )
 
-    def test_default_phase_presets_use_gpt55_default(self) -> None:
+    def test_default_phase_presets_use_gpt56_sol_default(self) -> None:
         self.assertTrue(self.agents_module.MODEL_PRESET_DEFAULTS)
-        self.assertTrue(all(value == "gpt55-default" for value in self.agents_module.MODEL_PRESET_DEFAULTS.values()))
+        self.assertTrue(
+            all(
+                value == "gpt56-sol-default"
+                for value in self.agents_module.MODEL_PRESET_DEFAULTS.values()
+            )
+        )
+
+    def test_explicit_gpt55_preset_remains_unchanged(self) -> None:
+        config = self.model_config.get_model_config_for_preset_key("gpt55-default")
+
+        self.assertIsNotNone(config)
+        assert config is not None
+        self.assertEqual(config.model_name, "gpt-5.5")
+        self.assertEqual(config.reasoning, ReasoningMode.MEDIUM)
 
     def test_apply_user_overrides_accepts_dynamic_codex_runtime_model(self) -> None:
         runtime_model_key = self.model_config.make_codex_runtime_preset_key("gpt-6-codex-preview")
@@ -471,6 +526,63 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(selection.model_name, "gpt-6-codex-preview")
         self.assertEqual(selection.reasoning_effort, "xhigh")
 
+    def test_runtime_codex_catalog_preserves_max_ultra_and_future_efforts_in_order(self) -> None:
+        catalog_entries = [
+            self.model_config.CodexRuntimeModelCatalogEntry(
+                model="gpt-5.6-sol",
+                default_reasoning_effort="medium",
+                supported_reasoning_efforts=tuple(
+                    self.model_config.CodexRuntimeModelReasoningOption(reasoning_effort=effort)
+                    for effort in ("extreme", "ultra", "max", "low")
+                ),
+            )
+        ]
+
+        presets = self.model_config.build_codex_runtime_preset_infos(catalog_entries)
+        efforts = [
+            self.model_config.parse_codex_runtime_reasoning_for_preset_key(preset.key)
+            for preset in presets
+        ]
+
+        self.assertEqual(efforts, ["medium", "low", "max", "ultra", "extreme"])
+
+    def test_runtime_codex_future_effort_survives_preset_config(self) -> None:
+        runtime_key = self.model_config.make_codex_runtime_preset_key(
+            "gpt-5.6-sol",
+            reasoning_effort="extreme",
+        )
+
+        config = self.model_config.get_model_config_for_preset_key(runtime_key)
+
+        self.assertIsNotNone(config)
+        assert config is not None
+        self.assertEqual(config.runtime_reasoning_effort, "extreme")
+
+    def test_runtime_codex_rejects_malformed_effort_tokens(self) -> None:
+        for effort in ("UPPER", "bad effort", "", "a" * 33, "semi;colon"):
+            with self.subTest(effort=effort):
+                with self.assertRaises(ValueError):
+                    self.model_config.make_codex_runtime_preset_key(
+                        "gpt-5.6-sol",
+                        reasoning_effort=effort,
+                    )
+                self.assertIsNone(
+                    self.model_config.parse_codex_runtime_preset_selection(
+                        f"codex-runtime:gpt-5.6-sol|effort={effort}"
+                    )
+                )
+
+    def test_codex_gpt56_models_remain_runtime_discovered(self) -> None:
+        static_codex_model_names = {
+            preset["config"].model_name
+            for preset in self.agents_module.BASE_MODEL_PRESETS.values()
+            if preset["provider"] == ModelProvider.CODEX
+        }
+
+        self.assertFalse(
+            {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} & static_codex_model_names
+        )
+
     def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
         self.assertIn("gpt55-none", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-default", self.agents_module.MODEL_PRESETS)
@@ -482,6 +594,24 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("gpt54-mini-xhigh", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt54-nano-none", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt54-nano-xhigh", self.agents_module.MODEL_PRESETS)
+
+        gpt56_keys = {
+            "gpt56-sol-none",
+            "gpt56-sol-low",
+            "gpt56-sol-default",
+            "gpt56-sol-high",
+            "gpt56-sol-xhigh",
+            "gpt56-sol-max",
+            "gpt56-terra-default",
+            "gpt56-terra-high",
+            "gpt56-luna-low",
+            "gpt56-luna-default",
+        }
+        self.assertTrue(gpt56_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["gpt56-sol-max"]["config"].reasoning,
+            ReasoningMode.MAX,
+        )
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)
@@ -546,6 +676,45 @@ class ModelOverrideTestCase(unittest.TestCase):
             "tiktoken",
         )
 
+    def test_claude_code_registry_includes_moving_aliases_and_claude5_pins(self) -> None:
+        alias_models = {
+            "claude-code-default": CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
+            "claude-code-best": "best",
+            "claude-code-sonnet": "sonnet",
+            "claude-code-opus": "opus",
+            "claude-code-fable": "fable",
+        }
+        for preset_key, model_name in alias_models.items():
+            preset = self.agents_module.MODEL_PRESETS[preset_key]
+            self.assertEqual(preset["provider"], ModelProvider.CLAUDE_CODE)
+            self.assertEqual(preset["config"].model_name, model_name)
+            self.assertIsNone(preset["config"].max_input_tokens)
+            self.assertIn("Moving", preset["label"])
+
+        sonnet_keys = {
+            "claude-code-sonnet-5",
+            "claude-code-sonnet-5-reasoning-low",
+            "claude-code-sonnet-5-reasoning-medium",
+            "claude-code-sonnet-5-reasoning-high",
+            "claude-code-sonnet-5-reasoning-xhigh",
+            "claude-code-sonnet-5-reasoning-max",
+        }
+        fable_keys = {
+            "claude-code-fable-5-reasoning-low",
+            "claude-code-fable-5-reasoning-medium",
+            "claude-code-fable-5-reasoning-high",
+            "claude-code-fable-5-reasoning-xhigh",
+            "claude-code-fable-5-reasoning-max",
+        }
+        self.assertTrue(sonnet_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertTrue(fable_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertFalse(
+            any(
+                key.startswith("claude-code-fable-5") and "non-reasoning" in key
+                for key in self.agents_module.MODEL_PRESETS
+            )
+        )
+
     def test_claude_code_presets_are_gated_by_runtime_availability(self) -> None:
         unavailable = self.model_config.get_available_presets_for_phase(
             "phase3",
@@ -589,6 +758,41 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("claude-opus-4.8", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.8-reasoning-max", self.agents_module.MODEL_PRESETS)
 
+    def test_anthropic_registry_includes_claude5_presets_without_fable_disabled(self) -> None:
+        sonnet_keys = {
+            "claude-sonnet-5",
+            "claude-sonnet-5-reasoning-low",
+            "claude-sonnet-5-reasoning-medium",
+            "claude-sonnet-5-reasoning-high",
+            "claude-sonnet-5-reasoning-xhigh",
+            "claude-sonnet-5-reasoning-max",
+        }
+        fable_keys = {
+            "claude-fable-5-reasoning-low",
+            "claude-fable-5-reasoning-medium",
+            "claude-fable-5-reasoning-high",
+            "claude-fable-5-reasoning-xhigh",
+            "claude-fable-5-reasoning-max",
+        }
+
+        self.assertTrue(sonnet_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertTrue(fable_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertFalse(
+            any(
+                key.startswith("claude-fable-5") and "non-reasoning" in key
+                for key in self.agents_module.MODEL_PRESETS
+            )
+        )
+
+    def test_generic_opus_presets_use_opus48_semantics(self) -> None:
+        basic = self.agents_module.MODEL_PRESETS["claude-opus"]["config"]
+        reasoning = self.agents_module.MODEL_PRESETS["claude-opus-reasoning"]["config"]
+
+        self.assertEqual(basic.model_name, "claude-opus-4-8")
+        self.assertEqual(basic.reasoning, ReasoningMode.DISABLED)
+        self.assertEqual(reasoning.model_name, "claude-opus-4-8")
+        self.assertEqual(reasoning.reasoning, ReasoningMode.DYNAMIC)
+
     def test_xai_registry_includes_new_grok41_fast_presets(self) -> None:
         self.assertIn("grok-4-1-fast-reasoning", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4-1-fast-non-reasoning", self.agents_module.MODEL_PRESETS)
@@ -612,6 +816,32 @@ class ModelOverrideTestCase(unittest.TestCase):
             "grok-build-0.1",
         )
 
+    def test_xai_registry_includes_grok45_and_compatible_grok420_presets(self) -> None:
+        grok45_keys = {
+            "grok-4.5",
+            "grok-4.5-reasoning-medium",
+            "grok-4.5-reasoning-low",
+        }
+        self.assertTrue(grok45_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.5"]["config"].reasoning,
+            ReasoningMode.HIGH,
+        )
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.5"]["config"].max_input_tokens,
+            500_000,
+        )
+
+        reasoning = self.agents_module.MODEL_PRESETS["grok-4.20-reasoning"]
+        non_reasoning = self.agents_module.MODEL_PRESETS["grok-4.20-non-reasoning"]
+        self.assertEqual(reasoning["config"].model_name, "grok-4.20-0309-reasoning")
+        self.assertEqual(non_reasoning["config"].model_name, "grok-4.20-0309-non-reasoning")
+        self.assertEqual(reasoning["config"].max_input_tokens, 1_000_000)
+        self.assertEqual(non_reasoning["config"].max_input_tokens, 1_000_000)
+        self.assertIn("Pinned 0309", reasoning["label"])
+        self.assertIn("Pinned 0309", non_reasoning["label"])
+        self.assertNotIn("grok-4.20-multi-agent", self.agents_module.MODEL_PRESETS)
+
     def test_gemini_registry_includes_current_gemini3_presets(self) -> None:
         self.assertIn("gemini-3.5-flash", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-flash-preview", self.agents_module.MODEL_PRESETS)
@@ -619,3 +849,25 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("gemini-3.1-flash-lite-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3.1-pro-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-pro-preview", self.agents_module.MODEL_PRESETS)
+
+        gemini35 = self.agents_module.MODEL_PRESETS["gemini-3.5-flash"]
+        self.assertEqual(gemini35["config"].model_name, "gemini-3.5-flash")
+        self.assertEqual(gemini35["config"].reasoning, ReasoningMode.MEDIUM)
+        self.assertEqual(gemini35["label"], "Gemini 3.5 Flash")
+
+    def test_gemini_lifecycle_labels_disclose_shutdowns_and_redirects(self) -> None:
+        for key in ("gemini-flash", "gemini-flash-thinking"):
+            preset = self.agents_module.MODEL_PRESETS[key]
+            self.assertIn("2026-10-16", preset["label"])
+            self.assertIn("Gemini 3.5 Flash", preset["description"])
+
+        pro = self.agents_module.MODEL_PRESETS["gemini-pro"]
+        self.assertIn("2026-10-16", pro["label"])
+        self.assertIn("Gemini 3.1 Pro Preview", pro["description"])
+
+        retired_pro = self.agents_module.MODEL_PRESETS["gemini-3-pro-preview"]
+        retired_lite = self.agents_module.MODEL_PRESETS["gemini-3.1-flash-lite-preview"]
+        self.assertIn("Retired", retired_pro["label"])
+        self.assertIn("redirected", retired_pro["description"])
+        self.assertIn("Retired", retired_lite["label"])
+        self.assertIn("redirected", retired_lite["description"])

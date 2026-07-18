@@ -1,5 +1,8 @@
+import pytest
+
 from agentrules.core.agents.anthropic.request_builder import (
     DEFAULT_THINKING_BUDGET,
+    EXTENDED_EFFORT_MAX_TOKENS,
     PreparedRequest,
     prepare_request,
 )
@@ -15,6 +18,7 @@ def test_prepare_request_without_reasoning_skips_thinking() -> None:
     )
 
     assert "thinking" not in prepared.payload
+    assert prepared.payload["max_tokens"] == 20_000
 
 
 def test_prepare_request_sets_top_level_system_prompt() -> None:
@@ -74,6 +78,118 @@ def test_prepare_request_dynamic_reasoning_passthrough_for_sonnet46() -> None:
     )
 
     assert prepared.payload["thinking"] == {"type": "adaptive"}
+
+
+def test_prepare_request_sonnet5_disabled_is_explicit() -> None:
+    prepared = prepare_request(
+        model_name="claude-sonnet-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "disabled"}
+
+
+@pytest.mark.parametrize("reasoning", [ReasoningMode.ENABLED, ReasoningMode.DYNAMIC])
+def test_prepare_request_sonnet5_thinking_uses_adaptive(reasoning: ReasoningMode) -> None:
+    prepared = prepare_request(
+        model_name="claude-sonnet-5",
+        prompt="hello",
+        reasoning=reasoning,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "adaptive"}
+    assert "budget_tokens" not in prepared.payload["thinking"]
+
+
+def test_prepare_request_fable5_uses_always_on_adaptive_default() -> None:
+    prepared = prepare_request(
+        model_name="claude-fable-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort="high",
+    )
+
+    assert "thinking" not in prepared.payload
+    assert prepared.payload["output_config"] == {"effort": "high"}
+
+
+def test_prepare_request_fable5_rejects_disabled_thinking() -> None:
+    with pytest.raises(ValueError, match="always uses adaptive thinking"):
+        prepare_request(
+            model_name="claude-fable-5",
+            prompt="hello",
+            reasoning=ReasoningMode.DISABLED,
+            tools=None,
+        )
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "max"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+def test_prepare_request_claude5_accepts_documented_efforts(
+    model_name: str,
+    effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name=model_name,
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort=effort,
+    )
+
+    assert prepared.payload["output_config"] == {"effort": effort}
+
+
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_prepare_request_claude5_uses_extended_output_budget(
+    model_name: str,
+    effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name=model_name,
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort=effort,
+    )
+
+    assert prepared.payload["max_tokens"] == EXTENDED_EFFORT_MAX_TOKENS
+
+
+def test_prepare_request_preserves_explicit_output_budget() -> None:
+    prepared = prepare_request(
+        model_name="claude-sonnet-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        max_tokens=8_192,
+        tools=None,
+        effort="max",
+    )
+
+    assert prepared.payload["max_tokens"] == 8_192
+
+
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+def test_prepare_request_claude5_includes_structured_output(model_name: str) -> None:
+    output_format = {"type": "json_schema", "schema": {"type": "object"}}
+    prepared = prepare_request(
+        model_name=model_name,
+        prompt="hello",
+        reasoning=ReasoningMode.DYNAMIC,
+        tools=None,
+        effort="medium",
+        output_format=output_format,
+    )
+
+    assert prepared.payload["output_config"] == {
+        "effort": "medium",
+        "format": output_format,
+    }
 
 
 def test_prepare_request_dynamic_reasoning_unsupported_model_raises() -> None:

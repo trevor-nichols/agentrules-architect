@@ -24,6 +24,7 @@ from .client import CodexAppServerClient
 from .errors import CodexError, CodexJsonRpcError, CodexProtocolError
 from .model_selection import resolve_model_selection
 from .process import CodexAppServerProcess
+from .reasoning import require_runtime_reasoning_effort
 from .request_builder import PreparedRequest, prepare_request
 from .response_parser import ParsedResponse, collect_turn_notifications, parse_turn_notifications
 
@@ -47,6 +48,7 @@ class CodexArchitect(BaseArchitect):
         config_manager: ConfigManager | None = None,
         command: Sequence[str] | None = None,
         request_timeout_seconds: float = 300.0,
+        runtime_reasoning_effort: str | None = None,
     ) -> None:
         super().__init__(
             provider=ModelProvider.CODEX,
@@ -63,6 +65,14 @@ class CodexArchitect(BaseArchitect):
         self._config_manager = config_manager or get_config_manager()
         self._command = tuple(command) if command is not None else None
         self._request_timeout_seconds = request_timeout_seconds
+        configured_runtime_effort = runtime_reasoning_effort
+        if configured_runtime_effort is None and model_config is not None:
+            configured_runtime_effort = getattr(model_config, "runtime_reasoning_effort", None)
+        self._runtime_reasoning_effort = (
+            require_runtime_reasoning_effort(configured_runtime_effort)
+            if configured_runtime_effort is not None
+            else None
+        )
 
     @staticmethod
     def _get_default_prompt_template() -> str:
@@ -205,6 +215,7 @@ class CodexArchitect(BaseArchitect):
             reasoning=self.reasoning,
             phase_name=phase_name,
             cwd=cwd,
+            runtime_reasoning_effort=self._runtime_reasoning_effort,
         )
 
     async def _execute_request(self, prepared: PreparedRequest) -> ParsedResponse:
@@ -263,6 +274,7 @@ class CodexArchitect(BaseArchitect):
             available_models=models,
             requested_model_name=prepared.requested_model_name,
             requested_reasoning=prepared.requested_reasoning,
+            requested_runtime_reasoning_effort=prepared.requested_runtime_reasoning_effort,
         )
         if resolved.model_name is None:
             logger.warning(

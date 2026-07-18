@@ -5,6 +5,21 @@ from dataclasses import dataclass
 from typing import Any
 
 
+class AnthropicRefusalError(RuntimeError):
+    """Raised when Anthropic returns a successful transport response that refused the request."""
+
+    def __init__(self, *, category: str | None = None, explanation: str | None = None) -> None:
+        self.category = category
+        self.explanation = explanation
+
+        message = "Anthropic refused the request"
+        if category:
+            message += f" (category: {category})"
+        if explanation:
+            message += f": {explanation}"
+        super().__init__(message)
+
+
 @dataclass(frozen=True)
 class ParsedResponse:
     """Represents the extracted findings and optional tool calls."""
@@ -15,6 +30,8 @@ class ParsedResponse:
 
 def parse_response(response: Any) -> ParsedResponse:
     """Extract human-readable findings and tool metadata from the response."""
+    raise_for_refusal(response)
+
     findings_parts: list[str] = []
     tool_calls: list[dict[str, Any]] = []
 
@@ -33,6 +50,31 @@ def parse_response(response: Any) -> ParsedResponse:
 
     findings = "\n".join(findings_parts).strip() or None
     return ParsedResponse(findings=findings, tool_calls=tool_calls or None)
+
+
+def raise_for_refusal(response: Any) -> None:
+    """Raise a typed error when a Messages response reports a refusal stop reason."""
+
+    if _get_field(response, "stop_reason") != "refusal":
+        return
+
+    stop_details = _get_field(response, "stop_details")
+    category = _safe_detail(_get_field(stop_details, "category"), max_length=80)
+    explanation = _safe_detail(_get_field(stop_details, "explanation"), max_length=500)
+    raise AnthropicRefusalError(category=category, explanation=explanation)
+
+
+def _get_field(value: Any, field: str) -> Any:
+    if isinstance(value, dict):
+        return value.get(field)
+    return getattr(value, field, None)
+
+
+def _safe_detail(value: Any, *, max_length: int) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = " ".join(value.split())[:max_length]
+    return normalized or None
 
 
 def _extract_text(block: Any) -> str | None:

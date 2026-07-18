@@ -21,7 +21,7 @@ from agentrules.core.utils.system_prompt import build_agent_system_prompt, resol
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_chat_completion, get_client
-from .config import ModelDefaults, resolve_base_url, resolve_model_defaults
+from .config import ModelDefaults, resolve_base_url, resolve_model_alias, resolve_model_defaults
 from .prompting import default_prompt_template
 from .prompting import format_prompt as format_analysis_prompt
 from .request_builder import PreparedRequest, prepare_request
@@ -36,7 +36,7 @@ class DeepSeekArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "deepseek-chat",
+        model_name: str = "deepseek-v4-flash",
         reasoning: ReasoningMode | None = None,
         temperature: float | None = None,
         name: str | None = None,
@@ -48,26 +48,30 @@ class DeepSeekArchitect(BaseArchitect):
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
     ) -> None:
-        self._defaults: ModelDefaults = resolve_model_defaults(model_name)
-        effective_reasoning = reasoning or self._defaults.default_reasoning
+        resolved_model_name, compatibility_reasoning = resolve_model_alias(model_name)
+        self._defaults: ModelDefaults = resolve_model_defaults(resolved_model_name)
+        effective_reasoning = reasoning or compatibility_reasoning or self._defaults.default_reasoning
 
         self._client_override: Any | None = None
-        supports_sampling = model_name.lower() != "deepseek-reasoner"
-        effective_temperature = temperature if supports_sampling else None
-        if temperature is not None and not supports_sampling:
+        thinking_enabled = (
+            self._defaults.supports_thinking_toggle
+            and effective_reasoning not in {ReasoningMode.DISABLED, ReasoningMode.TEMPERATURE}
+        )
+        effective_temperature = temperature if self._defaults.supports_sampling and not thinking_enabled else None
+        if temperature is not None and effective_temperature is None:
             logger.info(
                 (
                     "[bold teal]%s:[/bold teal] Ignoring temperature %.2f because %s "
-                    "does not support sampling parameters."
+                    "does not accept sampling parameters in the selected mode."
                 ),
                 name or "DeepSeek Architect",
                 temperature,
-                model_name,
+                resolved_model_name,
             )
 
         super().__init__(
             provider=ModelProvider.DEEPSEEK,
-            model_name=model_name,
+            model_name=resolved_model_name,
             reasoning=effective_reasoning,
             temperature=effective_temperature,
             name=name,
@@ -170,6 +174,11 @@ class DeepSeekArchitect(BaseArchitect):
             detail_parts: list[str] = []
             if provider_tools:
                 detail_parts.append("with tools enabled")
+            thinking = prepared.payload.get("extra_body", {}).get("thinking", {})
+            if thinking.get("type"):
+                detail_parts.append(f"thinking={thinking['type']}")
+            if prepared.payload.get("reasoning_effort"):
+                detail_parts.append(f"reasoning_effort={prepared.payload['reasoning_effort']}")
             if self._defaults.max_output_tokens:
                 detail_parts.append(f"max_tokens={self._defaults.max_output_tokens}")
 
@@ -243,6 +252,11 @@ class DeepSeekArchitect(BaseArchitect):
             detail_parts: list[str] = []
             if provider_tools:
                 detail_parts.append("with tools enabled")
+            thinking = prepared.payload.get("extra_body", {}).get("thinking", {})
+            if thinking.get("type"):
+                detail_parts.append(f"thinking={thinking['type']}")
+            if prepared.payload.get("reasoning_effort"):
+                detail_parts.append(f"reasoning_effort={prepared.payload['reasoning_effort']}")
             if self._defaults.max_output_tokens:
                 detail_parts.append(f"max_tokens={self._defaults.max_output_tokens}")
 

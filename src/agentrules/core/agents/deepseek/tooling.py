@@ -17,8 +17,9 @@ def resolve_tool_config(
     """
     Convert generic tool declarations into DeepSeek-compatible payloads.
 
-    ``deepseek-reasoner`` does not support function calling, so ``allow_tools``
-    should be ``False`` for that model.
+    Legacy ``deepseek-reasoner`` does not support function calling. DeepSeek V4
+    supports tools in both thinking and non-thinking modes, so callers should
+    derive ``allow_tools`` from the model capability defaults.
     """
     if not allow_tools:
         return None

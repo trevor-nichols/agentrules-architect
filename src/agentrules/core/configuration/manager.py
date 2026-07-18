@@ -192,6 +192,10 @@ class ConfigManager:
         config = self._repository.load()
         return claude_code.resolve_claude_code_executable(config)
 
+    def resolve_claude_code_executable_info(self) -> claude_code.ClaudeCodeExecutable | None:
+        config = self._repository.load()
+        return claude_code.resolve_claude_code_executable_info(config)
+
     def is_claude_agent_sdk_available(self) -> bool:
         return claude_code.is_claude_agent_sdk_available()
 
@@ -203,10 +207,22 @@ class ConfigManager:
         config = self._repository.load()
         return claude_code.get_claude_code_runtime_version(config)
 
+    def get_claude_code_runtime_version_probe(
+        self,
+        *,
+        timeout_seconds: float = claude_code.CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS,
+    ) -> claude_code.ClaudeCodeVersionProbe | None:
+        config = self._repository.load()
+        return claude_code.get_claude_code_runtime_version_probe(config, timeout_seconds=timeout_seconds)
+
     def minimum_claude_code_version_for_model(self, model_name: str) -> claude_code.ClaudeCodeVersion | None:
         return claude_code.minimum_claude_code_version_for_model(model_name)
 
-    def is_claude_code_model_supported(self, model_name: str) -> bool | None:
+    def claude_code_model_support_error(self, model_name: str) -> str | None:
+        config = self._repository.load()
+        return claude_code.claude_code_model_support_error(config, model_name)
+
+    def is_claude_code_model_supported(self, model_name: str) -> bool:
         config = self._repository.load()
         return claude_code.is_claude_code_model_supported(config, model_name)
 

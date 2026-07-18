@@ -76,6 +76,16 @@ async def test_codex_client_lists_all_models_across_pages(tmp_path: Path) -> Non
         all_models = await client.list_all_models(limit=2, include_hidden=True)
         assert [model.model for model in all_models] == ["gpt-5.3-codex", "gpt-5.4", "gpt-5.2-codex"]
 
+        efforts = [
+            option.reasoning_effort
+            for option in all_models[0].supported_reasoning_efforts
+        ]
+        assert "max" in efforts
+        assert "ultra" in efforts
+        assert "extreme" in efforts
+        assert "UPPER" not in efforts
+        assert "bad effort" not in efforts
+
 
 @pytest.mark.asyncio
 async def test_codex_client_chatgpt_login_and_logout(tmp_path: Path) -> None:

@@ -8,17 +8,21 @@ from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.types.models import AnthropicEffort
 
 from .capabilities import (
+    ThinkingPolicy,
     describe_profiles_with_adaptive_thinking,
     describe_profiles_with_effort,
+    resolve_capability_profile,
     supported_effort_levels,
     supports_adaptive_thinking,
     supports_manual_thinking,
     supports_structured_output_format,
 )
 
-DEFAULT_MAX_TOKENS = 20_000
+DEFAULT_NONSTREAMING_MAX_TOKENS = 20_000
+EXTENDED_EFFORT_MAX_TOKENS = 64_000
 DEFAULT_THINKING_BUDGET = 16_000
 _SUPPORTED_EFFORT_LEVELS: set[str] = {"low", "medium", "high", "xhigh", "max"}
+_EXTENDED_EFFORT_LEVELS: set[str] = {"xhigh", "max"}
 
 
 @dataclass(frozen=True)
@@ -33,15 +37,21 @@ def prepare_request(
     model_name: str,
     prompt: str,
     reasoning: ReasoningMode,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
+    max_tokens: int | None = None,
     tools: list[Any] | None,
     effort: AnthropicEffort | str | None = None,
     output_format: dict[str, Any] | None = None,
     system_prompt: str | None = None,
 ) -> PreparedRequest:
+    output_config = _build_output_config(
+        model_name=model_name,
+        effort=effort,
+        output_format=output_format,
+    )
+    normalized_effort = output_config.get("effort") if output_config is not None else None
     payload: dict[str, Any] = {
         "model": model_name,
-        "max_tokens": max_tokens,
+        "max_tokens": _resolve_max_tokens(max_tokens, normalized_effort),
         "messages": [
             {
                 "role": "user",
@@ -59,18 +69,40 @@ def prepare_request(
     if tools:
         payload["tools"] = tools
 
-    output_config = _build_output_config(
-        model_name=model_name,
-        effort=effort,
-        output_format=output_format,
-    )
     if output_config is not None:
         payload["output_config"] = output_config
 
     return PreparedRequest(payload=payload)
 
 
+def _resolve_max_tokens(max_tokens: int | None, effort: str | None) -> int:
+    if max_tokens is not None:
+        return max_tokens
+    if effort in _EXTENDED_EFFORT_LEVELS:
+        return EXTENDED_EFFORT_MAX_TOKENS
+    return DEFAULT_NONSTREAMING_MAX_TOKENS
+
+
 def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dict[str, Any] | None:
+    profile = resolve_capability_profile(model_name)
+
+    if profile.thinking_policy == ThinkingPolicy.ALWAYS_ADAPTIVE:
+        if reasoning == ReasoningMode.DISABLED:
+            raise ValueError(
+                f"Model '{model_name}' always uses adaptive thinking and does not support "
+                "ReasoningMode.DISABLED. Select a valid effort level instead."
+            )
+        # Adaptive thinking is automatic for this policy. Omitting the field is
+        # the provider-recommended request shape.
+        return None
+
+    if profile.thinking_policy == ThinkingPolicy.ADAPTIVE_DEFAULT:
+        if reasoning == ReasoningMode.DISABLED:
+            return {"type": "disabled"}
+        if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
+            return {"type": "adaptive"}
+        return None
+
     if reasoning == ReasoningMode.ENABLED:
         if supports_manual_thinking(model_name):
             return {"type": "enabled", "budget_tokens": DEFAULT_THINKING_BUDGET}

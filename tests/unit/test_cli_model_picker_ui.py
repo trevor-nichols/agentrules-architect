@@ -155,6 +155,25 @@ def test_selection_filter_preserves_current_deprecated_preset_with_label() -> No
     assert filtered[0].label.endswith("[deprecated]")
 
 
+def test_gemini_deprecated_picker_choices_show_shutdown_date() -> None:
+    flash = model_presets.get_preset_info("gemini-flash")
+    pro = model_presets.get_preset_info("gemini-pro")
+    assert flash is not None
+    assert pro is not None
+
+    state = build_model_choice_state(
+        [flash, pro],
+        current_key="gemini-flash",
+        default_key=None,
+        include_reset=False,
+        reset_title="Reset",
+    )
+    rendered_titles = [str(choice.title) for choice in state.choices if hasattr(choice, "title")]
+
+    assert any("2026-10-16" in title and "2.5 Flash" in title for title in rendered_titles)
+    assert any("2026-10-16" in title and "2.5 Pro" in title for title in rendered_titles)
+
+
 def test_configure_models_preserves_saved_deprecated_preset_in_picker(monkeypatch) -> None:
     context = CliContext(console=Console(record=True, width=120))
     captured: dict[str, object] = {}

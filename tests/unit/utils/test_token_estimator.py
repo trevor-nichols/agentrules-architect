@@ -161,12 +161,83 @@ def test_apply_model_limits_openai_defaults():
 @pytest.mark.parametrize(
     "config",
     [
+        agents_config.GPT5_6_SOL_DEFAULT,
+        agents_config.GPT5_6_TERRA_DEFAULT,
+        agents_config.GPT5_6_LUNA_DEFAULT,
+    ],
+)
+def test_apply_model_limits_gpt56_uses_official_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_050_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.CLAUDE_SONNET_5,
+        agents_config.CLAUDE_SONNET_5_WITH_REASONING,
+        agents_config.CLAUDE_FABLE_5,
+    ],
+)
+def test_apply_model_limits_claude5_uses_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "anthropic_api"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.DEEPSEEK_V4_FLASH,
+        agents_config.DEEPSEEK_V4_FLASH_NON_REASONING,
+        agents_config.DEEPSEEK_V4_PRO,
+        agents_config.DEEPSEEK_V4_PRO_MAX,
+        agents_config.DEEPSEEK_V4_PRO_NON_REASONING,
+    ],
+)
+def test_apply_model_limits_deepseek_v4_uses_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
         agents_config.GROK_4_3,
         agents_config.GROK_4_3_REASONING_MEDIUM,
         agents_config.GROK_4_3_NON_REASONING,
     ],
 )
 def test_apply_model_limits_xai_grok43_family_uses_documented_1m_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 1_000_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.GROK_4_5,
+        agents_config.GROK_4_5_MEDIUM,
+        agents_config.GROK_4_5_LOW,
+    ],
+)
+def test_apply_model_limits_xai_grok45_family_uses_documented_500k_context(config):
+    cfg = agents_config._apply_model_limits(config)
+    assert cfg.max_input_tokens == 500_000
+    assert cfg.estimator_family == "tiktoken"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        agents_config.GROK_4_20_REASONING,
+        agents_config.GROK_4_20_NON_REASONING,
+    ],
+)
+def test_apply_model_limits_xai_grok420_family_uses_documented_1m_context(config):
     cfg = agents_config._apply_model_limits(config)
     assert cfg.max_input_tokens == 1_000_000
     assert cfg.estimator_family == "tiktoken"

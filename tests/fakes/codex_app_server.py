@@ -15,8 +15,13 @@ MODELS = [
         "hidden": False,
         "defaultReasoningEffort": "medium",
         "supportedReasoningEfforts": [
+            {"reasoningEffort": "extreme", "description": "Future runtime effort"},
             {"reasoningEffort": "low", "description": "Lower latency"},
             {"reasoningEffort": "medium", "description": "Balanced"},
+            {"reasoningEffort": "max", "description": "Maximum single-agent depth"},
+            {"reasoningEffort": "ultra", "description": "Runtime-managed parallel depth"},
+            {"reasoningEffort": "UPPER", "description": "Malformed uppercase token"},
+            {"reasoningEffort": "bad effort", "description": "Malformed token with whitespace"},
         ],
         "inputModalities": ["text", "image"],
         "supportsPersonality": True,
@@ -147,9 +152,11 @@ def _build_structured_payload(output_schema: dict[str, Any]) -> dict[str, Any]:
     return {key: f"value-for-{key}" for key in properties}
 
 
-def _build_agent_message(text_input: str, output_schema: Any) -> str:
+def _build_agent_message(text_input: str, output_schema: Any, effort: object) -> str:
     if "TURN_FAIL" in text_input:
         return ""
+    if "REPORT_EFFORT" in text_input:
+        return f"Codex effort: {effort}"
     if output_schema is not None:
         if "BAD_SCHEMA_JSON" in text_input:
             return "this is not valid json"
@@ -205,7 +212,7 @@ def _handle_turn_start(request_id: int | str | None, params: dict[str, Any]) -> 
     item_id = next_item_id()
     text_input = _extract_text_input(params)
     output_schema = params.get("outputSchema") if isinstance(params.get("outputSchema"), dict) else None
-    agent_message = _build_agent_message(text_input, output_schema)
+    agent_message = _build_agent_message(text_input, output_schema, params.get("effort"))
 
     send({"id": request_id, "result": {"turn": {"id": turn_id, "status": "inProgress", "items": [], "error": None}}})
     send({"method": "turn/started", "params": {"threadId": thread_id, "turn": {"id": turn_id, "status": "inProgress", "items": [], "error": None}}})

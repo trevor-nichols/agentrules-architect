@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from agentrules.core.agents.base import ReasoningMode
+from agentrules.core.agents.xai.architect import XaiArchitect
 from agentrules.core.agents.xai.config import resolve_model_defaults
 from agentrules.core.agents.xai.request_builder import prepare_request
 
@@ -17,6 +20,19 @@ def test_prepare_request_sets_reasoning_effort_when_supported() -> None:
 
     payload = prepared.payload
     assert payload["reasoning_effort"] == "high"
+
+
+def test_prepare_request_normalizes_max_to_high_for_existing_xai_models() -> None:
+    defaults = resolve_model_defaults("grok-4.3")
+    prepared = prepare_request(
+        model_name="grok-4.3",
+        content="Analyze",
+        reasoning=ReasoningMode.MAX,
+        defaults=defaults,
+        tools=None,
+    )
+
+    assert prepared.payload["reasoning_effort"] == "high"
 
 
 def test_prepare_request_sets_reasoning_effort_for_grok41_when_supported() -> None:
@@ -138,32 +154,131 @@ def test_resolve_defaults_for_grok41_fast_non_reasoning() -> None:
     defaults = resolve_model_defaults("grok-4-1-fast-non-reasoning")
 
     assert defaults.default_reasoning == ReasoningMode.DISABLED
-    assert defaults.reasoning_effort_supported is True
+    assert defaults.accepted_reasoning_efforts == frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 def test_resolve_defaults_for_grok43() -> None:
     defaults = resolve_model_defaults("grok-4.3")
 
     assert defaults.default_reasoning == ReasoningMode.LOW
-    assert defaults.reasoning_effort_supported is True
+    assert defaults.accepted_reasoning_efforts == frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 def test_resolve_defaults_for_grok_0709_alias() -> None:
     defaults = resolve_model_defaults("grok-4-0709")
 
     assert defaults.default_reasoning == ReasoningMode.MEDIUM
-    assert defaults.reasoning_effort_supported is True
+    assert defaults.accepted_reasoning_efforts == frozenset({"none", "minimal", "low", "medium", "high"})
 
 
 def test_resolve_defaults_for_grok_build() -> None:
     defaults = resolve_model_defaults("grok-build-0.1")
 
     assert defaults.default_reasoning == ReasoningMode.ENABLED
-    assert defaults.reasoning_effort_supported is False
+    assert defaults.accepted_reasoning_efforts == frozenset()
 
 
 def test_resolve_defaults_for_grok_code_fast_alias() -> None:
     defaults = resolve_model_defaults("grok-code-fast-1")
 
     assert defaults.default_reasoning == ReasoningMode.ENABLED
-    assert defaults.reasoning_effort_supported is False
+    assert defaults.accepted_reasoning_efforts == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("reasoning", "expected_effort"),
+    [
+        (ReasoningMode.LOW, "low"),
+        (ReasoningMode.MEDIUM, "medium"),
+        (ReasoningMode.HIGH, "high"),
+        (ReasoningMode.ENABLED, "high"),
+        (ReasoningMode.DYNAMIC, "high"),
+    ],
+)
+def test_prepare_request_maps_only_supported_grok45_efforts(
+    reasoning: ReasoningMode,
+    expected_effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name="grok-4.5",
+        content="Analyze",
+        reasoning=reasoning,
+        defaults=resolve_model_defaults("grok-4.5"),
+        tools=None,
+    )
+
+    assert prepared.payload["reasoning_effort"] == expected_effort
+
+
+@pytest.mark.parametrize(
+    "reasoning",
+    [
+        ReasoningMode.DISABLED,
+        ReasoningMode.MINIMAL,
+        ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
+    ],
+)
+def test_prepare_request_rejects_unsupported_grok45_efforts(reasoning: ReasoningMode) -> None:
+    with pytest.raises(ValueError, match="not supported for xAI model 'grok-4.5'"):
+        prepare_request(
+            model_name="grok-4.5",
+            content="Analyze",
+            reasoning=reasoning,
+            defaults=resolve_model_defaults("grok-4.5"),
+            tools=None,
+        )
+
+
+@pytest.mark.parametrize(
+    ("model_name", "reasoning"),
+    [
+        ("grok-4.20-0309-reasoning", ReasoningMode.ENABLED),
+        ("grok-4.20-0309-non-reasoning", ReasoningMode.DISABLED),
+    ],
+)
+def test_prepare_request_uses_grok420_identity_without_invented_effort(
+    model_name: str,
+    reasoning: ReasoningMode,
+) -> None:
+    prepared = prepare_request(
+        model_name=model_name,
+        content="Analyze",
+        reasoning=reasoning,
+        defaults=resolve_model_defaults(model_name),
+        tools=None,
+    )
+
+    assert prepared.payload["model"] == model_name
+    assert "reasoning_effort" not in prepared.payload
+
+
+@pytest.mark.parametrize(
+    ("model_name", "reasoning"),
+    [
+        ("grok-4.20-0309-reasoning", ReasoningMode.DISABLED),
+        ("grok-4.20-0309-reasoning", ReasoningMode.HIGH),
+        ("grok-4.20-0309-non-reasoning", ReasoningMode.ENABLED),
+        ("grok-4.20-0309-non-reasoning", ReasoningMode.HIGH),
+    ],
+)
+def test_prepare_request_rejects_non_fixed_grok420_reasoning_modes(
+    model_name: str,
+    reasoning: ReasoningMode,
+) -> None:
+    fixed_mode = resolve_model_defaults(model_name).default_reasoning.value
+    with pytest.raises(ValueError, match=f"fixed reasoning mode.*{fixed_mode}"):
+        prepare_request(
+            model_name=model_name,
+            content="Analyze",
+            reasoning=reasoning,
+            defaults=resolve_model_defaults(model_name),
+            tools=None,
+        )
+
+
+def test_xai_architect_defaults_to_grok45_high() -> None:
+    architect = XaiArchitect()
+
+    assert architect.model_name == "grok-4.5"
+    assert architect.reasoning == ReasoningMode.HIGH
