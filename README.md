@@ -371,6 +371,7 @@ Toggle outputs with `agentrules configure --outputs` or via the config TOML.
 ### Release Process (PyPI)
 
 1. Merge feature PRs into `main` using Conventional Commit-style titles/messages (for example `feat: ...`, `fix: ...`).
+   For an intentional one-release version override, include a `Release-As: X.Y.Z` footer in a commit merged to `main`; do not manually edit `pyproject.toml` or `.release-please-manifest.json`.
 2. `.github/workflows/release-please.yml` updates or opens a release PR with the version bump and changelog.
 3. (Optional, recommended) run `.github/workflows/publish-pypi.yml` manually with `repository = testpypi` from the release PR head commit.
 4. Merge the release PR. Release Please creates/pushes the matching `vX.Y.Z` tag and publishes a GitHub release.
