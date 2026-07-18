@@ -1,5 +1,38 @@
 # Changelog
 
+## [4.2.1](https://github.com/trevor-nichols/agentrules-architect/compare/v4.2.0...v4.2.1) (2026-07-18)
+
+
+### Features
+
+* **anthropic:** add Claude Sonnet 5 and Fable 5 ([369ecdc](https://github.com/trevor-nichols/agentrules-architect/commit/369ecdc4a43b4b3ea3eb0d0825594d57430faca8))
+* **claude-code:** modernize model selection and gating ([5806034](https://github.com/trevor-nichols/agentrules-architect/commit/5806034f083b07becaf4298e46090b147d236198))
+* **codex:** preserve runtime efforts and refresh Gemini lifecycle ([9c7fae6](https://github.com/trevor-nichols/agentrules-architect/commit/9c7fae69d3a77fd5be9a59763ae4dfeb49a82ee1))
+* **deepseek:** migrate provider presets to V4 ([ea4cdc7](https://github.com/trevor-nichols/agentrules-architect/commit/ea4cdc71dc7fa9c078bfdc4f243b015929c7cca4))
+* **openai:** add GPT-5.6 model family ([c58d036](https://github.com/trevor-nichols/agentrules-architect/commit/c58d0361160e2ef7207884eb1b21e0fcff7c004c))
+* **providers:** refresh 2026 model catalogs and runtimes ([1342cea](https://github.com/trevor-nichols/agentrules-architect/commit/1342cea8b7e5560f18aa2c3e9c30c912dc053a19))
+* **xai:** add Grok 4.5 and compatible 4.20 models ([80bf441](https://github.com/trevor-nichols/agentrules-architect/commit/80bf441b5ef3f8ab729b294bb1bbbeb696a7dc2d))
+
+
+### Bug Fixes
+
+* **anthropic:** stream extended-effort responses ([ad0be67](https://github.com/trevor-nichols/agentrules-architect/commit/ad0be67d3c6f153cdb0101c43ff7310894adbca2))
+* **claude-code:** keep alias context runtime-owned ([fe1fc2b](https://github.com/trevor-nichols/agentrules-architect/commit/fe1fc2ba9ff91d8fe176d32c80a65e9d9d3d8aa4))
+* **providers:** enforce runtime reasoning contracts ([35bed5e](https://github.com/trevor-nichols/agentrules-architect/commit/35bed5e23545ebc240207364ec682bcc50ae0915))
+* **providers:** honor model-specific request contracts ([d364f1a](https://github.com/trevor-nichols/agentrules-architect/commit/d364f1a4aa1ad8054480d82f59f898378efbeb0d))
+* **providers:** secure streams and runtime probes ([bcaf330](https://github.com/trevor-nichols/agentrules-architect/commit/bcaf33014b8c48ca92e576ec2d3451c75db6c86a))
+
+
+### Documentation
+
+* **execplan:** archive provider model refresh ([15d52c9](https://github.com/trevor-nichols/agentrules-architect/commit/15d52c98ed4bf6d6d274352c059980152a14b74f))
+* **providers:** scope Anthropic refusal guidance ([481c3d0](https://github.com/trevor-nichols/agentrules-architect/commit/481c3d045cc1b5123de46779fd93e37baf75976c))
+
+
+### Miscellaneous Chores
+
+* **release:** target 4.2.1 patch release ([a70516c](https://github.com/trevor-nichols/agentrules-architect/commit/a70516c5ef0b39bdc078f4cc06863a06f9aeac58))
+
 ## [4.2.0](https://github.com/trevor-nichols/agentrules-architect/compare/v4.1.0...v4.2.0) (2026-06-03)
 
 
