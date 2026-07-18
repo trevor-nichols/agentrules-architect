@@ -158,6 +158,7 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
 # Tests & CI
 - Required minimal CI jobs described in Imperative Directives.
 - Add unit tests for all P0/P1 changes. Benchmarks must be lightweight for CI (sample N=100).
+- Release Please owns project version bumps. Its workflow must regenerate and commit `uv.lock` on the release PR branch, and pull-request CI must enforce `uv lock --check` whenever `pyproject.toml` or `uv.lock` changes.
 
 # Security & Logging
 - Redact sensitive fields in logs: environment variables and provider responses that contain `api_key`, `Authorization`, etc.

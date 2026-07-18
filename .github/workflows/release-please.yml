@@ -19,6 +19,7 @@ jobs:
   release-please:
     name: Open Release PR / Publish Release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Run release-please
         id: release
@@ -27,3 +28,55 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Resolve release PR branch
+        if: steps.release.outputs.prs_created == 'true'
+        id: release-pr
+        env:
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+        run: |
+          branch=$(python -c 'import json, os; print(json.loads(os.environ["RELEASE_PR"])["headBranchName"])')
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release PR branch
+        if: steps.release.outputs.prs_created == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.release-pr.outputs.branch }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        if: steps.release.outputs.prs_created == 'true'
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: false
+          version: "0.9.17"
+
+      - name: Regenerate release lockfile
+        if: steps.release.outputs.prs_created == 'true'
+        run: |
+          uv lock
+          uv lock --check
+
+          if ! git diff --quiet -- . ':(exclude)uv.lock'; then
+            echo "uv lock changed tracked files other than uv.lock:" >&2
+            git diff --name-only -- . ':(exclude)uv.lock' >&2
+            exit 1
+          fi
+
+      - name: Commit release lockfile
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          RELEASE_BRANCH: ${{ steps.release-pr.outputs.branch }}
+        run: |
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit -m "chore(release): refresh uv lock"
+          git push origin "HEAD:$RELEASE_BRANCH"
