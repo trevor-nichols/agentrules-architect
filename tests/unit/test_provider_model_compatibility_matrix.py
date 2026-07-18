@@ -316,6 +316,7 @@ def test_local_runtime_selection_modes_remain_runtime_owned() -> None:
         preset = MODEL_PRESETS[preset_key]
         assert preset["provider"] == ModelProvider.CLAUDE_CODE
         assert preset["config"].model_name == expected_model
+        assert preset["config"].max_input_tokens is None
         assert "Moving" in preset["label"]
 
 

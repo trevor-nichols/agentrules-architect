@@ -289,7 +289,6 @@ def _claude_code_runtime_managed_preset(
     config = create_claude_code_config(CLAUDE_SONNET_5)._replace(
         model_name=model_name,
         reasoning=reasoning,
-        max_input_tokens=1_000_000,
         anthropic_effort=None,
     )
     return _preset(

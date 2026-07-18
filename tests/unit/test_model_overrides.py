@@ -688,6 +688,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             preset = self.agents_module.MODEL_PRESETS[preset_key]
             self.assertEqual(preset["provider"], ModelProvider.CLAUDE_CODE)
             self.assertEqual(preset["config"].model_name, model_name)
+            self.assertIsNone(preset["config"].max_input_tokens)
             self.assertIn("Moving", preset["label"])
 
         sonnet_keys = {

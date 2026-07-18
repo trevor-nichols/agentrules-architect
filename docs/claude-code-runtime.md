@@ -109,6 +109,8 @@ Notes:
   organization, and runtime default rather than receiving a literal sentinel or pinned model.
 - `Best`, `Sonnet`, `Opus`, and `Fable` alias presets pass those aliases verbatim. Aliases can move as
   Claude Code and account policy evolve, so their model, price, and availability are not reproducible.
+- Moving defaults and aliases do not advertise a static context limit in AgentRules. Claude Code owns
+  concrete-model resolution; use a pinned model preset when local context-limit preflight is required.
 - Full model-ID presets are pinned and reproducible. Pinned Fable 5 requires Claude Code 2.1.170 or newer;
   pinned Sonnet 5 requires 2.1.197 or newer. The `fable` alias is gated at its own introduction version,
   while older aliases are not treated as if they always resolve to the newest full model.

@@ -108,9 +108,10 @@ AgentRules preserves new short lowercase effort values reported by that catalog,
 than the application, but rejects malformed tokens. It does not add static Codex GPT-5.6 presets.
 
 Claude Code offers a runtime-owned default and moving `best`, `sonnet`, `opus`, and `fable` aliases as
-well as pinned model IDs. Pinned Claude 5 choices fail closed when AgentRules cannot prove that the exact
-resolved bundled or configured Claude Code executable meets the model's minimum version. A newer global
-binary does not upgrade the SDK-bundled runtime automatically.
+well as pinned model IDs. Moving selections intentionally have no static AgentRules context limit because
+the runtime owns concrete-model resolution. Pinned Claude 5 choices fail closed when AgentRules cannot
+prove that the exact resolved bundled or configured Claude Code executable meets the model's minimum
+version. A newer global binary does not upgrade the SDK-bundled runtime automatically.
 
 See [`codex-runtime.md`](codex-runtime.md) and [`claude-code-runtime.md`](claude-code-runtime.md) for
 configuration, authentication, version diagnostics, and runtime-specific live smokes.
