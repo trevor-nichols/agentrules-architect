@@ -10,14 +10,18 @@ three use the Responses API with a 1,050,000-token context. Sol accepts `none`, 
 effort. GPT-5.5 presets remain available as the immediate fallback when account availability or behavior
 requires a conservative rollback.
 
-GPT-5 Mini has low, medium, and high direct presets with a 400,000-token context. The saved keys
-`o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` remain registered, but runtime resolution sends the
-matching GPT-5 Mini effort instead because OpenAI deprecated o4-mini and identifies GPT-5 Mini as its
-successor.
+GPT-5 Mini has low, medium, and high direct presets with a 400,000-token context. OpenAI identifies it as
+the successor to o4-mini, but the saved keys `o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` remain
+bound to their original model while that endpoint is deprecated but available. The picker hides these
+keys from new selections, preserves an existing selection with a deprecation warning, and recommends the
+matching GPT-5 Mini effort as an operator-selected migration. AgentRules must not change a saved model's
+behavior or cost until the original endpoint retires.
 
-The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` resolve to `gpt-5.3-codex`. Their static
-Codex-derived counterparts likewise resolve to `codex-gpt-5.3-codex`. These are compatibility redirects,
-not evidence that a model is available in the local Codex runtime. GPT-5.5 Pro and a GPT-5.6 Pro-mode
+The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` likewise remain bound to their original models
+while the endpoints are deprecated but available. Their static Codex-derived counterparts preserve the
+same identity subject to runtime availability. GPT-5.3 Codex is recommended for new configurations, but
+it is not an automatic compatibility redirect before retirement. Direct API lifecycle state is not
+evidence that a model is available in the local Codex runtime. GPT-5.5 Pro and a GPT-5.6 Pro-mode
 pseudo-preset remain excluded because their transport or execution-mode contracts are not represented by
 the current adapter.
 
@@ -128,7 +132,8 @@ requests fail before dispatch rather than being raised to low.
 `gemini-3.6-flash` defaults to medium and accepts minimal, low, medium, or high. The throughput-oriented
 `gemini-3.5-flash-lite` defaults to minimal and accepts the same four levels. All three families support
 tools together with structured output. Their capability profiles require the installed SDK to expose the
-requested exact level; AgentRules does not silently select a nearby enum value.
+requested exact level; AgentRules requires `google-genai>=1.56.0`, the first SDK release with `MINIMAL`
+and `MEDIUM`, and does not silently select a nearby enum value.
 
 The older explicit `gemini-3.5-flash` choice remains registered as a rollback path.
 Gemini 2.5 Flash and Gemini 2.5 Pro remain selectable until their documented October 16, 2026
@@ -144,6 +149,7 @@ Official references:
 - [Gemini model catalog](https://ai.google.dev/gemini-api/docs/models)
 - [Gemini thinking levels](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
 - [Gemini model deprecations](https://ai.google.dev/gemini-api/docs/deprecations)
+- [Google Gen AI Python SDK changelog](https://github.com/googleapis/python-genai/blob/main/CHANGELOG.md#1560-2025-12-16)
 
 ## Local runtime providers
 

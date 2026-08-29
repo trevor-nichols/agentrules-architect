@@ -40,7 +40,7 @@ Maintain this plan in accordance with `.agent/PLANS.md`. The user approved this 
 
 AgentRules has a reviewed static registry for direct API providers and runtime-owned discovery for local providers. The static registry was last substantially refreshed in July 2026, and several upstream catalogs have moved since then. After this plan is implemented, operators will be able to choose Claude Opus 5, Gemini 3.7 Flash, Gemini 3.6 Flash, Gemini 3.5 Flash-Lite, Grok 4.6, and the documented DeepSeek V4 effort levels without constructing unsupported payloads by hand.
 
-The change also closes lifecycle gaps for model keys already exposed by AgentRules. Saved keys remain loadable, but retired OpenAI Codex and o4-mini choices resolve through the centralized deprecation map to active direct-API presets. Codex itself continues to discover models and effort values from app-server `model/list`; this plan deliberately does not turn a moving local runtime catalog into a hard-coded API registry.
+The change also closes lifecycle gaps for model keys already exposed by AgentRules. Saved keys remain loadable; deprecated-but-live OpenAI Codex and o4-mini choices stay bound to their selected model, while retired endpoints resolve through the centralized deprecation map. Codex itself continues to discover models and effort values from app-server `model/list`; this plan deliberately does not turn a moving local runtime catalog into a hard-coded API registry.
 
 An operator can verify the result by opening the model picker, filtering each direct provider, and observing the new model families and effort-specific labels. Automated contract tests will prove that every new preset resolves to the intended provider, wire model, context limit, and provider-native thinking value. Lifecycle tests will prove that compatibility keys redirect to registered canonical presets. Existing project defaults remain GPT-5.6 Sol and existing explicit saved keys continue to load.
 
@@ -54,8 +54,8 @@ An operator can verify the result by opening the model picker, filtering each di
 - Add direct xAI presets for `grok-4.6` at low, medium, high/default, and xhigh effort; make Grok 4.6 the default model used by a directly constructed `XaiArchitect`.
 - Add DeepSeek V4 low-effort support for Flash and Pro, max support for Flash, and explicit fail-fast handling for unsupported effort values.
 - Preserve DeepSeek's 32,000-token application output safety cap while documenting that it is intentionally lower than the current upstream maximum.
-- Add deprecation redirects for exposed OpenAI `o4-mini`, `gpt-5.1-codex`, and `gpt-5.2-codex` compatibility keys, including their static Codex-derived counterparts where applicable.
-- Add GPT-5 Mini low and medium presets so the low/medium/high o4-mini compatibility keys can migrate without collapsing their workload role.
+- Add deprecation metadata for exposed OpenAI `o4-mini`, `gpt-5.1-codex`, and `gpt-5.2-codex` compatibility keys, including their static Codex-derived counterparts where applicable; redirect only after endpoint retirement.
+- Add GPT-5 Mini low and medium presets so operators can migrate low/medium/high o4-mini workloads without collapsing their effort role.
 - Update model-picker labels, lifecycle documentation, unit tests, cross-provider contract tests, and optional live-smoke model selection.
 - Reconfirm upstream facts at the start of implementation and record any catalog drift in this plan before changing code.
 
@@ -81,7 +81,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 | Gemini | `gemini-3.7-flash` accepts low/medium/high and defaults to medium; `gemini-3.6-flash` accepts minimal/low/medium/high and defaults to medium; `gemini-3.5-flash-lite` accepts minimal/low/medium/high and defaults to minimal. Each advertises a 1,048,576-token input window and supports tools plus structured output. | Add explicit stable-family presets. Do not silently map disabled/minimal to 3.7 low. |
 | xAI | `grok-4.6`; 500,000-token context; low/medium/high/xhigh reasoning; reasoning cannot be disabled; Chat Completions and Responses support the ordinary tool/structured-output path. | Make it the recommended direct xAI model and direct-architect default. |
 | DeepSeek | `deepseek-v4-flash` and `deepseek-v4-pro` remain canonical; native thinking efforts are low/high/max; compatibility mapping sends medium and xhigh to high; thinking can be disabled; the provider advertises a 1M context and 384K output ceiling. | Expose low and missing Flash max; honor documented medium/xhigh compatibility mapping; reject minimal; retain the 32K application safety cap. |
-| OpenAI | GPT-5.6 Sol/Terra/Luna are already represented. `o4-mini` is deprecated and succeeded by GPT-5 Mini. `gpt-5.1-codex` and `gpt-5.2-codex` are deprecated while `gpt-5.3-codex` remains the active compatibility target. | Add lifecycle redirects only; do not synthesize new static Codex models. |
+| OpenAI | GPT-5.6 Sol/Terra/Luna are already represented. `o4-mini` is deprecated and succeeded by GPT-5 Mini. `gpt-5.1-codex` and `gpt-5.2-codex` are deprecated while `gpt-5.3-codex` is the recommended successor. | Preserve deprecated-but-live model identity, redirect only after retirement, and do not synthesize new static Codex models. |
 
 ## Progress
 
@@ -95,6 +95,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - [x] (2026-08-29) MS004 added effort-preserving OpenAI lifecycle redirects and hardened the Codex ownership boundary; 260 tests and 43 subtests passed with lint, types, and import smoke green.
 - [x] (2026-08-29) MS005 completed lifecycle documentation, registry/default/exclusion audits, integrated provider validation, and full repository quality gates.
 - [x] (2026-08-29) MS001-MS005 and this ExecPlan were completed and archived through the CLI after all acceptance criteria passed.
+- [x] (2026-08-29) Post-completion review removed premature OpenAI runtime redirects and raised the Google Gen AI SDK floor to the first release with exact minimal/medium thinking enums.
 
 ## Surprises & Discoveries
 
@@ -118,6 +119,10 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 
 - Decision: Preserve every existing saved preset key and route retired endpoints through `DEPRECATED_PRESETS`.
   Rationale: Preset keys are public compatibility IDs. Removing or silently invalidating them would break stored configuration before the operator can select a replacement.
+  Date/Author: 2026-08-29 / @codex
+
+- Decision: Treat deprecation metadata and retirement redirects as distinct lifecycle states.
+  Rationale: A deprecated endpoint may remain callable with different behavior and cost from its successor. Its saved key stays bound to the original model until retirement; warning metadata can still hide it from new selections and recommend an operator-controlled migration.
   Date/Author: 2026-08-29 / @codex
 
 - Decision: Keep explicit older pinned models available unless the upstream endpoint is retired.
@@ -146,13 +151,15 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 
 ## Outcomes & Retrospective
 
-The refresh shipped 26 exact direct-provider preset keys across Anthropic (6), Gemini (11), xAI (4), DeepSeek (3), and OpenAI (2). Opus 5 now owns the generic direct Opus aliases while pinned Opus 4.8 remains available. Gemini exposes exact 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite thinking contracts. Grok 4.6 is the recommended direct xAI model with Grok 4.5 retained as fallback. DeepSeek V4 now handles disabled, low, documented medium/high/xhigh-to-high compatibility, and max explicitly while retaining the 32K application output cap. GPT-5 Mini low/medium/high preserve o4-mini workload intent, and retired direct/static Codex keys redirect to GPT-5.3 Codex compatibility targets.
+The refresh shipped 26 exact direct-provider preset keys across Anthropic (6), Gemini (11), xAI (4), DeepSeek (3), and OpenAI (2). Opus 5 now owns the generic direct Opus aliases while pinned Opus 4.8 remains available. Gemini exposes exact 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite thinking contracts. Grok 4.6 is the recommended direct xAI model with Grok 4.5 retained as fallback. DeepSeek V4 now handles disabled, low, documented medium/high/xhigh-to-high compatibility, and max explicitly while retaining the 32K application output cap. GPT-5 Mini low/medium/high remain available as explicit successors, while deprecated-but-live o4-mini and GPT-5.1/5.2 Codex saved keys stay bound to their selected model until endpoint retirement.
 
-Seven changed lifecycle mappings resolve from registered saved keys to registered canonical presets. Existing phase defaults remain `gpt56-sol-default`. Codex model and effort discovery remains runtime-owned, accepts future catalog effort tokens, and has no new static GPT-5.6 preset. The planned exclusions remain absent: Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, and a GPT-5.6 Pro-mode pseudo-preset.
+Retired lifecycle mappings continue to resolve from registered saved keys to registered canonical presets. Seven deprecated-but-live OpenAI entries carry warning metadata without runtime replacements, so picker guidance does not silently migrate unattended configurations. Existing phase defaults remain `gpt56-sol-default`. Codex model and effort discovery remains runtime-owned, accepts future catalog effort tokens, and has no new static GPT-5.6 preset. The planned exclusions remain absent: Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, and a GPT-5.6 Pro-mode pseudo-preset.
 
 Final offline validation passed. The expanded provider, picker, and runtime suite completed with 427 tests and 48 subtests in 8.94 seconds. `ruff check src tests`, `pyright` with zero errors and warnings, and import smoke passed. Full `pytest -q` completed with 968 passed, 10 expected live-test skips, 48 subtests passed, and four pathspec deprecation warnings in 11.74 seconds. ExecPlan registry/discovery, registry key/default/exclusion diagnostics, `git diff --check`, and focused scope review also passed.
 
-The final implementation requires no dependency, lockfile, configuration-data migration, phase-default, pricing, prompt, authentication, or transport change. No source files were added, removed, or moved, so snapshot synchronization was not applicable. Optional live smokes were not requested and were not run; no provider credentials, paid requests, raw responses, or secrets were used or retained. Rollback choices remain Opus 4.8, Gemini 3.5 Flash, Grok 4.5, DeepSeek V4 Flash, GPT-5.5 direct, and runtime defaults for Codex and Claude Code. Specialized transports, modalities, and output-cap expansion remain deliberately deferred.
+Post-completion review raised the declared `google-genai` floor from 1.51.0 to 1.56.0, the first SDK release with the required `MINIMAL` and `MEDIUM` thinking enums; the lockfile's resolved SDK remains 1.64.0. The review fix passed 186 focused tests plus 12 subtests, an isolated 1.56.0 minimum-version run with 42 tests, and the full suite with 963 passed, 10 expected live-test skips, and 48 subtests. Ruff, Pyright, import, lockfile, registry, and diff checks also passed.
+
+The final implementation requires no configuration-data migration, phase-default, pricing, prompt, authentication, or transport change. No source files were added, removed, or moved, so snapshot synchronization was not applicable. Optional live smokes were not requested and were not run; no provider credentials, paid requests, raw responses, or secrets were used or retained. Rollback choices remain Opus 4.8, Gemini 3.5 Flash, Grok 4.5, DeepSeek V4 Flash, GPT-5.5 direct, and runtime defaults for Codex and Claude Code. Specialized transports, modalities, and output-cap expansion remain deliberately deferred.
 
 ## Context and Orientation
 

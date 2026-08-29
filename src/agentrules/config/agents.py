@@ -749,20 +749,29 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "o4-mini-low": _preset(
         config=O4_MINI_LOW,
-        label="OpenAI o4-mini (Deprecated → GPT-5 Mini Low)",
-        description="Saved-key compatibility preset; runtime requests use GPT-5 Mini at low reasoning.",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5 Mini Low)",
+        description=(
+            "Deprecated o4-mini endpoint at low reasoning. Existing selections remain on o4-mini; "
+            "choose GPT-5 Mini Low for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-medium": _preset(
         config=O4_MINI_MEDIUM,
-        label="OpenAI o4-mini (Deprecated → GPT-5 Mini Medium)",
-        description="Saved-key compatibility preset; runtime requests use GPT-5 Mini at medium reasoning.",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5 Mini Medium)",
+        description=(
+            "Deprecated o4-mini endpoint at medium reasoning. Existing selections remain on o4-mini; "
+            "choose GPT-5 Mini Medium for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-high": _preset(
         config=O4_MINI_HIGH,
-        label="OpenAI o4-mini (Deprecated → GPT-5 Mini High)",
-        description="Saved-key compatibility preset; runtime requests use GPT-5 Mini at high reasoning.",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5 Mini High)",
+        description=(
+            "Deprecated o4-mini endpoint at high reasoning. Existing selections remain on o4-mini; "
+            "choose GPT-5 Mini High for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt4.1-default": _preset(
@@ -947,14 +956,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt-5.1-codex": _preset(
         config=GPT5_1_CODEX,
-        label="GPT-5.1 Codex (Deprecated → GPT-5.3 Codex)",
-        description="Saved-key compatibility preset; runtime requests use GPT-5.3 Codex with medium reasoning.",
+        label="GPT-5.1 Codex (Deprecated; successor: GPT-5.3 Codex)",
+        description=(
+            "Deprecated GPT-5.1 Codex endpoint with medium reasoning. Existing selections remain on "
+            "GPT-5.1 Codex; choose GPT-5.3 Codex for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.2-codex": _preset(
         config=GPT5_2_CODEX,
-        label="GPT-5.2 Codex (Deprecated → GPT-5.3 Codex)",
-        description="Saved-key compatibility preset; runtime requests use GPT-5.3 Codex with medium reasoning.",
+        label="GPT-5.2 Codex (Deprecated; successor: GPT-5.3 Codex)",
+        description=(
+            "Deprecated GPT-5.2 Codex endpoint with medium reasoning. Existing selections remain on "
+            "GPT-5.2 Codex; choose GPT-5.3 Codex for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.3-codex": _preset(

@@ -116,32 +116,46 @@ def _build_preset_infos(
 PRESET_INFOS: dict[str, PresetInfo] = _build_preset_infos(agent_settings.MODEL_PRESETS.items())
 DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
     "o4-mini-low": PresetDeprecationInfo(
-        replacement_key="gpt5-mini-low",
-        reason="OpenAI deprecated o4-mini and identifies GPT-5 Mini as its successor.",
+        reason=(
+            "OpenAI deprecated o4-mini but has not retired it; "
+            "choose GPT-5 Mini Low for new configurations."
+        ),
     ),
     "o4-mini-medium": PresetDeprecationInfo(
-        replacement_key="gpt5-mini-medium",
-        reason="OpenAI deprecated o4-mini and identifies GPT-5 Mini as its successor.",
+        reason=(
+            "OpenAI deprecated o4-mini but has not retired it; "
+            "choose GPT-5 Mini Medium for new configurations."
+        ),
     ),
     "o4-mini-high": PresetDeprecationInfo(
-        replacement_key="gpt5-mini",
-        reason="OpenAI deprecated o4-mini and identifies GPT-5 Mini as its successor.",
+        reason=(
+            "OpenAI deprecated o4-mini but has not retired it; "
+            "choose GPT-5 Mini High for new configurations."
+        ),
     ),
     "gpt-5.1-codex": PresetDeprecationInfo(
-        replacement_key="gpt-5.3-codex",
-        reason="OpenAI deprecated GPT-5.1 Codex; use the active GPT-5.3 Codex compatibility target.",
+        reason=(
+            "OpenAI deprecated GPT-5.1 Codex but has not retired it; "
+            "choose GPT-5.3 Codex for new configurations."
+        ),
     ),
     "gpt-5.2-codex": PresetDeprecationInfo(
-        replacement_key="gpt-5.3-codex",
-        reason="OpenAI deprecated GPT-5.2 Codex; use the active GPT-5.3 Codex compatibility target.",
+        reason=(
+            "OpenAI deprecated GPT-5.2 Codex but has not retired it; "
+            "choose GPT-5.3 Codex for new configurations."
+        ),
     ),
     "codex-gpt-5.1-codex": PresetDeprecationInfo(
-        replacement_key="codex-gpt-5.3-codex",
-        reason="This static Codex compatibility choice now resolves to GPT-5.3 Codex.",
+        reason=(
+            "This static Codex compatibility choice remains bound to GPT-5.1 Codex; runtime availability "
+            "comes from the app-server catalog. Choose Codex GPT-5.3 Codex for new configurations."
+        ),
     ),
     "codex-gpt-5.2-codex": PresetDeprecationInfo(
-        replacement_key="codex-gpt-5.3-codex",
-        reason="This static Codex compatibility choice now resolves to GPT-5.3 Codex.",
+        reason=(
+            "This static Codex compatibility choice remains bound to GPT-5.2 Codex; runtime availability "
+            "comes from the app-server catalog. Choose Codex GPT-5.3 Codex for new configurations."
+        ),
     ),
     "deepseek-chat": PresetDeprecationInfo(
         replacement_key="deepseek-v4-flash-non-reasoning",
@@ -233,19 +247,29 @@ def resolve_runtime_preset_key(preset_key: str | None, *, warn: bool = False) ->
 
     deprecation = get_preset_deprecation_info(preset_key)
     replacement_key = deprecation.replacement_key if deprecation is not None else None
-    if not replacement_key or replacement_key not in agent_settings.MODEL_PRESETS:
-        return preset_key
+    replacement_is_registered = bool(replacement_key and replacement_key in agent_settings.MODEL_PRESETS)
 
-    if warn and preset_key not in _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS:
-        reason_suffix = f" {deprecation.reason}" if deprecation and deprecation.reason else ""
-        logger.warning(
-            "Preset key '%s' is deprecated and will resolve to '%s' for runtime requests.%s",
-            preset_key,
-            replacement_key,
-            reason_suffix,
-        )
+    if deprecation is not None and warn and preset_key not in _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS:
+        reason_suffix = f" {deprecation.reason}" if deprecation.reason else ""
+        if replacement_is_registered:
+            logger.warning(
+                "Preset key '%s' is deprecated and will resolve to '%s' for runtime requests.%s",
+                preset_key,
+                replacement_key,
+                reason_suffix,
+            )
+        else:
+            logger.warning(
+                "Preset key '%s' is deprecated but remains bound to its configured model for runtime requests.%s",
+                preset_key,
+                reason_suffix,
+            )
         _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS.add(preset_key)
 
+    if not replacement_is_registered:
+        return preset_key
+
+    assert replacement_key is not None
     return replacement_key
 
 
