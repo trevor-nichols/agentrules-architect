@@ -115,6 +115,34 @@ def _build_preset_infos(
 
 PRESET_INFOS: dict[str, PresetInfo] = _build_preset_infos(agent_settings.MODEL_PRESETS.items())
 DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
+    "o4-mini-low": PresetDeprecationInfo(
+        replacement_key="gpt5-mini-low",
+        reason="OpenAI deprecated o4-mini and identifies GPT-5 Mini as its successor.",
+    ),
+    "o4-mini-medium": PresetDeprecationInfo(
+        replacement_key="gpt5-mini-medium",
+        reason="OpenAI deprecated o4-mini and identifies GPT-5 Mini as its successor.",
+    ),
+    "o4-mini-high": PresetDeprecationInfo(
+        replacement_key="gpt5-mini",
+        reason="OpenAI deprecated o4-mini and identifies GPT-5 Mini as its successor.",
+    ),
+    "gpt-5.1-codex": PresetDeprecationInfo(
+        replacement_key="gpt-5.3-codex",
+        reason="OpenAI deprecated GPT-5.1 Codex; use the active GPT-5.3 Codex compatibility target.",
+    ),
+    "gpt-5.2-codex": PresetDeprecationInfo(
+        replacement_key="gpt-5.3-codex",
+        reason="OpenAI deprecated GPT-5.2 Codex; use the active GPT-5.3 Codex compatibility target.",
+    ),
+    "codex-gpt-5.1-codex": PresetDeprecationInfo(
+        replacement_key="codex-gpt-5.3-codex",
+        reason="This static Codex compatibility choice now resolves to GPT-5.3 Codex.",
+    ),
+    "codex-gpt-5.2-codex": PresetDeprecationInfo(
+        replacement_key="codex-gpt-5.3-codex",
+        reason="This static Codex compatibility choice now resolves to GPT-5.3 Codex.",
+    ),
     "deepseek-chat": PresetDeprecationInfo(
         replacement_key="deepseek-v4-flash-non-reasoning",
         reason="DeepSeek retires this alias on July 24, 2026.",

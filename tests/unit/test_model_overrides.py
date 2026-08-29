@@ -579,15 +579,21 @@ class ModelOverrideTestCase(unittest.TestCase):
     def test_codex_gpt56_models_remain_runtime_discovered(self) -> None:
         static_codex_model_names = {
             preset["config"].model_name
-            for preset in self.agents_module.BASE_MODEL_PRESETS.values()
+            for preset in self.agents_module.MODEL_PRESETS.values()
             if preset["provider"] == ModelProvider.CODEX
         }
 
         self.assertFalse(
             {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} & static_codex_model_names
         )
+        self.assertFalse(
+            any(key.startswith("codex-gpt-5.6") for key in self.agents_module.MODEL_PRESETS)
+        )
 
     def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
+        self.assertIn("gpt5-mini-low", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt5-mini-medium", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt5-mini", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-none", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-default", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-xhigh", self.agents_module.MODEL_PRESETS)
@@ -616,6 +622,31 @@ class ModelOverrideTestCase(unittest.TestCase):
             self.agents_module.MODEL_PRESETS["gpt56-sol-max"]["config"].reasoning,
             ReasoningMode.MAX,
         )
+        self.assertNotIn("gpt55-pro", self.agents_module.MODEL_PRESETS)
+        self.assertNotIn("gpt56-pro", self.agents_module.MODEL_PRESETS)
+
+    def test_openai_lifecycle_redirects_preserve_saved_effort_roles(self) -> None:
+        expected_replacements = {
+            "o4-mini-low": "gpt5-mini-low",
+            "o4-mini-medium": "gpt5-mini-medium",
+            "o4-mini-high": "gpt5-mini",
+            "gpt-5.1-codex": "gpt-5.3-codex",
+            "gpt-5.2-codex": "gpt-5.3-codex",
+            "codex-gpt-5.1-codex": "codex-gpt-5.3-codex",
+            "codex-gpt-5.2-codex": "codex-gpt-5.3-codex",
+        }
+
+        for legacy_key, replacement_key in expected_replacements.items():
+            with self.subTest(legacy_key=legacy_key):
+                deprecation = self.model_config.get_preset_deprecation_info(legacy_key)
+                self.assertIsNotNone(deprecation)
+                assert deprecation is not None
+                self.assertEqual(deprecation.replacement_key, replacement_key)
+                self.assertEqual(
+                    self.model_config.get_model_config_for_preset_key(legacy_key),
+                    self.agents_module.MODEL_PRESETS[replacement_key]["config"],
+                )
+                self.assertIn("Deprecated", self.agents_module.MODEL_PRESETS[legacy_key]["label"])
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)

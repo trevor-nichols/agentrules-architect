@@ -152,6 +152,26 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertIn("tools", payload)
         self.assertEqual(payload["tool_choice"], "auto")
 
+    def test_prepare_request_for_gpt5_mini_preserves_effort(self) -> None:
+        for reasoning, expected_effort in (
+            (ReasoningMode.LOW, "low"),
+            (ReasoningMode.MEDIUM, "medium"),
+            (ReasoningMode.HIGH, "high"),
+        ):
+            with self.subTest(reasoning=reasoning):
+                prepared = prepare_request(
+                    model_name="gpt-5-mini",
+                    content="Hello GPT-5 Mini",
+                    reasoning=reasoning,
+                    temperature=None,
+                    tools=None,
+                    text_verbosity="medium",
+                    use_responses_api=resolve_model_defaults("gpt-5-mini").use_responses_api,
+                )
+
+                self.assertEqual(prepared.api, "responses")
+                self.assertEqual(prepared.payload["reasoning"], {"effort": expected_effort})
+
     def test_prepare_request_for_responses_api_gpt51(self) -> None:
         prepared = prepare_request(
             model_name="gpt-5.1-turbo",

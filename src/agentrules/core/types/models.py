@@ -578,6 +578,18 @@ GPT5_HIGH = _gpt5_responses_model(
     text_verbosity="high",
 )
 
+GPT5_MINI_LOW = _gpt5_responses_model(
+    "gpt-5-mini",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_MINI_MEDIUM = _gpt5_responses_model(
+    "gpt-5-mini",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+
 GPT5_MINI = _gpt5_responses_model(
     "gpt-5-mini",
     reasoning=ReasoningMode.HIGH,

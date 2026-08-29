@@ -96,6 +96,8 @@ from agentrules.core.types.models import (
     GPT5_DEFAULT,
     GPT5_HIGH,
     GPT5_MINI,
+    GPT5_MINI_LOW,
+    GPT5_MINI_MEDIUM,
     GPT5_MINIMAL,
     GROK_4_0709,
     GROK_4_1_FAST_NON_REASONING,
@@ -747,20 +749,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "o4-mini-low": _preset(
         config=O4_MINI_LOW,
-        label="OpenAI o4-mini (low effort)",
-        description="Efficient modality-friendly reasoning.",
+        label="OpenAI o4-mini (Deprecated → GPT-5 Mini Low)",
+        description="Saved-key compatibility preset; runtime requests use GPT-5 Mini at low reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-medium": _preset(
         config=O4_MINI_MEDIUM,
-        label="OpenAI o4-mini (medium effort)",
-        description="Balanced o4-mini configuration.",
+        label="OpenAI o4-mini (Deprecated → GPT-5 Mini Medium)",
+        description="Saved-key compatibility preset; runtime requests use GPT-5 Mini at medium reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-high": _preset(
         config=O4_MINI_HIGH,
-        label="OpenAI o4-mini (high effort)",
-        description="Highest reasoning effort for o4-mini.",
+        label="OpenAI o4-mini (Deprecated → GPT-5 Mini High)",
+        description="Saved-key compatibility preset; runtime requests use GPT-5 Mini at high reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt4.1-default": _preset(
@@ -790,7 +792,19 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     "gpt5-mini": _preset(
         config=GPT5_MINI,
         label="GPT-5 Mini (high reasoning)",
-        description="Cost-efficient GPT-5 Mini with 400k context and high reasoning.",
+        description="Cost-efficient GPT-5 Mini with 400K context, high reasoning, and medium verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt5-mini-low": _preset(
+        config=GPT5_MINI_LOW,
+        label="GPT-5 Mini (low reasoning)",
+        description="Cost-efficient GPT-5 Mini with 400K context, low reasoning, and low verbosity.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt5-mini-medium": _preset(
+        config=GPT5_MINI_MEDIUM,
+        label="GPT-5 Mini (medium reasoning)",
+        description="Cost-efficient GPT-5 Mini with 400K context, medium reasoning, and medium verbosity.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt55-none": _preset(
@@ -933,14 +947,14 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt-5.1-codex": _preset(
         config=GPT5_1_CODEX,
-        label="GPT-5.1 Codex",
-        description="Coding-optimized GPT-5.1 variant via Responses API with medium reasoning.",
+        label="GPT-5.1 Codex (Deprecated → GPT-5.3 Codex)",
+        description="Saved-key compatibility preset; runtime requests use GPT-5.3 Codex with medium reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.2-codex": _preset(
         config=GPT5_2_CODEX,
-        label="GPT-5.2 Codex",
-        description="Coding-optimized GPT-5.2 variant via Responses API with medium reasoning.",
+        label="GPT-5.2 Codex (Deprecated → GPT-5.3 Codex)",
+        description="Saved-key compatibility preset; runtime requests use GPT-5.3 Codex with medium reasoning.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.3-codex": _preset(

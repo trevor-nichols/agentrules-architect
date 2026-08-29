@@ -2,18 +2,23 @@
 id: EP-20260829-001/MS004
 execplan_id: EP-20260829-001
 ms: 4
-title: "Harden OpenAI Lifecycle and Codex Runtime Boundaries"
-status: planned
+title: Harden OpenAI Lifecycle and Codex Runtime Boundaries
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-08-29
-updated: 2026-08-29
-tags: [providers, openai, codex, lifecycle, compatibility]
+updated: '2026-08-29'
+tags:
+- providers
+- openai
+- codex
+- lifecycle
+- compatibility
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Harden OpenAI Lifecycle and Codex Runtime Boundaries
@@ -26,14 +31,14 @@ Close the known OpenAI saved-preset lifecycle gaps while preserving workload int
 
 ## Definition of Done
 
-- [ ] GPT-5 Mini has low, medium, and existing high direct-API presets using the Responses API.
-- [ ] Each o4-mini low/medium/high compatibility key remains registered and resolves to the matching GPT-5 Mini effort role.
-- [ ] Direct GPT-5.1 Codex and GPT-5.2 Codex keys remain registered and resolve to GPT-5.3 Codex.
-- [ ] Static Codex-derived GPT-5.1/5.2 compatibility keys, if still exposed, resolve to the existing static GPT-5.3 compatibility key.
-- [ ] Picker labels and descriptions disclose deprecation and replacement behavior.
-- [ ] Codex runtime-default and runtime-catalog behavior still accepts future model IDs and safe future effort tokens.
-- [ ] No static Codex GPT-5.6 preset, GPT-5.5 Pro preset, or GPT-5.6 Pro-mode pseudo-preset is added.
-- [ ] OpenAI, lifecycle, Codex, picker, lint, type, and import tests pass offline.
+- [x] GPT-5 Mini has low, medium, and existing high direct-API presets using the Responses API.
+- [x] Each o4-mini low/medium/high compatibility key remains registered and resolves to the matching GPT-5 Mini effort role.
+- [x] Direct GPT-5.1 Codex and GPT-5.2 Codex keys remain registered and resolve to GPT-5.3 Codex.
+- [x] Static Codex-derived GPT-5.1/5.2 compatibility keys, if still exposed, resolve to the existing static GPT-5.3 compatibility key.
+- [x] Picker labels and descriptions disclose deprecation and replacement behavior.
+- [x] Codex runtime-default and runtime-catalog behavior still accepts future model IDs and safe future effort tokens.
+- [x] No static Codex GPT-5.6 preset, GPT-5.5 Pro preset, or GPT-5.6 Pro-mode pseudo-preset is added.
+- [x] OpenAI, lifecycle, Codex, picker, lint, type, and import tests pass offline.
 
 ## Scope
 
@@ -91,32 +96,32 @@ If MS001 finds that a listed static Codex-derived key is no longer exposed, do n
 
 ### Workstream A - Add effort-equivalent GPT-5 Mini targets
 
-- [ ] Add `GPT5_MINI_LOW` and `GPT5_MINI_MEDIUM` using the existing Responses-model factory; retain `GPT5_MINI` as high.
-- [ ] Register `gpt5-mini-low` and `gpt5-mini-medium` with accurate context, effort, verbosity, and labels.
-- [ ] Verify `src/agentrules/core/agents/openai/config.py` already routes the `gpt-5` family through Responses and needs no new special case.
-- [ ] Add request tests proving low, medium, and high produce the exact `reasoning.effort` values and no unsupported Chat Completions fallback.
+- [x] Add `GPT5_MINI_LOW` and `GPT5_MINI_MEDIUM` using the existing Responses-model factory; retain `GPT5_MINI` as high.
+- [x] Register `gpt5-mini-low` and `gpt5-mini-medium` with accurate context, effort, verbosity, and labels.
+- [x] Verify `src/agentrules/core/agents/openai/config.py` already routes the `gpt-5` family through Responses and needs no new special case.
+- [x] Add request tests proving low, medium, and high produce the exact `reasoning.effort` values and no unsupported Chat Completions fallback.
 
 ### Workstream B - Register lifecycle redirects
 
-- [ ] Add every applicable mapping from the compatibility table to `DEPRECATED_PRESETS` with current, actionable reasons.
-- [ ] Update o4-mini and deprecated Codex labels/descriptions so model-picker users see the replacement rather than assuming the old endpoint is recommended.
-- [ ] Preserve every legacy entry in `MODEL_PRESETS`; do not mutate persisted files or delete imported constants.
-- [ ] Verify `resolve_runtime_preset_key()` and `get_model_config_for_preset_key()` return canonical configs for every new mapping.
+- [x] Add every applicable mapping from the compatibility table to `DEPRECATED_PRESETS` with current, actionable reasons.
+- [x] Update o4-mini and deprecated Codex labels/descriptions so model-picker users see the replacement rather than assuming the old endpoint is recommended.
+- [x] Preserve every legacy entry in `MODEL_PRESETS`; do not mutate persisted files or delete imported constants.
+- [x] Verify `resolve_runtime_preset_key()` and `get_model_config_for_preset_key()` return canonical configs for every new mapping.
 
 ### Workstream C - Guard the Codex ownership boundary
 
-- [ ] Keep `_build_codex_runtime_presets()` free of GPT-5.6 additions and avoid editing runtime catalog results into static constants.
-- [ ] Extend/retain tests showing `model/list` can surface an unknown future model and an unknown safe lowercase effort token.
-- [ ] Verify runtime default still omits a model override when the catalog cannot provide a trustworthy default.
-- [ ] Verify local Codex readiness still depends on the executable and resolved `CODEX_HOME` policy, not a direct OpenAI API key.
-- [ ] Add a negative registry assertion that no `codex-gpt-5.6*` static key is introduced by this milestone.
+- [x] Keep `_build_codex_runtime_presets()` free of GPT-5.6 additions and avoid editing runtime catalog results into static constants.
+- [x] Extend/retain tests showing `model/list` can surface an unknown future model and an unknown safe lowercase effort token.
+- [x] Verify runtime default still omits a model override when the catalog cannot provide a trustworthy default.
+- [x] Verify local Codex readiness still depends on the executable and resolved `CODEX_HOME` policy, not a direct OpenAI API key.
+- [x] Add a negative registry assertion that no `codex-gpt-5.6*` static key is introduced by this milestone.
 
 ### Workstream D - Prove saved-config compatibility
 
-- [ ] Extend the cross-provider deprecation iteration and model override tests for all mappings.
-- [ ] Test labels/descriptions through the CLI model picker without requiring a Codex runtime process.
-- [ ] Test static old Codex keys separately from dynamic `codex-runtime:` keys so a passing redirect cannot mask runtime catalog regressions.
-- [ ] Confirm `MODEL_PRESET_DEFAULTS` remains unchanged.
+- [x] Extend the cross-provider deprecation iteration and model override tests for all mappings.
+- [x] Test labels/descriptions through the CLI model picker without requiring a Codex runtime process.
+- [x] Test static old Codex keys separately from dynamic `codex-runtime:` keys so a passing redirect cannot mask runtime catalog regressions.
+- [x] Confirm `MODEL_PRESET_DEFAULTS` remains unchanged.
 
 ## Dependencies
 
@@ -175,3 +180,6 @@ All old keys remain registered, so rollback does not require a configuration rew
 
 - 2026-08-29: Milestone created.
 - 2026-08-29: Added effort-preserving OpenAI mappings, exact compatibility table, Codex runtime ownership guards, Pro deferrals, and recovery rules.
+- 2026-08-29: Added GPT-5 Mini low/medium canonical presets and routed all o4-mini and deprecated direct/static Codex compatibility keys through `DEPRECATED_PRESETS` without removing saved keys.
+- 2026-08-29: Preserved dynamic Codex `model/list` ownership and safe future effort handling. The focused audit corrected a vacuous static-Codex negative test so it now inspects the combined registry.
+- 2026-08-29: Validation passed: 260 tests and 43 subtests, Ruff, Pyright, import smoke, and `git diff --check`.

@@ -96,6 +96,20 @@ DIRECT_MODEL_CONTRACTS = (
         "gpt56-sol-none", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.DISABLED, 1_050_000, ("responses", "none")
     ),
     ModelContract(
+        "gpt5-mini-low", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.LOW, 400_000, ("responses", "low")
+    ),
+    ModelContract(
+        "gpt5-mini-medium",
+        ModelProvider.OPENAI,
+        "gpt-5-mini",
+        ReasoningMode.MEDIUM,
+        400_000,
+        ("responses", "medium"),
+    ),
+    ModelContract(
+        "gpt5-mini", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.HIGH, 400_000, ("responses", "high")
+    ),
+    ModelContract(
         "gpt56-sol-low", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.LOW, 1_050_000, ("responses", "low")
     ),
     ModelContract(
