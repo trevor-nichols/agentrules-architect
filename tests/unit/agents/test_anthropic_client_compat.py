@@ -293,10 +293,22 @@ def test_anthropic_stream_raises_for_refusal_message_delta() -> None:
         set_client(None)
 
 
-def test_anthropic_stream_does_not_expose_partial_refusal_content() -> None:
-    text_event = SimpleNamespace(
+@pytest.mark.parametrize("model_name", ["claude-fable-5", "claude-opus-5"])
+def test_anthropic_stream_does_not_expose_partial_refusal_content(model_name: str) -> None:
+    tool_start_event = SimpleNamespace(
+        type="content_block_start",
+        index=0,
+        content_block=SimpleNamespace(type="tool_use", id="tool-1", name="inspect"),
+    )
+    tool_delta_event = SimpleNamespace(
         type="content_block_delta",
         index=0,
+        delta=SimpleNamespace(type="input_json_delta", partial_json='{"path":"src"}'),
+    )
+    tool_stop_event = SimpleNamespace(type="content_block_stop", index=0)
+    text_event = SimpleNamespace(
+        type="content_block_delta",
+        index=1,
         delta=SimpleNamespace(type="text_delta", text="partial refused output"),
     )
     refusal_event = SimpleNamespace(
@@ -308,12 +320,20 @@ def test_anthropic_stream_does_not_expose_partial_refusal_content() -> None:
         ),
     )
 
-    set_client(_EventClient(text_event, refusal_event))
+    set_client(
+        _EventClient(
+            tool_start_event,
+            tool_delta_event,
+            tool_stop_event,
+            text_event,
+            refusal_event,
+        )
+    )
     try:
-        arch = AnthropicArchitect(model_name="claude-fable-5", reasoning=ReasoningMode.DYNAMIC)
+        arch = AnthropicArchitect(model_name=model_name, reasoning=ReasoningMode.DYNAMIC)
         prepared = PreparedRequest(
             payload={
-                "model": "claude-fable-5",
+                "model": model_name,
                 "max_tokens": 1,
                 "messages": [{"role": "user", "content": "hi"}],
             }
@@ -357,7 +377,8 @@ def test_anthropic_stream_yields_immediately_without_partial_refusal_capability(
         set_client(None)
 
 
-def test_anthropic_stream_releases_content_after_terminal_stop_reason() -> None:
+@pytest.mark.parametrize("model_name", ["claude-fable-5", "claude-opus-5"])
+def test_anthropic_stream_releases_content_after_terminal_stop_reason(model_name: str) -> None:
     text_event = SimpleNamespace(
         type="content_block_delta",
         index=0,
@@ -380,10 +401,10 @@ def test_anthropic_stream_releases_content_after_terminal_stop_reason() -> None:
 
     set_client(_EventClient(text_event, message_delta_event, message_stop_event))
     try:
-        arch = AnthropicArchitect(model_name="claude-fable-5", reasoning=ReasoningMode.DYNAMIC)
+        arch = AnthropicArchitect(model_name=model_name, reasoning=ReasoningMode.DYNAMIC)
         prepared = PreparedRequest(
             payload={
-                "model": "claude-fable-5",
+                "model": model_name,
                 "max_tokens": 1,
                 "messages": [{"role": "user", "content": "hi"}],
             }

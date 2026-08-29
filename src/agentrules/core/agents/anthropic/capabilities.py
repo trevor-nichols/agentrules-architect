@@ -33,6 +33,7 @@ class CapabilityProfile:
     supports_adaptive_thinking: bool = False
     supports_manual_thinking: bool = True
     supported_effort_levels: frozenset[AnthropicEffort] = frozenset()
+    supported_effort_levels_with_thinking_disabled: frozenset[AnthropicEffort] | None = None
     thinking_policy: ThinkingPolicy = ThinkingPolicy.LEGACY
     may_return_midstream_refusal: bool = False
 
@@ -90,7 +91,9 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         supports_adaptive_thinking=True,
         supports_manual_thinking=False,
         supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        supported_effort_levels_with_thinking_disabled=frozenset({"low", "medium", "high"}),
         thinking_policy=ThinkingPolicy.ADAPTIVE_DEFAULT,
+        may_return_midstream_refusal=True,
     ),
     CapabilityProfile(
         family_prefix="claude-opus-4-8",

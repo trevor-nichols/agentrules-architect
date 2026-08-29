@@ -91,8 +91,18 @@ def test_claude_5_thinking_policies_are_explicit() -> None:
     )
 
 
-def test_only_fable_requires_midstream_refusal_buffering() -> None:
+def test_opus5_restricts_effort_when_thinking_is_disabled() -> None:
+    profile = resolve_capability_profile("claude-opus-5")
+
+    assert profile.supported_effort_levels_with_thinking_disabled == frozenset(
+        {"low", "medium", "high"}
+    )
+
+
+def test_refusal_capable_models_require_midstream_buffering() -> None:
     assert may_return_midstream_refusal("claude-fable-5")
     assert may_return_midstream_refusal("claude-fable-5-20260609")
+    assert may_return_midstream_refusal("claude-opus-5")
+    assert may_return_midstream_refusal("claude-opus-5-20260820")
     assert not may_return_midstream_refusal("claude-sonnet-5")
     assert not may_return_midstream_refusal("claude-opus-4-8")
