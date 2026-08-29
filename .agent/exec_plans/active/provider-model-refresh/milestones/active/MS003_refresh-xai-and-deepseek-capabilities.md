@@ -30,7 +30,7 @@ Make Grok 4.6 the complete recommended direct xAI path and expose the missing do
 - [ ] A directly constructed `XaiArchitect` defaults to Grok 4.6 high effort.
 - [ ] Grok 4.6 rejects disabled, minimal, and max before dispatch and sends supported effort values unchanged.
 - [ ] DeepSeek V4 Flash has disabled, low, high/default, and max presets; V4 Pro has disabled, low, high/default, and max presets.
-- [ ] DeepSeek maps supported generic modes explicitly and rejects minimal/medium rather than upgrading them to high.
+- [ ] DeepSeek maps generic modes exactly as documented: medium and xhigh resolve to high, max resolves to max, and minimal fails.
 - [ ] DeepSeek legacy keys still resolve to canonical V4 Flash configs and both V4 families retain the 32K application output cap.
 - [ ] Grok Multi-Agent and DeepSeek Vision Experimental remain absent from the general picker.
 - [ ] Targeted xAI/DeepSeek tests, compatibility matrix, lint, types, and import smoke pass offline.
@@ -61,7 +61,7 @@ Make Grok 4.6 the complete recommended direct xAI path and expose the missing do
 | xAI accepted efforts | Grok 4.5 accepts low/medium/high | Grok 4.6 accepts low/medium/high/xhigh exactly |
 | xAI constructor | `XaiArchitect(model_name="grok-4.5")` | Default argument and tests use `grok-4.6` |
 | DeepSeek effort metadata | V4 maps accepted high/max | V4 metadata accepts low/high/max |
-| DeepSeek wire mapping | Enabled modes collapse to high except xhigh/max | Low/high/max are explicit; unsupported modes raise |
+| DeepSeek wire mapping | Enabled modes collapse to high except xhigh/max | Low/high/max are explicit; medium/xhigh follow the documented high mapping; minimal raises |
 | DeepSeek output cap | 32K | 32K, documented as intentional application safety cap |
 | Specialized models | Grok Multi-Agent and DeepSeek Vision absent | Remain absent |
 
@@ -71,9 +71,9 @@ For xAI, add one immutable `GROK_4_6` high/default config and derive low, medium
 
 Update both places where Grok 4.5 is currently treated as current: the default argument in `XaiArchitect.__init__` and `_apply_model_limits()` in the preset registry. Grok 4.6 stays at 500K rather than falling into the unknown-xAI 256K path.
 
-For DeepSeek, keep wire IDs `deepseek-v4-flash` and `deepseek-v4-pro`. Expand immutable accepted efforts to low/high/max. Refactor `_resolve_v4_reasoning()` into an explicit total mapping for allowed generic modes: disabled/temperature means thinking disabled with no effort; low means enabled/low; enabled/dynamic/high means enabled/high; xhigh/max means enabled/max; minimal and medium raise `ValueError`. This validation happens while preparing the request, before the network client is called.
+For DeepSeek, keep wire IDs `deepseek-v4-flash` and `deepseek-v4-pro`. Expand immutable accepted efforts to low/high/max. Refactor `_resolve_v4_reasoning()` into the provider's explicit mapping: disabled/temperature means thinking disabled with no effort; low means enabled/low; medium/enabled/dynamic/high/xhigh mean enabled/high; max means enabled/max; minimal raises `ValueError`. This validation happens while preparing the request, before the network client is called.
 
-Normalize the public `deepseek-v4-pro-max` config to `ReasoningMode.MAX` while preserving its key and wire payload. Existing `ReasoningMode.XHIGH` callers still map to provider `max`, preserving programmatic compatibility.
+Normalize the public `deepseek-v4-pro-max` config to `ReasoningMode.MAX` while preserving its key and wire payload. Programmatic `ReasoningMode.XHIGH` follows DeepSeek's documented compatibility behavior and maps to provider `high`.
 
 ## Preset Contract
 
@@ -118,7 +118,7 @@ All DeepSeek rows send at most 32,000 output tokens under this plan.
 
 - [ ] Add `DEEPSEEK_V4_FLASH_LOW`, `DEEPSEEK_V4_FLASH_MAX`, and `DEEPSEEK_V4_PRO_LOW`; change the existing Pro max constant to `ReasoningMode.MAX` without changing its public key.
 - [ ] Expand both V4 `accepted_reasoning_efforts` sets to low/high/max.
-- [ ] Replace implicit effort coercion in `_resolve_v4_reasoning()` with the explicit mapping documented above and actionable errors for minimal/medium.
+- [ ] Replace implicit effort coercion in `_resolve_v4_reasoning()` with the explicit mapping documented above and an actionable error for minimal.
 - [ ] Add the three missing direct presets with consistent labels/descriptions.
 - [ ] Preserve `DEEPSEEK_CHAT`, `DEEPSEEK_REASONER`, `_LEGACY_MODEL_ALIASES`, and `DEPRECATED_PRESETS` targets.
 - [ ] Keep `max_output_tokens=32_000` for Flash and Pro and add a regression assertion so a future catalog refresh cannot raise it accidentally.
@@ -127,7 +127,7 @@ All DeepSeek rows send at most 32,000 output tokens under this plan.
 ### Workstream C - Prove request and registry contracts
 
 - [ ] Add xAI helper tests for default resolution, all four valid wire efforts, invalid disabled/minimal/max modes, context limit, and direct architect default.
-- [ ] Add DeepSeek helper tests for disabled/low/high/max payloads, xhigh programmatic compatibility, invalid minimal/medium errors, tool/sampling behavior, aliases, and 32K cap.
+- [ ] Add DeepSeek helper tests for disabled/low/medium/high/xhigh/max payloads, invalid minimal errors, tool/sampling behavior, aliases, and 32K cap.
 - [ ] Add all planned rows to `DIRECT_MODEL_CONTRACTS` and extend model override/picker tests.
 - [ ] Assert invalid modes fail during payload preparation without a network client call.
 
@@ -148,8 +148,8 @@ All DeepSeek rows send at most 32,000 output tokens under this plan.
 - Risk: DeepSeek low preset labels exist but the request builder still sends high.
   Mitigation: Test the final prepared payload in both provider-specific and cross-provider contract suites.
 
-- Risk: Correcting Pro max from generic xhigh to max breaks saved configurations.
-  Mitigation: Preserve the preset key and accept programmatic xhigh as a wire-level max alias; only the canonical config metadata becomes max.
+- Risk: Correcting Pro max from generic xhigh to max changes programmatic xhigh behavior.
+  Mitigation: Preserve the preset key by moving it to `ReasoningMode.MAX`, and test that standalone xhigh follows DeepSeek's current documented high mapping.
 
 - Risk: Raising the upstream output ceiling causes unexpectedly large phase results.
   Mitigation: Retain and test the 32K application cap; evaluate expansion separately with performance and cost evidence.
@@ -190,3 +190,4 @@ Grok 4.6 becomes the direct constructor default, while Grok 4.5 remains a regist
 
 - 2026-08-29: Milestone created.
 - 2026-08-29: Defined exact Grok 4.6 and DeepSeek V4 matrices, fail-fast mappings, 32K cap policy, exclusions, and rollback behavior.
+- 2026-08-29: MS001 source revalidation amended DeepSeek compatibility behavior: medium/xhigh map to high, max maps to max, and minimal is rejected.

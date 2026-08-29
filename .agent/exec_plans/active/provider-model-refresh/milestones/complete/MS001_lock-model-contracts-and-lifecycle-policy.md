@@ -2,18 +2,22 @@
 id: EP-20260829-001/MS001
 execplan_id: EP-20260829-001
 ms: 1
-title: "Lock Model Contracts and Lifecycle Policy"
-status: planned
+title: Lock Model Contracts and Lifecycle Policy
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-08-29
-updated: 2026-08-29
-tags: [providers, research, contracts, lifecycle]
+updated: '2026-08-29'
+tags:
+- providers
+- research
+- contracts
+- lifecycle
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Lock Model Contracts and Lifecycle Policy
@@ -26,12 +30,12 @@ Freeze an implementation-day, source-backed contract for every model and migrati
 
 ## Definition of Done
 
-- [ ] Every upstream source in the parent plan has been reopened and checked on the implementation date.
-- [ ] Model IDs, context limits, supported efforts, thinking-disable behavior, transport, tool/structured-output compatibility, and lifecycle state match the parent contract table or the table has been amended with a dated decision.
-- [ ] Each compatibility migration has one existing legacy key and one registered canonical target planned; no legacy key is scheduled for deletion.
-- [ ] The targeted offline baseline passes and its exact result is recorded below.
-- [ ] No provider runtime behavior, dependency version, phase default, or paid external API state changes in this milestone.
-- [ ] Parent `Progress`, `Surprises & Discoveries`, and `Decision Log` reflect any implementation-day drift.
+- [x] Every upstream source in the parent plan was reopened and checked on 2026-08-29.
+- [x] Model IDs, context limits, supported efforts, thinking-disable behavior, transport, tool/structured-output compatibility, and lifecycle state match the amended parent contract table.
+- [x] Each compatibility migration has one existing legacy key and one registered canonical target planned; no legacy key is scheduled for deletion.
+- [x] The targeted offline baseline passed: 166 tests and 8 subtests in 3.11 seconds.
+- [x] No provider runtime behavior, dependency version, phase default, or paid external API state changed in this milestone.
+- [x] Parent `Progress`, `Surprises & Discoveries`, and `Decision Log` record the DeepSeek mapping discovery.
 
 ## Scope
 
@@ -73,29 +77,29 @@ The contract review must also distinguish a direct API model from a local runtim
 
 ### Workstream A - Revalidate direct-provider model contracts
 
-- [ ] Open Anthropic's current model overview, adaptive-thinking, and effort pages. Confirm Opus 5 wire ID, context/output ceilings, adaptive default, disabled-thinking support, and low-through-max effort set.
-- [ ] Open Gemini's current model catalog and thinking pages. Confirm 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite IDs, default and allowed thinking levels, context/output ceilings, structured output, and tools.
-- [ ] Open xAI's Grok 4.6 and reasoning pages. Confirm the 500K context, low/medium/high/xhigh set, inability to disable reasoning, and the ordinary adapter transport features.
-- [ ] Open DeepSeek's update/model pages. Confirm V4 Flash/Pro IDs, low/high/max effort, thinking toggle, and current published output ceiling.
-- [ ] Open official OpenAI model pages. Confirm GPT-5.6 is already current, o4-mini is deprecated and succeeded by GPT-5 Mini, and GPT-5.1/5.2 Codex are deprecated relative to the active 5.3 Codex compatibility target.
+- [x] Opened Anthropic's current Opus 5 and effort pages; confirmed wire ID, 1M/128K limits, adaptive default, disabled-thinking restriction, and low-through-max effort set.
+- [x] Opened Gemini's current model catalog and thinking pages; confirmed IDs, defaults/levels, 1,048,576/65,536 limits, structured output, and tools.
+- [x] Opened xAI's Grok 4.6 and reasoning pages; confirmed 500K context, low/medium/high/xhigh, high default, inability to disable reasoning, tools, and structured output.
+- [x] Opened DeepSeek's update, thinking, and pricing pages; confirmed V4 IDs, 1M/384K provider limits, low/high/max native efforts, disabled thinking, and medium/xhigh-to-high compatibility mapping.
+- [x] Opened official OpenAI model pages; confirmed existing GPT-5.6 catalog, o4-mini successor guidance, and deprecated GPT-5.1/5.2 Codex status.
 
 ### Workstream B - Lock compatibility and exclusion decisions
 
-- [ ] Verify that `o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` exist and that planned GPT-5 Mini targets preserve the same generic effort role.
-- [ ] Verify that direct and static-derived `gpt-5.1-codex`/`gpt-5.2-codex` keys exist before planning their redirects.
-- [ ] Verify that `claude-opus`, `claude-opus-reasoning`, pinned Opus 4.8 keys, DeepSeek legacy keys, and Codex runtime default keys remain registered.
-- [ ] Reconfirm exclusions: no static GPT-5.6 Codex, no pinned Claude Code Opus 5 without an exact runtime gate, no GPT-5.5 Pro or GPT-5.6 Pro mode, no Grok Multi-Agent, and no DeepSeek Vision Experimental.
+- [x] Verified `o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` and their effort-preserving planned GPT-5 Mini targets.
+- [x] Verified direct and static-derived `gpt-5.1-codex`/`gpt-5.2-codex` keys before their planned redirects.
+- [x] Verified generic/pinned Opus, DeepSeek legacy, and Codex runtime default keys remain registered.
+- [x] Reconfirmed all exclusions: no static GPT-5.6 Codex, pinned Claude Code Opus 5, unsupported Pro modes, Grok Multi-Agent, or DeepSeek Vision Experimental.
 
 ### Workstream C - Establish a clean baseline
 
-- [ ] Run the import smoke and targeted tests from the parent plan.
-- [ ] Record exact pass/fail counts and elapsed time in this milestone's changelog.
-- [ ] If a baseline fails, determine whether it predates this branch. Fixing unrelated baseline failures is not authorized by this milestone; record and escalate them before provider implementation.
-- [ ] Update the parent ExecPlan's dated snapshot and decisions when source facts changed.
+- [x] Ran the import smoke and targeted tests from the parent plan.
+- [x] Recorded exact pass counts and elapsed time in this milestone's changelog.
+- [x] Baseline was green; no unrelated-failure investigation was needed.
+- [x] Updated the parent ExecPlan and MS003 for the current DeepSeek effort mapping.
 
 ## Dependencies
 
-- Parent plan EP-20260829-001 must remain in `planned` status until user approval.
+- Parent plan EP-20260829-001 is active after user approval on 2026-08-29.
 - Network access to official documentation is needed for source revalidation; API keys are not needed.
 - MS002, MS003, and MS004 depend on this milestone's contract confirmation.
 
@@ -144,3 +148,4 @@ There is no runtime rollout. If source facts changed, update the plan and keep a
 
 - 2026-08-29: Milestone created.
 - 2026-08-29: Added implementation-day source gates, baseline evidence requirements, ownership boundaries, and drift recovery rules.
+- 2026-08-29: Revalidated all official sources. DeepSeek medium/xhigh compatibility mapping amended in the parent plan and MS003. Validation: import smoke passed; targeted suite passed with 166 tests and 8 subtests in 3.11 seconds; no paid API calls were made.

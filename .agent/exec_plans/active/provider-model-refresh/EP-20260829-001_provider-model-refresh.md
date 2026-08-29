@@ -1,7 +1,7 @@
 ---
 id: EP-20260829-001
 title: "Refresh Provider Model Registry and Capabilities"
-status: planned
+status: active
 kind: refactor
 domain: cross-cutting
 owner: "@codex"
@@ -29,7 +29,7 @@ supersedes: []
 
 This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` up to date as work proceeds.
 
-Maintain this plan in accordance with `.agent/PLANS.md`. Implementation must not begin until the user approves this planned revision.
+Maintain this plan in accordance with `.agent/PLANS.md`. The user approved this revision on 2026-08-29; milestone execution is active.
 
 ## Purpose / Big Picture
 
@@ -75,7 +75,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 | Anthropic | `claude-opus-5`; 1,000,000-token context; 128,000-token output ceiling; adaptive thinking is the default; adaptive effort accepts low, medium, high, xhigh, and max; an explicit disabled-thinking request remains available. | Add direct presets, make generic Opus keys point to Opus 5, keep pinned 4.8 choices. |
 | Gemini | `gemini-3.7-flash` accepts low/medium/high and defaults to medium; `gemini-3.6-flash` accepts minimal/low/medium/high and defaults to medium; `gemini-3.5-flash-lite` accepts minimal/low/medium/high and defaults to minimal. Each advertises a 1,048,576-token input window and supports tools plus structured output. | Add explicit stable-family presets. Do not silently map disabled/minimal to 3.7 low. |
 | xAI | `grok-4.6`; 500,000-token context; low/medium/high/xhigh reasoning; reasoning cannot be disabled; Chat Completions and Responses support the ordinary tool/structured-output path. | Make it the recommended direct xAI model and direct-architect default. |
-| DeepSeek | `deepseek-v4-flash` and `deepseek-v4-pro` remain canonical; current documented thinking efforts are low/high/max; thinking can be disabled; upstream advertises a much larger output ceiling than AgentRules currently sends. | Expose low and missing Flash max; reject unsupported named efforts; retain the 32K application safety cap. |
+| DeepSeek | `deepseek-v4-flash` and `deepseek-v4-pro` remain canonical; native thinking efforts are low/high/max; compatibility mapping sends medium and xhigh to high; thinking can be disabled; the provider advertises a 1M context and 384K output ceiling. | Expose low and missing Flash max; honor documented medium/xhigh compatibility mapping; reject minimal; retain the 32K application safety cap. |
 | OpenAI | GPT-5.6 Sol/Terra/Luna are already represented. `o4-mini` is deprecated and succeeded by GPT-5 Mini. `gpt-5.1-codex` and `gpt-5.2-codex` are deprecated while `gpt-5.3-codex` remains the active compatibility target. | Add lifecycle redirects only; do not synthesize new static Codex models. |
 
 ## Progress
@@ -83,8 +83,8 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - [x] (2026-08-29) Created branch `codex/provider-model-refresh-2026-08` from a clean `main` worktree.
 - [x] (2026-08-29) Captured the upstream catalog audit and baseline test result: 166 tests plus 8 subtests passed across the targeted provider suite.
 - [x] (2026-08-29) Created this ExecPlan and five milestone documents through the AgentRules CLI.
-- [ ] User has reviewed and approved this plan.
-- [ ] MS001 locks the implementation-day source snapshot and migration contract.
+- [x] (2026-08-29) User reviewed and approved this plan and authorized sequential milestone execution.
+- [x] (2026-08-29) MS001 locked the implementation-day source snapshot and migration contract; targeted baseline passed with 166 tests and 8 subtests.
 - [ ] MS002 refreshes Anthropic and Gemini model families.
 - [ ] MS003 refreshes xAI and DeepSeek capabilities.
 - [ ] MS004 hardens OpenAI lifecycle and Codex runtime boundaries.
@@ -99,6 +99,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - xAI's current direct-architect default is `grok-4.5`, and its context-limit logic names that family explicitly. Adding only a preset would leave constructor behavior and token packing stale.
 - Existing static Codex-derived presets predate runtime catalog discovery. They are compatibility surfaces; new runtime models must continue to come from `model/list`.
 - Official OpenAI documentation now marks o4-mini as deprecated and identifies GPT-5 Mini as its successor. Preserving low/medium/high intent requires two new GPT-5 Mini configurations rather than redirecting all three old keys to one high-effort preset.
+- DeepSeek's current Thinking Mode guide documents compatibility mappings that were not captured in the planning draft: requested `medium` and `xhigh` both map to actual `high`, while only `max` maps to `max`. MS003 was amended to implement and test that provider-defined behavior; only `minimal` remains unsupported.
 
 ## Decision Log
 
@@ -119,7 +120,11 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
   Date/Author: 2026-08-29 / @codex
 
 - Decision: Use fail-fast capability validation for unsupported effort values.
-  Rationale: The project explicitly rejects silent coercion. Gemini 3.7 must not translate disabled/minimal to low, xAI 4.6 must not accept disabled/minimal, and DeepSeek must not translate minimal/medium to high.
+  Rationale: The project rejects undocumented coercion. Gemini 3.7 must not translate disabled/minimal to low, xAI 4.6 must not accept disabled/minimal, and DeepSeek must reject minimal while preserving its explicitly documented medium-to-high and xhigh-to-high compatibility mappings.
+  Date/Author: 2026-08-29 / @codex
+
+- Decision: Follow DeepSeek's documented compatibility mapping for generic medium and xhigh modes.
+  Rationale: The official Thinking Mode table maps requested medium and xhigh to actual high for both V4 Flash and V4 Pro. Canonical max presets use `ReasoningMode.MAX`; programmatic `ReasoningMode.XHIGH` must no longer be treated as max.
   Date/Author: 2026-08-29 / @codex
 
 - Decision: Defer specialized transport and modality models.
@@ -208,7 +213,7 @@ The work is acceptable only when all of the following are true:
 - Opus 5 adaptive requests emit only documented effort values, while the non-thinking preset emits an explicit disabled-thinking request without an incompatible effort field.
 - Gemini 3.7 resolves low, medium, and high exactly and rejects disabled/minimal. Gemini 3.6 and 3.5 Flash-Lite resolve their documented minimal/low/medium/high levels. Structured output plus tools remains enabled for all three families.
 - Grok 4.6 resolves to a 500,000-token context, accepts exactly low/medium/high/xhigh, rejects disabled/minimal, and is the default for direct `XaiArchitect` construction.
-- DeepSeek V4 maps low to `low`, high/default to `high`, and xhigh/max to `max`; disabled omits effort and disables thinking; minimal/medium fail before dispatch. Flash and Pro keep the 32K application output cap.
+- DeepSeek V4 maps low to `low`, medium/enabled/dynamic/high/xhigh to `high`, and max to `max`; disabled omits effort and disables thinking; minimal fails before dispatch. Flash and Pro keep the 32K application output cap.
 - Every new/changed compatibility key remains present, its replacement key is registered, and runtime resolution returns the replacement config.
 - Existing phase defaults stay unchanged at `gpt56-sol-default`.
 - Codex runtime model and effort discovery tests still accept future catalog values and no static Codex GPT-5.6 preset is added.
@@ -231,7 +236,7 @@ For rollback after implementation, preserve all new saved keys and redirect only
 Planning artifacts:
 
 - `.agent/exec_plans/active/provider-model-refresh/EP-20260829-001_provider-model-refresh.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS001_lock-model-contracts-and-lifecycle-policy.md`
+- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS001_lock-model-contracts-and-lifecycle-policy.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS002_refresh-anthropic-and-gemini-model-families.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS003_refresh-xai-and-deepseek-capabilities.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS004_harden-openai-lifecycle-and-codex-runtime-boundaries.md`
@@ -243,10 +248,10 @@ Upstream sources to revalidate at MS001:
 - Anthropic adaptive thinking and effort: `https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking` and `https://platform.claude.com/docs/en/build-with-claude/effort`
 - Gemini model catalog and thinking: `https://ai.google.dev/gemini-api/docs/models` and `https://ai.google.dev/gemini-api/docs/thinking`
 - xAI Grok 4.6 and reasoning controls: `https://docs.x.ai/developers/grok-4-6` and `https://docs.x.ai/developers/model-capabilities/text/reasoning`
-- DeepSeek updates and model details: `https://api-docs.deepseek.com/updates/`
+- DeepSeek updates, thinking mapping, and limits: `https://api-docs.deepseek.com/updates/`, `https://api-docs.deepseek.com/guides/thinking_mode/`, and `https://api-docs.deepseek.com/quick_start/pricing/`
 - Official OpenAI model catalog, o4-mini page, GPT-5 Mini page, and latest guide: `https://developers.openai.com/api/docs/models/all`, `https://developers.openai.com/api/docs/models/o4-mini`, `https://developers.openai.com/api/docs/models/gpt-5-mini`, and `https://developers.openai.com/api/docs/guides/latest-model`
 
-The targeted baseline was run before plan creation and passed: `166 passed, 8 subtests passed in 4.82s`. This is evidence of starting health, not evidence that the planned implementation works.
+The targeted baseline was run before plan creation and passed: `166 passed, 8 subtests passed in 4.82s`. MS001 repeated it after implementation-day source revalidation: `166 passed, 8 subtests passed in 3.11s`. This is evidence of clean starting health, not evidence that later implementation milestones work.
 
 ## Interfaces and Dependencies
 

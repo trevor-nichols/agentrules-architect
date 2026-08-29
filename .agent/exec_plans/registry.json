@@ -432,7 +432,7 @@
       "owner": "@codex",
       "path": ".agent/exec_plans/active/provider-model-refresh/EP-20260829-001_provider-model-refresh.md",
       "risk": "med",
-      "status": "planned",
+      "status": "active",
       "supersedes": [],
       "tags": [
         "providers",
