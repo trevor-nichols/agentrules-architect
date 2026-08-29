@@ -10,9 +10,8 @@ from agentrules.core.types.models import AnthropicEffort
 from .capabilities import (
     ThinkingPolicy,
     describe_profiles_with_adaptive_thinking,
-    describe_profiles_with_effort,
     resolve_capability_profile,
-    supported_effort_levels,
+    resolve_effort,
     supports_adaptive_thinking,
     supports_manual_thinking,
     supports_structured_output_format,
@@ -21,7 +20,6 @@ from .capabilities import (
 DEFAULT_NONSTREAMING_MAX_TOKENS = 20_000
 EXTENDED_EFFORT_MAX_TOKENS = 64_000
 DEFAULT_THINKING_BUDGET = 16_000
-_SUPPORTED_EFFORT_LEVELS: set[str] = {"low", "medium", "high", "xhigh", "max"}
 _EXTENDED_EFFORT_LEVELS: set[str] = {"xhigh", "max"}
 
 
@@ -43,9 +41,14 @@ def prepare_request(
     output_format: dict[str, Any] | None = None,
     system_prompt: str | None = None,
 ) -> PreparedRequest:
+    resolved_effort = resolve_effort(
+        model_name=model_name,
+        reasoning=reasoning,
+        effort=effort,
+    )
     output_config = _build_output_config(
         model_name=model_name,
-        effort=effort,
+        effort=resolved_effort,
         output_format=output_format,
     )
     normalized_effort = output_config.get("effort") if output_config is not None else None
@@ -159,7 +162,7 @@ def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dic
 def _build_output_config(
     *,
     model_name: str,
-    effort: AnthropicEffort | str | None,
+    effort: AnthropicEffort | None,
     output_format: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     if effort is None and output_format is None:
@@ -168,30 +171,7 @@ def _build_output_config(
     output_config: dict[str, Any] = {}
 
     if effort is not None:
-        allowed_effort_levels = supported_effort_levels(model_name)
-        if not allowed_effort_levels:
-            raise ValueError(
-                "Effort is only supported for "
-                f"{describe_profiles_with_effort()}; model '{model_name}' does not support "
-                "output_config.effort."
-            )
-
-        if not isinstance(effort, str):
-            raise ValueError(f"Invalid effort value type: {type(effort)!r}")
-
-        normalized = effort.strip().lower()
-        if normalized not in _SUPPORTED_EFFORT_LEVELS:
-            supported = ", ".join(sorted(_SUPPORTED_EFFORT_LEVELS))
-            raise ValueError(f"Invalid effort value '{effort}'. Supported values: {supported}.")
-
-        if normalized not in allowed_effort_levels:
-            supported = ", ".join(sorted(allowed_effort_levels))
-            raise ValueError(
-                f"Effort '{normalized}' is not supported for model '{model_name}'. "
-                f"Supported values for this model: {supported}."
-            )
-
-        output_config["effort"] = normalized
+        output_config["effort"] = effort
 
     if output_format is not None and supports_structured_output_format(model_name):
         output_config["format"] = output_format

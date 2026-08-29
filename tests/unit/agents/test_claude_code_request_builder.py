@@ -162,18 +162,17 @@ def test_prepare_request_maps_reasoning_and_structured_output(tmp_path: Path) ->
     assert prepared.options["output_format"]["schema"]["properties"]["plan"]["type"] == "string"
 
 
-def test_prepare_request_maps_xhigh_reasoning_to_max_effort(tmp_path: Path) -> None:
-    prepared = prepare_request(
-        config_manager=_build_config_manager(tmp_path),
-        model_name="claude-opus-4-6",
-        content="Deeply inspect repository architecture.",
-        system_prompt="Keep responses concise.",
-        reasoning=ReasoningMode.XHIGH,
-        phase_name=None,
-        cwd=str(tmp_path),
-    )
-
-    assert prepared.options["effort"] == "max"
+def test_prepare_request_rejects_unsupported_xhigh_reasoning(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Effort 'xhigh' is not supported"):
+        prepare_request(
+            config_manager=_build_config_manager(tmp_path),
+            model_name="claude-opus-4-6",
+            content="Deeply inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.XHIGH,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
 
 
 def test_prepare_request_maps_xhigh_reasoning_to_xhigh_for_opus47(tmp_path: Path) -> None:

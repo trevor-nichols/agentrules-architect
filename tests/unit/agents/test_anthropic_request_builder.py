@@ -103,6 +103,56 @@ def test_prepare_request_opus5_disabled_is_explicit_without_effort() -> None:
     assert "output_config" not in prepared.payload
 
 
+@pytest.mark.parametrize(
+    ("reasoning", "expected_effort"),
+    [
+        (ReasoningMode.LOW, "low"),
+        (ReasoningMode.MEDIUM, "medium"),
+        (ReasoningMode.HIGH, "high"),
+        (ReasoningMode.XHIGH, "xhigh"),
+        (ReasoningMode.MAX, "max"),
+    ],
+)
+def test_prepare_request_opus5_maps_shared_reasoning_modes_to_effort(
+    reasoning: ReasoningMode,
+    expected_effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=reasoning,
+        tools=None,
+    )
+
+    assert prepared.payload["output_config"] == {"effort": expected_effort}
+    assert "thinking" not in prepared.payload
+
+
+def test_prepare_request_explicit_effort_overrides_shared_reasoning_mode() -> None:
+    prepared = prepare_request(
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=ReasoningMode.LOW,
+        tools=None,
+        effort="medium",
+    )
+
+    assert prepared.payload["output_config"] == {"effort": "medium"}
+
+
+@pytest.mark.parametrize("reasoning", [ReasoningMode.MINIMAL, ReasoningMode.TEMPERATURE])
+def test_prepare_request_rejects_untranslatable_reasoning_modes(
+    reasoning: ReasoningMode,
+) -> None:
+    with pytest.raises(ValueError, match="is not supported for Anthropic models"):
+        prepare_request(
+            model_name="claude-opus-5",
+            prompt="hello",
+            reasoning=reasoning,
+            tools=None,
+        )
+
+
 @pytest.mark.parametrize("effort", ["low", "medium", "high"])
 def test_prepare_request_opus5_accepts_supported_effort_with_thinking_disabled(
     effort: str,
@@ -340,6 +390,16 @@ def test_prepare_request_effort_xhigh_unsupported_for_opus46_raises() -> None:
         assert "Supported values for this model: high, low, max, medium" in str(exc)
     else:
         raise AssertionError("Expected ValueError for effort=xhigh on unsupported model")
+
+
+def test_prepare_request_reasoning_xhigh_unsupported_for_opus46_raises() -> None:
+    with pytest.raises(ValueError, match="Effort 'xhigh' is not supported"):
+        prepare_request(
+            model_name="claude-opus-4-6",
+            prompt="hello",
+            reasoning=ReasoningMode.XHIGH,
+            tools=None,
+        )
 
 
 def test_prepare_request_effort_xhigh_unsupported_for_sonnet46_raises() -> None:
