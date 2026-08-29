@@ -161,7 +161,8 @@ All rows use a 1,048,576-token input limit. Do not add disabled/minimal 3.7 pres
   Mitigation: Validate against profile metadata before translation and assert no dispatch on invalid modes.
 
 - Risk: Direct Anthropic availability is confused with Claude Code availability.
-  Mitigation: Do not derive pinned Claude Code Opus 5 presets without a reviewed exact-runtime version gate.
+  Mitigation: Keep moving aliases runtime-owned. Permit programmatic full-model-ID requests only after the
+  exact resolved Claude Code executable passes the documented 2.1.219 minimum-version gate.
 
 - Risk: Large repetitive preset blocks drift.
   Mitigation: Derive effort variants from one immutable base config and keep provider behavior in profiles; do not introduce a speculative registry framework.
@@ -185,7 +186,8 @@ Expected outcomes:
 
 ## Deferred Work
 
-- Pinned Claude Code Opus 5 support awaits a documented exact executable version gate.
+- A dedicated Claude Code Opus 5 picker preset remains deferred. Programmatic full-model-ID support is
+  allowed behind the documented Claude Code 2.1.219 exact-runtime gate.
 - Automatic migration of generic Gemini 2.5 non-thinking selections awaits their lifecycle event and a role-compatible successor decision.
 - Pricing/cost comparison and optional provider live smokes remain outside this milestone.
 
@@ -200,3 +202,6 @@ These entries are additive except the two generic Opus targets. If Opus 5 proves
 - 2026-08-29: Added Claude Opus 5 and the Gemini 3.7/3.6/3.5 Flash-Lite preset families. Generic Opus keys now resolve to Opus 5; pinned Opus 4.8 and moving Claude Code aliases remain unchanged.
 - 2026-08-29: The AI-code audit identified and removed a subtle SDK-level fallback for exact Gemini families. Missing required SDK enum members now fail closed instead of silently selecting a different thinking level.
 - 2026-08-29: Validation passed: 232 tests and 5 subtests, Ruff, Pyright, import smoke, and `git diff --check`.
+- 2026-08-29: Post-completion review confirmed Claude Code v2.1.219 as the Opus 5 introduction point.
+  Programmatic pinned Opus 5 requests remain allowed behind the centralized exact-runtime gate; no static
+  picker preset or moving-alias inference was added.

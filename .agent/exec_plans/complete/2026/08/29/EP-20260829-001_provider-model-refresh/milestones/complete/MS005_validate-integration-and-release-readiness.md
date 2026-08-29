@@ -210,3 +210,9 @@ This change is a registry/capability release with no destructive data migration.
 - 2026-08-29: Optional live smokes were not requested. No provider flag, credential, paid request, raw response, or secret was used or retained; the ten expected live-test skips were not counted as contract evidence.
 - 2026-08-29: Post-completion audit aligned the optional xAI smoke with the centralized Grok 4.6 default, retained Grok 4.5 fallback payload coverage, and reconciled lifecycle planning artifacts with final preserve-or-redirect behavior.
 - 2026-08-29: Final audit validation passed: offline smoke contract 4 passed/5 skipped, full suite 990 passed/11 skipped with 57 subtests, Ruff, Pyright, import, lockfile, ExecPlan registry, and diff checks green. No provider enable flag or credential was used.
+- 2026-08-29: Post-completion review added the documented Claude Code 2.1.219 minimum gate for pinned
+  `claude-opus-5` programmatic requests, exposed the gate in runtime diagnostics, and retained moving-alias
+  ownership without adding a static picker preset.
+- 2026-08-29: Opus 5 gate validation passed: 159 focused tests and 21 subtests, full suite with 993 passed,
+  11 expected live-test skips, and 57 subtests, plus Ruff, Pyright, import, lockfile, ExecPlan registry,
+  official-reference, and diff checks.

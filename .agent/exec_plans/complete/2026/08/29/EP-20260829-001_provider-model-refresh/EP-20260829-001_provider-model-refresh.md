@@ -62,7 +62,9 @@ An operator can verify the result by opening the model picker, filtering each di
 ### Out of Scope
 
 - Do not add static GPT-5.6 Codex presets. Codex models and efforts remain app-server catalog data.
-- Do not add a pinned Claude Code Opus 5 preset until the exact resolved Claude Code executable has a documented minimum-version gate. The moving `opus` alias remains runtime-owned.
+- Do not add a static Claude Code Opus 5 picker preset in this refresh. Programmatic full-model-ID
+  configurations remain allowed behind the documented Claude Code 2.1.219 exact-runtime gate; the moving
+  `opus` alias remains runtime-owned.
 - Do not add `gpt-5.5-pro` in this refresh. The current architect assumes streaming while that model's transport contract requires model-specific handling.
 - Do not model GPT-5.6 Pro mode. Pro mode is an execution capability orthogonal to model identity and needs a separate design rather than another preset suffix.
 - Do not add `grok-4.20-multi-agent-0309`; the existing xAI adapter is Chat-Completions-oriented and does not model multi-agent Responses/xAI-SDK semantics.
@@ -112,6 +114,9 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - Moving the xAI constructor default is not sufficient by itself: the previous Grok 4.5 picker label also claimed to be recommended. MS003 now labels Grok 4.6 as recommended and Grok 4.5 as the explicit fallback.
 - The pre-existing static Codex GPT-5.6 negative test inspected `BASE_MODEL_PRESETS`, which never contains Codex-derived entries. MS004 changed it to inspect the combined `MODEL_PRESETS` registry, so it can fail if a static Codex GPT-5.6 key is actually introduced.
 - The full repository suite is green but reports four pathspec deprecation warnings from `tests/unit/test_file_retriever.py`. They do not affect this provider refresh, and no warning was suppressed or reclassified as a passing contract check.
+- A post-completion review found that Claude Code v2.1.219 is the documented introduction point for
+  `claude-opus-5`. The public `create_claude_code_config(CLAUDE_OPUS)` path therefore remains supported,
+  but now fails closed when the exact resolved executable is older or cannot be versioned.
 
 ## Decision Log
 
@@ -151,11 +156,25 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
   Rationale: The offline capability, request-payload, picker, lifecycle, and runtime tests provide reproducible contract coverage without credentials. Live availability also depends on account, region, and quota state and was not requested for this execution.
   Date/Author: 2026-08-29 / @codex
 
+- Decision: Allow pinned Opus 5 through Claude Code only on an exactly versioned compatible runtime.
+  Rationale: Claude Code v2.1.219 documents support for `claude-opus-5`. Reusing the centralized runtime
+  gate preserves the public programmatic path while preventing dispatch to older or unverified executables.
+  Moving aliases remain runtime-owned and are not inferred to resolve to Opus 5.
+  Date/Author: 2026-08-29 / @codex
+
 ## Outcomes & Retrospective
 
 The refresh shipped 27 exact direct-provider preset keys across Anthropic (6), Gemini (11), xAI (4), DeepSeek (3), and OpenAI (3). Opus 5 now owns the generic direct Opus aliases while pinned Opus 4.8 remains available. Gemini exposes exact 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite thinking contracts. Grok 4.6 is the recommended direct xAI model and shared architect/live-smoke default with Grok 4.5 retained as fallback. DeepSeek V4 handles disabled, low, documented medium/high/xhigh-to-high compatibility, and max explicitly while retaining the 32K application output cap. GPT-5 Mini low/medium/high remain available only for saved compatibility, while Terra low/medium/high are the current effort-matched migration choices.
 
 Retired lifecycle mappings continue to resolve from registered saved keys to registered canonical presets. Eight deprecated-but-live OpenAI/Codex entries carry warning metadata without runtime replacements: three o4-mini keys, three GPT-5 Mini keys, and two static Codex selections. The two retired direct GPT-5.1/5.2 Codex keys redirect to `gpt56-sol-default`. Existing phase defaults remain `gpt56-sol-default`. Codex model and effort discovery remains runtime-owned, accepts future catalog effort tokens, and has no new static GPT-5.6 preset. The planned exclusions remain absent: Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, and a GPT-5.6 Pro-mode pseudo-preset.
+
+Claude Code continues to own moving aliases. Programmatic requests that pin `claude-opus-5` remain
+allowed when the exact resolved runtime is version 2.1.219 or newer; older and unversionable runtimes fail
+before SDK dispatch. No static Claude Code Opus 5 picker preset was introduced.
+
+The Opus 5 runtime-gate review passed 159 focused tests plus 21 subtests and the full suite with 993
+passed, 11 expected live-test skips, and 57 subtests. Ruff, Pyright, import smoke, lockfile validation,
+ExecPlan registry/discovery, source-reference, and diff checks also passed.
 
 Final offline validation passed. The expanded provider, picker, and runtime suite completed with 427 tests and 48 subtests in 8.94 seconds. `ruff check src tests`, `pyright` with zero errors and warnings, and import smoke passed. Full `pytest -q` completed with 968 passed, 10 expected live-test skips, 48 subtests passed, and four pathspec deprecation warnings in 11.74 seconds. ExecPlan registry/discovery, registry key/default/exclusion diagnostics, `git diff --check`, and focused scope review also passed.
 

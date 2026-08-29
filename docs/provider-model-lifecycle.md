@@ -86,14 +86,16 @@ are not supported. When thinking is disabled, Opus 5 accepts only low, medium, o
 direct Anthropic and Claude Code request builders reject xhigh or max before dispatch. Explicit Opus 4.8
 keys remain registered as the direct-API rollback path.
 
-Direct Opus 5 availability does not establish local Claude Code availability. AgentRules does not expose a
-pinned Claude Code Opus 5 preset until the exact resolved runtime can be gated against a documented minimum
-version; the moving `claude-code-opus` alias remains runtime-owned.
+Direct Opus 5 availability does not establish local Claude Code availability. Programmatic Claude Code
+configurations may pin the full `claude-opus-5` model ID; AgentRules permits that path only when the exact
+resolved runtime is Claude Code 2.1.219 or newer and fails closed when the version cannot be verified. The
+moving `claude-code-opus` alias remains runtime-owned and is not treated as a pinned Opus 5 selection.
 
 Official references:
 
 - [Claude Sonnet 5 changes](https://platform.claude.com/docs/en/about-claude/models/whats-new-sonnet-5)
 - [Claude Fable 5 introduction](https://platform.claude.com/docs/en/about-claude/models/introducing-claude-fable-5-and-claude-mythos-5)
+- [Claude Code v2.1.219 release](https://github.com/anthropics/claude-code/releases/tag/v2.1.219)
 - [Adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking)
 - [Refusals and fallback](https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback)
 - [API and data retention](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)
