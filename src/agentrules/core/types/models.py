@@ -312,6 +312,9 @@ DEEPSEEK_V4_FLASH = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+DEEPSEEK_V4_FLASH_LOW = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.LOW)
+DEEPSEEK_V4_FLASH_MAX = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.MAX)
+
 DEEPSEEK_V4_FLASH_NON_REASONING = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
     model_name="deepseek-v4-flash",
@@ -326,10 +329,12 @@ DEEPSEEK_V4_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+DEEPSEEK_V4_PRO_LOW = DEEPSEEK_V4_PRO._replace(reasoning=ReasoningMode.LOW)
+
 DEEPSEEK_V4_PRO_MAX = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
     model_name="deepseek-v4-pro",
-    reasoning=ReasoningMode.XHIGH,
+    reasoning=ReasoningMode.MAX,
     tools_config={"enabled": False, "tools": None},
 )
 
@@ -346,6 +351,17 @@ DEEPSEEK_REASONER = DEEPSEEK_V4_FLASH
 DEEPSEEK_CHAT = DEEPSEEK_V4_FLASH_NON_REASONING
 
 # xAI Grok models
+GROK_4_6 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.6",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GROK_4_6_LOW = GROK_4_6._replace(reasoning=ReasoningMode.LOW)
+GROK_4_6_MEDIUM = GROK_4_6._replace(reasoning=ReasoningMode.MEDIUM)
+GROK_4_6_XHIGH = GROK_4_6._replace(reasoning=ReasoningMode.XHIGH)
+
 GROK_4_5 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4.5",

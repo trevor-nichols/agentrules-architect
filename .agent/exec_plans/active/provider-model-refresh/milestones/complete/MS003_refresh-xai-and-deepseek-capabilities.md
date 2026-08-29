@@ -2,18 +2,23 @@
 id: EP-20260829-001/MS003
 execplan_id: EP-20260829-001
 ms: 3
-title: "Refresh xAI and DeepSeek Capabilities"
-status: planned
+title: Refresh xAI and DeepSeek Capabilities
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-08-29
-updated: 2026-08-29
-tags: [providers, xai, deepseek, reasoning, presets]
+updated: '2026-08-29'
+tags:
+- providers
+- xai
+- deepseek
+- reasoning
+- presets
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Refresh xAI and DeepSeek Capabilities
@@ -26,14 +31,14 @@ Make Grok 4.6 the complete recommended direct xAI path and expose the missing do
 
 ## Definition of Done
 
-- [ ] Grok 4.6 has low, medium, high/default, and xhigh presets with a 500,000-token context.
-- [ ] A directly constructed `XaiArchitect` defaults to Grok 4.6 high effort.
-- [ ] Grok 4.6 rejects disabled, minimal, and max before dispatch and sends supported effort values unchanged.
-- [ ] DeepSeek V4 Flash has disabled, low, high/default, and max presets; V4 Pro has disabled, low, high/default, and max presets.
-- [ ] DeepSeek maps generic modes exactly as documented: medium and xhigh resolve to high, max resolves to max, and minimal fails.
-- [ ] DeepSeek legacy keys still resolve to canonical V4 Flash configs and both V4 families retain the 32K application output cap.
-- [ ] Grok Multi-Agent and DeepSeek Vision Experimental remain absent from the general picker.
-- [ ] Targeted xAI/DeepSeek tests, compatibility matrix, lint, types, and import smoke pass offline.
+- [x] Grok 4.6 has low, medium, high/default, and xhigh presets with a 500,000-token context.
+- [x] A directly constructed `XaiArchitect` defaults to Grok 4.6 high effort.
+- [x] Grok 4.6 rejects disabled, minimal, and max before dispatch and sends supported effort values unchanged.
+- [x] DeepSeek V4 Flash has disabled, low, high/default, and max presets; V4 Pro has disabled, low, high/default, and max presets.
+- [x] DeepSeek maps generic modes exactly as documented: medium and xhigh resolve to high, max resolves to max, and minimal fails.
+- [x] DeepSeek legacy keys still resolve to canonical V4 Flash configs and both V4 families retain the 32K application output cap.
+- [x] Grok Multi-Agent and DeepSeek Vision Experimental remain absent from the general picker.
+- [x] Targeted xAI/DeepSeek tests, compatibility matrix, lint, types, and import smoke pass offline.
 
 ## Scope
 
@@ -107,29 +112,29 @@ All DeepSeek rows send at most 32,000 output tokens under this plan.
 
 ### Workstream A - Add and recommend Grok 4.6
 
-- [ ] Add `GROK_4_6`, `GROK_4_6_LOW`, `GROK_4_6_MEDIUM`, and `GROK_4_6_XHIGH` configs in `src/agentrules/core/types/models.py`.
-- [ ] Add the Grok 4.6 `ModelDefaults` row in `src/agentrules/core/agents/xai/config.py` with exact efforts and no disable behavior.
-- [ ] Change only the direct `XaiArchitect` default argument from Grok 4.5 to Grok 4.6; preserve explicit older model construction.
-- [ ] Extend `_apply_model_limits()` so Grok 4.6 receives 500,000 tokens.
-- [ ] Add all four planned presets with labels that identify high as the recommended/default effort.
-- [ ] Keep Grok 4.20 Multi-Agent absent and add a negative registry assertion if one is not already present.
+- [x] Add `GROK_4_6`, `GROK_4_6_LOW`, `GROK_4_6_MEDIUM`, and `GROK_4_6_XHIGH` configs in `src/agentrules/core/types/models.py`.
+- [x] Add the Grok 4.6 `ModelDefaults` row in `src/agentrules/core/agents/xai/config.py` with exact efforts and no disable behavior.
+- [x] Change only the direct `XaiArchitect` default argument from Grok 4.5 to Grok 4.6; preserve explicit older model construction.
+- [x] Extend `_apply_model_limits()` so Grok 4.6 receives 500,000 tokens.
+- [x] Add all four planned presets with labels that identify high as the recommended/default effort.
+- [x] Keep Grok 4.20 Multi-Agent absent and add a negative registry assertion if one is not already present.
 
 ### Workstream B - Complete DeepSeek V4 effort handling
 
-- [ ] Add `DEEPSEEK_V4_FLASH_LOW`, `DEEPSEEK_V4_FLASH_MAX`, and `DEEPSEEK_V4_PRO_LOW`; change the existing Pro max constant to `ReasoningMode.MAX` without changing its public key.
-- [ ] Expand both V4 `accepted_reasoning_efforts` sets to low/high/max.
-- [ ] Replace implicit effort coercion in `_resolve_v4_reasoning()` with the explicit mapping documented above and an actionable error for minimal.
-- [ ] Add the three missing direct presets with consistent labels/descriptions.
-- [ ] Preserve `DEEPSEEK_CHAT`, `DEEPSEEK_REASONER`, `_LEGACY_MODEL_ALIASES`, and `DEPRECATED_PRESETS` targets.
-- [ ] Keep `max_output_tokens=32_000` for Flash and Pro and add a regression assertion so a future catalog refresh cannot raise it accidentally.
-- [ ] Keep DeepSeek Vision Experimental absent and add a negative registry assertion.
+- [x] Add `DEEPSEEK_V4_FLASH_LOW`, `DEEPSEEK_V4_FLASH_MAX`, and `DEEPSEEK_V4_PRO_LOW`; change the existing Pro max constant to `ReasoningMode.MAX` without changing its public key.
+- [x] Expand both V4 `accepted_reasoning_efforts` sets to low/high/max.
+- [x] Replace implicit effort coercion in `_resolve_v4_reasoning()` with the explicit mapping documented above and an actionable error for minimal.
+- [x] Add the three missing direct presets with consistent labels/descriptions.
+- [x] Preserve `DEEPSEEK_CHAT`, `DEEPSEEK_REASONER`, `_LEGACY_MODEL_ALIASES`, and `DEPRECATED_PRESETS` targets.
+- [x] Keep `max_output_tokens=32_000` for Flash and Pro and add a regression assertion so a future catalog refresh cannot raise it accidentally.
+- [x] Keep DeepSeek Vision Experimental absent and add a negative registry assertion.
 
 ### Workstream C - Prove request and registry contracts
 
-- [ ] Add xAI helper tests for default resolution, all four valid wire efforts, invalid disabled/minimal/max modes, context limit, and direct architect default.
-- [ ] Add DeepSeek helper tests for disabled/low/medium/high/xhigh/max payloads, invalid minimal errors, tool/sampling behavior, aliases, and 32K cap.
-- [ ] Add all planned rows to `DIRECT_MODEL_CONTRACTS` and extend model override/picker tests.
-- [ ] Assert invalid modes fail during payload preparation without a network client call.
+- [x] Add xAI helper tests for default resolution, all four valid wire efforts, invalid disabled/minimal/max modes, context limit, and direct architect default.
+- [x] Add DeepSeek helper tests for disabled/low/medium/high/xhigh/max payloads, invalid minimal errors, tool/sampling behavior, aliases, and 32K cap.
+- [x] Add all planned rows to `DIRECT_MODEL_CONTRACTS` and extend model override/picker tests.
+- [x] Assert invalid modes fail during payload preparation without a network client call.
 
 ## Dependencies
 
@@ -191,3 +196,6 @@ Grok 4.6 becomes the direct constructor default, while Grok 4.5 remains a regist
 - 2026-08-29: Milestone created.
 - 2026-08-29: Defined exact Grok 4.6 and DeepSeek V4 matrices, fail-fast mappings, 32K cap policy, exclusions, and rollback behavior.
 - 2026-08-29: MS001 source revalidation amended DeepSeek compatibility behavior: medium/xhigh map to high, max maps to max, and minimal is rejected.
+- 2026-08-29: Added the complete Grok 4.6 effort family and made it the direct xAI constructor default while retaining Grok 4.5 as the labeled fallback.
+- 2026-08-29: Added missing DeepSeek V4 low/max presets, explicit provider compatibility mapping, and regression coverage for the 32K application output cap and legacy aliases.
+- 2026-08-29: The focused AI-code audit corrected a stale Grok 4.5 recommendation label and kept model families grouped in the registry. Validation passed: 204 tests and 10 subtests, Ruff, Pyright, import smoke, and `git diff --check`.

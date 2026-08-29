@@ -27,6 +27,11 @@ _LEGACY_ACCEPTED_REASONING_EFFORTS = frozenset({"none", "minimal", "low", "mediu
 
 
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
+    "grok-4.6": ModelDefaults(
+        default_reasoning=ReasoningMode.HIGH,
+        accepted_reasoning_efforts=frozenset({"low", "medium", "high", "xhigh"}),
+        enabled_reasoning_effort="high",
+    ),
     "grok-4.5": ModelDefaults(
         default_reasoning=ReasoningMode.HIGH,
         accepted_reasoning_efforts=frozenset({"low", "medium", "high"}),

@@ -39,14 +39,14 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
         max_output_tokens=32_000,
         tools_allowed=True,
         supports_thinking_toggle=True,
-        accepted_reasoning_efforts=frozenset({"high", "max"}),
+        accepted_reasoning_efforts=frozenset({"low", "high", "max"}),
     ),
     "deepseek-v4-pro": ModelDefaults(
         default_reasoning=ReasoningMode.HIGH,
         max_output_tokens=32_000,
         tools_allowed=True,
         supports_thinking_toggle=True,
-        accepted_reasoning_efforts=frozenset({"high", "max"}),
+        accepted_reasoning_efforts=frozenset({"low", "high", "max"}),
     ),
 }
 

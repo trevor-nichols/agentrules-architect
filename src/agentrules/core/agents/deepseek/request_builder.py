@@ -88,6 +88,21 @@ def prepare_request(
 def _resolve_v4_reasoning(reasoning: ReasoningMode) -> tuple[bool, str | None]:
     if reasoning in {ReasoningMode.DISABLED, ReasoningMode.TEMPERATURE}:
         return False, None
-    if reasoning in {ReasoningMode.XHIGH, ReasoningMode.MAX}:
+    if reasoning == ReasoningMode.MINIMAL:
+        raise ValueError(
+            "DeepSeek V4 does not support minimal reasoning. "
+            "Use low, medium, high, xhigh, max, or disabled."
+        )
+    if reasoning == ReasoningMode.LOW:
+        return True, "low"
+    if reasoning == ReasoningMode.MAX:
         return True, "max"
-    return True, "high"
+    if reasoning in {
+        ReasoningMode.MEDIUM,
+        ReasoningMode.ENABLED,
+        ReasoningMode.DYNAMIC,
+        ReasoningMode.HIGH,
+        ReasoningMode.XHIGH,
+    }:
+        return True, "high"
+    raise ValueError(f"Unsupported DeepSeek V4 reasoning mode: {reasoning.value}.")

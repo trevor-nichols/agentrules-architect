@@ -36,8 +36,11 @@ from agentrules.core.types.models import (
     DEEPSEEK_CHAT,
     DEEPSEEK_REASONER,
     DEEPSEEK_V4_FLASH,
+    DEEPSEEK_V4_FLASH_LOW,
+    DEEPSEEK_V4_FLASH_MAX,
     DEEPSEEK_V4_FLASH_NON_REASONING,
     DEEPSEEK_V4_PRO,
+    DEEPSEEK_V4_PRO_LOW,
     DEEPSEEK_V4_PRO_MAX,
     DEEPSEEK_V4_PRO_NON_REASONING,
     GEMINI_3_1_FLASH_LITE,
@@ -103,6 +106,10 @@ from agentrules.core.types.models import (
     GROK_4_5,
     GROK_4_5_LOW,
     GROK_4_5_MEDIUM,
+    GROK_4_6,
+    GROK_4_6_LOW,
+    GROK_4_6_MEDIUM,
+    GROK_4_6_XHIGH,
     GROK_4_20_NON_REASONING,
     GROK_4_20_REASONING,
     GROK_4_FAST_NON_REASONING,
@@ -224,7 +231,7 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
         if limit is None:
-            if name.startswith("grok-4.5"):
+            if name.startswith(("grok-4.5", "grok-4.6")):
                 limit = 500_000
             else:
                 limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
@@ -1014,6 +1021,18 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Fast, cost-efficient DeepSeek V4 model with thinking enabled at high effort and 1M context.",
         provider=ModelProvider.DEEPSEEK,
     ),
+    "deepseek-v4-flash-low": _preset(
+        config=DEEPSEEK_V4_FLASH_LOW,
+        label="DeepSeek V4 Flash (Thinking, Low)",
+        description="DeepSeek V4 Flash with low thinking effort and the conservative 32K output cap.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-flash-max": _preset(
+        config=DEEPSEEK_V4_FLASH_MAX,
+        label="DeepSeek V4 Flash (Thinking, Max)",
+        description="DeepSeek V4 Flash with maximum thinking effort and the conservative 32K output cap.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
     "deepseek-v4-flash-non-reasoning": _preset(
         config=DEEPSEEK_V4_FLASH_NON_REASONING,
         label="DeepSeek V4 Flash (Non-Thinking)",
@@ -1024,6 +1043,12 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=DEEPSEEK_V4_PRO,
         label="DeepSeek V4 Pro (Thinking, High)",
         description="Highest-capability DeepSeek V4 model with thinking enabled at high effort and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-pro-low": _preset(
+        config=DEEPSEEK_V4_PRO_LOW,
+        label="DeepSeek V4 Pro (Thinking, Low)",
+        description="DeepSeek V4 Pro with low thinking effort and the conservative 32K output cap.",
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-v4-pro-max": _preset(
@@ -1056,10 +1081,34 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         ),
         provider=ModelProvider.DEEPSEEK,
     ),
+    "grok-4.6": _preset(
+        config=GROK_4_6,
+        label="Grok 4.6 (Reasoning High, Recommended)",
+        description="Recommended general xAI model with default high reasoning and 500K context.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.6-reasoning-low": _preset(
+        config=GROK_4_6_LOW,
+        label="Grok 4.6 (Reasoning Low)",
+        description="Grok 4.6 with low reasoning for latency-sensitive work.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.6-reasoning-medium": _preset(
+        config=GROK_4_6_MEDIUM,
+        label="Grok 4.6 (Reasoning Medium)",
+        description="Grok 4.6 with medium reasoning for balanced latency and depth.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.6-reasoning-xhigh": _preset(
+        config=GROK_4_6_XHIGH,
+        label="Grok 4.6 (Reasoning XHigh)",
+        description="Grok 4.6 with xhigh reasoning for the most complex agentic work.",
+        provider=ModelProvider.XAI,
+    ),
     "grok-4.5": _preset(
         config=GROK_4_5,
-        label="Grok 4.5 (Reasoning High, Recommended)",
-        description="Recommended general xAI model with default high reasoning and 500k context.",
+        label="Grok 4.5 (Reasoning High, Fallback)",
+        description="Previous general xAI model retained as a 500K-context fallback.",
         provider=ModelProvider.XAI,
     ),
     "grok-4.5-reasoning-medium": _preset(

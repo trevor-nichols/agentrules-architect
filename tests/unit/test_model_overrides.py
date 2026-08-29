@@ -143,8 +143,11 @@ class ModelOverrideTestCase(unittest.TestCase):
     def test_deepseek_registry_includes_v4_presets_and_legacy_configs_use_v4(self) -> None:
         expected_keys = {
             "deepseek-v4-flash",
+            "deepseek-v4-flash-low",
+            "deepseek-v4-flash-max",
             "deepseek-v4-flash-non-reasoning",
             "deepseek-v4-pro",
+            "deepseek-v4-pro-low",
             "deepseek-v4-pro-max",
             "deepseek-v4-pro-non-reasoning",
             "deepseek-chat",
@@ -156,6 +159,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             self.agents_module.MODEL_PRESETS["deepseek-reasoner"]["config"].model_name,
             "deepseek-v4-flash",
         )
+        self.assertNotIn("deepseek-v4-vision-exp", self.agents_module.MODEL_PRESETS)
 
     def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         active = self.model_config.get_active_presets(
@@ -820,12 +824,26 @@ class ModelOverrideTestCase(unittest.TestCase):
         )
 
     def test_xai_registry_includes_grok45_and_compatible_grok420_presets(self) -> None:
+        grok46_keys = {
+            "grok-4.6",
+            "grok-4.6-reasoning-medium",
+            "grok-4.6-reasoning-low",
+            "grok-4.6-reasoning-xhigh",
+        }
+        self.assertTrue(grok46_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.6"]["config"].max_input_tokens,
+            500_000,
+        )
+        self.assertIn("Recommended", self.agents_module.MODEL_PRESETS["grok-4.6"]["label"])
+
         grok45_keys = {
             "grok-4.5",
             "grok-4.5-reasoning-medium",
             "grok-4.5-reasoning-low",
         }
         self.assertTrue(grok45_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertIn("Fallback", self.agents_module.MODEL_PRESETS["grok-4.5"]["label"])
         self.assertEqual(
             self.agents_module.MODEL_PRESETS["grok-4.5"]["config"].reasoning,
             ReasoningMode.HIGH,

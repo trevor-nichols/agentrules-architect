@@ -35,7 +35,7 @@ class DeepSeekConfigTests(unittest.TestCase):
         self.assertTrue(defaults.tools_allowed)
         self.assertTrue(defaults.supports_sampling)
         self.assertTrue(defaults.supports_thinking_toggle)
-        self.assertEqual(defaults.accepted_reasoning_efforts, frozenset({"high", "max"}))
+        self.assertEqual(defaults.accepted_reasoning_efforts, frozenset({"low", "high", "max"}))
         self.assertEqual(defaults.max_output_tokens, 32_000)
 
     def test_resolve_defaults_for_v4_pro(self) -> None:
@@ -43,7 +43,8 @@ class DeepSeekConfigTests(unittest.TestCase):
         self.assertEqual(defaults.default_reasoning, ReasoningMode.HIGH)
         self.assertTrue(defaults.tools_allowed)
         self.assertTrue(defaults.supports_thinking_toggle)
-        self.assertEqual(defaults.accepted_reasoning_efforts, frozenset({"high", "max"}))
+        self.assertEqual(defaults.accepted_reasoning_efforts, frozenset({"low", "high", "max"}))
+        self.assertEqual(defaults.max_output_tokens, 32_000)
 
     def test_resolve_defaults_for_chat(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")
@@ -96,7 +97,7 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
         self.assertEqual(prepared.payload["tool_choice"], "auto")
         self.assertNotIn("temperature", prepared.payload)
 
-    def test_prepare_v4_xhigh_request_maps_to_max_effort(self) -> None:
+    def test_prepare_v4_xhigh_request_maps_to_high_effort(self) -> None:
         defaults = resolve_model_defaults("deepseek-v4-pro")
 
         prepared = prepare_request(
@@ -108,7 +109,7 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
         )
 
         self.assertEqual(prepared.payload["extra_body"], {"thinking": {"type": "enabled"}})
-        self.assertEqual(prepared.payload["reasoning_effort"], "max")
+        self.assertEqual(prepared.payload["reasoning_effort"], "high")
 
     def test_prepare_v4_max_request_maps_to_max_effort(self) -> None:
         defaults = resolve_model_defaults("deepseek-v4-pro")
@@ -139,10 +140,29 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
         self.assertNotIn("reasoning_effort", prepared.payload)
         self.assertEqual(prepared.payload["temperature"], 0.6)
 
-    def test_prepare_v4_low_and_medium_efforts_normalize_to_high(self) -> None:
+    def test_prepare_v4_low_effort_maps_to_low(self) -> None:
         defaults = resolve_model_defaults("deepseek-v4-flash")
 
-        for reasoning in (ReasoningMode.MINIMAL, ReasoningMode.LOW, ReasoningMode.MEDIUM):
+        prepared = prepare_request(
+            model_name="deepseek-v4-flash",
+            content="Analyze this project",
+            reasoning=ReasoningMode.LOW,
+            defaults=defaults,
+            tools=None,
+        )
+
+        self.assertEqual(prepared.payload["reasoning_effort"], "low")
+
+    def test_prepare_v4_compatible_efforts_map_to_high(self) -> None:
+        defaults = resolve_model_defaults("deepseek-v4-flash")
+
+        for reasoning in (
+            ReasoningMode.MEDIUM,
+            ReasoningMode.ENABLED,
+            ReasoningMode.DYNAMIC,
+            ReasoningMode.HIGH,
+            ReasoningMode.XHIGH,
+        ):
             with self.subTest(reasoning=reasoning):
                 prepared = prepare_request(
                     model_name="deepseek-v4-flash",
@@ -152,6 +172,16 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
                     tools=None,
                 )
                 self.assertEqual(prepared.payload["reasoning_effort"], "high")
+
+    def test_prepare_v4_minimal_effort_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "does not support minimal"):
+            prepare_request(
+                model_name="deepseek-v4-flash",
+                content="Analyze this project",
+                reasoning=ReasoningMode.MINIMAL,
+                defaults=resolve_model_defaults("deepseek-v4-flash"),
+                tools=None,
+            )
 
     def test_prepare_request_prepends_system_message(self) -> None:
         defaults = resolve_model_defaults("deepseek-chat")
@@ -242,7 +272,7 @@ class DeepSeekRequestBuilderTests(unittest.TestCase):
             prepare_request(
                 model_name="deepseek-v4-pro",
                 content="Analyze this project",
-                reasoning=ReasoningMode.XHIGH,
+                reasoning=ReasoningMode.MAX,
                 defaults=restricted_defaults,
                 tools=None,
             )

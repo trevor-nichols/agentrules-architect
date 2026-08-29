@@ -42,6 +42,22 @@ DIRECT_MODEL_CONTRACTS = (
         ("enabled", "high"),
     ),
     ModelContract(
+        "deepseek-v4-flash-low",
+        ModelProvider.DEEPSEEK,
+        "deepseek-v4-flash",
+        ReasoningMode.LOW,
+        1_000_000,
+        ("enabled", "low"),
+    ),
+    ModelContract(
+        "deepseek-v4-flash-max",
+        ModelProvider.DEEPSEEK,
+        "deepseek-v4-flash",
+        ReasoningMode.MAX,
+        1_000_000,
+        ("enabled", "max"),
+    ),
+    ModelContract(
         "deepseek-v4-flash-non-reasoning",
         ModelProvider.DEEPSEEK,
         "deepseek-v4-flash",
@@ -53,10 +69,18 @@ DIRECT_MODEL_CONTRACTS = (
         "deepseek-v4-pro", ModelProvider.DEEPSEEK, "deepseek-v4-pro", ReasoningMode.HIGH, 1_000_000, ("enabled", "high")
     ),
     ModelContract(
+        "deepseek-v4-pro-low",
+        ModelProvider.DEEPSEEK,
+        "deepseek-v4-pro",
+        ReasoningMode.LOW,
+        1_000_000,
+        ("enabled", "low"),
+    ),
+    ModelContract(
         "deepseek-v4-pro-max",
         ModelProvider.DEEPSEEK,
         "deepseek-v4-pro",
-        ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
         1_000_000,
         ("enabled", "max"),
     ),
@@ -273,6 +297,14 @@ DIRECT_MODEL_CONTRACTS = (
     ModelContract("grok-4.5", ModelProvider.XAI, "grok-4.5", ReasoningMode.HIGH, 500_000, "high"),
     ModelContract("grok-4.5-reasoning-medium", ModelProvider.XAI, "grok-4.5", ReasoningMode.MEDIUM, 500_000, "medium"),
     ModelContract("grok-4.5-reasoning-low", ModelProvider.XAI, "grok-4.5", ReasoningMode.LOW, 500_000, "low"),
+    ModelContract("grok-4.6", ModelProvider.XAI, "grok-4.6", ReasoningMode.HIGH, 500_000, "high"),
+    ModelContract(
+        "grok-4.6-reasoning-medium", ModelProvider.XAI, "grok-4.6", ReasoningMode.MEDIUM, 500_000, "medium"
+    ),
+    ModelContract("grok-4.6-reasoning-low", ModelProvider.XAI, "grok-4.6", ReasoningMode.LOW, 500_000, "low"),
+    ModelContract(
+        "grok-4.6-reasoning-xhigh", ModelProvider.XAI, "grok-4.6", ReasoningMode.XHIGH, 500_000, "xhigh"
+    ),
     ModelContract(
         "grok-4.20-reasoning", ModelProvider.XAI, "grok-4.20-0309-reasoning", ReasoningMode.ENABLED, 1_000_000, None
     ),
