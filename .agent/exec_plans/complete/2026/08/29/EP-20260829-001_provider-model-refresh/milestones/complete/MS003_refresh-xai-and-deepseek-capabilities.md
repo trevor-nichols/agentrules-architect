@@ -33,6 +33,7 @@ Make Grok 4.6 the complete recommended direct xAI path and expose the missing do
 
 - [x] Grok 4.6 has low, medium, high/default, and xhigh presets with a 500,000-token context.
 - [x] A directly constructed `XaiArchitect` defaults to Grok 4.6 high effort.
+- [x] The optional xAI live smoke uses the same provider-owned Grok 4.6 default and covers both the current and Grok 4.5 fallback payload contracts.
 - [x] Grok 4.6 rejects disabled, minimal, and max before dispatch and sends supported effort values unchanged.
 - [x] DeepSeek V4 Flash has disabled, low, high/default, and max presets; V4 Pro has disabled, low, high/default, and max presets.
 - [x] DeepSeek maps generic modes exactly as documented: medium and xhigh resolve to high, max resolves to max, and minimal fails.
@@ -44,7 +45,7 @@ Make Grok 4.6 the complete recommended direct xAI path and expose the missing do
 
 ### In Scope
 
-- xAI configs, immutable defaults, direct architect default, preset entries, context classification, and request-contract tests.
+- xAI configs, immutable defaults, direct architect/live-smoke default, preset entries, context classification, and request-contract tests.
 - DeepSeek V4 configs, immutable accepted-effort metadata, request reasoning translation/validation, preset entries, and tests.
 - Model picker labels and compatibility-matrix rows for new variants.
 - Lifecycle notes for MS005, including preferred fallback and conservative output cap.
@@ -115,6 +116,7 @@ All DeepSeek rows send at most 32,000 output tokens under this plan.
 - [x] Add `GROK_4_6`, `GROK_4_6_LOW`, `GROK_4_6_MEDIUM`, and `GROK_4_6_XHIGH` configs in `src/agentrules/core/types/models.py`.
 - [x] Add the Grok 4.6 `ModelDefaults` row in `src/agentrules/core/agents/xai/config.py` with exact efforts and no disable behavior.
 - [x] Change only the direct `XaiArchitect` default argument from Grok 4.5 to Grok 4.6; preserve explicit older model construction.
+- [x] Centralize the xAI default model in provider configuration and reuse it in the optional live smoke; retain an explicit Grok 4.5 fallback payload row.
 - [x] Extend `_apply_model_limits()` so Grok 4.6 receives 500,000 tokens.
 - [x] Add all four planned presets with labels that identify high as the recommended/default effort.
 - [x] Keep Grok 4.20 Multi-Agent absent and add a negative registry assertion if one is not already present.
@@ -166,7 +168,7 @@ All DeepSeek rows send at most 32,000 output tokens under this plan.
 
 Run from the repository root:
 
-    uv run pytest -q tests/unit/agents/test_xai_helpers.py tests/unit/agents/test_deepseek_helpers.py tests/unit/agents/test_deepseek_agent_parsing.py tests/unit/test_provider_model_compatibility_matrix.py tests/unit/test_model_overrides.py tests/unit/test_cli_model_picker_ui.py
+    uv run pytest -q tests/unit/agents/test_xai_helpers.py tests/unit/agents/test_deepseek_helpers.py tests/unit/agents/test_deepseek_agent_parsing.py tests/unit/test_provider_model_compatibility_matrix.py tests/unit/test_model_overrides.py tests/unit/test_cli_model_picker_ui.py tests/live/test_provider_model_live_smoke.py
     uv run ruff check src/agentrules/core/types/models.py src/agentrules/config/agents.py src/agentrules/core/agents/xai src/agentrules/core/agents/deepseek tests/unit/agents/test_xai_helpers.py tests/unit/agents/test_deepseek_helpers.py tests/unit/test_provider_model_compatibility_matrix.py tests/unit/test_model_overrides.py
     uv run pyright
     uv run python -c "import agentrules"
@@ -177,6 +179,7 @@ Expected outcomes:
 - All targeted tests pass without network access.
 - Prepared payloads carry exact documented efforts and invalid values raise before dispatch.
 - `XaiArchitect` defaults to `grok-4.6`; explicit older models still resolve through their existing defaults.
+- The gated xAI live case defaults to `grok-4.6`, and offline payload assertions cover that default plus the Grok 4.5 fallback.
 - DeepSeek Flash/Pro payloads still carry `max_tokens=32000`.
 - Import, lint, types, and whitespace checks pass; phase defaults are unchanged.
 
@@ -199,3 +202,4 @@ Grok 4.6 becomes the direct constructor default, while Grok 4.5 remains a regist
 - 2026-08-29: Added the complete Grok 4.6 effort family and made it the direct xAI constructor default while retaining Grok 4.5 as the labeled fallback.
 - 2026-08-29: Added missing DeepSeek V4 low/max presets, explicit provider compatibility mapping, and regression coverage for the 32K application output cap and legacy aliases.
 - 2026-08-29: The focused AI-code audit corrected a stale Grok 4.5 recommendation label and kept model families grouped in the registry. Validation passed: 204 tests and 10 subtests, Ruff, Pyright, import smoke, and `git diff --check`.
+- 2026-08-29: Post-completion audit centralized the xAI default model and aligned the optional live smoke and payload-contract table with Grok 4.6 while retaining Grok 4.5 fallback coverage. The offline `--run-live` smoke-contract run passed four payload cases and skipped all five disabled provider calls.

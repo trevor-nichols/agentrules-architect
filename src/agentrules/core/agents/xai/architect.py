@@ -21,7 +21,7 @@ from agentrules.core.utils.system_prompt import build_agent_system_prompt, resol
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .client import execute_chat_completion
-from .config import ModelDefaults, resolve_base_url, resolve_model_defaults
+from .config import DEFAULT_MODEL_NAME, ModelDefaults, resolve_base_url, resolve_model_defaults
 from .prompting import default_prompt_template
 from .prompting import format_prompt as format_analysis_prompt
 from .request_builder import PreparedRequest, prepare_request
@@ -36,7 +36,7 @@ class XaiArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "grok-4.6",
+        model_name: str = DEFAULT_MODEL_NAME,
         reasoning: ReasoningMode | None = None,
         temperature: float | None = None,
         name: str | None = None,

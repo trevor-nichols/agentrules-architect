@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from agentrules.core.agents.base import ReasoningMode
 
 DEFAULT_BASE_URL = "https://api.x.ai/v1"
+DEFAULT_MODEL_NAME = "grok-4.6"
 API_BASE_ENV_VAR = "XAI_API_BASE"
 
 
@@ -27,7 +28,7 @@ _LEGACY_ACCEPTED_REASONING_EFFORTS = frozenset({"none", "minimal", "low", "mediu
 
 
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
-    "grok-4.6": ModelDefaults(
+    DEFAULT_MODEL_NAME: ModelDefaults(
         default_reasoning=ReasoningMode.HIGH,
         accepted_reasoning_efforts=frozenset({"low", "medium", "high", "xhigh"}),
         enabled_reasoning_effort="high",

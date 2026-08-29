@@ -32,7 +32,7 @@ Freeze an implementation-day, source-backed contract for every model and migrati
 
 - [x] Every upstream source in the parent plan was reopened and checked on 2026-08-29.
 - [x] Model IDs, context limits, supported efforts, thinking-disable behavior, transport, tool/structured-output compatibility, and lifecycle state match the amended parent contract table.
-- [x] Each compatibility migration has one existing legacy key and one registered canonical target planned; no legacy key is scheduled for deletion.
+- [x] Each lifecycle key has an explicit preserve-or-redirect state; every redirect has a registered canonical target and no saved key is scheduled for deletion.
 - [x] The targeted offline baseline passed: 166 tests and 8 subtests in 3.11 seconds.
 - [x] No provider runtime behavior, dependency version, phase default, or paid external API state changed in this milestone.
 - [x] Parent `Progress`, `Surprises & Discoveries`, and `Decision Log` record the DeepSeek mapping discovery.
@@ -43,7 +43,7 @@ Freeze an implementation-day, source-backed contract for every model and migrati
 
 - Revalidate official Anthropic, Gemini, xAI, DeepSeek, and OpenAI model documentation.
 - Confirm that direct API providers own static registry entries while Codex and Claude Code retain runtime-owned model resolution.
-- Confirm the exact preset-key matrix, effort matrix, fallbacks, exclusions, and compatibility redirects described by the parent plan.
+- Confirm the exact preset-key matrix, effort matrix, fallbacks, exclusions, live deprecations, and retired-endpoint redirects described by the parent plan.
 - Run the import smoke and targeted provider contract baseline.
 - Amend planning artifacts if facts changed; pause only the affected provider slice when its contract is no longer established.
 
@@ -63,7 +63,7 @@ Freeze an implementation-day, source-backed contract for every model and migrati
 | Targeted provider suite | 166 passed plus 8 subtests on 2026-08-29 | Same tests pass on implementation day |
 | Static direct registry | Last substantial refresh in July 2026 | Dated target matrix reconfirmed |
 | Codex catalog | Runtime `model/list` discovery already tested | Ownership boundary explicitly preserved |
-| Lifecycle map | DeepSeek/Gemini/xAI mappings exist; OpenAI gaps remain | Exact new redirects approved before coding |
+| Lifecycle map | DeepSeek/Gemini/xAI mappings exist; OpenAI gaps remain | Exact preserve-or-redirect states approved before coding |
 
 ## Architecture / Design
 
@@ -81,12 +81,12 @@ The contract review must also distinguish a direct API model from a local runtim
 - [x] Opened Gemini's current model catalog and thinking pages; confirmed IDs, defaults/levels, 1,048,576/65,536 limits, structured output, and tools.
 - [x] Opened xAI's Grok 4.6 and reasoning pages; confirmed 500K context, low/medium/high/xhigh, high default, inability to disable reasoning, tools, and structured output.
 - [x] Opened DeepSeek's update, thinking, and pricing pages; confirmed V4 IDs, 1M/384K provider limits, low/high/max native efforts, disabled thinking, and medium/xhigh-to-high compatibility mapping.
-- [x] Opened official OpenAI model pages; confirmed existing GPT-5.6 catalog, o4-mini successor guidance, and deprecated GPT-5.1/5.2 Codex status.
+- [x] Opened official OpenAI model pages; confirmed the existing GPT-5.6 catalog and the implementation-day o4-mini/GPT-5.1/5.2 Codex lifecycle snapshot. Post-completion revalidation superseded the original targets as recorded below.
 
 ### Workstream B - Lock compatibility and exclusion decisions
 
-- [x] Verified `o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` and their effort-preserving planned GPT-5 Mini targets.
-- [x] Verified direct and static-derived `gpt-5.1-codex`/`gpt-5.2-codex` keys before their planned redirects.
+- [x] Verified `o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` public keys. Final policy preserves them while live and recommends effort-matched GPT-5.6 Terra choices.
+- [x] Verified GPT-5 Mini and direct/static-derived `gpt-5.1-codex`/`gpt-5.2-codex` keys. Final policy preserves live Mini/static Codex identity and redirects only retired direct Codex keys to Sol.
 - [x] Verified generic/pinned Opus, DeepSeek legacy, and Codex runtime default keys remain registered.
 - [x] Reconfirmed all exclusions: no static GPT-5.6 Codex, pinned Claude Code Opus 5, unsupported Pro modes, Grok Multi-Agent, or DeepSeek Vision Experimental.
 
@@ -149,3 +149,4 @@ There is no runtime rollout. If source facts changed, update the plan and keep a
 - 2026-08-29: Milestone created.
 - 2026-08-29: Added implementation-day source gates, baseline evidence requirements, ownership boundaries, and drift recovery rules.
 - 2026-08-29: Revalidated all official sources. DeepSeek medium/xhigh compatibility mapping amended in the parent plan and MS003. Validation: import smoke passed; targeted suite passed with 166 tests and 8 subtests in 3.11 seconds; no paid API calls were made.
+- 2026-08-29: Post-completion source revalidation superseded the initial OpenAI migration targets: o4-mini and GPT-5 Mini remain bound while live and recommend Terra, retired direct GPT-5.1/5.2 Codex keys redirect to Sol, and static Codex selections remain runtime catalog-gated.
