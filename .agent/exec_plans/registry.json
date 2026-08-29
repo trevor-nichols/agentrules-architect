@@ -430,9 +430,9 @@
       },
       "migration": true,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/provider-model-refresh/EP-20260829-001_provider-model-refresh.md",
+      "path": ".agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/EP-20260829-001_provider-model-refresh.md",
       "risk": "med",
-      "status": "active",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "providers",

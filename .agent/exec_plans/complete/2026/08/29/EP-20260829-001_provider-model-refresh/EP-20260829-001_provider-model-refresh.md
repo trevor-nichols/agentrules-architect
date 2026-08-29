@@ -1,26 +1,31 @@
 ---
 id: EP-20260829-001
-title: "Refresh Provider Model Registry and Capabilities"
-status: active
+title: Refresh Provider Model Registry and Capabilities
+status: done
 kind: refactor
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-08-29
-updated: 2026-08-29
-tags: [providers, models, capabilities, lifecycle, compatibility]
+updated: '2026-08-29'
+tags:
+- providers
+- models
+- capabilities
+- lifecycle
+- compatibility
 touches:
-  - agents
-  - backend
-  - cli
-  - docs
-  - tests
+- agents
+- backend
+- cli
+- docs
+- tests
 risk: med
 breaking: false
 migration: true
 links:
-  issue: ""
-  pr: ""
-  docs: "docs/provider-model-lifecycle.md"
+  issue: ''
+  pr: ''
+  docs: docs/provider-model-lifecycle.md
 depends_on: []
 supersedes: []
 ---
@@ -29,7 +34,7 @@ supersedes: []
 
 This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` up to date as work proceeds.
 
-Maintain this plan in accordance with `.agent/PLANS.md`. The user approved this revision on 2026-08-29; milestone execution is active.
+Maintain this plan in accordance with `.agent/PLANS.md`. The user approved this revision on 2026-08-29; all milestones and this ExecPlan were completed and archived on 2026-08-29.
 
 ## Purpose / Big Picture
 
@@ -89,7 +94,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - [x] (2026-08-29) MS003 added Grok 4.6 and completed DeepSeek V4 effort handling; 204 tests and 10 subtests passed with lint, types, and import smoke green.
 - [x] (2026-08-29) MS004 added effort-preserving OpenAI lifecycle redirects and hardened the Codex ownership boundary; 260 tests and 43 subtests passed with lint, types, and import smoke green.
 - [x] (2026-08-29) MS005 completed lifecycle documentation, registry/default/exclusion audits, integrated provider validation, and full repository quality gates.
-- [ ] ExecPlan and milestones are completed through the CLI after all acceptance criteria pass.
+- [x] (2026-08-29) MS001-MS005 and this ExecPlan were completed and archived through the CLI after all acceptance criteria passed.
 
 ## Surprises & Discoveries
 
@@ -247,12 +252,12 @@ For rollback after implementation, preserve all new saved keys and redirect only
 
 Planning artifacts:
 
-- `.agent/exec_plans/active/provider-model-refresh/EP-20260829-001_provider-model-refresh.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS001_lock-model-contracts-and-lifecycle-policy.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS002_refresh-anthropic-and-gemini-model-families.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS003_refresh-xai-and-deepseek-capabilities.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS004_harden-openai-lifecycle-and-codex-runtime-boundaries.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS005_validate-integration-and-release-readiness.md`
+- `.agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/EP-20260829-001_provider-model-refresh.md`
+- `.agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/milestones/complete/MS001_lock-model-contracts-and-lifecycle-policy.md`
+- `.agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/milestones/complete/MS002_refresh-anthropic-and-gemini-model-families.md`
+- `.agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/milestones/complete/MS003_refresh-xai-and-deepseek-capabilities.md`
+- `.agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/milestones/complete/MS004_harden-openai-lifecycle-and-codex-runtime-boundaries.md`
+- `.agent/exec_plans/complete/2026/08/29/EP-20260829-001_provider-model-refresh/milestones/complete/MS005_validate-integration-and-release-readiness.md`
 
 Upstream sources to revalidate at MS001:
 
