@@ -10,24 +10,48 @@ three use the Responses API with a 1,050,000-token context. Sol accepts `none`, 
 effort. GPT-5.5 presets remain available as the immediate fallback when account availability or behavior
 requires a conservative rollback.
 
-Official reference:
+GPT-5 Mini has low, medium, and high direct presets with a 400,000-token context. The saved keys
+`o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` remain registered, but runtime resolution sends the
+matching GPT-5 Mini effort instead because OpenAI deprecated o4-mini and identifies GPT-5 Mini as its
+successor.
+
+The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` resolve to `gpt-5.3-codex`. Their static
+Codex-derived counterparts likewise resolve to `codex-gpt-5.3-codex`. These are compatibility redirects,
+not evidence that a model is available in the local Codex runtime. GPT-5.5 Pro and a GPT-5.6 Pro-mode
+pseudo-preset remain excluded because their transport or execution-mode contracts are not represented by
+the current adapter.
+
+Official references:
 
 - [OpenAI latest model guide](https://developers.openai.com/api/docs/guides/latest-model)
+- [GPT-5 Mini](https://developers.openai.com/api/docs/models/gpt-5-mini)
+- [o4-mini lifecycle](https://developers.openai.com/api/docs/models/o4-mini)
+- [OpenAI model catalog](https://developers.openai.com/api/docs/models/all)
 
 ## Direct DeepSeek API
 
-DeepSeek V4 Flash and V4 Pro are the canonical direct-API choices. Both have 1,000,000-token contexts.
-AgentRules sends explicit `thinking.type` and, for thinking modes, the selected effort rather than relying
-on a provider default.
+DeepSeek V4 Flash and V4 Pro are the canonical direct-API choices. Both have 1,000,000-token contexts and
+support disabled thinking plus native low, high, and max effort. AgentRules sends an explicit
+`thinking.type`; low maps to low, medium/high/xhigh compatibility requests map to high, and max maps to
+max. Minimal reasoning fails before dispatch.
+
+Both families retain a 32,000-token AgentRules output cap. This is an application safety limit, not the
+provider's advertised 384,000-token output ceiling. Expanding it requires separate cost, latency, and
+memory acceptance criteria.
 
 The saved preset keys `deepseek-chat` and `deepseek-reasoner` redirect to V4 Flash with disabled and
 enabled/high thinking respectively. DeepSeek scheduled those legacy identifiers to become inaccessible
 on July 24, 2026, so they are compatibility keys rather than valid rollback endpoints. If a V4 Pro issue
 appears, use V4 Flash; do not restore the retired wire identifiers.
 
-Official reference:
+DeepSeek Vision Experimental is not exposed. The current adapter has not established the required image
+input, prompt, token, and multimodal response contract.
 
-- [DeepSeek V4 API announcement](https://api-docs.deepseek.com/news/news260424/)
+Official references:
+
+- [DeepSeek model updates](https://api-docs.deepseek.com/updates/)
+- [DeepSeek thinking-mode mapping](https://api-docs.deepseek.com/guides/thinking_mode/)
+- [DeepSeek model limits](https://api-docs.deepseek.com/quick_start/pricing/)
 
 ## Direct Anthropic API
 
@@ -45,7 +69,14 @@ Fable 5 can return HTTP 200 with `stop_reason="refusal"`. AgentRules treats that
 
 ### Opus compatibility keys
 
-The generic `claude-opus` and `claude-opus-reasoning` preset keys now resolve to Claude Opus 4.8. Claude Opus 4.1 retires from the Claude API on August 5, 2026, and Anthropic recommends Opus 4.8 as its replacement.
+The generic `claude-opus` and `claude-opus-reasoning` preset keys now resolve to Claude Opus 5. Opus 5
+has a 1,000,000-token context and uses adaptive thinking by default. AgentRules provides an explicit
+disabled-thinking preset and adaptive low, medium, high, xhigh, and max presets; manual thinking budgets
+are not supported. Explicit Opus 4.8 keys remain registered as the direct-API rollback path.
+
+Direct Opus 5 availability does not establish local Claude Code availability. AgentRules does not expose a
+pinned Claude Code Opus 5 preset until the exact resolved runtime can be gated against a documented minimum
+version; the moving `claude-code-opus` alias remains runtime-owned.
 
 Official references:
 
@@ -55,16 +86,19 @@ Official references:
 - [Refusals and fallback](https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback)
 - [API and data retention](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)
 - [Model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+- [Claude Opus 5 changes](https://platform.claude.com/docs/en/models/opus-5/whats-new-opus-5)
+- [Effort controls](https://platform.claude.com/docs/en/build-with-claude/effort)
 
 ## Direct xAI API
 
-### Grok 4.5
+### Grok 4.6
 
-`grok-4.5` is the recommended direct xAI model and the default for a directly constructed
-`XaiArchitect`. It has a 500,000-token context and accepts only low, medium, or high reasoning effort;
-high is the provider default. Reasoning cannot be disabled. AgentRules rejects disabled, minimal,
-xhigh, and max configurations before network dispatch rather than translating them to an unsupported
-wire value.
+`grok-4.6` is the recommended direct xAI model and the default for a directly constructed
+`XaiArchitect`. It has a 500,000-token context and accepts low, medium, high, or xhigh reasoning effort;
+high is the provider default. Reasoning cannot be disabled. AgentRules rejects disabled, minimal, and max
+configurations before network dispatch rather than translating them to an unsupported wire value.
+
+Grok 4.5 remains registered as the immediate direct-API fallback with low, medium, and high effort.
 
 ### Grok 4.20 pinned variants
 
@@ -79,7 +113,7 @@ remains Chat-Completions-only, so adding a Multi-Agent preset would guarantee a 
 
 Official references:
 
-- [Grok 4.5](https://docs.x.ai/developers/grok-4-5)
+- [Grok 4.6](https://docs.x.ai/developers/models/grok-4.6)
 - [xAI reasoning controls](https://docs.x.ai/developers/model-capabilities/text/reasoning)
 - [Grok 4.20 reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-reasoning)
 - [Grok 4.20 non-reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-non-reasoning)
@@ -87,7 +121,16 @@ Official references:
 
 ## Google Gemini API
 
-`gemini-3.5-flash` is AgentRules' stable current Flash choice and retains medium thinking.
+`gemini-3.7-flash` is AgentRules' recommended current Flash choice. It has a 1,048,576-token input
+context, defaults to medium thinking, and accepts exactly low, medium, or high. Disabled and minimal
+requests fail before dispatch rather than being raised to low.
+
+`gemini-3.6-flash` defaults to medium and accepts minimal, low, medium, or high. The throughput-oriented
+`gemini-3.5-flash-lite` defaults to minimal and accepts the same four levels. All three families support
+tools together with structured output. Their capability profiles require the installed SDK to expose the
+requested exact level; AgentRules does not silently select a nearby enum value.
+
+The older explicit `gemini-3.5-flash` choice remains registered as a rollback path.
 Gemini 2.5 Flash and Gemini 2.5 Pro remain selectable until their documented October 16, 2026
 shutdown because silently changing an explicit active selection could alter behavior or cost. Their picker
 labels disclose the date and recommend Gemini 3.5 Flash or Gemini 3.1 Pro Preview respectively.
@@ -96,8 +139,10 @@ The saved keys `gemini-3-pro-preview` and `gemini-3.1-flash-lite-preview` remain
 compatibility, but runtime resolution sends `gemini-3.1-pro-preview` and `gemini-3.1-flash-lite`. The
 picker labels disclose those redirects so operators do not mistake compatibility keys for live endpoints.
 
-Official reference:
+Official references:
 
+- [Gemini model catalog](https://ai.google.dev/gemini-api/docs/models)
+- [Gemini thinking levels](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
 - [Gemini model deprecations](https://ai.google.dev/gemini-api/docs/deprecations)
 
 ## Local runtime providers
@@ -141,8 +186,8 @@ skip every provider and make no paid request.
 | --- | --- | --- |
 | OpenAI | GPT-5.5 | Saved GPT-5.6 configurations require the new presets to remain registered. |
 | DeepSeek | V4 Flash | Never roll the wire model back to `deepseek-chat` or `deepseek-reasoner` after retirement. |
-| Anthropic | Claude Opus 4.8 | Do not map generic Opus back to retiring Opus 4.1; do not auto-fallback from a Fable refusal. |
-| xAI | Grok 4.3 | Do not select Multi-Agent through the Chat Completions adapter. |
+| Anthropic | Claude Opus 4.8 | Keep explicit Opus 5 keys registered; do not auto-fallback from a Fable refusal. |
+| xAI | Grok 4.5 | Do not select Multi-Agent through the Chat Completions adapter. |
 | Google | Gemini 3.5 Flash | Keep explicit 2.5 selections only until the documented shutdown. |
 | Codex | Runtime default | Let the authenticated runtime catalog choose; do not synthesize a static model ID. |
 | Claude Code | Runtime default | Use a pinned model only after the resolved runtime passes its minimum-version gate. |

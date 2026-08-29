@@ -2,18 +2,22 @@
 id: EP-20260829-001/MS005
 execplan_id: EP-20260829-001
 ms: 5
-title: "Validate Integration and Release Readiness"
-status: planned
+title: Validate Integration and Release Readiness
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-08-29
-updated: 2026-08-29
-tags: [providers, validation, documentation, release]
+updated: '2026-08-29'
+tags:
+- providers
+- validation
+- documentation
+- release
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Validate Integration and Release Readiness
@@ -26,14 +30,14 @@ Integrate the provider slices into one release-ready, auditable change. The life
 
 ## Definition of Done
 
-- [ ] Anthropic, Gemini, xAI, DeepSeek, OpenAI lifecycle, and Codex runtime targeted suites all pass together.
-- [ ] Full `ruff`, `pyright`, `pytest`, and import-smoke gates pass.
-- [ ] `docs/provider-model-lifecycle.md` matches shipped keys, constraints, migrations, fallbacks, and exclusions.
-- [ ] Model picker labels are accurate, lifecycle-aware, and free of unsupported variants.
-- [ ] The final diff contains no phase-default, dependency, pricing, prompt, auth, transport, or modality changes outside the approved plan.
-- [ ] Optional live-smoke status is stated accurately as run, skipped, or not requested; no raw response or secret is retained.
-- [ ] ExecPlan registry and milestone discovery checks pass; planning documents contain final evidence.
-- [ ] Each milestone and the parent ExecPlan is completed through the CLI only after all applicable acceptance criteria pass.
+- [x] Anthropic, Gemini, xAI, DeepSeek, OpenAI lifecycle, and Codex runtime targeted suites all pass together.
+- [x] Full `ruff`, `pyright`, `pytest`, and import-smoke gates pass.
+- [x] `docs/provider-model-lifecycle.md` matches shipped keys, constraints, migrations, fallbacks, and exclusions.
+- [x] Model picker labels are accurate, lifecycle-aware, and free of unsupported variants.
+- [x] The final diff contains no phase-default, dependency, pricing, prompt, auth, transport, or modality changes outside the approved plan.
+- [x] Optional live-smoke status is stated accurately as not requested; no raw response or secret was retained.
+- [x] ExecPlan registry and milestone discovery checks pass; planning documents contain final evidence.
+- [x] MS001-MS004 were completed through the CLI after their acceptance criteria passed; MS005 and the parent ExecPlan are ready for the same completion flow.
 
 ## Scope
 
@@ -76,46 +80,46 @@ Keep the local runtime section authoritative: Codex models/efforts come from `mo
 
 ### Workstream A - Consolidate operator documentation
 
-- [ ] Update the Direct OpenAI section with o4-mini and deprecated Codex compatibility redirects; state that GPT-5.6 direct presets were already present.
-- [ ] Update Anthropic with Opus 5, adaptive/disabled behavior, generic-key move, and Opus 4.8 fallback.
-- [ ] Update Gemini with 3.7/3.6/3.5 Flash-Lite level sets, 3.7 fail-fast restriction, and older explicit selection policy.
-- [ ] Update xAI with Grok 4.6 as current/default, its exact effort set, Grok 4.5 fallback, and Multi-Agent exclusion.
-- [ ] Update DeepSeek with low/high/max, disabled thinking, legacy redirects, 32K application cap, V4 Flash fallback, and Vision exclusion.
-- [ ] Preserve and review the local-runtime section and optional-live-smoke gates.
-- [ ] Update the rollback/fallback summary table to Opus 4.8, Gemini 3.5 Flash, Grok 4.5, DeepSeek V4 Flash, GPT-5.5 direct, Codex runtime default, and Claude Code runtime default.
+- [x] Update the Direct OpenAI section with o4-mini and deprecated Codex compatibility redirects; state that GPT-5.6 direct presets were already present.
+- [x] Update Anthropic with Opus 5, adaptive/disabled behavior, generic-key move, and Opus 4.8 fallback.
+- [x] Update Gemini with 3.7/3.6/3.5 Flash-Lite level sets, 3.7 fail-fast restriction, and older explicit selection policy.
+- [x] Update xAI with Grok 4.6 as current/default, its exact effort set, Grok 4.5 fallback, and Multi-Agent exclusion.
+- [x] Update DeepSeek with low/high/max, disabled thinking, legacy redirects, 32K application cap, V4 Flash fallback, and Vision exclusion.
+- [x] Preserve and review the local-runtime section and optional-live-smoke gates.
+- [x] Update the rollback/fallback summary table to Opus 4.8, Gemini 3.5 Flash, Grok 4.5, DeepSeek V4 Flash, GPT-5.5 direct, Codex runtime default, and Claude Code runtime default.
 
 ### Workstream B - Run integrated offline validation
 
-- [ ] Run the combined provider/picker/runtime targeted command from the parent plan.
-- [ ] Run all provider-specific tests affected by the final diff, even if a previous milestone ran them independently.
-- [ ] Run `ruff`, `pyright`, full `pytest`, and import smoke.
-- [ ] Record exact commands, pass counts, skips, elapsed times, and any warnings in the milestone changelog and parent Outcomes.
-- [ ] If a failure is unrelated and pre-existing, prove it against `main` before labeling it unrelated; do not suppress it.
+- [x] Run the combined provider/picker/runtime targeted command from the parent plan.
+- [x] Run all provider-specific tests affected by the final diff, even if a previous milestone ran them independently.
+- [x] Run `ruff`, `pyright`, full `pytest`, and import smoke.
+- [x] Record exact commands, pass counts, skips, elapsed times, and any warnings in the milestone changelog and parent Outcomes.
+- [x] No failure required classification against `main`; all required validation completed successfully.
 
 ### Workstream C - Audit registry and user experience
 
-- [ ] Enumerate new preset keys by provider and compare them to the approved tables in MS002-MS004.
-- [ ] Verify every changed deprecation mapping has both keys registered and resolves to the canonical config.
-- [ ] Verify `MODEL_PRESET_DEFAULTS` still contains only `gpt56-sol-default` for all phases.
-- [ ] Verify negative exclusions: no static `codex-gpt-5.6*`, Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, or Pro-mode pseudo-preset.
-- [ ] Exercise CLI model-picker filtering/labels through tests or a non-mutating local invocation.
-- [ ] Review request payload tests to ensure contract coverage validates wire fields, not only labels and constants.
+- [x] Enumerate new preset keys by provider and compare them to the approved tables in MS002-MS004.
+- [x] Verify every changed deprecation mapping has both keys registered and resolves to the canonical config.
+- [x] Verify `MODEL_PRESET_DEFAULTS` still contains only `gpt56-sol-default` for all phases.
+- [x] Verify negative exclusions: no static `codex-gpt-5.6*`, Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, or Pro-mode pseudo-preset.
+- [x] Exercise CLI model-picker filtering/labels through tests or a non-mutating local invocation.
+- [x] Review request payload tests to ensure contract coverage validates wire fields, not only labels and constants.
 
 ### Workstream D - Review final diff and planning state
 
-- [ ] Run `git diff --check`, `git diff --stat`, and a focused diff review against `main`.
-- [ ] Confirm no dependency/lockfile changes; if dependencies changed unexpectedly, stop and amend the plan.
-- [ ] Run `agentrules snapshot sync` only if implementation added, removed, or moved files; review the resulting `SNAPSHOT.md` diff.
-- [ ] Update parent Progress, Surprises & Discoveries, Decision Log, and Outcomes & Retrospective with final evidence.
-- [ ] Complete MS001-MS005 through `agentrules execplan milestone complete` only when each document's definition of done is satisfied.
-- [ ] Complete EP-20260829-001 through `agentrules execplan complete` only after the registry check and all required quality gates pass.
+- [x] Run `git diff --check`, `git diff --stat`, and a focused diff review against `main`.
+- [x] Confirm no dependency/lockfile changes; if dependencies changed unexpectedly, stop and amend the plan.
+- [x] Snapshot synchronization is not applicable because implementation added, removed, or moved no source files.
+- [x] Update parent Progress, Surprises & Discoveries, Decision Log, and Outcomes & Retrospective with final evidence.
+- [x] MS001-MS004 were completed through `agentrules execplan milestone complete`; MS005 now satisfies its definition of done and is ready for CLI completion.
+- [x] EP-20260829-001 has passed the registry and quality gates and is ready for CLI completion after MS005 is archived and pushed.
 
 ### Workstream E - Optional live evidence
 
-- [ ] Decide explicitly whether live smokes are requested and credentials/flags are available.
-- [ ] If requested, run one provider at a time with `pytest --run-live` plus `AGENTRULES_RUN_<PROVIDER>_LIVE=1` and the provider key.
-- [ ] Preserve only pass/skip/fail identifiers and bounded diagnostic categories; never save credentials or raw responses.
-- [ ] Treat account/region/quota skips as availability evidence, not contract success. Unit/contract tests remain required regardless.
+- [x] Live smokes were not requested; no credentials or provider-specific live flags were used.
+- [x] No live provider invocation was applicable, and no paid request was made.
+- [x] No credentials, raw provider responses, or other sensitive response material were retained.
+- [x] The full suite's ten expected live-test skips were not treated as contract success; offline unit and contract tests provide the required evidence.
 
 ## Dependencies
 
@@ -174,15 +178,15 @@ Use the equivalent documented provider flag for Anthropic, Gemini, DeepSeek, or 
 
 ## Release Readiness Checklist
 
-- [ ] Public keys are additive or compatibility-preserved.
-- [ ] Lifecycle redirects are explicit and tested.
-- [ ] Context and effort values match the implementation-day source snapshot.
-- [ ] Direct and runtime-provider ownership boundaries remain intact.
-- [ ] Rollback choices remain registered.
-- [ ] No config/data migration command is required.
-- [ ] No dependency or lockfile update is required.
-- [ ] No security-sensitive logging or response capture was added.
-- [ ] Reviewer can reproduce all required validation without API credentials.
+- [x] Public keys are additive or compatibility-preserved.
+- [x] Lifecycle redirects are explicit and tested.
+- [x] Context and effort values match the implementation-day source snapshot.
+- [x] Direct and runtime-provider ownership boundaries remain intact.
+- [x] Rollback choices remain registered.
+- [x] No config/data migration command is required.
+- [x] No dependency or lockfile update is required.
+- [x] No security-sensitive logging or response capture was added.
+- [x] Reviewer can reproduce all required validation without API credentials.
 
 ## Deferred Work
 
@@ -197,3 +201,9 @@ This change is a registry/capability release with no destructive data migration.
 
 - 2026-08-29: Milestone created.
 - 2026-08-29: Added integrated quality gates, documentation matrix, picker/default/exclusion audit, optional live-test boundaries, and release recovery criteria.
+- 2026-08-29: Updated `docs/provider-model-lifecycle.md` with the shipped provider contracts, compatibility redirects, fallbacks, ownership boundaries, safety caps, and explicitly deferred transport/modality models.
+- 2026-08-29: The expanded provider/picker/runtime suite passed with 427 tests and 48 subtests in 8.94 seconds. The command covered the compatibility matrix, overrides, picker UI, all changed provider capability/request paths, Codex request/runtime behavior, and CLI Codex settings.
+- 2026-08-29: Repository gates passed: `ruff check src tests`, `pyright` with zero errors and warnings, import smoke, and full `pytest -q` with 968 passed, 10 skipped, 48 subtests passed, and four pathspec deprecation warnings from the existing file-retriever tests in 11.74 seconds.
+- 2026-08-29: Registry audit validated 26 exact new preset keys across Anthropic (6), Gemini (11), xAI (4), DeepSeek (3), and OpenAI (2), plus seven lifecycle redirects. Phase defaults remain `gpt56-sol-default`, all planned exclusions remain absent, and request tests cover provider-native wire fields.
+- 2026-08-29: ExecPlan registry/discovery, `git diff --check`, focused scope review, and dependency/lockfile review passed. No source topology changed, so `agentrules snapshot sync` was not applicable.
+- 2026-08-29: Optional live smokes were not requested. No provider flag, credential, paid request, raw response, or secret was used or retained; the ten expected live-test skips were not counted as contract evidence.

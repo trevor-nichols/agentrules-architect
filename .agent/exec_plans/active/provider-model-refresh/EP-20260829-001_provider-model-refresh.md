@@ -88,7 +88,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - [x] (2026-08-29) MS002 added Opus 5 and current Gemini Flash families with exact capability validation; 232 tests and 5 subtests passed with lint, types, and import smoke green.
 - [x] (2026-08-29) MS003 added Grok 4.6 and completed DeepSeek V4 effort handling; 204 tests and 10 subtests passed with lint, types, and import smoke green.
 - [x] (2026-08-29) MS004 added effort-preserving OpenAI lifecycle redirects and hardened the Codex ownership boundary; 260 tests and 43 subtests passed with lint, types, and import smoke green.
-- [ ] MS005 completes integrated validation and release documentation.
+- [x] (2026-08-29) MS005 completed lifecycle documentation, registry/default/exclusion audits, integrated provider validation, and full repository quality gates.
 - [ ] ExecPlan and milestones are completed through the CLI after all acceptance criteria pass.
 
 ## Surprises & Discoveries
@@ -103,6 +103,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - Exact Gemini thinking contracts also require exact SDK enum support. The initial implementation still inherited the older nearest-enum fallback; the MS002 audit caught this and changed current Flash families to fail closed when the installed SDK lacks a required level.
 - Moving the xAI constructor default is not sufficient by itself: the previous Grok 4.5 picker label also claimed to be recommended. MS003 now labels Grok 4.6 as recommended and Grok 4.5 as the explicit fallback.
 - The pre-existing static Codex GPT-5.6 negative test inspected `BASE_MODEL_PRESETS`, which never contains Codex-derived entries. MS004 changed it to inspect the combined `MODEL_PRESETS` registry, so it can fail if a static Codex GPT-5.6 key is actually introduced.
+- The full repository suite is green but reports four pathspec deprecation warnings from `tests/unit/test_file_retriever.py`. They do not affect this provider refresh, and no warning was suppressed or reclassified as a passing contract check.
 
 ## Decision Log
 
@@ -134,11 +135,19 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
   Rationale: Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, and GPT-5.6 Pro mode require request/response semantics not represented by the current direct adapters. A picker entry without transport support would create a guaranteed runtime failure.
   Date/Author: 2026-08-29 / @codex
 
+- Decision: Do not run optional paid live smokes without an explicit operator request.
+  Rationale: The offline capability, request-payload, picker, lifecycle, and runtime tests provide reproducible contract coverage without credentials. Live availability also depends on account, region, and quota state and was not requested for this execution.
+  Date/Author: 2026-08-29 / @codex
+
 ## Outcomes & Retrospective
 
-Planning outcome: the work is divided into five bounded milestones with explicit model contracts, compatibility migrations, non-goals, validation commands, and recovery behavior. No provider implementation has been changed yet.
+The refresh shipped 26 exact direct-provider preset keys across Anthropic (6), Gemini (11), xAI (4), DeepSeek (3), and OpenAI (2). Opus 5 now owns the generic direct Opus aliases while pinned Opus 4.8 remains available. Gemini exposes exact 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite thinking contracts. Grok 4.6 is the recommended direct xAI model with Grok 4.5 retained as fallback. DeepSeek V4 now handles disabled, low, documented medium/high/xhigh-to-high compatibility, and max explicitly while retaining the 32K application output cap. GPT-5 Mini low/medium/high preserve o4-mini workload intent, and retired direct/static Codex keys redirect to GPT-5.3 Codex compatibility targets.
 
-When implementation is complete, replace this paragraph with the shipped preset keys, final test counts, any upstream drift, rollback notes, and deferred follow-up issues. Record whether optional live smokes were run; never imply live coverage when only mocked/unit coverage ran.
+Seven changed lifecycle mappings resolve from registered saved keys to registered canonical presets. Existing phase defaults remain `gpt56-sol-default`. Codex model and effort discovery remains runtime-owned, accepts future catalog effort tokens, and has no new static GPT-5.6 preset. The planned exclusions remain absent: Grok Multi-Agent, DeepSeek Vision Experimental, GPT-5.5 Pro, and a GPT-5.6 Pro-mode pseudo-preset.
+
+Final offline validation passed. The expanded provider, picker, and runtime suite completed with 427 tests and 48 subtests in 8.94 seconds. `ruff check src tests`, `pyright` with zero errors and warnings, and import smoke passed. Full `pytest -q` completed with 968 passed, 10 expected live-test skips, 48 subtests passed, and four pathspec deprecation warnings in 11.74 seconds. ExecPlan registry/discovery, registry key/default/exclusion diagnostics, `git diff --check`, and focused scope review also passed.
+
+The final implementation requires no dependency, lockfile, configuration-data migration, phase-default, pricing, prompt, authentication, or transport change. No source files were added, removed, or moved, so snapshot synchronization was not applicable. Optional live smokes were not requested and were not run; no provider credentials, paid requests, raw responses, or secrets were used or retained. Rollback choices remain Opus 4.8, Gemini 3.5 Flash, Grok 4.5, DeepSeek V4 Flash, GPT-5.5 direct, and runtime defaults for Codex and Claude Code. Specialized transports, modalities, and output-cap expansion remain deliberately deferred.
 
 ## Context and Orientation
 
@@ -243,7 +252,7 @@ Planning artifacts:
 - `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS002_refresh-anthropic-and-gemini-model-families.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS003_refresh-xai-and-deepseek-capabilities.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS004_harden-openai-lifecycle-and-codex-runtime-boundaries.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS005_validate-integration-and-release-readiness.md`
+- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS005_validate-integration-and-release-readiness.md`
 
 Upstream sources to revalidate at MS001:
 
