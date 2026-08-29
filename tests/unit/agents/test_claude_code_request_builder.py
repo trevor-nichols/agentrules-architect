@@ -300,6 +300,45 @@ def test_prepare_request_sonnet5_adaptive_max_effort(
     assert prepared.options["effort"] == "max"
 
 
+@pytest.mark.parametrize("effort", ["low", "medium", "high"])
+def test_prepare_request_opus5_accepts_supported_effort_with_thinking_disabled(
+    tmp_path: Path,
+    effort: str,
+) -> None:
+    prepared = prepare_request(
+        config_manager=_build_config_manager(tmp_path),
+        model_name="claude-opus-5",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DISABLED,
+        effort=effort,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["thinking"] == {"type": "disabled"}
+    assert prepared.options["effort"] == effort
+
+
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_prepare_request_opus5_rejects_extended_effort_with_thinking_disabled(
+    tmp_path: Path,
+    effort: str,
+) -> None:
+    with pytest.raises(ValueError, match="when thinking is disabled"):
+        prepare_request(
+            config_manager=_build_config_manager(tmp_path),
+            model_name="claude-opus-5",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DISABLED,
+            effort=effort,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+
+
 def test_prepare_request_fable5_omits_thinking_and_preserves_effort(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

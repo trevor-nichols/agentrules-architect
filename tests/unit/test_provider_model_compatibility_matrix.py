@@ -130,6 +130,14 @@ DIRECT_MODEL_CONTRACTS = (
         "gpt56-sol-max", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.MAX, 1_050_000, ("responses", "max")
     ),
     ModelContract(
+        "gpt56-terra-low",
+        ModelProvider.OPENAI,
+        "gpt-5.6-terra",
+        ReasoningMode.LOW,
+        1_050_000,
+        ("responses", "low"),
+    ),
+    ModelContract(
         "gpt56-terra-default",
         ModelProvider.OPENAI,
         "gpt-5.6-terra",

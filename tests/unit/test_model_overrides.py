@@ -118,19 +118,33 @@ class ModelOverrideTestCase(unittest.TestCase):
 
     def test_apply_user_overrides_warns_without_remapping_deprecated_live_openai_models(self) -> None:
         self.config_manager.set_phase_model("phase3", "o4-mini-low")
-        self.config_manager.set_phase_model("phase4", "gpt-5.2-codex")
+        self.config_manager.set_phase_model("phase4", "gpt5-mini-medium")
 
         with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
             applied = self.model_config.apply_user_overrides(warn_deprecated=True)
 
         self.assertEqual(applied["phase3"], "o4-mini-low")
-        self.assertEqual(applied["phase4"], "gpt-5.2-codex")
+        self.assertEqual(applied["phase4"], "gpt5-mini-medium")
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "o4-mini")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gpt-5.2-codex")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gpt-5-mini")
         self.assertTrue(any("o4-mini-low" in message and "remains bound" in message for message in captured.output))
         self.assertTrue(
-            any("gpt-5.2-codex" in message and "remains bound" in message for message in captured.output)
+            any("gpt5-mini-medium" in message and "remains bound" in message for message in captured.output)
         )
+
+    def test_apply_user_overrides_redirects_retired_openai_codex_models(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gpt-5.1-codex")
+        self.config_manager.set_phase_model("phase4", "gpt-5.2-codex")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "gpt56-sol-default")
+        self.assertEqual(applied["phase4"], "gpt56-sol-default")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "gpt-5.6-sol")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gpt-5.6-sol")
+        self.assertTrue(any("gpt-5.1-codex" in message and "will resolve" in message for message in captured.output))
+        self.assertTrue(any("gpt-5.2-codex" in message and "will resolve" in message for message in captured.output))
 
     def test_apply_user_overrides_remaps_legacy_deepseek_presets(self) -> None:
         self.config_manager.set_phase_model("phase3", "deepseek-chat")
@@ -628,6 +642,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             "gpt56-sol-high",
             "gpt56-sol-xhigh",
             "gpt56-sol-max",
+            "gpt56-terra-low",
             "gpt56-terra-default",
             "gpt56-terra-high",
             "gpt56-luna-low",
@@ -646,8 +661,9 @@ class ModelOverrideTestCase(unittest.TestCase):
             "o4-mini-low",
             "o4-mini-medium",
             "o4-mini-high",
-            "gpt-5.1-codex",
-            "gpt-5.2-codex",
+            "gpt5-mini-low",
+            "gpt5-mini-medium",
+            "gpt5-mini",
             "codex-gpt-5.1-codex",
             "codex-gpt-5.2-codex",
         )
@@ -664,6 +680,35 @@ class ModelOverrideTestCase(unittest.TestCase):
                     self.agents_module.MODEL_PRESETS[preset_key]["config"],
                 )
                 self.assertIn("Deprecated", self.agents_module.MODEL_PRESETS[preset_key]["label"])
+
+    def test_openai_lifecycle_guidance_uses_current_replacements(self) -> None:
+        terra_replacements = {
+            "o4-mini-low": "GPT-5.6 Terra Low",
+            "o4-mini-medium": "GPT-5.6 Terra Medium",
+            "o4-mini-high": "GPT-5.6 Terra High",
+            "gpt5-mini-low": "GPT-5.6 Terra Low",
+            "gpt5-mini-medium": "GPT-5.6 Terra Medium",
+            "gpt5-mini": "GPT-5.6 Terra High",
+        }
+
+        for preset_key, replacement_label in terra_replacements.items():
+            with self.subTest(preset_key=preset_key):
+                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
+                self.assertIsNotNone(deprecation)
+                assert deprecation is not None
+                self.assertIsNone(deprecation.replacement_key)
+                self.assertIn(replacement_label, deprecation.reason or "")
+
+        for preset_key in ("gpt-5.1-codex", "gpt-5.2-codex"):
+            with self.subTest(preset_key=preset_key):
+                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
+                self.assertIsNotNone(deprecation)
+                assert deprecation is not None
+                self.assertEqual(deprecation.replacement_key, "gpt56-sol-default")
+                self.assertEqual(
+                    self.model_config.get_model_config_for_preset_key(preset_key),
+                    self.agents_module.MODEL_PRESETS["gpt56-sol-default"]["config"],
+                )
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)

@@ -665,6 +665,12 @@ GPT5_6_SOL_MAX = _gpt5_responses_model(
     text_verbosity="high",
 )
 
+GPT5_6_TERRA_LOW = _gpt5_responses_model(
+    "gpt-5.6-terra",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
 GPT5_6_TERRA_DEFAULT = _gpt5_responses_model(
     "gpt-5.6-terra",
     reasoning=ReasoningMode.MEDIUM,

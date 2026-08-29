@@ -13,6 +13,7 @@ from agentrules.core.agents.anthropic.capabilities import (
     supports_adaptive_thinking,
     supports_manual_thinking,
     thinking_policy,
+    validate_thinking_effort_compatibility,
 )
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.configuration import CLAUDE_CODE_API_KEY_ENV_VARS, ConfigManager
@@ -91,14 +92,19 @@ def prepare_request(
 
     if not is_claude_code_runtime_managed_model(model_name):
         thinking = _build_thinking_config(model_name, reasoning)
-        if thinking is not None:
-            options["thinking"] = thinking
-
         resolved_effort = resolve_effort(
             model_name=model_name,
             reasoning=reasoning,
             effort=effort,
         )
+        validate_thinking_effort_compatibility(
+            model_name=model_name,
+            thinking_type=thinking.get("type") if thinking is not None else None,
+            effort=resolved_effort,
+        )
+
+        if thinking is not None:
+            options["thinking"] = thinking
         if resolved_effort is not None:
             options["effort"] = resolved_effort
 

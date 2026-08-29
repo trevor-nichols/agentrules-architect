@@ -118,32 +118,46 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
     "o4-mini-low": PresetDeprecationInfo(
         reason=(
             "OpenAI deprecated o4-mini but has not retired it; "
-            "choose GPT-5 Mini Low for new configurations."
+            "choose GPT-5.6 Terra Low for new configurations."
         ),
     ),
     "o4-mini-medium": PresetDeprecationInfo(
         reason=(
             "OpenAI deprecated o4-mini but has not retired it; "
-            "choose GPT-5 Mini Medium for new configurations."
+            "choose GPT-5.6 Terra Medium for new configurations."
         ),
     ),
     "o4-mini-high": PresetDeprecationInfo(
         reason=(
             "OpenAI deprecated o4-mini but has not retired it; "
-            "choose GPT-5 Mini High for new configurations."
+            "choose GPT-5.6 Terra High for new configurations."
+        ),
+    ),
+    "gpt5-mini-low": PresetDeprecationInfo(
+        reason=(
+            "OpenAI deprecated GPT-5 Mini but has not retired it; "
+            "choose GPT-5.6 Terra Low for new configurations."
+        ),
+    ),
+    "gpt5-mini-medium": PresetDeprecationInfo(
+        reason=(
+            "OpenAI deprecated GPT-5 Mini but has not retired it; "
+            "choose GPT-5.6 Terra Medium for new configurations."
+        ),
+    ),
+    "gpt5-mini": PresetDeprecationInfo(
+        reason=(
+            "OpenAI deprecated GPT-5 Mini but has not retired it; "
+            "choose GPT-5.6 Terra High for new configurations."
         ),
     ),
     "gpt-5.1-codex": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5.1 Codex but has not retired it; "
-            "choose GPT-5.3 Codex for new configurations."
-        ),
+        replacement_key="gpt56-sol-default",
+        reason="OpenAI retired GPT-5.1 Codex; saved selections resolve to GPT-5.6 Sol.",
     ),
     "gpt-5.2-codex": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5.2 Codex but has not retired it; "
-            "choose GPT-5.3 Codex for new configurations."
-        ),
+        replacement_key="gpt56-sol-default",
+        reason="OpenAI retired GPT-5.2 Codex; saved selections resolve to GPT-5.6 Sol.",
     ),
     "codex-gpt-5.1-codex": PresetDeprecationInfo(
         reason=(

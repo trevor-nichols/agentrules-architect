@@ -235,6 +235,31 @@ def resolve_effort(
     return requested_effort
 
 
+def validate_thinking_effort_compatibility(
+    *,
+    model_name: str,
+    thinking_type: str | None,
+    effort: AnthropicEffort | str | None,
+) -> None:
+    """Reject provider-invalid combinations of thinking policy and effort."""
+
+    if thinking_type != "disabled" or effort is None:
+        return
+
+    allowed_effort_levels = (
+        resolve_capability_profile(model_name).supported_effort_levels_with_thinking_disabled
+    )
+    if allowed_effort_levels is None or effort in allowed_effort_levels:
+        return
+
+    supported = ", ".join(sorted(allowed_effort_levels))
+    raise ValueError(
+        f"Effort '{effort}' is not supported for model '{model_name}' when thinking is "
+        f"disabled. Supported values for disabled thinking: {supported}. Enable adaptive "
+        "thinking or select a supported effort level."
+    )
+
+
 def supports_effort(model_name: str) -> bool:
     """Return True when the model supports output_config.effort."""
 

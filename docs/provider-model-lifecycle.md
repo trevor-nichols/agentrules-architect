@@ -10,24 +10,30 @@ three use the Responses API with a 1,050,000-token context. Sol accepts `none`, 
 effort. GPT-5.5 presets remain available as the immediate fallback when account availability or behavior
 requires a conservative rollback.
 
-GPT-5 Mini has low, medium, and high direct presets with a 400,000-token context. OpenAI identifies it as
-the successor to o4-mini, but the saved keys `o4-mini-low`, `o4-mini-medium`, and `o4-mini-high` remain
-bound to their original model while that endpoint is deprecated but available. The picker hides these
-keys from new selections, preserves an existing selection with a deprecation warning, and recommends the
-matching GPT-5 Mini effort as an operator-selected migration. AgentRules must not change a saved model's
+GPT-5.6 Terra is OpenAI's supported replacement for o4-mini and accepts low, medium, and high reasoning,
+so AgentRules exposes matching presets for effort-preserving migrations. The saved keys `o4-mini-low`,
+`o4-mini-medium`, and `o4-mini-high` remain bound to their original model while that endpoint is deprecated
+but available. The picker hides these keys from new selections, preserves an existing selection with a
+deprecation warning, and recommends the matching Terra effort. AgentRules must not change a saved model's
 behavior or cost until the original endpoint retires.
 
-The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` likewise remain bound to their original models
-while the endpoints are deprecated but available. Their static Codex-derived counterparts preserve the
-same identity subject to runtime availability. GPT-5.3 Codex is recommended for new configurations, but
-it is not an automatic compatibility redirect before retirement. Direct API lifecycle state is not
-evidence that a model is available in the local Codex runtime. GPT-5.5 Pro and a GPT-5.6 Pro-mode
-pseudo-preset remain excluded because their transport or execution-mode contracts are not represented by
-the current adapter.
+GPT-5 Mini's low, medium, and high direct presets follow the same deprecated-but-live policy. They remain
+bound to GPT-5 Mini for saved configurations, are hidden from new picker selections, and recommend the
+matching GPT-5.6 Terra effort. OpenAI schedules the pinned GPT-5 Mini snapshot to shut down on December 11,
+2026; a runtime redirect should only be introduced when that endpoint retires.
+
+The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` are retired compatibility IDs. They resolve to
+the medium-reasoning GPT-5.6 Sol preset before dispatch, preserving the original effort while following
+OpenAI's documented replacement. Their static Codex-derived counterparts remain runtime-owned selections:
+they are shown only when the app-server catalog reports them, and direct API lifecycle state is not evidence
+that a model is available in the local Codex runtime. GPT-5.5 Pro and a GPT-5.6 Pro-mode pseudo-preset remain
+excluded because their transport or execution-mode contracts are not represented by the current adapter.
 
 Official references:
 
 - [OpenAI latest model guide](https://developers.openai.com/api/docs/guides/latest-model)
+- [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations)
+- [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra)
 - [GPT-5 Mini](https://developers.openai.com/api/docs/models/gpt-5-mini)
 - [o4-mini lifecycle](https://developers.openai.com/api/docs/models/o4-mini)
 - [OpenAI model catalog](https://developers.openai.com/api/docs/models/all)
@@ -76,7 +82,9 @@ Fable 5 can return HTTP 200 with `stop_reason="refusal"`. AgentRules treats that
 The generic `claude-opus` and `claude-opus-reasoning` preset keys now resolve to Claude Opus 5. Opus 5
 has a 1,000,000-token context and uses adaptive thinking by default. AgentRules provides an explicit
 disabled-thinking preset and adaptive low, medium, high, xhigh, and max presets; manual thinking budgets
-are not supported. Explicit Opus 4.8 keys remain registered as the direct-API rollback path.
+are not supported. When thinking is disabled, Opus 5 accepts only low, medium, or high effort; both the
+direct Anthropic and Claude Code request builders reject xhigh or max before dispatch. Explicit Opus 4.8
+keys remain registered as the direct-API rollback path.
 
 Direct Opus 5 availability does not establish local Claude Code availability. AgentRules does not expose a
 pinned Claude Code Opus 5 preset until the exact resolved runtime can be gated against a documented minimum

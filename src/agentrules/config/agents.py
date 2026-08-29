@@ -93,6 +93,7 @@ from agentrules.core.types.models import (
     GPT5_6_SOL_XHIGH,
     GPT5_6_TERRA_DEFAULT,
     GPT5_6_TERRA_HIGH,
+    GPT5_6_TERRA_LOW,
     GPT5_DEFAULT,
     GPT5_HIGH,
     GPT5_MINI,
@@ -749,28 +750,28 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "o4-mini-low": _preset(
         config=O4_MINI_LOW,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5 Mini Low)",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Low)",
         description=(
             "Deprecated o4-mini endpoint at low reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5 Mini Low for new configurations."
+            "choose GPT-5.6 Terra Low for new configurations."
         ),
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-medium": _preset(
         config=O4_MINI_MEDIUM,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5 Mini Medium)",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Medium)",
         description=(
             "Deprecated o4-mini endpoint at medium reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5 Mini Medium for new configurations."
+            "choose GPT-5.6 Terra Medium for new configurations."
         ),
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-high": _preset(
         config=O4_MINI_HIGH,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5 Mini High)",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra High)",
         description=(
             "Deprecated o4-mini endpoint at high reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5 Mini High for new configurations."
+            "choose GPT-5.6 Terra High for new configurations."
         ),
         provider=ModelProvider.OPENAI,
     ),
@@ -800,20 +801,29 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt5-mini": _preset(
         config=GPT5_MINI,
-        label="GPT-5 Mini (high reasoning)",
-        description="Cost-efficient GPT-5 Mini with 400K context, high reasoning, and medium verbosity.",
+        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra High)",
+        description=(
+            "Deprecated GPT-5 Mini endpoint with 400K context and high reasoning. Existing selections "
+            "remain on GPT-5 Mini; choose GPT-5.6 Terra High for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-mini-low": _preset(
         config=GPT5_MINI_LOW,
-        label="GPT-5 Mini (low reasoning)",
-        description="Cost-efficient GPT-5 Mini with 400K context, low reasoning, and low verbosity.",
+        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Low)",
+        description=(
+            "Deprecated GPT-5 Mini endpoint with 400K context and low reasoning. Existing selections "
+            "remain on GPT-5 Mini; choose GPT-5.6 Terra Low for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-mini-medium": _preset(
         config=GPT5_MINI_MEDIUM,
-        label="GPT-5 Mini (medium reasoning)",
-        description="Cost-efficient GPT-5 Mini with 400K context, medium reasoning, and medium verbosity.",
+        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Medium)",
+        description=(
+            "Deprecated GPT-5 Mini endpoint with 400K context and medium reasoning. Existing selections "
+            "remain on GPT-5 Mini; choose GPT-5.6 Terra Medium for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt55-none": _preset(
@@ -880,6 +890,12 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=GPT5_6_SOL_MAX,
         label="GPT-5.6 Sol (max reasoning)",
         description="Flagship GPT-5.6 Sol at maximum reasoning effort for the hardest quality-first workloads.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-terra-low": _preset(
+        config=GPT5_6_TERRA_LOW,
+        label="GPT-5.6 Terra (low reasoning)",
+        description="Balanced-cost GPT-5.6 Terra with low reasoning, low verbosity, and 1.05M context.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt56-terra-default": _preset(
@@ -956,19 +972,19 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt-5.1-codex": _preset(
         config=GPT5_1_CODEX,
-        label="GPT-5.1 Codex (Deprecated; successor: GPT-5.3 Codex)",
+        label="GPT-5.1 Codex (Retired; redirects to GPT-5.6 Sol)",
         description=(
-            "Deprecated GPT-5.1 Codex endpoint with medium reasoning. Existing selections remain on "
-            "GPT-5.1 Codex; choose GPT-5.3 Codex for new configurations."
+            "Retired GPT-5.1 Codex compatibility key. Existing selections resolve to GPT-5.6 Sol "
+            "with medium reasoning before dispatch."
         ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.2-codex": _preset(
         config=GPT5_2_CODEX,
-        label="GPT-5.2 Codex (Deprecated; successor: GPT-5.3 Codex)",
+        label="GPT-5.2 Codex (Retired; redirects to GPT-5.6 Sol)",
         description=(
-            "Deprecated GPT-5.2 Codex endpoint with medium reasoning. Existing selections remain on "
-            "GPT-5.2 Codex; choose GPT-5.3 Codex for new configurations."
+            "Retired GPT-5.2 Codex compatibility key. Existing selections resolve to GPT-5.6 Sol "
+            "with medium reasoning before dispatch."
         ),
         provider=ModelProvider.OPENAI,
     ),
@@ -1244,8 +1260,22 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
 
 def _build_codex_runtime_presets() -> dict[str, PresetDefinition]:
     return {
-        "codex-gpt-5.1-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.1-codex"]),
-        "codex-gpt-5.2-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.2-codex"]),
+        "codex-gpt-5.1-codex": _derive_codex_runtime_preset(
+            BASE_MODEL_PRESETS["gpt-5.1-codex"],
+            label="Codex GPT-5.1 Codex (Deprecated runtime selection)",
+            description=(
+                "Static compatibility selection retained for saved Codex settings. It remains bound "
+                "to GPT-5.1 Codex and is selectable only when the app-server catalog reports it."
+            ),
+        ),
+        "codex-gpt-5.2-codex": _derive_codex_runtime_preset(
+            BASE_MODEL_PRESETS["gpt-5.2-codex"],
+            label="Codex GPT-5.2 Codex (Deprecated runtime selection)",
+            description=(
+                "Static compatibility selection retained for saved Codex settings. It remains bound "
+                "to GPT-5.2 Codex and is selectable only when the app-server catalog reports it."
+            ),
+        ),
         "codex-gpt-5.3-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.3-codex"]),
         "codex-gpt-5.4": _derive_codex_runtime_preset(
             BASE_MODEL_PRESETS["gpt-5.4-2026-03-05"],

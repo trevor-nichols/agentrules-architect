@@ -15,6 +15,7 @@ from .capabilities import (
     supports_adaptive_thinking,
     supports_manual_thinking,
     supports_structured_output_format,
+    validate_thinking_effort_compatibility,
 )
 
 DEFAULT_NONSTREAMING_MAX_TOKENS = 20_000
@@ -66,9 +67,9 @@ def prepare_request(
         payload["system"] = system_prompt
 
     thinking = _build_thinking_payload(model_name=model_name, reasoning=reasoning)
-    _validate_thinking_effort_compatibility(
+    validate_thinking_effort_compatibility(
         model_name=model_name,
-        thinking=thinking,
+        thinking_type=thinking.get("type") if thinking is not None else None,
         effort=normalized_effort,
     )
     if thinking is not None:
@@ -89,29 +90,6 @@ def _resolve_max_tokens(max_tokens: int | None, effort: str | None) -> int:
     if effort in _EXTENDED_EFFORT_LEVELS:
         return EXTENDED_EFFORT_MAX_TOKENS
     return DEFAULT_NONSTREAMING_MAX_TOKENS
-
-
-def _validate_thinking_effort_compatibility(
-    *,
-    model_name: str,
-    thinking: dict[str, Any] | None,
-    effort: str | None,
-) -> None:
-    if thinking is None or thinking.get("type") != "disabled" or effort is None:
-        return
-
-    allowed_effort_levels = (
-        resolve_capability_profile(model_name).supported_effort_levels_with_thinking_disabled
-    )
-    if allowed_effort_levels is None or effort in allowed_effort_levels:
-        return
-
-    supported = ", ".join(sorted(allowed_effort_levels))
-    raise ValueError(
-        f"Effort '{effort}' is not supported for model '{model_name}' when thinking is "
-        f"disabled. Supported values for disabled thinking: {supported}. Enable adaptive "
-        "thinking or select a supported effort level."
-    )
 
 
 def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dict[str, Any] | None:
