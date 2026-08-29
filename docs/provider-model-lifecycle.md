@@ -109,8 +109,9 @@ Official references:
 
 `grok-4.6` is the recommended direct xAI model and the default for a directly constructed
 `XaiArchitect`. It has a 500,000-token context and accepts low, medium, high, or xhigh reasoning effort;
-high is the provider default. Reasoning cannot be disabled. AgentRules rejects disabled, minimal, and max
-configurations before network dispatch rather than translating them to an unsupported wire value.
+high is the provider default. Reasoning cannot be disabled. AgentRules rejects disabled, minimal, max, and
+temperature configurations before network dispatch rather than translating them to an unsupported wire
+value.
 
 Grok 4.5 remains registered as the immediate direct-API fallback with low, medium, and high effort.
 

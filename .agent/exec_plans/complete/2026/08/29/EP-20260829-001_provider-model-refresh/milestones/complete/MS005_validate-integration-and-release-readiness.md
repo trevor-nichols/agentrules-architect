@@ -216,3 +216,6 @@ This change is a registry/capability release with no destructive data migration.
 - 2026-08-29: Opus 5 gate validation passed: 159 focused tests and 21 subtests, full suite with 993 passed,
   11 expected live-test skips, and 57 subtests, plus Ruff, Pyright, import, lockfile, ExecPlan registry,
   official-reference, and diff checks.
+- 2026-08-29: Final xAI review made untranslatable modes fail closed for effort-controlled profiles while
+  retaining Grok 4.6 for all documented efforts. Validation passed 180 focused tests and 21 subtests, full
+  suite with 995 passed, 11 expected live-test skips, and 57 subtests, plus all repository quality gates.

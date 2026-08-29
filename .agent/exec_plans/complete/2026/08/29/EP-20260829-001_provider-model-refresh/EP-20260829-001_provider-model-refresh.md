@@ -176,6 +176,12 @@ The Opus 5 runtime-gate review passed 159 focused tests plus 21 subtests and the
 passed, 11 expected live-test skips, and 57 subtests. Ruff, Pyright, import smoke, lockfile validation,
 ExecPlan registry/discovery, source-reference, and diff checks also passed.
 
+The final xAI reasoning review removed the generic `None` fallback for effort-controlled profiles, so
+programmatic temperature mode can no longer silently select Grok 4.6's provider-default high effort. The
+model remains available for every documented mode. Validation passed 180 focused tests plus 21 subtests
+and the full suite with 995 passed, 11 expected live-test skips, and 57 subtests; Ruff, Pyright, import,
+lockfile, ExecPlan registry/discovery, official-reference, audit, and diff checks also passed.
+
 Final offline validation passed. The expanded provider, picker, and runtime suite completed with 427 tests and 48 subtests in 8.94 seconds. `ruff check src tests`, `pyright` with zero errors and warnings, and import smoke passed. Full `pytest -q` completed with 968 passed, 10 expected live-test skips, 48 subtests passed, and four pathspec deprecation warnings in 11.74 seconds. ExecPlan registry/discovery, registry key/default/exclusion diagnostics, `git diff --check`, and focused scope review also passed.
 
 Post-completion review raised the declared `google-genai` floor from 1.51.0 to 1.56.0, the first SDK release with the required `MINIMAL` and `MEDIUM` thinking enums; the lockfile's resolved SDK remains 1.64.0. The review fix passed 186 focused tests plus 12 subtests, an isolated 1.56.0 minimum-version run with 42 tests, and the full suite with 963 passed, 10 expected live-test skips, and 48 subtests. Ruff, Pyright, import, lockfile, registry, and diff checks also passed.
@@ -259,7 +265,8 @@ The work is acceptable only when all of the following are true:
 - `claude-opus` and `claude-opus-reasoning` resolve to Opus 5; pinned Opus 4.8 keys still resolve to Opus 4.8.
 - Opus 5 adaptive requests emit only documented effort values, while the non-thinking preset emits an explicit disabled-thinking request without an incompatible effort field.
 - Gemini 3.7 resolves low, medium, and high exactly and rejects disabled/minimal. Gemini 3.6 and 3.5 Flash-Lite resolve their documented minimal/low/medium/high levels. Structured output plus tools remains enabled for all three families.
-- Grok 4.6 resolves to a 500,000-token context, accepts exactly low/medium/high/xhigh, rejects disabled/minimal, and is the default for direct `XaiArchitect` construction.
+- Grok 4.6 resolves to a 500,000-token context, accepts exactly low/medium/high/xhigh, rejects
+  disabled/minimal/max/temperature, and is the default for direct `XaiArchitect` construction.
 - DeepSeek V4 maps low to `low`, medium/enabled/dynamic/high/xhigh to `high`, and max to `max`; disabled omits effort and disables thinking; minimal fails before dispatch. Flash and Pro keep the 32K application output cap.
 - Every new/changed compatibility key remains present, its replacement key is registered, and runtime resolution returns the replacement config.
 - Existing phase defaults stay unchanged at `gpt56-sol-default`.

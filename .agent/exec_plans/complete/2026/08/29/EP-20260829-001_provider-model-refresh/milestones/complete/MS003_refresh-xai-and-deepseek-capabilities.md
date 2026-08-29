@@ -34,7 +34,8 @@ Make Grok 4.6 the complete recommended direct xAI path and expose the missing do
 - [x] Grok 4.6 has low, medium, high/default, and xhigh presets with a 500,000-token context.
 - [x] A directly constructed `XaiArchitect` defaults to Grok 4.6 high effort.
 - [x] The optional xAI live smoke uses the same provider-owned Grok 4.6 default and covers both the current and Grok 4.5 fallback payload contracts.
-- [x] Grok 4.6 rejects disabled, minimal, and max before dispatch and sends supported effort values unchanged.
+- [x] Grok 4.6 rejects disabled, minimal, max, and temperature before dispatch and sends supported effort
+  values unchanged.
 - [x] DeepSeek V4 Flash has disabled, low, high/default, and max presets; V4 Pro has disabled, low, high/default, and max presets.
 - [x] DeepSeek maps generic modes exactly as documented: medium and xhigh resolve to high, max resolves to max, and minimal fails.
 - [x] DeepSeek legacy keys still resolve to canonical V4 Flash configs and both V4 families retain the 32K application output cap.
@@ -92,7 +93,9 @@ Normalize the public `deepseek-v4-pro-max` config to `ReasoningMode.MAX` while p
 | `grok-4.6-reasoning-medium` | `grok-4.6` | medium | medium | 500,000 |
 | `grok-4.6-reasoning-xhigh` | `grok-4.6` | xhigh | xhigh | 500,000 |
 
-There is no non-reasoning, minimal, or max preset. Existing Grok 4.5 and pinned 4.20 keys retain their current contracts.
+There is no non-reasoning, minimal, or max preset. Programmatic temperature mode also fails before
+dispatch instead of silently selecting the provider's default reasoning effort. Existing Grok 4.5 and
+pinned 4.20 keys retain their current contracts.
 
 ### DeepSeek keys
 
@@ -203,3 +206,9 @@ Grok 4.6 becomes the direct constructor default, while Grok 4.5 remains a regist
 - 2026-08-29: Added missing DeepSeek V4 low/max presets, explicit provider compatibility mapping, and regression coverage for the 32K application output cap and legacy aliases.
 - 2026-08-29: The focused AI-code audit corrected a stale Grok 4.5 recommendation label and kept model families grouped in the registry. Validation passed: 204 tests and 10 subtests, Ruff, Pyright, import smoke, and `git diff --check`.
 - 2026-08-29: Post-completion audit centralized the xAI default model and aligned the optional live smoke and payload-contract table with Grok 4.6 while retaining Grok 4.5 fallback coverage. The offline `--run-live` smoke-contract run passed four payload cases and skipped all five disabled provider calls.
+- 2026-08-29: Post-completion review removed the remaining untranslatable-reasoning fallback for
+  effort-controlled xAI models. Grok 4.6 stays enabled for low, medium, high, xhigh, enabled, and dynamic
+  modes; temperature now fails before dispatch instead of silently selecting provider-default reasoning.
+- 2026-08-29: Temperature-mode validation passed: 180 focused tests and 21 subtests, full suite with 995
+  passed, 11 expected live-test skips, and 57 subtests, plus Ruff, Pyright, import, lockfile, ExecPlan
+  registry, official-reference, audit, and diff checks.

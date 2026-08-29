@@ -246,7 +246,12 @@ def test_prepare_request_maps_documented_grok46_efforts(
 
 @pytest.mark.parametrize(
     "reasoning",
-    [ReasoningMode.DISABLED, ReasoningMode.MINIMAL, ReasoningMode.MAX],
+    [
+        ReasoningMode.DISABLED,
+        ReasoningMode.MINIMAL,
+        ReasoningMode.MAX,
+        ReasoningMode.TEMPERATURE,
+    ],
 )
 def test_prepare_request_rejects_unsupported_grok46_efforts(reasoning: ReasoningMode) -> None:
     with pytest.raises(ValueError, match="not supported for xAI model 'grok-4.6'"):
@@ -266,6 +271,7 @@ def test_prepare_request_rejects_unsupported_grok46_efforts(reasoning: Reasoning
         ReasoningMode.MINIMAL,
         ReasoningMode.XHIGH,
         ReasoningMode.MAX,
+        ReasoningMode.TEMPERATURE,
     ],
 )
 def test_prepare_request_rejects_unsupported_grok45_efforts(reasoning: ReasoningMode) -> None:
