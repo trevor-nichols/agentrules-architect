@@ -415,6 +415,41 @@
         "docs"
       ],
       "updated": "2026-07-15"
+    },
+    {
+      "breaking": false,
+      "created": "2026-08-29",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20260829-001",
+      "kind": "refactor",
+      "links": {
+        "docs": "docs/provider-model-lifecycle.md",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": true,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/active/provider-model-refresh/EP-20260829-001_provider-model-refresh.md",
+      "risk": "med",
+      "status": "planned",
+      "supersedes": [],
+      "tags": [
+        "providers",
+        "models",
+        "capabilities",
+        "lifecycle",
+        "compatibility"
+      ],
+      "title": "Refresh Provider Model Registry and Capabilities",
+      "touches": [
+        "agents",
+        "backend",
+        "cli",
+        "docs",
+        "tests"
+      ],
+      "updated": "2026-08-29"
     }
   ],
   "schema_version": 1
