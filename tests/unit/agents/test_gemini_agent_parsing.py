@@ -160,6 +160,15 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(config.thinking_config.thinking_level, expected_level)
         self.assertIsNone(config.thinking_config.thinking_budget)
 
+    async def test_gemini37_invalid_reasoning_fails_before_dispatch(self):
+        arch = GeminiArchitect(model_name="gemini-3.7-flash", reasoning=ReasoningMode.DISABLED)
+        arch.client = _GeminiFakeClient()  # type: ignore
+
+        with self.assertRaisesRegex(ValueError, "gemini-3.7-flash"):
+            await arch.analyze({})
+
+        self.assertIsNone(arch.client.models.last_call)  # type: ignore[union-attr]
+
     async def test_gemini31_pro_medium_maps_to_thinking_level_high(self):
         arch = GeminiArchitect(model_name="gemini-3.1-pro-preview", reasoning=ReasoningMode.MEDIUM)
         arch.client = _GeminiFakeClient()  # type: ignore

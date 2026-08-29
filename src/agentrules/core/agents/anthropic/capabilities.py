@@ -84,6 +84,15 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         supports_structured_output_format=True,
     ),
     CapabilityProfile(
+        family_prefix="claude-opus-5",
+        display_name="Claude Opus 5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        thinking_policy=ThinkingPolicy.ADAPTIVE_DEFAULT,
+    ),
+    CapabilityProfile(
         family_prefix="claude-opus-4-8",
         display_name="Claude Opus 4.8",
         supports_structured_output_format=True,

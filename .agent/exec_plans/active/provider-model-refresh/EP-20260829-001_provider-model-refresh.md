@@ -85,7 +85,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - [x] (2026-08-29) Created this ExecPlan and five milestone documents through the AgentRules CLI.
 - [x] (2026-08-29) User reviewed and approved this plan and authorized sequential milestone execution.
 - [x] (2026-08-29) MS001 locked the implementation-day source snapshot and migration contract; targeted baseline passed with 166 tests and 8 subtests.
-- [ ] MS002 refreshes Anthropic and Gemini model families.
+- [x] (2026-08-29) MS002 added Opus 5 and current Gemini Flash families with exact capability validation; 232 tests and 5 subtests passed with lint, types, and import smoke green.
 - [ ] MS003 refreshes xAI and DeepSeek capabilities.
 - [ ] MS004 hardens OpenAI lifecycle and Codex runtime boundaries.
 - [ ] MS005 completes integrated validation and release documentation.
@@ -100,6 +100,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 - Existing static Codex-derived presets predate runtime catalog discovery. They are compatibility surfaces; new runtime models must continue to come from `model/list`.
 - Official OpenAI documentation now marks o4-mini as deprecated and identifies GPT-5 Mini as its successor. Preserving low/medium/high intent requires two new GPT-5 Mini configurations rather than redirecting all three old keys to one high-effort preset.
 - DeepSeek's current Thinking Mode guide documents compatibility mappings that were not captured in the planning draft: requested `medium` and `xhigh` both map to actual `high`, while only `max` maps to `max`. MS003 was amended to implement and test that provider-defined behavior; only `minimal` remains unsupported.
+- Exact Gemini thinking contracts also require exact SDK enum support. The initial implementation still inherited the older nearest-enum fallback; the MS002 audit caught this and changed current Flash families to fail closed when the installed SDK lacks a required level.
 
 ## Decision Log
 
@@ -237,7 +238,7 @@ Planning artifacts:
 
 - `.agent/exec_plans/active/provider-model-refresh/EP-20260829-001_provider-model-refresh.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS001_lock-model-contracts-and-lifecycle-policy.md`
-- `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS002_refresh-anthropic-and-gemini-model-families.md`
+- `.agent/exec_plans/active/provider-model-refresh/milestones/complete/MS002_refresh-anthropic-and-gemini-model-families.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS003_refresh-xai-and-deepseek-capabilities.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS004_harden-openai-lifecycle-and-codex-runtime-boundaries.md`
 - `.agent/exec_plans/active/provider-model-refresh/milestones/active/MS005_validate-integration-and-release-readiness.md`

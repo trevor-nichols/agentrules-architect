@@ -17,6 +17,8 @@ from agentrules.core.types.models import (
     CLAUDE_HAIKU,
     CLAUDE_HAIKU_WITH_REASONING,
     CLAUDE_OPUS,
+    CLAUDE_OPUS_5,
+    CLAUDE_OPUS_5_WITH_REASONING,
     CLAUDE_OPUS_45,
     CLAUDE_OPUS_45_WITH_REASONING,
     CLAUDE_OPUS_46,
@@ -42,6 +44,9 @@ from agentrules.core.types.models import (
     GEMINI_3_1_FLASH_LITE_PREVIEW,
     GEMINI_3_1_PRO_PREVIEW,
     GEMINI_3_5_FLASH,
+    GEMINI_3_5_FLASH_LITE,
+    GEMINI_3_6_FLASH,
+    GEMINI_3_7_FLASH,
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
     GEMINI_FLASH,
@@ -185,6 +190,7 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
             if (
                 name.startswith("claude-fable-5")
                 or name.startswith("claude-sonnet-5")
+                or name.startswith("claude-opus-5")
                 or name.startswith("claude-opus-4-6")
                 or name.startswith("claude-opus-4-7")
                 or name.startswith("claude-opus-4-8")
@@ -300,6 +306,72 @@ def _claude_code_runtime_managed_preset(
 
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
+    "gemini-3.7-flash": _preset(
+        config=GEMINI_3_7_FLASH,
+        label="Gemini 3.7 Flash (Medium Thinking, Recommended)",
+        description="Current Gemini Flash model at its default medium thinking level.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.7-flash-reasoning-low": _preset(
+        config=GEMINI_3_7_FLASH._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.7 Flash (Low Thinking)",
+        description="Gemini 3.7 Flash at low thinking for latency-sensitive work.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.7-flash-reasoning-high": _preset(
+        config=GEMINI_3_7_FLASH._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.7 Flash (High Thinking)",
+        description="Gemini 3.7 Flash at high thinking for complex work.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash": _preset(
+        config=GEMINI_3_6_FLASH,
+        label="Gemini 3.6 Flash (Medium Thinking)",
+        description="Gemini 3.6 Flash at its default medium thinking level.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash-reasoning-minimal": _preset(
+        config=GEMINI_3_6_FLASH._replace(reasoning=ReasoningMode.MINIMAL),
+        label="Gemini 3.6 Flash (Minimal Thinking)",
+        description="Gemini 3.6 Flash at minimal thinking for the fastest supported responses.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash-reasoning-low": _preset(
+        config=GEMINI_3_6_FLASH._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.6 Flash (Low Thinking)",
+        description="Gemini 3.6 Flash at low thinking for efficient workloads.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash-reasoning-high": _preset(
+        config=GEMINI_3_6_FLASH._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.6 Flash (High Thinking)",
+        description="Gemini 3.6 Flash at high thinking for deeper analysis.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite": _preset(
+        config=GEMINI_3_5_FLASH_LITE,
+        label="Gemini 3.5 Flash-Lite (Minimal Thinking, Recommended for Throughput)",
+        description="High-throughput Gemini 3.5 Flash-Lite at its default minimal thinking level.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite-reasoning-low": _preset(
+        config=GEMINI_3_5_FLASH_LITE._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.5 Flash-Lite (Low Thinking)",
+        description="Gemini 3.5 Flash-Lite at low thinking for efficient reasoning.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite-reasoning-medium": _preset(
+        config=GEMINI_3_5_FLASH_LITE._replace(reasoning=ReasoningMode.MEDIUM),
+        label="Gemini 3.5 Flash-Lite (Medium Thinking)",
+        description="Gemini 3.5 Flash-Lite at medium thinking for balanced workloads.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite-reasoning-high": _preset(
+        config=GEMINI_3_5_FLASH_LITE._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.5 Flash-Lite (High Thinking)",
+        description="Gemini 3.5 Flash-Lite at high thinking for complex high-volume work.",
+        provider=ModelProvider.GEMINI,
+    ),
     "gemini-3.5-flash": _preset(
         config=GEMINI_3_5_FLASH,
         label="Gemini 3.5 Flash",
@@ -488,14 +560,50 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-opus": _preset(
         config=CLAUDE_OPUS,
-        label="Claude Opus 4.8 (Generic Key)",
-        description="Generic Opus compatibility key updated to Claude Opus 4.8 before Opus 4.1 retirement.",
+        label="Claude Opus 5 (Generic Key)",
+        description="Generic Opus compatibility key routed to the current Claude Opus 5 family.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-reasoning": _preset(
         config=CLAUDE_OPUS_WITH_REASONING,
-        label="Claude Opus 4.8 (Generic Key, Adaptive Thinking)",
-        description="Generic Opus reasoning key updated to Claude Opus 4.8 adaptive thinking at provider defaults.",
+        label="Claude Opus 5 (Generic Key, Adaptive Thinking)",
+        description="Generic Opus reasoning key routed to Claude Opus 5 adaptive thinking at provider defaults.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5": _preset(
+        config=CLAUDE_OPUS_5,
+        label="Claude Opus 5",
+        description="Current Claude Opus family with 1M context and explicitly disabled thinking.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-low": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 5 (Adaptive Thinking, Low Effort)",
+        description="Claude Opus 5 adaptive thinking at low effort.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 5 (Adaptive Thinking, Medium Effort)",
+        description="Claude Opus 5 adaptive thinking at medium effort.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-high": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 5 (Adaptive Thinking, High Effort)",
+        description="Claude Opus 5 adaptive thinking at the default high effort.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-xhigh": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Opus 5 (Adaptive Thinking, XHigh Effort)",
+        description="Claude Opus 5 adaptive thinking at xhigh effort for agentic work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-max": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 5 (Adaptive Thinking, Max Effort)",
+        description="Claude Opus 5 adaptive thinking at maximum effort.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.5": _preset(

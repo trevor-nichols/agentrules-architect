@@ -752,11 +752,14 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("claude-sonnet-4.6-reasoning-medium", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-sonnet-4.6-reasoning-low", self.agents_module.MODEL_PRESETS)
 
-    def test_anthropic_registry_includes_claude_opus_47_and_48_presets(self) -> None:
+    def test_anthropic_registry_includes_current_and_pinned_opus_presets(self) -> None:
         self.assertIn("claude-opus-4.7", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.7-reasoning-xhigh", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.8", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.8-reasoning-max", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-opus-5", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-opus-5-reasoning-max", self.agents_module.MODEL_PRESETS)
+        self.assertNotIn("claude-code-opus-5", self.agents_module.MODEL_PRESETS)
 
     def test_anthropic_registry_includes_claude5_presets_without_fable_disabled(self) -> None:
         sonnet_keys = {
@@ -784,13 +787,13 @@ class ModelOverrideTestCase(unittest.TestCase):
             )
         )
 
-    def test_generic_opus_presets_use_opus48_semantics(self) -> None:
+    def test_generic_opus_presets_use_opus5_semantics(self) -> None:
         basic = self.agents_module.MODEL_PRESETS["claude-opus"]["config"]
         reasoning = self.agents_module.MODEL_PRESETS["claude-opus-reasoning"]["config"]
 
-        self.assertEqual(basic.model_name, "claude-opus-4-8")
+        self.assertEqual(basic.model_name, "claude-opus-5")
         self.assertEqual(basic.reasoning, ReasoningMode.DISABLED)
-        self.assertEqual(reasoning.model_name, "claude-opus-4-8")
+        self.assertEqual(reasoning.model_name, "claude-opus-5")
         self.assertEqual(reasoning.reasoning, ReasoningMode.DYNAMIC)
 
     def test_xai_registry_includes_new_grok41_fast_presets(self) -> None:
@@ -843,6 +846,20 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertNotIn("grok-4.20-multi-agent", self.agents_module.MODEL_PRESETS)
 
     def test_gemini_registry_includes_current_gemini3_presets(self) -> None:
+        current_flash_keys = {
+            "gemini-3.7-flash",
+            "gemini-3.7-flash-reasoning-low",
+            "gemini-3.7-flash-reasoning-high",
+            "gemini-3.6-flash",
+            "gemini-3.6-flash-reasoning-minimal",
+            "gemini-3.6-flash-reasoning-low",
+            "gemini-3.6-flash-reasoning-high",
+            "gemini-3.5-flash-lite",
+            "gemini-3.5-flash-lite-reasoning-low",
+            "gemini-3.5-flash-lite-reasoning-medium",
+            "gemini-3.5-flash-lite-reasoning-high",
+        }
+        self.assertTrue(current_flash_keys.issubset(self.agents_module.MODEL_PRESETS))
         self.assertIn("gemini-3.5-flash", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-flash-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3.1-flash-lite", self.agents_module.MODEL_PRESETS)

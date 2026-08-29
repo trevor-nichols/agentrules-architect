@@ -91,10 +91,26 @@ def test_prepare_request_sonnet5_disabled_is_explicit() -> None:
     assert prepared.payload["thinking"] == {"type": "disabled"}
 
 
-@pytest.mark.parametrize("reasoning", [ReasoningMode.ENABLED, ReasoningMode.DYNAMIC])
-def test_prepare_request_sonnet5_thinking_uses_adaptive(reasoning: ReasoningMode) -> None:
+def test_prepare_request_opus5_disabled_is_explicit_without_effort() -> None:
     prepared = prepare_request(
-        model_name="claude-sonnet-5",
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "disabled"}
+    assert "output_config" not in prepared.payload
+
+
+@pytest.mark.parametrize("reasoning", [ReasoningMode.ENABLED, ReasoningMode.DYNAMIC])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5"])
+def test_prepare_request_claude5_thinking_uses_adaptive(
+    model_name: str,
+    reasoning: ReasoningMode,
+) -> None:
+    prepared = prepare_request(
+        model_name=model_name,
         prompt="hello",
         reasoning=reasoning,
         tools=None,
@@ -128,7 +144,7 @@ def test_prepare_request_fable5_rejects_disabled_thinking() -> None:
 
 
 @pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "max"])
-@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5", "claude-fable-5"])
 def test_prepare_request_claude5_accepts_documented_efforts(
     model_name: str,
     effort: str,
@@ -144,7 +160,7 @@ def test_prepare_request_claude5_accepts_documented_efforts(
     assert prepared.payload["output_config"] == {"effort": effort}
 
 
-@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5", "claude-fable-5"])
 @pytest.mark.parametrize("effort", ["xhigh", "max"])
 def test_prepare_request_claude5_uses_extended_output_budget(
     model_name: str,
@@ -174,7 +190,7 @@ def test_prepare_request_preserves_explicit_output_budget() -> None:
     assert prepared.payload["max_tokens"] == 8_192
 
 
-@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5", "claude-fable-5"])
 def test_prepare_request_claude5_includes_structured_output(model_name: str) -> None:
     output_format = {"type": "json_schema", "schema": {"type": "object"}}
     prepared = prepare_request(

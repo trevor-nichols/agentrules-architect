@@ -2,18 +2,23 @@
 id: EP-20260829-001/MS002
 execplan_id: EP-20260829-001
 ms: 2
-title: "Refresh Anthropic and Gemini Model Families"
-status: planned
+title: Refresh Anthropic and Gemini Model Families
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-08-29
-updated: 2026-08-29
-tags: [providers, anthropic, gemini, capabilities, presets]
+updated: '2026-08-29'
+tags:
+- providers
+- anthropic
+- gemini
+- capabilities
+- presets
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Refresh Anthropic and Gemini Model Families
@@ -26,14 +31,14 @@ Deliver complete, fail-fast direct-API support for Claude Opus 5, Gemini 3.7 Fla
 
 ## Definition of Done
 
-- [ ] Opus 5 has one disabled-thinking preset plus adaptive low/medium/high/xhigh/max presets.
-- [ ] Generic `claude-opus` keys resolve to Opus 5 and every pinned Opus 4.8 key remains unchanged.
-- [ ] Opus 5 capability metadata drives request construction without family-specific string checks in the request builder.
-- [ ] Gemini 3.7 exposes low/medium/high only; disabled/minimal fails before dispatch.
-- [ ] Gemini 3.6 and Gemini 3.5 Flash-Lite expose minimal/low/medium/high with documented defaults.
-- [ ] All three Gemini profiles support structured output with tools and resolve to the correct family despite prefix overlap.
-- [ ] Provider-specific and cross-provider contract tests pass offline.
-- [ ] Lifecycle notes needed by MS005 are captured in this milestone's changelog.
+- [x] Opus 5 has one disabled-thinking preset plus adaptive low/medium/high/xhigh/max presets.
+- [x] Generic `claude-opus` keys resolve to Opus 5 and every pinned Opus 4.8 key remains unchanged.
+- [x] Opus 5 capability metadata drives request construction without family-specific string checks in the request builder.
+- [x] Gemini 3.7 exposes low/medium/high only; disabled/minimal fails before dispatch.
+- [x] Gemini 3.6 and Gemini 3.5 Flash-Lite expose minimal/low/medium/high with documented defaults.
+- [x] All three Gemini profiles support structured output with tools and resolve to the correct family despite prefix overlap.
+- [x] Provider-specific and cross-provider contract tests pass offline.
+- [x] Lifecycle notes needed by MS005 are captured in this milestone's changelog.
 
 ## Scope
 
@@ -111,32 +116,32 @@ All rows use a 1,048,576-token input limit. Do not add disabled/minimal 3.7 pres
 
 ### Workstream A - Add immutable model configurations
 
-- [ ] Add `CLAUDE_OPUS_5` and `CLAUDE_OPUS_5_WITH_REASONING`; retarget generic `CLAUDE_OPUS` constants without changing pinned 4.8 constants.
-- [ ] Add the three Gemini base configurations and derive only the variants listed in the preset contract.
-- [ ] Import the new constants into `src/agentrules/config/agents.py` without duplicating wire IDs in request builders.
-- [ ] Extend `_apply_model_limits()` so Opus 5 is explicitly in the 1M Anthropic family. Verify the existing Gemini branch supplies 1,048,576 without a special case.
+- [x] Add `CLAUDE_OPUS_5` and `CLAUDE_OPUS_5_WITH_REASONING`; retarget generic `CLAUDE_OPUS` constants without changing pinned 4.8 constants.
+- [x] Add the three Gemini base configurations and derive only the variants listed in the preset contract.
+- [x] Import the new constants into `src/agentrules/config/agents.py` without duplicating wire IDs in request builders.
+- [x] Extend `_apply_model_limits()` so Opus 5 is explicitly in the 1M Anthropic family. Verify the existing Gemini branch supplies 1,048,576 without a special case.
 
 ### Workstream B - Extend provider capability metadata
 
-- [ ] Add the Opus 5 `CapabilityProfile` before older Opus profiles with structured output, adaptive thinking, no manual budget, low-through-max effort, and adaptive-default policy.
-- [ ] Confirm the existing Anthropic request builder emits `thinking.type=disabled` for the non-thinking config and `thinking.type=adaptive` plus effort for variants.
-- [ ] Add Gemini profiles for 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite with exact supported levels and structured-output-with-tools support.
-- [ ] Put the Flash-Lite profile before the broader 3.5 Flash profile and test exact IDs plus date-suffixed snapshots.
-- [ ] Add or extend a Gemini validation helper and call it from the request configuration path so unsupported 3.7 disabled/minimal values raise an actionable `ValueError` before a client method executes.
+- [x] Add the Opus 5 `CapabilityProfile` before older Opus profiles with structured output, adaptive thinking, no manual budget, low-through-max effort, and adaptive-default policy.
+- [x] Confirm the existing Anthropic request builder emits `thinking.type=disabled` for the non-thinking config and `thinking.type=adaptive` plus effort for variants.
+- [x] Add Gemini profiles for 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite with exact supported levels and structured-output-with-tools support.
+- [x] Put the Flash-Lite profile before the broader 3.5 Flash profile and test exact IDs plus date-suffixed snapshots.
+- [x] Add or extend a Gemini validation helper and call it from the request configuration path so unsupported 3.7 disabled/minimal values raise an actionable `ValueError` before a client method executes.
 
 ### Workstream C - Register and label direct presets
 
-- [ ] Add every key from the preset tables to `BASE_MODEL_PRESETS` with labels that state family and effort.
-- [ ] Make Opus 5 the generic Opus target only after its pinned rows pass request-contract tests.
-- [ ] Preserve older explicit presets and generic Gemini 2.5 compatibility behavior; do not silently repoint `gemini-flash` because its non-thinking role is incompatible with Gemini 3.7.
-- [ ] Ensure no pinned Opus 5 presets are added to `_build_claude_code_runtime_presets()`; the existing moving `claude-code-opus` alias remains runtime-owned.
+- [x] Add every key from the preset tables to `BASE_MODEL_PRESETS` with labels that state family and effort.
+- [x] Make Opus 5 the generic Opus target only after its pinned rows pass request-contract tests.
+- [x] Preserve older explicit presets and generic Gemini 2.5 compatibility behavior; do not silently repoint `gemini-flash` because its non-thinking role is incompatible with Gemini 3.7.
+- [x] Ensure no pinned Opus 5 presets are added to `_build_claude_code_runtime_presets()`; the existing moving `claude-code-opus` alias remains runtime-owned.
 
 ### Workstream D - Prove behavior
 
-- [ ] Add Anthropic capability tests for profile resolution, effort set, adaptive default, structured output, disabled payload, and invalid effort.
-- [ ] Add Gemini capability tests for defaults, all valid levels, invalid 3.7 modes, prefix ordering, snapshots, and structured output with tools.
-- [ ] Add `ModelContract` rows for every listed preset and update model override tests for presence, labels, generic aliases, and pinned rollback keys.
-- [ ] Verify invalid modes fail without invoking a mocked provider client.
+- [x] Add Anthropic capability tests for profile resolution, effort set, adaptive default, structured output, disabled payload, and invalid effort.
+- [x] Add Gemini capability tests for defaults, all valid levels, invalid 3.7 modes, prefix ordering, snapshots, and structured output with tools.
+- [x] Add `ModelContract` rows for every listed preset and update model override tests for presence, labels, generic aliases, and pinned rollback keys.
+- [x] Verify invalid modes fail without invoking a mocked provider client.
 
 ## Dependencies
 
@@ -192,3 +197,6 @@ These entries are additive except the two generic Opus targets. If Opus 5 proves
 
 - 2026-08-29: Milestone created.
 - 2026-08-29: Defined exact Anthropic/Gemini preset matrices, capability rules, prefix-order constraint, fail-fast validation, and rollback behavior.
+- 2026-08-29: Added Claude Opus 5 and the Gemini 3.7/3.6/3.5 Flash-Lite preset families. Generic Opus keys now resolve to Opus 5; pinned Opus 4.8 and moving Claude Code aliases remain unchanged.
+- 2026-08-29: The AI-code audit identified and removed a subtle SDK-level fallback for exact Gemini families. Missing required SDK enum members now fail closed instead of silently selecting a different thinking level.
+- 2026-08-29: Validation passed: 232 tests and 5 subtests, Ruff, Pyright, import smoke, and `git diff --check`.

@@ -112,19 +112,24 @@ CLAUDE_HAIKU_WITH_REASONING = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-CLAUDE_OPUS = ModelConfig(
+CLAUDE_OPUS_5 = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-8",
+    model_name="claude-opus-5",
     reasoning=ReasoningMode.DISABLED,
     tools_config={"enabled": False, "tools": None}
 )
 
-CLAUDE_OPUS_WITH_REASONING = ModelConfig(
+CLAUDE_OPUS_5_WITH_REASONING = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-8",
+    model_name="claude-opus-5",
     reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None}
 )
+
+# Generic Opus compatibility constants intentionally follow the current direct
+# API family. Pinned Opus 4.x constants below remain available for rollbacks.
+CLAUDE_OPUS = CLAUDE_OPUS_5
+CLAUDE_OPUS_WITH_REASONING = CLAUDE_OPUS_5_WITH_REASONING
 
 CLAUDE_OPUS_45 = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
@@ -462,6 +467,27 @@ GEMINI_3_5_FLASH = ModelConfig(
     model_name="gemini-3.5-flash",
     reasoning=ReasoningMode.MEDIUM,
     tools_config={"enabled": False, "tools": None}
+)
+
+GEMINI_3_5_FLASH_LITE = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.5-flash-lite",
+    reasoning=ReasoningMode.MINIMAL,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GEMINI_3_6_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.6-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GEMINI_3_7_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.7-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
 )
 
 GEMINI_3_FLASH_PREVIEW = ModelConfig(
