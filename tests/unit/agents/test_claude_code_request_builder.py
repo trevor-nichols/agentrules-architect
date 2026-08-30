@@ -12,7 +12,11 @@ from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.models import ClaudeCodeConfig
 from agentrules.core.configuration.repository import TomlConfigRepository
 from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
-from agentrules.core.types.models import CLAUDE_CODE_RUNTIME_DEFAULT_MODEL
+from agentrules.core.types.models import (
+    CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
+    CLAUDE_OPUS,
+    create_claude_code_config,
+)
 
 
 def _build_config_manager(tmp_path: Path) -> ConfigManager:
@@ -162,18 +166,17 @@ def test_prepare_request_maps_reasoning_and_structured_output(tmp_path: Path) ->
     assert prepared.options["output_format"]["schema"]["properties"]["plan"]["type"] == "string"
 
 
-def test_prepare_request_maps_xhigh_reasoning_to_max_effort(tmp_path: Path) -> None:
-    prepared = prepare_request(
-        config_manager=_build_config_manager(tmp_path),
-        model_name="claude-opus-4-6",
-        content="Deeply inspect repository architecture.",
-        system_prompt="Keep responses concise.",
-        reasoning=ReasoningMode.XHIGH,
-        phase_name=None,
-        cwd=str(tmp_path),
-    )
-
-    assert prepared.options["effort"] == "max"
+def test_prepare_request_rejects_unsupported_xhigh_reasoning(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Effort 'xhigh' is not supported"):
+        prepare_request(
+            config_manager=_build_config_manager(tmp_path),
+            model_name="claude-opus-4-6",
+            content="Deeply inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.XHIGH,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
 
 
 def test_prepare_request_maps_xhigh_reasoning_to_xhigh_for_opus47(tmp_path: Path) -> None:
@@ -218,6 +221,67 @@ def test_prepare_request_rejects_models_unsupported_by_resolved_runtime(
             content="Inspect repository architecture.",
             system_prompt="Keep responses concise.",
             reasoning=ReasoningMode.DISABLED,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+
+
+def test_prepare_request_allows_opus5_on_supported_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 219))
+    config = create_claude_code_config(CLAUDE_OPUS)
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name=config.model_name,
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=config.reasoning,
+        effort=config.anthropic_effort,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["model"] == "claude-opus-5"
+
+
+def test_prepare_request_rejects_opus5_on_older_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 218))
+
+    with pytest.raises(ValueError, match="requires Claude Code 2.1.219 or later"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-opus-5",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+
+
+def test_prepare_request_fails_closed_when_opus5_runtime_version_is_unknown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: None)
+
+    with pytest.raises(ValueError, match="runtime version could not be verified"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-opus-5",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
             phase_name=None,
             cwd=str(tmp_path),
         )
@@ -299,6 +363,53 @@ def test_prepare_request_sonnet5_adaptive_max_effort(
     ClaudeAgentOptions(**prepared.options)
     assert prepared.options["thinking"] == {"type": "adaptive"}
     assert prepared.options["effort"] == "max"
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high"])
+def test_prepare_request_opus5_accepts_supported_effort_with_thinking_disabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    effort: str,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 219))
+
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-opus-5",
+        content="Inspect repository architecture.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DISABLED,
+        effort=effort,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["thinking"] == {"type": "disabled"}
+    assert prepared.options["effort"] == effort
+
+
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_prepare_request_opus5_rejects_extended_effort_with_thinking_disabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    effort: str,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: ClaudeCodeVersion(2, 1, 219))
+
+    with pytest.raises(ValueError, match="when thinking is disabled"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-opus-5",
+            content="Inspect repository architecture.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DISABLED,
+            effort=effort,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
 
 
 def test_prepare_request_fable5_omits_thinking_and_preserves_effort(

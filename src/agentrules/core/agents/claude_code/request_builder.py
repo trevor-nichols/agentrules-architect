@@ -9,10 +9,11 @@ from typing import Any
 
 from agentrules.core.agents.anthropic.capabilities import (
     ThinkingPolicy,
-    supported_effort_levels,
+    resolve_effort,
     supports_adaptive_thinking,
     supports_manual_thinking,
     thinking_policy,
+    validate_thinking_effort_compatibility,
 )
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.configuration import CLAUDE_CODE_API_KEY_ENV_VARS, ConfigManager
@@ -23,7 +24,6 @@ from agentrules.core.types.models import (
 from agentrules.core.utils.structured_outputs import build_claude_code_output_format
 
 DEFAULT_THINKING_BUDGET = 16_000
-_SUPPORTED_EFFORT_LEVELS = frozenset({"low", "medium", "high", "xhigh", "max"})
 READ_ONLY_ALLOWED_TOOLS = ("Read", "Glob", "Grep")
 RESEARCH_ALLOWED_TOOLS = ("Read", "Glob", "Grep", "WebSearch", "WebFetch")
 DEFAULT_DISALLOWED_TOOLS = (
@@ -92,10 +92,19 @@ def prepare_request(
 
     if not is_claude_code_runtime_managed_model(model_name):
         thinking = _build_thinking_config(model_name, reasoning)
+        resolved_effort = resolve_effort(
+            model_name=model_name,
+            reasoning=reasoning,
+            effort=effort,
+        )
+        validate_thinking_effort_compatibility(
+            model_name=model_name,
+            thinking_type=thinking.get("type") if thinking is not None else None,
+            effort=resolved_effort,
+        )
+
         if thinking is not None:
             options["thinking"] = thinking
-
-        resolved_effort = _resolve_effort(model_name, reasoning, effort)
         if resolved_effort is not None:
             options["effort"] = resolved_effort
 
@@ -167,45 +176,6 @@ def _build_thinking_config(model_name: str, reasoning: ReasoningMode) -> dict[st
         raise ValueError(
             f"Model '{model_name}' does not support enabled or adaptive thinking in Claude Code runtime."
         )
-    return None
-
-
-def _resolve_effort(model_name: str, reasoning: ReasoningMode, effort: str | None) -> str | None:
-    allowed_effort_levels = supported_effort_levels(model_name)
-
-    if effort is not None:
-        normalized_effort = effort.strip().lower()
-        if normalized_effort not in _SUPPORTED_EFFORT_LEVELS:
-            supported = ", ".join(sorted(_SUPPORTED_EFFORT_LEVELS))
-            raise ValueError(f"Invalid effort value '{effort}'. Supported values: {supported}.")
-        if normalized_effort not in allowed_effort_levels:
-            supported = ", ".join(sorted(allowed_effort_levels))
-            raise ValueError(
-                f"Effort '{normalized_effort}' is not supported for model '{model_name}'. "
-                f"Supported values for this model: {supported}."
-            )
-        return normalized_effort
-
-    if reasoning == ReasoningMode.LOW:
-        return "low"
-    if reasoning == ReasoningMode.MEDIUM:
-        return "medium"
-    if reasoning == ReasoningMode.HIGH:
-        return "high"
-    if reasoning == ReasoningMode.XHIGH:
-        if "xhigh" in allowed_effort_levels:
-            return "xhigh"
-        if "max" in allowed_effort_levels:
-            return "max"
-        if "high" in allowed_effort_levels:
-            return "high"
-    if reasoning == ReasoningMode.MAX:
-        if "max" in allowed_effort_levels:
-            return "max"
-        if "xhigh" in allowed_effort_levels:
-            return "xhigh"
-        if "high" in allowed_effort_levels:
-            return "high"
     return None
 
 

@@ -116,6 +116,36 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertTrue(any("grok-4-fast-non-reasoning" in message for message in captured.output))
         self.assertTrue(any("grok-code-fast" in message for message in captured.output))
 
+    def test_apply_user_overrides_warns_without_remapping_deprecated_live_openai_models(self) -> None:
+        self.config_manager.set_phase_model("phase3", "o4-mini-low")
+        self.config_manager.set_phase_model("phase4", "gpt5-mini-medium")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "o4-mini-low")
+        self.assertEqual(applied["phase4"], "gpt5-mini-medium")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "o4-mini")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gpt-5-mini")
+        self.assertTrue(any("o4-mini-low" in message and "remains bound" in message for message in captured.output))
+        self.assertTrue(
+            any("gpt5-mini-medium" in message and "remains bound" in message for message in captured.output)
+        )
+
+    def test_apply_user_overrides_redirects_retired_openai_codex_models(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gpt-5.1-codex")
+        self.config_manager.set_phase_model("phase4", "gpt-5.2-codex")
+
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
+        self.assertEqual(applied["phase3"], "gpt56-sol-default")
+        self.assertEqual(applied["phase4"], "gpt56-sol-default")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "gpt-5.6-sol")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gpt-5.6-sol")
+        self.assertTrue(any("gpt-5.1-codex" in message and "will resolve" in message for message in captured.output))
+        self.assertTrue(any("gpt-5.2-codex" in message and "will resolve" in message for message in captured.output))
+
     def test_apply_user_overrides_remaps_legacy_deepseek_presets(self) -> None:
         self.config_manager.set_phase_model("phase3", "deepseek-chat")
         self.config_manager.set_phase_model("phase4", "deepseek-reasoner")
@@ -143,8 +173,11 @@ class ModelOverrideTestCase(unittest.TestCase):
     def test_deepseek_registry_includes_v4_presets_and_legacy_configs_use_v4(self) -> None:
         expected_keys = {
             "deepseek-v4-flash",
+            "deepseek-v4-flash-low",
+            "deepseek-v4-flash-max",
             "deepseek-v4-flash-non-reasoning",
             "deepseek-v4-pro",
+            "deepseek-v4-pro-low",
             "deepseek-v4-pro-max",
             "deepseek-v4-pro-non-reasoning",
             "deepseek-chat",
@@ -156,6 +189,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             self.agents_module.MODEL_PRESETS["deepseek-reasoner"]["config"].model_name,
             "deepseek-v4-flash",
         )
+        self.assertNotIn("deepseek-v4-vision-exp", self.agents_module.MODEL_PRESETS)
 
     def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         active = self.model_config.get_active_presets(
@@ -575,15 +609,21 @@ class ModelOverrideTestCase(unittest.TestCase):
     def test_codex_gpt56_models_remain_runtime_discovered(self) -> None:
         static_codex_model_names = {
             preset["config"].model_name
-            for preset in self.agents_module.BASE_MODEL_PRESETS.values()
+            for preset in self.agents_module.MODEL_PRESETS.values()
             if preset["provider"] == ModelProvider.CODEX
         }
 
         self.assertFalse(
             {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} & static_codex_model_names
         )
+        self.assertFalse(
+            any(key.startswith("codex-gpt-5.6") for key in self.agents_module.MODEL_PRESETS)
+        )
 
     def test_openai_registry_includes_new_gpt5_codex_and_snapshot_presets(self) -> None:
+        self.assertIn("gpt5-mini-low", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt5-mini-medium", self.agents_module.MODEL_PRESETS)
+        self.assertIn("gpt5-mini", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-none", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-default", self.agents_module.MODEL_PRESETS)
         self.assertIn("gpt55-xhigh", self.agents_module.MODEL_PRESETS)
@@ -602,6 +642,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             "gpt56-sol-high",
             "gpt56-sol-xhigh",
             "gpt56-sol-max",
+            "gpt56-terra-low",
             "gpt56-terra-default",
             "gpt56-terra-high",
             "gpt56-luna-low",
@@ -612,6 +653,62 @@ class ModelOverrideTestCase(unittest.TestCase):
             self.agents_module.MODEL_PRESETS["gpt56-sol-max"]["config"].reasoning,
             ReasoningMode.MAX,
         )
+        self.assertNotIn("gpt55-pro", self.agents_module.MODEL_PRESETS)
+        self.assertNotIn("gpt56-pro", self.agents_module.MODEL_PRESETS)
+
+    def test_openai_deprecated_live_presets_remain_bound_to_their_models(self) -> None:
+        deprecated_live_keys = (
+            "o4-mini-low",
+            "o4-mini-medium",
+            "o4-mini-high",
+            "gpt5-mini-low",
+            "gpt5-mini-medium",
+            "gpt5-mini",
+            "codex-gpt-5.1-codex",
+            "codex-gpt-5.2-codex",
+        )
+
+        for preset_key in deprecated_live_keys:
+            with self.subTest(preset_key=preset_key):
+                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
+                self.assertIsNotNone(deprecation)
+                assert deprecation is not None
+                self.assertIsNone(deprecation.replacement_key)
+                self.assertEqual(self.model_config.resolve_runtime_preset_key(preset_key), preset_key)
+                self.assertEqual(
+                    self.model_config.get_model_config_for_preset_key(preset_key),
+                    self.agents_module.MODEL_PRESETS[preset_key]["config"],
+                )
+                self.assertIn("Deprecated", self.agents_module.MODEL_PRESETS[preset_key]["label"])
+
+    def test_openai_lifecycle_guidance_uses_current_replacements(self) -> None:
+        terra_replacements = {
+            "o4-mini-low": "GPT-5.6 Terra Low",
+            "o4-mini-medium": "GPT-5.6 Terra Medium",
+            "o4-mini-high": "GPT-5.6 Terra High",
+            "gpt5-mini-low": "GPT-5.6 Terra Low",
+            "gpt5-mini-medium": "GPT-5.6 Terra Medium",
+            "gpt5-mini": "GPT-5.6 Terra High",
+        }
+
+        for preset_key, replacement_label in terra_replacements.items():
+            with self.subTest(preset_key=preset_key):
+                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
+                self.assertIsNotNone(deprecation)
+                assert deprecation is not None
+                self.assertIsNone(deprecation.replacement_key)
+                self.assertIn(replacement_label, deprecation.reason or "")
+
+        for preset_key in ("gpt-5.1-codex", "gpt-5.2-codex"):
+            with self.subTest(preset_key=preset_key):
+                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
+                self.assertIsNotNone(deprecation)
+                assert deprecation is not None
+                self.assertEqual(deprecation.replacement_key, "gpt56-sol-default")
+                self.assertEqual(
+                    self.model_config.get_model_config_for_preset_key(preset_key),
+                    self.agents_module.MODEL_PRESETS["gpt56-sol-default"]["config"],
+                )
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)
@@ -752,11 +849,14 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("claude-sonnet-4.6-reasoning-medium", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-sonnet-4.6-reasoning-low", self.agents_module.MODEL_PRESETS)
 
-    def test_anthropic_registry_includes_claude_opus_47_and_48_presets(self) -> None:
+    def test_anthropic_registry_includes_current_and_pinned_opus_presets(self) -> None:
         self.assertIn("claude-opus-4.7", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.7-reasoning-xhigh", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.8", self.agents_module.MODEL_PRESETS)
         self.assertIn("claude-opus-4.8-reasoning-max", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-opus-5", self.agents_module.MODEL_PRESETS)
+        self.assertIn("claude-opus-5-reasoning-max", self.agents_module.MODEL_PRESETS)
+        self.assertNotIn("claude-code-opus-5", self.agents_module.MODEL_PRESETS)
 
     def test_anthropic_registry_includes_claude5_presets_without_fable_disabled(self) -> None:
         sonnet_keys = {
@@ -784,13 +884,13 @@ class ModelOverrideTestCase(unittest.TestCase):
             )
         )
 
-    def test_generic_opus_presets_use_opus48_semantics(self) -> None:
+    def test_generic_opus_presets_use_opus5_semantics(self) -> None:
         basic = self.agents_module.MODEL_PRESETS["claude-opus"]["config"]
         reasoning = self.agents_module.MODEL_PRESETS["claude-opus-reasoning"]["config"]
 
-        self.assertEqual(basic.model_name, "claude-opus-4-8")
+        self.assertEqual(basic.model_name, "claude-opus-5")
         self.assertEqual(basic.reasoning, ReasoningMode.DISABLED)
-        self.assertEqual(reasoning.model_name, "claude-opus-4-8")
+        self.assertEqual(reasoning.model_name, "claude-opus-5")
         self.assertEqual(reasoning.reasoning, ReasoningMode.DYNAMIC)
 
     def test_xai_registry_includes_new_grok41_fast_presets(self) -> None:
@@ -817,12 +917,26 @@ class ModelOverrideTestCase(unittest.TestCase):
         )
 
     def test_xai_registry_includes_grok45_and_compatible_grok420_presets(self) -> None:
+        grok46_keys = {
+            "grok-4.6",
+            "grok-4.6-reasoning-medium",
+            "grok-4.6-reasoning-low",
+            "grok-4.6-reasoning-xhigh",
+        }
+        self.assertTrue(grok46_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertEqual(
+            self.agents_module.MODEL_PRESETS["grok-4.6"]["config"].max_input_tokens,
+            500_000,
+        )
+        self.assertIn("Recommended", self.agents_module.MODEL_PRESETS["grok-4.6"]["label"])
+
         grok45_keys = {
             "grok-4.5",
             "grok-4.5-reasoning-medium",
             "grok-4.5-reasoning-low",
         }
         self.assertTrue(grok45_keys.issubset(self.agents_module.MODEL_PRESETS))
+        self.assertIn("Fallback", self.agents_module.MODEL_PRESETS["grok-4.5"]["label"])
         self.assertEqual(
             self.agents_module.MODEL_PRESETS["grok-4.5"]["config"].reasoning,
             ReasoningMode.HIGH,
@@ -843,6 +957,20 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertNotIn("grok-4.20-multi-agent", self.agents_module.MODEL_PRESETS)
 
     def test_gemini_registry_includes_current_gemini3_presets(self) -> None:
+        current_flash_keys = {
+            "gemini-3.7-flash",
+            "gemini-3.7-flash-reasoning-low",
+            "gemini-3.7-flash-reasoning-high",
+            "gemini-3.6-flash",
+            "gemini-3.6-flash-reasoning-minimal",
+            "gemini-3.6-flash-reasoning-low",
+            "gemini-3.6-flash-reasoning-high",
+            "gemini-3.5-flash-lite",
+            "gemini-3.5-flash-lite-reasoning-low",
+            "gemini-3.5-flash-lite-reasoning-medium",
+            "gemini-3.5-flash-lite-reasoning-high",
+        }
+        self.assertTrue(current_flash_keys.issubset(self.agents_module.MODEL_PRESETS))
         self.assertIn("gemini-3.5-flash", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3-flash-preview", self.agents_module.MODEL_PRESETS)
         self.assertIn("gemini-3.1-flash-lite", self.agents_module.MODEL_PRESETS)

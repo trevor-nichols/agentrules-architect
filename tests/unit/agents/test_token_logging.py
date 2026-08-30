@@ -93,8 +93,8 @@ def test_gpt5_mini_logs_limits(caplog, monkeypatch):
 
     assert "Token preflight" in caplog.text
     assert "estimate=321" in caplog.text
-    assert "limit=400000" in caplog.text
-    assert "effective_limit=360000" in caplog.text
+    assert "limit=272000" in caplog.text
+    assert "effective_limit=244800" in caplog.text
 
 
 def test_openai_prepare_and_log_responses_path(caplog, monkeypatch):
@@ -122,8 +122,8 @@ def test_openai_prepare_and_log_responses_path(caplog, monkeypatch):
     assert recorded["api"] == "responses"
     assert "Token preflight" in caplog.text
     assert "estimate=111" in caplog.text
-    assert "limit=400000" in caplog.text
-    assert "effective_limit=360000" in caplog.text
+    assert "limit=272000" in caplog.text
+    assert "effective_limit=244800" in caplog.text
 
 
 def test_anthropic_log_nonzero_with_packer_payload(caplog, monkeypatch):

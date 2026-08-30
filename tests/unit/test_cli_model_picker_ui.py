@@ -287,6 +287,40 @@ def test_general_phase_selection_warns_when_deprecated_preset_selected(monkeypat
     assert "Gemini]." in output
 
 
+def test_general_phase_selection_preserves_deprecated_live_preset(monkeypatch) -> None:
+    context = CliContext(console=Console(record=True, width=120))
+    saved: list[tuple[str, str | None]] = []
+    preset = model_presets.get_preset_info("o4-mini-low")
+    assert preset is not None
+
+    class _Prompt:
+        def ask(self) -> str:
+            return "o4-mini-low"
+
+    monkeypatch.setattr(model_settings.questionary, "select", lambda *_args, **_kwargs: _Prompt())
+    monkeypatch.setattr(
+        model_settings.configuration,
+        "save_phase_model",
+        lambda phase, key: saved.append((phase, key)),
+    )
+
+    updated = model_settings._configure_general_phase(
+        context,
+        "phase3",
+        "Phase 3 – Deep Analysis",
+        [preset],
+        current_key="o4-mini-low",
+        default_key=None,
+    )
+
+    assert updated is True
+    assert saved == [("phase3", "o4-mini-low")]
+    output = context.console.export_text()
+    assert "Selected preset is deprecated." in output
+    assert "has not retired it" in output
+    assert "Saved replacement" not in output
+
+
 def test_researcher_selection_warns_when_deprecated_preset_selected(monkeypatch) -> None:
     context = CliContext(console=Console(record=True, width=120))
     events: list[tuple[str, str | None]] = []

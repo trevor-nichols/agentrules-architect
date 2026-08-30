@@ -12,7 +12,7 @@ from agentrules.core.configuration import (
 )
 from agentrules.core.configuration.services import claude_code as claude_code_service
 
-_DIAGNOSTIC_GATED_MODELS = ("claude-fable-5", "claude-sonnet-5")
+_DIAGNOSTIC_GATED_MODELS = ("claude-fable-5", "claude-sonnet-5", "claude-opus-5")
 
 
 @dataclass(frozen=True)

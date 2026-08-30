@@ -210,6 +210,60 @@ def test_prepare_request_maps_only_supported_grok45_efforts(
     assert prepared.payload["reasoning_effort"] == expected_effort
 
 
+def test_resolve_defaults_for_grok46() -> None:
+    defaults = resolve_model_defaults("grok-4.6")
+
+    assert defaults.default_reasoning == ReasoningMode.HIGH
+    assert defaults.accepted_reasoning_efforts == frozenset({"low", "medium", "high", "xhigh"})
+    assert not defaults.normalize_higher_efforts_to_high
+
+
+@pytest.mark.parametrize(
+    ("reasoning", "expected_effort"),
+    [
+        (ReasoningMode.LOW, "low"),
+        (ReasoningMode.MEDIUM, "medium"),
+        (ReasoningMode.HIGH, "high"),
+        (ReasoningMode.XHIGH, "xhigh"),
+        (ReasoningMode.ENABLED, "high"),
+        (ReasoningMode.DYNAMIC, "high"),
+    ],
+)
+def test_prepare_request_maps_documented_grok46_efforts(
+    reasoning: ReasoningMode,
+    expected_effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name="grok-4.6",
+        content="Analyze",
+        reasoning=reasoning,
+        defaults=resolve_model_defaults("grok-4.6"),
+        tools=None,
+    )
+
+    assert prepared.payload["reasoning_effort"] == expected_effort
+
+
+@pytest.mark.parametrize(
+    "reasoning",
+    [
+        ReasoningMode.DISABLED,
+        ReasoningMode.MINIMAL,
+        ReasoningMode.MAX,
+        ReasoningMode.TEMPERATURE,
+    ],
+)
+def test_prepare_request_rejects_unsupported_grok46_efforts(reasoning: ReasoningMode) -> None:
+    with pytest.raises(ValueError, match="not supported for xAI model 'grok-4.6'"):
+        prepare_request(
+            model_name="grok-4.6",
+            content="Analyze",
+            reasoning=reasoning,
+            defaults=resolve_model_defaults("grok-4.6"),
+            tools=None,
+        )
+
+
 @pytest.mark.parametrize(
     "reasoning",
     [
@@ -217,6 +271,7 @@ def test_prepare_request_maps_only_supported_grok45_efforts(
         ReasoningMode.MINIMAL,
         ReasoningMode.XHIGH,
         ReasoningMode.MAX,
+        ReasoningMode.TEMPERATURE,
     ],
 )
 def test_prepare_request_rejects_unsupported_grok45_efforts(reasoning: ReasoningMode) -> None:
@@ -277,8 +332,8 @@ def test_prepare_request_rejects_non_fixed_grok420_reasoning_modes(
         )
 
 
-def test_xai_architect_defaults_to_grok45_high() -> None:
+def test_xai_architect_defaults_to_grok46_high() -> None:
     architect = XaiArchitect()
 
-    assert architect.model_name == "grok-4.5"
+    assert architect.model_name == "grok-4.6"
     assert architect.reasoning == ReasoningMode.HIGH

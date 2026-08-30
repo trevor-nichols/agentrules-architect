@@ -103,8 +103,6 @@ def _map_reasoning_effort(
     else:
         effort = None
 
-    if effort is None:
-        return None
     if effort not in accepted_efforts:
         supported = ", ".join(sorted(accepted_efforts))
         raise ValueError(

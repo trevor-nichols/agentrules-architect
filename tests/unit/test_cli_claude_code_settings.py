@@ -223,6 +223,7 @@ def test_claude_code_diagnostics_explain_version_gated_models(tmp_path: Path, mo
     assert diagnostics.unavailable_model_reasons == (
         "claude-fable-5: needs 2.1.170+; resolved runtime is 2.1.169",
         "claude-sonnet-5: needs 2.1.197+; resolved runtime is 2.1.169",
+        "claude-opus-5: needs 2.1.219+; resolved runtime is 2.1.169",
     )
 
 

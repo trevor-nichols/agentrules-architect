@@ -10,7 +10,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
+from typing import cast
 
+from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.types.models import AnthropicEffort
 
 
@@ -33,6 +35,7 @@ class CapabilityProfile:
     supports_adaptive_thinking: bool = False
     supports_manual_thinking: bool = True
     supported_effort_levels: frozenset[AnthropicEffort] = frozenset()
+    supported_effort_levels_with_thinking_disabled: frozenset[AnthropicEffort] | None = None
     thinking_policy: ThinkingPolicy = ThinkingPolicy.LEGACY
     may_return_midstream_refusal: bool = False
 
@@ -44,6 +47,10 @@ class CapabilityProfile:
 _DEFAULT_PROFILE = CapabilityProfile(
     family_prefix="",
     display_name="Unknown Claude family",
+)
+
+_SUPPORTED_EFFORT_LEVELS: frozenset[AnthropicEffort] = frozenset(
+    {"low", "medium", "high", "xhigh", "max"}
 )
 
 _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
@@ -82,6 +89,17 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         family_prefix="claude-haiku-4-5",
         display_name="Claude Haiku 4.5",
         supports_structured_output_format=True,
+    ),
+    CapabilityProfile(
+        family_prefix="claude-opus-5",
+        display_name="Claude Opus 5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
+        supported_effort_levels_with_thinking_disabled=frozenset({"low", "medium", "high"}),
+        thinking_policy=ThinkingPolicy.ADAPTIVE_DEFAULT,
+        may_return_midstream_refusal=True,
     ),
     CapabilityProfile(
         family_prefix="claude-opus-4-8",
@@ -152,6 +170,94 @@ def supported_effort_levels(model_name: str) -> frozenset[AnthropicEffort]:
     """Return the supported output_config.effort levels for the model."""
 
     return resolve_capability_profile(model_name).supported_effort_levels
+
+
+def effort_from_reasoning_mode(reasoning: ReasoningMode) -> AnthropicEffort | None:
+    """Translate shared reasoning-effort modes to Anthropic effort values."""
+
+    if reasoning in {
+        ReasoningMode.LOW,
+        ReasoningMode.MEDIUM,
+        ReasoningMode.HIGH,
+        ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
+    }:
+        return cast(AnthropicEffort, reasoning.value)
+    return None
+
+
+def resolve_effort(
+    *,
+    model_name: str,
+    reasoning: ReasoningMode,
+    effort: AnthropicEffort | str | None,
+) -> AnthropicEffort | None:
+    """Resolve and validate the request's provider-native effort value."""
+
+    if effort is None:
+        requested_effort = effort_from_reasoning_mode(reasoning)
+        if requested_effort is None and reasoning not in {
+            ReasoningMode.DISABLED,
+            ReasoningMode.ENABLED,
+            ReasoningMode.DYNAMIC,
+        }:
+            raise ValueError(
+                f"Reasoning mode '{reasoning.value}' is not supported for Anthropic models."
+            )
+    else:
+        if not isinstance(effort, str):
+            raise ValueError(f"Invalid effort value type: {type(effort)!r}")
+
+        normalized_effort = effort.strip().lower()
+        if normalized_effort not in _SUPPORTED_EFFORT_LEVELS:
+            supported = ", ".join(sorted(_SUPPORTED_EFFORT_LEVELS))
+            raise ValueError(
+                f"Invalid effort value '{effort}'. Supported values: {supported}."
+            )
+        requested_effort = cast(AnthropicEffort, normalized_effort)
+
+    if requested_effort is None:
+        return None
+
+    allowed_effort_levels = supported_effort_levels(model_name)
+    if not allowed_effort_levels:
+        raise ValueError(
+            "Effort is only supported for "
+            f"{describe_profiles_with_effort()}; model '{model_name}' does not support "
+            "output_config.effort."
+        )
+    if requested_effort not in allowed_effort_levels:
+        supported = ", ".join(sorted(allowed_effort_levels))
+        raise ValueError(
+            f"Effort '{requested_effort}' is not supported for model '{model_name}'. "
+            f"Supported values for this model: {supported}."
+        )
+    return requested_effort
+
+
+def validate_thinking_effort_compatibility(
+    *,
+    model_name: str,
+    thinking_type: str | None,
+    effort: AnthropicEffort | str | None,
+) -> None:
+    """Reject provider-invalid combinations of thinking policy and effort."""
+
+    if thinking_type != "disabled" or effort is None:
+        return
+
+    allowed_effort_levels = (
+        resolve_capability_profile(model_name).supported_effort_levels_with_thinking_disabled
+    )
+    if allowed_effort_levels is None or effort in allowed_effort_levels:
+        return
+
+    supported = ", ".join(sorted(allowed_effort_levels))
+    raise ValueError(
+        f"Effort '{effort}' is not supported for model '{model_name}' when thinking is "
+        f"disabled. Supported values for disabled thinking: {supported}. Enable adaptive "
+        "thinking or select a supported effort level."
+    )
 
 
 def supports_effort(model_name: str) -> bool:

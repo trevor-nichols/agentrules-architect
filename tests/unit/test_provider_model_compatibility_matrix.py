@@ -27,7 +27,7 @@ class ModelContract:
     provider: ModelProvider
     model_name: str
     reasoning: ReasoningMode
-    context_limit: int
+    max_input_tokens: int
     wire_reasoning: object
     anthropic_effort: str | None = None
 
@@ -42,6 +42,22 @@ DIRECT_MODEL_CONTRACTS = (
         ("enabled", "high"),
     ),
     ModelContract(
+        "deepseek-v4-flash-low",
+        ModelProvider.DEEPSEEK,
+        "deepseek-v4-flash",
+        ReasoningMode.LOW,
+        1_000_000,
+        ("enabled", "low"),
+    ),
+    ModelContract(
+        "deepseek-v4-flash-max",
+        ModelProvider.DEEPSEEK,
+        "deepseek-v4-flash",
+        ReasoningMode.MAX,
+        1_000_000,
+        ("enabled", "max"),
+    ),
+    ModelContract(
         "deepseek-v4-flash-non-reasoning",
         ModelProvider.DEEPSEEK,
         "deepseek-v4-flash",
@@ -53,10 +69,18 @@ DIRECT_MODEL_CONTRACTS = (
         "deepseek-v4-pro", ModelProvider.DEEPSEEK, "deepseek-v4-pro", ReasoningMode.HIGH, 1_000_000, ("enabled", "high")
     ),
     ModelContract(
+        "deepseek-v4-pro-low",
+        ModelProvider.DEEPSEEK,
+        "deepseek-v4-pro",
+        ReasoningMode.LOW,
+        1_000_000,
+        ("enabled", "low"),
+    ),
+    ModelContract(
         "deepseek-v4-pro-max",
         ModelProvider.DEEPSEEK,
         "deepseek-v4-pro",
-        ReasoningMode.XHIGH,
+        ReasoningMode.MAX,
         1_000_000,
         ("enabled", "max"),
     ),
@@ -69,48 +93,70 @@ DIRECT_MODEL_CONTRACTS = (
         ("disabled", None),
     ),
     ModelContract(
-        "gpt56-sol-none", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.DISABLED, 1_050_000, ("responses", "none")
+        "gpt56-sol-none", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.DISABLED, 922_000, ("responses", "none")
     ),
     ModelContract(
-        "gpt56-sol-low", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.LOW, 1_050_000, ("responses", "low")
+        "gpt5-mini-low", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.LOW, 272_000, ("responses", "low")
+    ),
+    ModelContract(
+        "gpt5-mini-medium",
+        ModelProvider.OPENAI,
+        "gpt-5-mini",
+        ReasoningMode.MEDIUM,
+        272_000,
+        ("responses", "medium"),
+    ),
+    ModelContract(
+        "gpt5-mini", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.HIGH, 272_000, ("responses", "high")
+    ),
+    ModelContract(
+        "gpt56-sol-low", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.LOW, 922_000, ("responses", "low")
     ),
     ModelContract(
         "gpt56-sol-default",
         ModelProvider.OPENAI,
         "gpt-5.6-sol",
         ReasoningMode.MEDIUM,
-        1_050_000,
+        922_000,
         ("responses", "medium"),
     ),
     ModelContract(
-        "gpt56-sol-high", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.HIGH, 1_050_000, ("responses", "high")
+        "gpt56-sol-high", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.HIGH, 922_000, ("responses", "high")
     ),
     ModelContract(
-        "gpt56-sol-xhigh", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.XHIGH, 1_050_000, ("responses", "xhigh")
+        "gpt56-sol-xhigh", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.XHIGH, 922_000, ("responses", "xhigh")
     ),
     ModelContract(
-        "gpt56-sol-max", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.MAX, 1_050_000, ("responses", "max")
+        "gpt56-sol-max", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.MAX, 922_000, ("responses", "max")
+    ),
+    ModelContract(
+        "gpt56-terra-low",
+        ModelProvider.OPENAI,
+        "gpt-5.6-terra",
+        ReasoningMode.LOW,
+        922_000,
+        ("responses", "low"),
     ),
     ModelContract(
         "gpt56-terra-default",
         ModelProvider.OPENAI,
         "gpt-5.6-terra",
         ReasoningMode.MEDIUM,
-        1_050_000,
+        922_000,
         ("responses", "medium"),
     ),
     ModelContract(
-        "gpt56-terra-high", ModelProvider.OPENAI, "gpt-5.6-terra", ReasoningMode.HIGH, 1_050_000, ("responses", "high")
+        "gpt56-terra-high", ModelProvider.OPENAI, "gpt-5.6-terra", ReasoningMode.HIGH, 922_000, ("responses", "high")
     ),
     ModelContract(
-        "gpt56-luna-low", ModelProvider.OPENAI, "gpt-5.6-luna", ReasoningMode.LOW, 1_050_000, ("responses", "low")
+        "gpt56-luna-low", ModelProvider.OPENAI, "gpt-5.6-luna", ReasoningMode.LOW, 922_000, ("responses", "low")
     ),
     ModelContract(
         "gpt56-luna-default",
         ModelProvider.OPENAI,
         "gpt-5.6-luna",
         ReasoningMode.MEDIUM,
-        1_050_000,
+        922_000,
         ("responses", "medium"),
     ),
     ModelContract(
@@ -212,19 +258,75 @@ DIRECT_MODEL_CONTRACTS = (
         "max",
     ),
     ModelContract(
-        "claude-opus", ModelProvider.ANTHROPIC, "claude-opus-4-8", ReasoningMode.DISABLED, 1_000_000, (None, None)
+        "claude-opus", ModelProvider.ANTHROPIC, "claude-opus-5", ReasoningMode.DISABLED, 1_000_000, ("disabled", None)
     ),
     ModelContract(
         "claude-opus-reasoning",
         ModelProvider.ANTHROPIC,
-        "claude-opus-4-8",
+        "claude-opus-5",
         ReasoningMode.DYNAMIC,
         1_000_000,
         ("adaptive", None),
     ),
+    ModelContract(
+        "claude-opus-5", ModelProvider.ANTHROPIC, "claude-opus-5", ReasoningMode.DISABLED, 1_000_000, ("disabled", None)
+    ),
+    ModelContract(
+        "claude-opus-5-reasoning-low",
+        ModelProvider.ANTHROPIC,
+        "claude-opus-5",
+        ReasoningMode.DYNAMIC,
+        1_000_000,
+        ("adaptive", "low"),
+        "low",
+    ),
+    ModelContract(
+        "claude-opus-5-reasoning-medium",
+        ModelProvider.ANTHROPIC,
+        "claude-opus-5",
+        ReasoningMode.DYNAMIC,
+        1_000_000,
+        ("adaptive", "medium"),
+        "medium",
+    ),
+    ModelContract(
+        "claude-opus-5-reasoning-high",
+        ModelProvider.ANTHROPIC,
+        "claude-opus-5",
+        ReasoningMode.DYNAMIC,
+        1_000_000,
+        ("adaptive", "high"),
+        "high",
+    ),
+    ModelContract(
+        "claude-opus-5-reasoning-xhigh",
+        ModelProvider.ANTHROPIC,
+        "claude-opus-5",
+        ReasoningMode.DYNAMIC,
+        1_000_000,
+        ("adaptive", "xhigh"),
+        "xhigh",
+    ),
+    ModelContract(
+        "claude-opus-5-reasoning-max",
+        ModelProvider.ANTHROPIC,
+        "claude-opus-5",
+        ReasoningMode.DYNAMIC,
+        1_000_000,
+        ("adaptive", "max"),
+        "max",
+    ),
     ModelContract("grok-4.5", ModelProvider.XAI, "grok-4.5", ReasoningMode.HIGH, 500_000, "high"),
     ModelContract("grok-4.5-reasoning-medium", ModelProvider.XAI, "grok-4.5", ReasoningMode.MEDIUM, 500_000, "medium"),
     ModelContract("grok-4.5-reasoning-low", ModelProvider.XAI, "grok-4.5", ReasoningMode.LOW, 500_000, "low"),
+    ModelContract("grok-4.6", ModelProvider.XAI, "grok-4.6", ReasoningMode.HIGH, 500_000, "high"),
+    ModelContract(
+        "grok-4.6-reasoning-medium", ModelProvider.XAI, "grok-4.6", ReasoningMode.MEDIUM, 500_000, "medium"
+    ),
+    ModelContract("grok-4.6-reasoning-low", ModelProvider.XAI, "grok-4.6", ReasoningMode.LOW, 500_000, "low"),
+    ModelContract(
+        "grok-4.6-reasoning-xhigh", ModelProvider.XAI, "grok-4.6", ReasoningMode.XHIGH, 500_000, "xhigh"
+    ),
     ModelContract(
         "grok-4.20-reasoning", ModelProvider.XAI, "grok-4.20-0309-reasoning", ReasoningMode.ENABLED, 1_000_000, None
     ),
@@ -238,6 +340,84 @@ DIRECT_MODEL_CONTRACTS = (
     ),
     ModelContract(
         "gemini-3.5-flash", ModelProvider.GEMINI, "gemini-3.5-flash", ReasoningMode.MEDIUM, 1_048_576, "medium"
+    ),
+    ModelContract(
+        "gemini-3.7-flash", ModelProvider.GEMINI, "gemini-3.7-flash", ReasoningMode.MEDIUM, 1_048_576, "medium"
+    ),
+    ModelContract(
+        "gemini-3.7-flash-reasoning-low",
+        ModelProvider.GEMINI,
+        "gemini-3.7-flash",
+        ReasoningMode.LOW,
+        1_048_576,
+        "low",
+    ),
+    ModelContract(
+        "gemini-3.7-flash-reasoning-high",
+        ModelProvider.GEMINI,
+        "gemini-3.7-flash",
+        ReasoningMode.HIGH,
+        1_048_576,
+        "high",
+    ),
+    ModelContract(
+        "gemini-3.6-flash", ModelProvider.GEMINI, "gemini-3.6-flash", ReasoningMode.MEDIUM, 1_048_576, "medium"
+    ),
+    ModelContract(
+        "gemini-3.6-flash-reasoning-minimal",
+        ModelProvider.GEMINI,
+        "gemini-3.6-flash",
+        ReasoningMode.MINIMAL,
+        1_048_576,
+        "minimal",
+    ),
+    ModelContract(
+        "gemini-3.6-flash-reasoning-low",
+        ModelProvider.GEMINI,
+        "gemini-3.6-flash",
+        ReasoningMode.LOW,
+        1_048_576,
+        "low",
+    ),
+    ModelContract(
+        "gemini-3.6-flash-reasoning-high",
+        ModelProvider.GEMINI,
+        "gemini-3.6-flash",
+        ReasoningMode.HIGH,
+        1_048_576,
+        "high",
+    ),
+    ModelContract(
+        "gemini-3.5-flash-lite",
+        ModelProvider.GEMINI,
+        "gemini-3.5-flash-lite",
+        ReasoningMode.MINIMAL,
+        1_048_576,
+        "minimal",
+    ),
+    ModelContract(
+        "gemini-3.5-flash-lite-reasoning-low",
+        ModelProvider.GEMINI,
+        "gemini-3.5-flash-lite",
+        ReasoningMode.LOW,
+        1_048_576,
+        "low",
+    ),
+    ModelContract(
+        "gemini-3.5-flash-lite-reasoning-medium",
+        ModelProvider.GEMINI,
+        "gemini-3.5-flash-lite",
+        ReasoningMode.MEDIUM,
+        1_048_576,
+        "medium",
+    ),
+    ModelContract(
+        "gemini-3.5-flash-lite-reasoning-high",
+        ModelProvider.GEMINI,
+        "gemini-3.5-flash-lite",
+        ReasoningMode.HIGH,
+        1_048_576,
+        "high",
     ),
     ModelContract(
         "gemini-3.1-pro-preview",
@@ -266,7 +446,7 @@ def test_direct_provider_model_contract_matrix(contract: ModelContract) -> None:
     assert config.provider == contract.provider
     assert config.model_name == contract.model_name
     assert config.reasoning == contract.reasoning
-    assert config.max_input_tokens == contract.context_limit
+    assert config.max_input_tokens == contract.max_input_tokens
     assert config.anthropic_effort == contract.anthropic_effort
     assert _resolve_wire_reasoning(config) == contract.wire_reasoning
 

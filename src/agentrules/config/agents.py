@@ -17,6 +17,8 @@ from agentrules.core.types.models import (
     CLAUDE_HAIKU,
     CLAUDE_HAIKU_WITH_REASONING,
     CLAUDE_OPUS,
+    CLAUDE_OPUS_5,
+    CLAUDE_OPUS_5_WITH_REASONING,
     CLAUDE_OPUS_45,
     CLAUDE_OPUS_45_WITH_REASONING,
     CLAUDE_OPUS_46,
@@ -34,14 +36,20 @@ from agentrules.core.types.models import (
     DEEPSEEK_CHAT,
     DEEPSEEK_REASONER,
     DEEPSEEK_V4_FLASH,
+    DEEPSEEK_V4_FLASH_LOW,
+    DEEPSEEK_V4_FLASH_MAX,
     DEEPSEEK_V4_FLASH_NON_REASONING,
     DEEPSEEK_V4_PRO,
+    DEEPSEEK_V4_PRO_LOW,
     DEEPSEEK_V4_PRO_MAX,
     DEEPSEEK_V4_PRO_NON_REASONING,
     GEMINI_3_1_FLASH_LITE,
     GEMINI_3_1_FLASH_LITE_PREVIEW,
     GEMINI_3_1_PRO_PREVIEW,
     GEMINI_3_5_FLASH,
+    GEMINI_3_5_FLASH_LITE,
+    GEMINI_3_6_FLASH,
+    GEMINI_3_7_FLASH,
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
     GEMINI_FLASH,
@@ -85,9 +93,12 @@ from agentrules.core.types.models import (
     GPT5_6_SOL_XHIGH,
     GPT5_6_TERRA_DEFAULT,
     GPT5_6_TERRA_HIGH,
+    GPT5_6_TERRA_LOW,
     GPT5_DEFAULT,
     GPT5_HIGH,
     GPT5_MINI,
+    GPT5_MINI_LOW,
+    GPT5_MINI_MEDIUM,
     GPT5_MINIMAL,
     GROK_4_0709,
     GROK_4_1_FAST_NON_REASONING,
@@ -98,6 +109,10 @@ from agentrules.core.types.models import (
     GROK_4_5,
     GROK_4_5_LOW,
     GROK_4_5_MEDIUM,
+    GROK_4_6,
+    GROK_4_6_LOW,
+    GROK_4_6_MEDIUM,
+    GROK_4_6_XHIGH,
     GROK_4_20_NON_REASONING,
     GROK_4_20_REASONING,
     GROK_4_FAST_NON_REASONING,
@@ -170,9 +185,10 @@ _XAI_1M_CONTEXT_MODELS: frozenset[str] = frozenset(
 
 def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     """
-    Attach provisional context window metadata and estimator hints to a ModelConfig.
+    Attach provider input limits and estimator hints to a ModelConfig.
 
-    Values are conservative and logging-only; refine once telemetry is available.
+    These limits drive token packing and request preflight, so total-context values
+    must reserve any provider-required output capacity before they are recorded here.
     """
     name = config.model_name.lower()
     provider = config.provider
@@ -185,6 +201,7 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
             if (
                 name.startswith("claude-fable-5")
                 or name.startswith("claude-sonnet-5")
+                or name.startswith("claude-opus-5")
                 or name.startswith("claude-opus-4-6")
                 or name.startswith("claude-opus-4-7")
                 or name.startswith("claude-opus-4-8")
@@ -209,7 +226,9 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
             elif "gpt-4.1" in name:
                 limit = 128_000
             elif name.startswith("gpt-5.6"):
-                limit = 1_050_000
+                limit = 922_000
+            elif name.startswith("gpt-5-mini"):
+                limit = 272_000
             elif "gpt-5.1" in name or "gpt-5" in name:
                 limit = 400_000
     elif provider == ModelProvider.DEEPSEEK:
@@ -218,7 +237,7 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
         if limit is None:
-            if name.startswith("grok-4.5"):
+            if name.startswith(("grok-4.5", "grok-4.6")):
                 limit = 500_000
             else:
                 limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
@@ -300,6 +319,72 @@ def _claude_code_runtime_managed_preset(
 
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
+    "gemini-3.7-flash": _preset(
+        config=GEMINI_3_7_FLASH,
+        label="Gemini 3.7 Flash (Medium Thinking, Recommended)",
+        description="Current Gemini Flash model at its default medium thinking level.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.7-flash-reasoning-low": _preset(
+        config=GEMINI_3_7_FLASH._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.7 Flash (Low Thinking)",
+        description="Gemini 3.7 Flash at low thinking for latency-sensitive work.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.7-flash-reasoning-high": _preset(
+        config=GEMINI_3_7_FLASH._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.7 Flash (High Thinking)",
+        description="Gemini 3.7 Flash at high thinking for complex work.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash": _preset(
+        config=GEMINI_3_6_FLASH,
+        label="Gemini 3.6 Flash (Medium Thinking)",
+        description="Gemini 3.6 Flash at its default medium thinking level.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash-reasoning-minimal": _preset(
+        config=GEMINI_3_6_FLASH._replace(reasoning=ReasoningMode.MINIMAL),
+        label="Gemini 3.6 Flash (Minimal Thinking)",
+        description="Gemini 3.6 Flash at minimal thinking for the fastest supported responses.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash-reasoning-low": _preset(
+        config=GEMINI_3_6_FLASH._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.6 Flash (Low Thinking)",
+        description="Gemini 3.6 Flash at low thinking for efficient workloads.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.6-flash-reasoning-high": _preset(
+        config=GEMINI_3_6_FLASH._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.6 Flash (High Thinking)",
+        description="Gemini 3.6 Flash at high thinking for deeper analysis.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite": _preset(
+        config=GEMINI_3_5_FLASH_LITE,
+        label="Gemini 3.5 Flash-Lite (Minimal Thinking, Recommended for Throughput)",
+        description="High-throughput Gemini 3.5 Flash-Lite at its default minimal thinking level.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite-reasoning-low": _preset(
+        config=GEMINI_3_5_FLASH_LITE._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.5 Flash-Lite (Low Thinking)",
+        description="Gemini 3.5 Flash-Lite at low thinking for efficient reasoning.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite-reasoning-medium": _preset(
+        config=GEMINI_3_5_FLASH_LITE._replace(reasoning=ReasoningMode.MEDIUM),
+        label="Gemini 3.5 Flash-Lite (Medium Thinking)",
+        description="Gemini 3.5 Flash-Lite at medium thinking for balanced workloads.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.5-flash-lite-reasoning-high": _preset(
+        config=GEMINI_3_5_FLASH_LITE._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.5 Flash-Lite (High Thinking)",
+        description="Gemini 3.5 Flash-Lite at high thinking for complex high-volume work.",
+        provider=ModelProvider.GEMINI,
+    ),
     "gemini-3.5-flash": _preset(
         config=GEMINI_3_5_FLASH,
         label="Gemini 3.5 Flash",
@@ -488,14 +573,50 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-opus": _preset(
         config=CLAUDE_OPUS,
-        label="Claude Opus 4.8 (Generic Key)",
-        description="Generic Opus compatibility key updated to Claude Opus 4.8 before Opus 4.1 retirement.",
+        label="Claude Opus 5 (Generic Key)",
+        description="Generic Opus compatibility key routed to the current Claude Opus 5 family.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-reasoning": _preset(
         config=CLAUDE_OPUS_WITH_REASONING,
-        label="Claude Opus 4.8 (Generic Key, Adaptive Thinking)",
-        description="Generic Opus reasoning key updated to Claude Opus 4.8 adaptive thinking at provider defaults.",
+        label="Claude Opus 5 (Generic Key, Adaptive Thinking)",
+        description="Generic Opus reasoning key routed to Claude Opus 5 adaptive thinking at provider defaults.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5": _preset(
+        config=CLAUDE_OPUS_5,
+        label="Claude Opus 5",
+        description="Current Claude Opus family with 1M context and explicitly disabled thinking.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-low": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="low"),
+        label="Claude Opus 5 (Adaptive Thinking, Low Effort)",
+        description="Claude Opus 5 adaptive thinking at low effort.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-medium": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="medium"),
+        label="Claude Opus 5 (Adaptive Thinking, Medium Effort)",
+        description="Claude Opus 5 adaptive thinking at medium effort.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-high": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="high"),
+        label="Claude Opus 5 (Adaptive Thinking, High Effort)",
+        description="Claude Opus 5 adaptive thinking at the default high effort.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-xhigh": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="xhigh"),
+        label="Claude Opus 5 (Adaptive Thinking, XHigh Effort)",
+        description="Claude Opus 5 adaptive thinking at xhigh effort for agentic work.",
+        provider=ModelProvider.ANTHROPIC,
+    ),
+    "claude-opus-5-reasoning-max": _preset(
+        config=CLAUDE_OPUS_5_WITH_REASONING._replace(anthropic_effort="max"),
+        label="Claude Opus 5 (Adaptive Thinking, Max Effort)",
+        description="Claude Opus 5 adaptive thinking at maximum effort.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.5": _preset(
@@ -632,20 +753,29 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "o4-mini-low": _preset(
         config=O4_MINI_LOW,
-        label="OpenAI o4-mini (low effort)",
-        description="Efficient modality-friendly reasoning.",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Low)",
+        description=(
+            "Deprecated o4-mini endpoint at low reasoning. Existing selections remain on o4-mini; "
+            "choose GPT-5.6 Terra Low for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-medium": _preset(
         config=O4_MINI_MEDIUM,
-        label="OpenAI o4-mini (medium effort)",
-        description="Balanced o4-mini configuration.",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Medium)",
+        description=(
+            "Deprecated o4-mini endpoint at medium reasoning. Existing selections remain on o4-mini; "
+            "choose GPT-5.6 Terra Medium for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-high": _preset(
         config=O4_MINI_HIGH,
-        label="OpenAI o4-mini (high effort)",
-        description="Highest reasoning effort for o4-mini.",
+        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra High)",
+        description=(
+            "Deprecated o4-mini endpoint at high reasoning. Existing selections remain on o4-mini; "
+            "choose GPT-5.6 Terra High for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt4.1-default": _preset(
@@ -674,8 +804,29 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt5-mini": _preset(
         config=GPT5_MINI,
-        label="GPT-5 Mini (high reasoning)",
-        description="Cost-efficient GPT-5 Mini with 400k context and high reasoning.",
+        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra High)",
+        description=(
+            "Deprecated GPT-5 Mini endpoint with 400K context and high reasoning. Existing selections "
+            "remain on GPT-5 Mini; choose GPT-5.6 Terra High for new configurations."
+        ),
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt5-mini-low": _preset(
+        config=GPT5_MINI_LOW,
+        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Low)",
+        description=(
+            "Deprecated GPT-5 Mini endpoint with 400K context and low reasoning. Existing selections "
+            "remain on GPT-5 Mini; choose GPT-5.6 Terra Low for new configurations."
+        ),
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt5-mini-medium": _preset(
+        config=GPT5_MINI_MEDIUM,
+        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Medium)",
+        description=(
+            "Deprecated GPT-5 Mini endpoint with 400K context and medium reasoning. Existing selections "
+            "remain on GPT-5 Mini; choose GPT-5.6 Terra Medium for new configurations."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt55-none": _preset(
@@ -742,6 +893,12 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=GPT5_6_SOL_MAX,
         label="GPT-5.6 Sol (max reasoning)",
         description="Flagship GPT-5.6 Sol at maximum reasoning effort for the hardest quality-first workloads.",
+        provider=ModelProvider.OPENAI,
+    ),
+    "gpt56-terra-low": _preset(
+        config=GPT5_6_TERRA_LOW,
+        label="GPT-5.6 Terra (low reasoning)",
+        description="Balanced-cost GPT-5.6 Terra with low reasoning, low verbosity, and 1.05M context.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt56-terra-default": _preset(
@@ -818,14 +975,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt-5.1-codex": _preset(
         config=GPT5_1_CODEX,
-        label="GPT-5.1 Codex",
-        description="Coding-optimized GPT-5.1 variant via Responses API with medium reasoning.",
+        label="GPT-5.1 Codex (Retired; redirects to GPT-5.6 Sol)",
+        description=(
+            "Retired GPT-5.1 Codex compatibility key. Existing selections resolve to GPT-5.6 Sol "
+            "with medium reasoning before dispatch."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.2-codex": _preset(
         config=GPT5_2_CODEX,
-        label="GPT-5.2 Codex",
-        description="Coding-optimized GPT-5.2 variant via Responses API with medium reasoning.",
+        label="GPT-5.2 Codex (Retired; redirects to GPT-5.6 Sol)",
+        description=(
+            "Retired GPT-5.2 Codex compatibility key. Existing selections resolve to GPT-5.6 Sol "
+            "with medium reasoning before dispatch."
+        ),
         provider=ModelProvider.OPENAI,
     ),
     "gpt-5.3-codex": _preset(
@@ -906,6 +1069,18 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Fast, cost-efficient DeepSeek V4 model with thinking enabled at high effort and 1M context.",
         provider=ModelProvider.DEEPSEEK,
     ),
+    "deepseek-v4-flash-low": _preset(
+        config=DEEPSEEK_V4_FLASH_LOW,
+        label="DeepSeek V4 Flash (Thinking, Low)",
+        description="DeepSeek V4 Flash with low thinking effort and the conservative 32K output cap.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-flash-max": _preset(
+        config=DEEPSEEK_V4_FLASH_MAX,
+        label="DeepSeek V4 Flash (Thinking, Max)",
+        description="DeepSeek V4 Flash with maximum thinking effort and the conservative 32K output cap.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
     "deepseek-v4-flash-non-reasoning": _preset(
         config=DEEPSEEK_V4_FLASH_NON_REASONING,
         label="DeepSeek V4 Flash (Non-Thinking)",
@@ -916,6 +1091,12 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         config=DEEPSEEK_V4_PRO,
         label="DeepSeek V4 Pro (Thinking, High)",
         description="Highest-capability DeepSeek V4 model with thinking enabled at high effort and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-v4-pro-low": _preset(
+        config=DEEPSEEK_V4_PRO_LOW,
+        label="DeepSeek V4 Pro (Thinking, Low)",
+        description="DeepSeek V4 Pro with low thinking effort and the conservative 32K output cap.",
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-v4-pro-max": _preset(
@@ -948,10 +1129,34 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         ),
         provider=ModelProvider.DEEPSEEK,
     ),
+    "grok-4.6": _preset(
+        config=GROK_4_6,
+        label="Grok 4.6 (Reasoning High, Recommended)",
+        description="Recommended general xAI model with default high reasoning and 500K context.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.6-reasoning-low": _preset(
+        config=GROK_4_6_LOW,
+        label="Grok 4.6 (Reasoning Low)",
+        description="Grok 4.6 with low reasoning for latency-sensitive work.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.6-reasoning-medium": _preset(
+        config=GROK_4_6_MEDIUM,
+        label="Grok 4.6 (Reasoning Medium)",
+        description="Grok 4.6 with medium reasoning for balanced latency and depth.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.6-reasoning-xhigh": _preset(
+        config=GROK_4_6_XHIGH,
+        label="Grok 4.6 (Reasoning XHigh)",
+        description="Grok 4.6 with xhigh reasoning for the most complex agentic work.",
+        provider=ModelProvider.XAI,
+    ),
     "grok-4.5": _preset(
         config=GROK_4_5,
-        label="Grok 4.5 (Reasoning High, Recommended)",
-        description="Recommended general xAI model with default high reasoning and 500k context.",
+        label="Grok 4.5 (Reasoning High, Fallback)",
+        description="Previous general xAI model retained as a 500K-context fallback.",
         provider=ModelProvider.XAI,
     ),
     "grok-4.5-reasoning-medium": _preset(
@@ -1058,8 +1263,22 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
 
 def _build_codex_runtime_presets() -> dict[str, PresetDefinition]:
     return {
-        "codex-gpt-5.1-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.1-codex"]),
-        "codex-gpt-5.2-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.2-codex"]),
+        "codex-gpt-5.1-codex": _derive_codex_runtime_preset(
+            BASE_MODEL_PRESETS["gpt-5.1-codex"],
+            label="Codex GPT-5.1 Codex (Deprecated runtime selection)",
+            description=(
+                "Static compatibility selection retained for saved Codex settings. It remains bound "
+                "to GPT-5.1 Codex and is selectable only when the app-server catalog reports it."
+            ),
+        ),
+        "codex-gpt-5.2-codex": _derive_codex_runtime_preset(
+            BASE_MODEL_PRESETS["gpt-5.2-codex"],
+            label="Codex GPT-5.2 Codex (Deprecated runtime selection)",
+            description=(
+                "Static compatibility selection retained for saved Codex settings. It remains bound "
+                "to GPT-5.2 Codex and is selectable only when the app-server catalog reports it."
+            ),
+        ),
         "codex-gpt-5.3-codex": _derive_codex_runtime_preset(BASE_MODEL_PRESETS["gpt-5.3-codex"]),
         "codex-gpt-5.4": _derive_codex_runtime_preset(
             BASE_MODEL_PRESETS["gpt-5.4-2026-03-05"],

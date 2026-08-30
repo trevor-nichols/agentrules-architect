@@ -91,10 +91,106 @@ def test_prepare_request_sonnet5_disabled_is_explicit() -> None:
     assert prepared.payload["thinking"] == {"type": "disabled"}
 
 
-@pytest.mark.parametrize("reasoning", [ReasoningMode.ENABLED, ReasoningMode.DYNAMIC])
-def test_prepare_request_sonnet5_thinking_uses_adaptive(reasoning: ReasoningMode) -> None:
+def test_prepare_request_opus5_disabled_is_explicit_without_effort() -> None:
     prepared = prepare_request(
-        model_name="claude-sonnet-5",
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "disabled"}
+    assert "output_config" not in prepared.payload
+
+
+@pytest.mark.parametrize(
+    ("reasoning", "expected_effort"),
+    [
+        (ReasoningMode.LOW, "low"),
+        (ReasoningMode.MEDIUM, "medium"),
+        (ReasoningMode.HIGH, "high"),
+        (ReasoningMode.XHIGH, "xhigh"),
+        (ReasoningMode.MAX, "max"),
+    ],
+)
+def test_prepare_request_opus5_maps_shared_reasoning_modes_to_effort(
+    reasoning: ReasoningMode,
+    expected_effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=reasoning,
+        tools=None,
+    )
+
+    assert prepared.payload["output_config"] == {"effort": expected_effort}
+    assert "thinking" not in prepared.payload
+
+
+def test_prepare_request_explicit_effort_overrides_shared_reasoning_mode() -> None:
+    prepared = prepare_request(
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=ReasoningMode.LOW,
+        tools=None,
+        effort="medium",
+    )
+
+    assert prepared.payload["output_config"] == {"effort": "medium"}
+
+
+@pytest.mark.parametrize("reasoning", [ReasoningMode.MINIMAL, ReasoningMode.TEMPERATURE])
+def test_prepare_request_rejects_untranslatable_reasoning_modes(
+    reasoning: ReasoningMode,
+) -> None:
+    with pytest.raises(ValueError, match="is not supported for Anthropic models"):
+        prepare_request(
+            model_name="claude-opus-5",
+            prompt="hello",
+            reasoning=reasoning,
+            tools=None,
+        )
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high"])
+def test_prepare_request_opus5_accepts_supported_effort_with_thinking_disabled(
+    effort: str,
+) -> None:
+    prepared = prepare_request(
+        model_name="claude-opus-5",
+        prompt="hello",
+        reasoning=ReasoningMode.DISABLED,
+        tools=None,
+        effort=effort,
+    )
+
+    assert prepared.payload["thinking"] == {"type": "disabled"}
+    assert prepared.payload["output_config"] == {"effort": effort}
+
+
+@pytest.mark.parametrize("effort", ["xhigh", "max"])
+def test_prepare_request_opus5_rejects_extended_effort_with_thinking_disabled(
+    effort: str,
+) -> None:
+    with pytest.raises(ValueError, match="when thinking is disabled"):
+        prepare_request(
+            model_name="claude-opus-5",
+            prompt="hello",
+            reasoning=ReasoningMode.DISABLED,
+            tools=None,
+            effort=effort,
+        )
+
+
+@pytest.mark.parametrize("reasoning", [ReasoningMode.ENABLED, ReasoningMode.DYNAMIC])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5"])
+def test_prepare_request_claude5_thinking_uses_adaptive(
+    model_name: str,
+    reasoning: ReasoningMode,
+) -> None:
+    prepared = prepare_request(
+        model_name=model_name,
         prompt="hello",
         reasoning=reasoning,
         tools=None,
@@ -128,7 +224,7 @@ def test_prepare_request_fable5_rejects_disabled_thinking() -> None:
 
 
 @pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "max"])
-@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5", "claude-fable-5"])
 def test_prepare_request_claude5_accepts_documented_efforts(
     model_name: str,
     effort: str,
@@ -144,7 +240,7 @@ def test_prepare_request_claude5_accepts_documented_efforts(
     assert prepared.payload["output_config"] == {"effort": effort}
 
 
-@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5", "claude-fable-5"])
 @pytest.mark.parametrize("effort", ["xhigh", "max"])
 def test_prepare_request_claude5_uses_extended_output_budget(
     model_name: str,
@@ -174,7 +270,7 @@ def test_prepare_request_preserves_explicit_output_budget() -> None:
     assert prepared.payload["max_tokens"] == 8_192
 
 
-@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-fable-5"])
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5", "claude-opus-5", "claude-fable-5"])
 def test_prepare_request_claude5_includes_structured_output(model_name: str) -> None:
     output_format = {"type": "json_schema", "schema": {"type": "object"}}
     prepared = prepare_request(
@@ -294,6 +390,16 @@ def test_prepare_request_effort_xhigh_unsupported_for_opus46_raises() -> None:
         assert "Supported values for this model: high, low, max, medium" in str(exc)
     else:
         raise AssertionError("Expected ValueError for effort=xhigh on unsupported model")
+
+
+def test_prepare_request_reasoning_xhigh_unsupported_for_opus46_raises() -> None:
+    with pytest.raises(ValueError, match="Effort 'xhigh' is not supported"):
+        prepare_request(
+            model_name="claude-opus-4-6",
+            prompt="hello",
+            reasoning=ReasoningMode.XHIGH,
+            tools=None,
+        )
 
 
 def test_prepare_request_effort_xhigh_unsupported_for_sonnet46_raises() -> None:

@@ -112,19 +112,24 @@ CLAUDE_HAIKU_WITH_REASONING = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-CLAUDE_OPUS = ModelConfig(
+CLAUDE_OPUS_5 = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-8",
+    model_name="claude-opus-5",
     reasoning=ReasoningMode.DISABLED,
     tools_config={"enabled": False, "tools": None}
 )
 
-CLAUDE_OPUS_WITH_REASONING = ModelConfig(
+CLAUDE_OPUS_5_WITH_REASONING = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
-    model_name="claude-opus-4-8",
+    model_name="claude-opus-5",
     reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None}
 )
+
+# Generic Opus compatibility constants intentionally follow the current direct
+# API family. Pinned Opus 4.x constants below remain available for rollbacks.
+CLAUDE_OPUS = CLAUDE_OPUS_5
+CLAUDE_OPUS_WITH_REASONING = CLAUDE_OPUS_5_WITH_REASONING
 
 CLAUDE_OPUS_45 = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
@@ -307,6 +312,9 @@ DEEPSEEK_V4_FLASH = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+DEEPSEEK_V4_FLASH_LOW = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.LOW)
+DEEPSEEK_V4_FLASH_MAX = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.MAX)
+
 DEEPSEEK_V4_FLASH_NON_REASONING = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
     model_name="deepseek-v4-flash",
@@ -321,10 +329,12 @@ DEEPSEEK_V4_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+DEEPSEEK_V4_PRO_LOW = DEEPSEEK_V4_PRO._replace(reasoning=ReasoningMode.LOW)
+
 DEEPSEEK_V4_PRO_MAX = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
     model_name="deepseek-v4-pro",
-    reasoning=ReasoningMode.XHIGH,
+    reasoning=ReasoningMode.MAX,
     tools_config={"enabled": False, "tools": None},
 )
 
@@ -341,6 +351,17 @@ DEEPSEEK_REASONER = DEEPSEEK_V4_FLASH
 DEEPSEEK_CHAT = DEEPSEEK_V4_FLASH_NON_REASONING
 
 # xAI Grok models
+GROK_4_6 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.6",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GROK_4_6_LOW = GROK_4_6._replace(reasoning=ReasoningMode.LOW)
+GROK_4_6_MEDIUM = GROK_4_6._replace(reasoning=ReasoningMode.MEDIUM)
+GROK_4_6_XHIGH = GROK_4_6._replace(reasoning=ReasoningMode.XHIGH)
+
 GROK_4_5 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4.5",
@@ -464,6 +485,27 @@ GEMINI_3_5_FLASH = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
+GEMINI_3_5_FLASH_LITE = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.5-flash-lite",
+    reasoning=ReasoningMode.MINIMAL,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GEMINI_3_6_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.6-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GEMINI_3_7_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.7-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
 GEMINI_3_FLASH_PREVIEW = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3-flash-preview",
@@ -534,6 +576,18 @@ GPT5_HIGH = _gpt5_responses_model(
     "gpt-5",
     reasoning=ReasoningMode.HIGH,
     text_verbosity="high",
+)
+
+GPT5_MINI_LOW = _gpt5_responses_model(
+    "gpt-5-mini",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
+)
+
+GPT5_MINI_MEDIUM = _gpt5_responses_model(
+    "gpt-5-mini",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
 )
 
 GPT5_MINI = _gpt5_responses_model(
@@ -609,6 +663,12 @@ GPT5_6_SOL_MAX = _gpt5_responses_model(
     "gpt-5.6-sol",
     reasoning=ReasoningMode.MAX,
     text_verbosity="high",
+)
+
+GPT5_6_TERRA_LOW = _gpt5_responses_model(
+    "gpt-5.6-terra",
+    reasoning=ReasoningMode.LOW,
+    text_verbosity="low",
 )
 
 GPT5_6_TERRA_DEFAULT = _gpt5_responses_model(

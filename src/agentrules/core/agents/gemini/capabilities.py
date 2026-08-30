@@ -25,6 +25,7 @@ class GeminiCapabilityProfile:
     supports_structured_output_with_tools: bool = False
     supports_disabling_thinking: bool = True
     supported_thinking_levels: tuple[GeminiThinkingLevelName, ...] = ()
+    requires_exact_thinking_level: bool = False
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -38,6 +39,26 @@ _DEFAULT_PROFILE = GeminiCapabilityProfile(
 )
 
 _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
+    GeminiCapabilityProfile(
+        family_prefix="gemini-3.7-flash",
+        stable_name="gemini-3.7-flash",
+        display_name="Gemini 3.7 Flash",
+        uses_thinking_level=True,
+        supports_structured_output_with_tools=True,
+        supports_disabling_thinking=False,
+        supported_thinking_levels=("low", "medium", "high"),
+        requires_exact_thinking_level=True,
+    ),
+    GeminiCapabilityProfile(
+        family_prefix="gemini-3.6-flash",
+        stable_name="gemini-3.6-flash",
+        display_name="Gemini 3.6 Flash",
+        uses_thinking_level=True,
+        supports_structured_output_with_tools=True,
+        supports_disabling_thinking=False,
+        supported_thinking_levels=("minimal", "low", "medium", "high"),
+        requires_exact_thinking_level=True,
+    ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.1-pro",
         stable_name="gemini-3.1-pro-preview",
@@ -73,6 +94,16 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
+    ),
+    GeminiCapabilityProfile(
+        family_prefix="gemini-3.5-flash-lite",
+        stable_name="gemini-3.5-flash-lite",
+        display_name="Gemini 3.5 Flash-Lite",
+        uses_thinking_level=True,
+        supports_structured_output_with_tools=True,
+        supports_disabling_thinking=False,
+        supported_thinking_levels=("minimal", "low", "medium", "high"),
+        requires_exact_thinking_level=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.5-flash",
@@ -151,15 +182,24 @@ def resolve_thinking_level(
     reasoning_mode: ReasoningMode,
     thinking_level_enum: Any,
 ) -> Any | None:
-    """Map a generic reasoning mode to the nearest supported Gemini thinking level."""
+    """Map a generic reasoning mode according to the model family's level policy."""
 
     profile = resolve_capability_profile(model_name)
     if not profile.supported_thinking_levels or thinking_level_enum is None:
         return None
 
-    target_level = _choose_level(profile.supported_thinking_levels, reasoning_mode)
+    target_level = _resolve_target_level(profile, model_name, reasoning_mode)
     if target_level is None:
         return None
+
+    if profile.requires_exact_thinking_level:
+        value = getattr(thinking_level_enum, target_level.upper(), None)
+        if value is None:
+            raise ValueError(
+                f"Gemini SDK does not expose the required '{target_level}' thinking level "
+                f"for model '{model_name}'."
+            )
+        return value
 
     for candidate in _enum_lookup_order(target_level):
         if candidate not in profile.supported_thinking_levels:
@@ -167,6 +207,39 @@ def resolve_thinking_level(
         value = getattr(thinking_level_enum, candidate.upper(), None)
         if value is not None:
             return value
+    return None
+
+
+def _resolve_target_level(
+    profile: GeminiCapabilityProfile,
+    model_name: str,
+    reasoning_mode: ReasoningMode,
+) -> GeminiThinkingLevelName | None:
+    if not profile.requires_exact_thinking_level:
+        return _choose_level(profile.supported_thinking_levels, reasoning_mode)
+
+    exact_level = _exact_level_for_reasoning_mode(reasoning_mode)
+    if exact_level in profile.supported_thinking_levels:
+        return exact_level
+
+    supported = ", ".join(profile.supported_thinking_levels)
+    raise ValueError(
+        f"Reasoning mode '{reasoning_mode.value}' is not supported for model '{model_name}'. "
+        f"Supported thinking levels: {supported}."
+    )
+
+
+def _exact_level_for_reasoning_mode(
+    reasoning_mode: ReasoningMode,
+) -> GeminiThinkingLevelName | None:
+    if reasoning_mode == ReasoningMode.MINIMAL:
+        return "minimal"
+    if reasoning_mode == ReasoningMode.LOW:
+        return "low"
+    if reasoning_mode == ReasoningMode.MEDIUM:
+        return "medium"
+    if reasoning_mode == ReasoningMode.HIGH:
+        return "high"
     return None
 
 

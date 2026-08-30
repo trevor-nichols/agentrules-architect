@@ -299,6 +299,10 @@ class ConfigServiceTestCase(unittest.TestCase):
             ClaudeCodeVersion(2, 1, 197),
         )
         self.assertEqual(
+            minimum_claude_code_version_for_model("claude-opus-5"),
+            ClaudeCodeVersion(2, 1, 219),
+        )
+        self.assertEqual(
             minimum_claude_code_version_for_model("fable"),
             ClaudeCodeVersion(2, 1, 170),
         )

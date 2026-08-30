@@ -159,16 +159,19 @@ def test_apply_model_limits_openai_defaults():
 
 
 @pytest.mark.parametrize(
-    "config",
+    ("config", "expected_max_input"),
     [
-        agents_config.GPT5_6_SOL_DEFAULT,
-        agents_config.GPT5_6_TERRA_DEFAULT,
-        agents_config.GPT5_6_LUNA_DEFAULT,
+        (agents_config.GPT5_MINI_LOW, 272_000),
+        (agents_config.GPT5_MINI_MEDIUM, 272_000),
+        (agents_config.GPT5_MINI, 272_000),
+        (agents_config.GPT5_6_SOL_DEFAULT, 922_000),
+        (agents_config.GPT5_6_TERRA_DEFAULT, 922_000),
+        (agents_config.GPT5_6_LUNA_DEFAULT, 922_000),
     ],
 )
-def test_apply_model_limits_gpt56_uses_official_context(config):
+def test_apply_model_limits_openai_uses_provider_max_input(config, expected_max_input):
     cfg = agents_config._apply_model_limits(config)
-    assert cfg.max_input_tokens == 1_050_000
+    assert cfg.max_input_tokens == expected_max_input
     assert cfg.estimator_family == "tiktoken"
 
 

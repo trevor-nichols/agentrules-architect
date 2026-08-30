@@ -54,6 +54,7 @@ class ClaudeCodeVersionProbe:
 _CLAUDE_CODE_VERSION_PATTERN = re.compile(r"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)")
 CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS = 10.0
 _MINIMUM_CLAUDE_CODE_VERSIONS: tuple[tuple[str, ClaudeCodeVersion], ...] = (
+    ("claude-opus-5", ClaudeCodeVersion(2, 1, 219)),
     ("claude-sonnet-5", ClaudeCodeVersion(2, 1, 197)),
     ("claude-fable-5", ClaudeCodeVersion(2, 1, 170)),
     ("fable", ClaudeCodeVersion(2, 1, 170)),
