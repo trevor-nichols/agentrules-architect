@@ -1,5 +1,35 @@
 # Changelog
 
+## [4.3.0](https://github.com/trevor-nichols/agentrules-architect/compare/v4.2.1...v4.3.0) (2026-08-30)
+
+
+### Features
+
+* **providers:** add Grok 4.6 and complete DeepSeek efforts ([13ecb9f](https://github.com/trevor-nichols/agentrules-architect/commit/13ecb9f955528550df2c3153f6f4a5a9b41f07ad))
+* **providers:** add Opus 5 and current Gemini Flash ([c818d52](https://github.com/trevor-nichols/agentrules-architect/commit/c818d523846a4d0ea8d967028bf932c698608343))
+* **providers:** refresh model registry and capabilities ([ccc535b](https://github.com/trevor-nichols/agentrules-architect/commit/ccc535b868e93529ebb85d1075a9c8d905b79a9f))
+
+
+### Bug Fixes
+
+* **anthropic:** enforce Opus 5 runtime constraints ([a8e8802](https://github.com/trevor-nichols/agentrules-architect/commit/a8e88027ca311c8f4f1a3b4fe13900826bb01e44))
+* **anthropic:** honor shared reasoning efforts ([236e24b](https://github.com/trevor-nichols/agentrules-architect/commit/236e24b824314a3c6deac3f8a8042f85681bf8de))
+* **claude-code:** gate pinned Opus 5 by runtime ([9595fa1](https://github.com/trevor-nichols/agentrules-architect/commit/9595fa1deb7ec43d86ae52eb8697ee689c0bb96c))
+* **models:** preserve deprecated endpoint behavior ([b5102f2](https://github.com/trevor-nichols/agentrules-architect/commit/b5102f2e84a8e09e8a34123631e6db63cdda6309))
+* **models:** preserve OpenAI lifecycle compatibility ([4e19179](https://github.com/trevor-nichols/agentrules-architect/commit/4e1917970a70fda095fdb3073b8318fa5f504293))
+* **openai:** reserve output capacity in input limits ([37ef0d1](https://github.com/trevor-nichols/agentrules-architect/commit/37ef0d12552b0a443b16b001bd3ae4e2dae5355f))
+* **providers:** align smoke and lifecycle audit ([815d7b8](https://github.com/trevor-nichols/agentrules-architect/commit/815d7b8db90fc6518954b8117a9d4dafd866d11d))
+* **providers:** enforce current lifecycle constraints ([f65593c](https://github.com/trevor-nichols/agentrules-architect/commit/f65593c48b6ef24c76577bf6fc2c600c57debf70))
+* **xai:** reject untranslatable reasoning modes ([3272e39](https://github.com/trevor-nichols/agentrules-architect/commit/3272e39afea50623e9f91cc4e59bd8a26f68a0be))
+
+
+### Documentation
+
+* **execplan:** archive provider model refresh ([42f5a62](https://github.com/trevor-nichols/agentrules-architect/commit/42f5a62ba0a262f89eff1003b34588470a96ba24))
+* **execplan:** complete provider contract baseline ([c02187f](https://github.com/trevor-nichols/agentrules-architect/commit/c02187f25776ccd797c3ca075ab733e63fa9a9d2))
+* **execplan:** plan provider model refresh ([a48405f](https://github.com/trevor-nichols/agentrules-architect/commit/a48405fcc14d81fe9c2f5afc09cf3d88d2bee7c1))
+* **models:** complete integration validation ([4680e88](https://github.com/trevor-nichols/agentrules-architect/commit/4680e88c4e91bd016dcb82f30725c32e971c0077))
+
 ## [4.2.1](https://github.com/trevor-nichols/agentrules-architect/compare/v4.2.0...v4.2.1) (2026-07-18)
 
 
