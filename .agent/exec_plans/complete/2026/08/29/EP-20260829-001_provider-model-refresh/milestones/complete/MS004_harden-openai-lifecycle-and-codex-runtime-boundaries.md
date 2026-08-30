@@ -36,6 +36,8 @@ Close the known OpenAI saved-preset lifecycle gaps while preserving workload int
 - [x] Direct GPT-5.1 Codex and GPT-5.2 Codex keys remain registered and resolve to medium-effort GPT-5.6 Sol before dispatch.
 - [x] Static Codex-derived GPT-5.1/5.2 compatibility keys remain bound to their original runtime model and are selectable only when app-server reports them.
 - [x] GPT-5.6 Terra has low, medium, and high direct presets for effort-preserving operator migrations.
+- [x] GPT-5 Mini presets use a 272,000-token maximum input and GPT-5.6 tier presets use 922,000, reserving
+  each family's documented 128,000-token maximum output inside the total context window.
 - [x] Picker labels and descriptions disclose deprecation and replacement behavior.
 - [x] Codex runtime-default and runtime-catalog behavior still accepts future model IDs and safe future effort tokens.
 - [x] No static Codex GPT-5.6 preset, GPT-5.5 Pro preset, or GPT-5.6 Pro-mode pseudo-preset is added.
@@ -76,6 +78,12 @@ Close the known OpenAI saved-preset lifecycle gaps while preserving workload int
 ## Architecture / Design
 
 Keep `gpt5-mini` as the existing public high-effort saved key. Add `GPT5_MINI_LOW` and `GPT5_MINI_MEDIUM` via `_gpt5_responses_model()` with matching text verbosity, then register `gpt5-mini-low` and `gpt5-mini-medium`. Mark all three as deprecated-but-live without `replacement_key`, because saved preset identifiers are public compatibility surfaces and runtime behavior must not change before retirement. Add `GPT5_6_TERRA_LOW` alongside the existing medium/high Terra configs so operator migrations can preserve effort.
+
+Attach provider maximum-input values through the central `_apply_model_limits()` policy rather than
+treating total context as input capacity. GPT-5 Mini reserves its documented 128,000-token maximum output
+from 400,000 total tokens, yielding 272,000 maximum input. GPT-5.6 Sol, Terra, and Luna reserve the same
+maximum output from 1,050,000 total tokens, yielding 922,000 maximum input. The packer applies its ordinary
+safety margin after these provider-side limits.
 
 Use `DEPRECATED_PRESETS` as the single lifecycle boundary, with two explicit states. Deprecated-but-live entries have warning metadata and no `replacement_key`, so `resolve_runtime_preset_key()` returns the saved key unchanged. Retired entries retain their public key and set a registered canonical `replacement_key`, so resolution redirects before config lookup. Tests must cover both invariants: preserved entries keep their original config, and redirect entries resolve to an existing canonical config.
 
@@ -183,3 +191,10 @@ All old keys remain registered, so rollback does not require a configuration rew
 - 2026-08-29: Preserved dynamic Codex `model/list` ownership and safe future effort handling. The focused audit corrected a vacuous static-Codex negative test so it now inspects the combined registry.
 - 2026-08-29: Validation passed: 260 tests and 43 subtests, Ruff, Pyright, import smoke, and `git diff --check`.
 - 2026-08-29: Post-completion reviews finalized the lifecycle matrix: o4-mini and GPT-5 Mini remain bound while live and recommend effort-matched Terra; retired direct GPT-5.1/5.2 Codex keys redirect to medium-effort Sol; static Codex selections remain catalog-gated. Added Terra low and reconciled this milestone with shipped behavior.
+- 2026-08-29: Post-completion input-budget review corrected GPT-5 Mini and GPT-5.6 input metadata to
+  reserve documented maximum output inside each total context window. All affected models and efforts
+  remain registered; only local packing capacity changes.
+- 2026-08-29: Input-budget validation passed: 227 focused tests and 52 subtests, full suite with 998
+  passed, 11 expected live-test skips, and 57 subtests, plus Ruff, Pyright, import, lockfile, ExecPlan
+  registry, official OpenAI documentation, audit, and diff checks. The initial full run identified and the
+  final patch corrected two stale GPT-5 Mini token-log expectations.

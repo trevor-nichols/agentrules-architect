@@ -5,10 +5,11 @@ This guide records model-selection and lifecycle constraints that affect AgentRu
 ## Direct OpenAI API
 
 GPT-5.6 Sol is the default AgentRules preset. Terra and Luna remain explicit alternative tiers, and all
-three use the Responses API with a 1,050,000-token context. Sol accepts `none`, `low`, `medium`, `high`,
-`xhigh`, and `max` reasoning; AgentRules sends the selected value without reducing `max` to an older
-effort. GPT-5.5 presets remain available as the immediate fallback when account availability or behavior
-requires a conservative rollback.
+three use the Responses API with a 1,050,000-token total context and 128,000-token maximum output. AgentRules
+therefore records 922,000 as their maximum input before applying its local packing safety margin. Sol
+accepts `none`, `low`, `medium`, `high`, `xhigh`, and `max` reasoning; AgentRules sends the selected value
+without reducing `max` to an older effort. GPT-5.5 presets remain available as the immediate fallback when
+account availability or behavior requires a conservative rollback.
 
 GPT-5.6 Terra is OpenAI's supported replacement for o4-mini and accepts low, medium, and high reasoning,
 so AgentRules exposes matching presets for effort-preserving migrations. The saved keys `o4-mini-low`,
@@ -20,7 +21,9 @@ behavior or cost until the original endpoint retires.
 GPT-5 Mini's low, medium, and high direct presets follow the same deprecated-but-live policy. They remain
 bound to GPT-5 Mini for saved configurations, are hidden from new picker selections, and recommend the
 matching GPT-5.6 Terra effort. OpenAI schedules the pinned GPT-5 Mini snapshot to shut down on December 11,
-2026; a runtime redirect should only be introduced when that endpoint retires.
+2026; a runtime redirect should only be introduced when that endpoint retires. Its 400,000-token total
+context and 128,000-token maximum output leave a 272,000-token maximum input before AgentRules' safety
+margin.
 
 The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` are retired compatibility IDs. They resolve to
 the medium-reasoning GPT-5.6 Sol preset before dispatch, preserving the original effort while following

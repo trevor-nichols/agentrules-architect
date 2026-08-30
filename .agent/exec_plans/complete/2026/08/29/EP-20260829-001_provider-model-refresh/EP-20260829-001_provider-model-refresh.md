@@ -83,7 +83,7 @@ The implementation must begin by revalidating this dated snapshot. If a model ha
 | Gemini | `gemini-3.7-flash` accepts low/medium/high and defaults to medium; `gemini-3.6-flash` accepts minimal/low/medium/high and defaults to medium; `gemini-3.5-flash-lite` accepts minimal/low/medium/high and defaults to minimal. Each advertises a 1,048,576-token input window and supports tools plus structured output. | Add explicit stable-family presets. Do not silently map disabled/minimal to 3.7 low. |
 | xAI | `grok-4.6`; 500,000-token context; low/medium/high/xhigh reasoning; reasoning cannot be disabled; Chat Completions and Responses support the ordinary tool/structured-output path. | Make it the recommended direct xAI model and direct-architect default. |
 | DeepSeek | `deepseek-v4-flash` and `deepseek-v4-pro` remain canonical; native thinking efforts are low/high/max; compatibility mapping sends medium and xhigh to high; thinking can be disabled; the provider advertises a 1M context and 384K output ceiling. | Expose low and missing Flash max; honor documented medium/xhigh compatibility mapping; reject minimal; retain the 32K application safety cap. |
-| OpenAI | GPT-5.6 Sol/Terra/Luna are active. o4-mini remains deprecated-but-live and GPT-5 Mini is also deprecated-but-live; both recommend Terra. Direct `gpt-5.1-codex` and `gpt-5.2-codex` are retired with Sol as the documented replacement. | Preserve live endpoint identity, redirect retired direct Codex keys to medium-effort Sol, keep static Codex choices catalog-gated, and add Terra low for effort-preserving migration. |
+| OpenAI | GPT-5.6 Sol/Terra/Luna are active with 1,050,000 total context, 128,000 maximum output, and 922,000 maximum input. GPT-5 Mini has 400,000 total context, 128,000 maximum output, and 272,000 maximum input. o4-mini and GPT-5 Mini remain deprecated-but-live and recommend Terra. Direct `gpt-5.1-codex` and `gpt-5.2-codex` are retired with Sol as the documented replacement. | Preserve live endpoint identity, reserve provider maximum output in local input metadata, redirect retired direct Codex keys to medium-effort Sol, keep static Codex choices catalog-gated, and add Terra low for effort-preserving migration. |
 
 ## Progress
 
@@ -181,6 +181,13 @@ programmatic temperature mode can no longer silently select Grok 4.6's provider-
 model remains available for every documented mode. Validation passed 180 focused tests plus 21 subtests
 and the full suite with 995 passed, 11 expected live-test skips, and 57 subtests; Ruff, Pyright, import,
 lockfile, ExecPlan registry/discovery, official-reference, audit, and diff checks also passed.
+
+The final OpenAI packing review separated total context from maximum input for GPT-5 Mini and all GPT-5.6
+tiers, retaining every model and effort while reserving documented maximum output before the packer's
+safety margin. The first full run exposed two stale token-log expectations, which were reconciled with the
+new input contract. Final validation passed 227 focused tests plus 52 subtests and the full suite with 998
+passed, 11 expected live-test skips, and 57 subtests; Ruff, Pyright, import, lockfile, ExecPlan registry,
+official OpenAI documentation, audit, and diff checks also passed.
 
 Final offline validation passed. The expanded provider, picker, and runtime suite completed with 427 tests and 48 subtests in 8.94 seconds. `ruff check src tests`, `pyright` with zero errors and warnings, and import smoke passed. Full `pytest -q` completed with 968 passed, 10 expected live-test skips, 48 subtests passed, and four pathspec deprecation warnings in 11.74 seconds. ExecPlan registry/discovery, registry key/default/exclusion diagnostics, `git diff --check`, and focused scope review also passed.
 

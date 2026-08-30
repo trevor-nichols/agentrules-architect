@@ -185,9 +185,10 @@ _XAI_1M_CONTEXT_MODELS: frozenset[str] = frozenset(
 
 def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     """
-    Attach provisional context window metadata and estimator hints to a ModelConfig.
+    Attach provider input limits and estimator hints to a ModelConfig.
 
-    Values are conservative and logging-only; refine once telemetry is available.
+    These limits drive token packing and request preflight, so total-context values
+    must reserve any provider-required output capacity before they are recorded here.
     """
     name = config.model_name.lower()
     provider = config.provider
@@ -225,7 +226,9 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
             elif "gpt-4.1" in name:
                 limit = 128_000
             elif name.startswith("gpt-5.6"):
-                limit = 1_050_000
+                limit = 922_000
+            elif name.startswith("gpt-5-mini"):
+                limit = 272_000
             elif "gpt-5.1" in name or "gpt-5" in name:
                 limit = 400_000
     elif provider == ModelProvider.DEEPSEEK:

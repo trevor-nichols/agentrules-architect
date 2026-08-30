@@ -219,3 +219,6 @@ This change is a registry/capability release with no destructive data migration.
 - 2026-08-29: Final xAI review made untranslatable modes fail closed for effort-controlled profiles while
   retaining Grok 4.6 for all documented efforts. Validation passed 180 focused tests and 21 subtests, full
   suite with 995 passed, 11 expected live-test skips, and 57 subtests, plus all repository quality gates.
+- 2026-08-29: Final OpenAI packing review corrected GPT-5 Mini and GPT-5.6 maximum-input metadata without
+  removing any model or effort. Validation passed 227 focused tests and 52 subtests, full suite with 998
+  passed, 11 expected live-test skips, and 57 subtests, plus all repository quality gates.

@@ -27,7 +27,7 @@ class ModelContract:
     provider: ModelProvider
     model_name: str
     reasoning: ReasoningMode
-    context_limit: int
+    max_input_tokens: int
     wire_reasoning: object
     anthropic_effort: str | None = None
 
@@ -93,48 +93,48 @@ DIRECT_MODEL_CONTRACTS = (
         ("disabled", None),
     ),
     ModelContract(
-        "gpt56-sol-none", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.DISABLED, 1_050_000, ("responses", "none")
+        "gpt56-sol-none", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.DISABLED, 922_000, ("responses", "none")
     ),
     ModelContract(
-        "gpt5-mini-low", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.LOW, 400_000, ("responses", "low")
+        "gpt5-mini-low", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.LOW, 272_000, ("responses", "low")
     ),
     ModelContract(
         "gpt5-mini-medium",
         ModelProvider.OPENAI,
         "gpt-5-mini",
         ReasoningMode.MEDIUM,
-        400_000,
+        272_000,
         ("responses", "medium"),
     ),
     ModelContract(
-        "gpt5-mini", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.HIGH, 400_000, ("responses", "high")
+        "gpt5-mini", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.HIGH, 272_000, ("responses", "high")
     ),
     ModelContract(
-        "gpt56-sol-low", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.LOW, 1_050_000, ("responses", "low")
+        "gpt56-sol-low", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.LOW, 922_000, ("responses", "low")
     ),
     ModelContract(
         "gpt56-sol-default",
         ModelProvider.OPENAI,
         "gpt-5.6-sol",
         ReasoningMode.MEDIUM,
-        1_050_000,
+        922_000,
         ("responses", "medium"),
     ),
     ModelContract(
-        "gpt56-sol-high", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.HIGH, 1_050_000, ("responses", "high")
+        "gpt56-sol-high", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.HIGH, 922_000, ("responses", "high")
     ),
     ModelContract(
-        "gpt56-sol-xhigh", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.XHIGH, 1_050_000, ("responses", "xhigh")
+        "gpt56-sol-xhigh", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.XHIGH, 922_000, ("responses", "xhigh")
     ),
     ModelContract(
-        "gpt56-sol-max", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.MAX, 1_050_000, ("responses", "max")
+        "gpt56-sol-max", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.MAX, 922_000, ("responses", "max")
     ),
     ModelContract(
         "gpt56-terra-low",
         ModelProvider.OPENAI,
         "gpt-5.6-terra",
         ReasoningMode.LOW,
-        1_050_000,
+        922_000,
         ("responses", "low"),
     ),
     ModelContract(
@@ -142,21 +142,21 @@ DIRECT_MODEL_CONTRACTS = (
         ModelProvider.OPENAI,
         "gpt-5.6-terra",
         ReasoningMode.MEDIUM,
-        1_050_000,
+        922_000,
         ("responses", "medium"),
     ),
     ModelContract(
-        "gpt56-terra-high", ModelProvider.OPENAI, "gpt-5.6-terra", ReasoningMode.HIGH, 1_050_000, ("responses", "high")
+        "gpt56-terra-high", ModelProvider.OPENAI, "gpt-5.6-terra", ReasoningMode.HIGH, 922_000, ("responses", "high")
     ),
     ModelContract(
-        "gpt56-luna-low", ModelProvider.OPENAI, "gpt-5.6-luna", ReasoningMode.LOW, 1_050_000, ("responses", "low")
+        "gpt56-luna-low", ModelProvider.OPENAI, "gpt-5.6-luna", ReasoningMode.LOW, 922_000, ("responses", "low")
     ),
     ModelContract(
         "gpt56-luna-default",
         ModelProvider.OPENAI,
         "gpt-5.6-luna",
         ReasoningMode.MEDIUM,
-        1_050_000,
+        922_000,
         ("responses", "medium"),
     ),
     ModelContract(
@@ -446,7 +446,7 @@ def test_direct_provider_model_contract_matrix(contract: ModelContract) -> None:
     assert config.provider == contract.provider
     assert config.model_name == contract.model_name
     assert config.reasoning == contract.reasoning
-    assert config.max_input_tokens == contract.context_limit
+    assert config.max_input_tokens == contract.max_input_tokens
     assert config.anthropic_effort == contract.anthropic_effort
     assert _resolve_wire_reasoning(config) == contract.wire_reasoning
 
