@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from functools import lru_cache
 from math import ceil
 from typing import Any, NamedTuple
 
@@ -141,20 +142,25 @@ def _estimate_gemini(model_name: str, payload: dict[str, Any], client: Any | Non
         return TokenEstimateResult(None, "gemini_api_error", str(exc))
 
 
+@lru_cache(maxsize=64)
+def _encoding_for_model(model_name: str) -> Any:
+    import tiktoken  # type: ignore
+
+    try:
+        return tiktoken.encoding_for_model(model_name)
+    except Exception:
+        return tiktoken.get_encoding("cl100k_base")
+
+
 def _estimate_tiktoken(model_name: str, payload: dict[str, Any], api: str | None) -> TokenEstimateResult:
     try:
-        import tiktoken  # type: ignore
+        encoding = _encoding_for_model(model_name)
     except ImportError:
         return TokenEstimateResult(None, "tiktoken_unavailable", "Install tiktoken to enable local estimates.")
 
     try:
-        try:
-            encoding = tiktoken.encoding_for_model(model_name)
-        except Exception:
-            encoding = tiktoken.get_encoding("cl100k_base")
-
         text = _extract_text(payload, api)
-        tokens = len(encoding.encode(text))
+        tokens = len(encoding.encode_ordinary(text))
         return TokenEstimateResult(tokens, "tiktoken")
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.debug("tiktoken estimate failed: %s", exc, exc_info=True)

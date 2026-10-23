@@ -2,18 +2,22 @@
 id: EP-20261023-001/MS002
 execplan_id: EP-20261023-001
 ms: 2
-title: "Add OpenAI GPT-6 and repair input limits"
-status: planned
+title: Add OpenAI GPT-6 and repair input limits
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [openai, capabilities, packing, lifecycle]
+updated: '2026-10-23'
+tags:
+- openai
+- capabilities
+- packing
+- lifecycle
 risk: high
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Add OpenAI GPT-6 and repair input limits
@@ -72,3 +76,5 @@ Keep phase defaults unchanged pending MS008 evaluation. Revert only new GPT-6 ex
 ## Changelog
 
 - 2026-10-23: Defined GPT-6 request, packing, lifecycle, and async-call acceptance.
+- 2026-10-23: Started after MS001; revalidated OpenAI model cards and deprecation schedule against official docs.
+- 2026-10-23: Added immutable OpenAI capabilities and GPT-6 presets, strict request validation, exact input budgets with linear token packing, dated lifecycle routing, and nonblocking architect dispatch. Full offline suite passed (1,021 tests, 57 subtests); ruff, pyright, import smoke, diff checks, and bugbot review passed.

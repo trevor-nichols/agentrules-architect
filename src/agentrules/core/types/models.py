@@ -541,7 +541,7 @@ GEMINI_3_1_PRO_PREVIEW = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# GPT-5 configurations (Responses API only)
+# OpenAI reasoning-model configurations (Responses API only)
 
 
 def _gpt5_responses_model(
@@ -558,6 +558,28 @@ def _gpt5_responses_model(
         tools_config={"enabled": False, "tools": None},
         text_verbosity=text_verbosity,
     )
+
+
+GPT6_ASTRA_DEFAULT = _gpt5_responses_model(
+    "gpt-6-astra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_1_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-6.1-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-6-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_LUNA_DEFAULT = _gpt5_responses_model(
+    "gpt-6-luna",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
 
 
 GPT5_DEFAULT = _gpt5_responses_model(

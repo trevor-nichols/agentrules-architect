@@ -10,6 +10,7 @@ Users can specify a different model for each phase and whether to use reasoning.
 from typing import TypedDict
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
+from agentrules.core.agents.openai.capabilities import get_openai_model_capabilities
 from agentrules.core.types.models import (
     CLAUDE_BASIC,
     CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
@@ -104,6 +105,10 @@ from agentrules.core.types.models import (
     GPT5_MINI_LOW,
     GPT5_MINI_MEDIUM,
     GPT5_MINIMAL,
+    GPT6_1_SOL_DEFAULT,
+    GPT6_ASTRA_DEFAULT,
+    GPT6_LUNA_DEFAULT,
+    GPT6_SOL_DEFAULT,
     GROK_4_0709,
     GROK_4_1_FAST_NON_REASONING,
     GROK_4_1_FAST_REASONING,
@@ -222,19 +227,15 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
                 limit = 1_000_000
             else:
                 limit = 1_048_576
-    elif provider in {ModelProvider.OPENAI, ModelProvider.CODEX}:
+    elif provider == ModelProvider.OPENAI:
         estimator_family = estimator_family or "tiktoken"
-        if limit is None:
-            if "o3" in name or "o4-mini" in name:
-                limit = 200_000
-            elif "gpt-4.1" in name:
-                limit = 128_000
-            elif name.startswith("gpt-5.6"):
-                limit = 922_000
-            elif name.startswith("gpt-5-mini"):
-                limit = 272_000
-            elif "gpt-5.1" in name or "gpt-5" in name:
-                limit = 400_000
+        capabilities = get_openai_model_capabilities(name)
+        if capabilities is not None:
+            limit = capabilities.max_input_tokens if limit is None else min(
+                limit, capabilities.max_input_tokens
+            )
+    elif provider == ModelProvider.CODEX:
+        estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.DEEPSEEK:
         if limit is None:
             limit = 1_000_000 if name == "deepseek-flash" or name.startswith("deepseek-v4-") else 64_000
@@ -268,6 +269,27 @@ def _preset(
         description=description,
         provider=provider,
     )
+
+
+def _gpt6_presets(
+    *,
+    key_prefix: str,
+    family_label: str,
+    base_config: ModelConfig,
+    efforts: tuple[str, ...],
+) -> dict[str, PresetDefinition]:
+    presets: dict[str, PresetDefinition] = {}
+    for effort in efforts:
+        reasoning = ReasoningMode.DISABLED if effort == "none" else ReasoningMode(effort)
+        suffix = "default" if effort == "medium" else effort
+        verbosity = "low" if effort in {"none", "low"} else "high" if effort in {"xhigh", "max"} else "medium"
+        presets[f"{key_prefix}-{suffix}"] = _preset(
+            config=base_config._replace(reasoning=reasoning, text_verbosity=verbosity),
+            label=f"{family_label} ({effort} reasoning)",
+            description=f"{family_label} via Responses API with {effort} reasoning and 1.05M total context.",
+            provider=ModelProvider.OPENAI,
+        )
+    return presets
 
 
 def _derive_codex_runtime_preset(
@@ -323,6 +345,30 @@ def _claude_code_runtime_managed_preset(
 
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
+    **_gpt6_presets(
+        key_prefix="gpt6-astra",
+        family_label="GPT-6 Astra",
+        base_config=GPT6_ASTRA_DEFAULT,
+        efforts=("low", "medium", "high", "xhigh", "max"),
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt61-sol",
+        family_label="GPT-6.1 Sol",
+        base_config=GPT6_1_SOL_DEFAULT,
+        efforts=("low", "medium", "high", "xhigh", "max"),
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt6-sol",
+        family_label="GPT-6 Sol",
+        base_config=GPT6_SOL_DEFAULT,
+        efforts=("none", "low", "medium", "high", "xhigh", "max"),
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt6-luna",
+        family_label="GPT-6 Luna",
+        base_config=GPT6_LUNA_DEFAULT,
+        efforts=("none", "low", "medium", "high", "xhigh", "max"),
+    ),
     "gemini-3.7-flash": _preset(
         config=GEMINI_3_7_FLASH,
         label="Gemini 3.7 Flash (API Alias → 3.8 Flash, Medium Thinking)",

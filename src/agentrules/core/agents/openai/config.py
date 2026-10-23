@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 from agentrules.core.agents.base import ReasoningMode
 
+from .capabilities import get_openai_model_capabilities
+
 
 @dataclass(frozen=True)
 class ModelDefaults:
@@ -66,6 +68,14 @@ _FALLBACK_DEFAULTS = ModelDefaults(default_reasoning=ReasoningMode.DISABLED)
 def resolve_model_defaults(model_name: str) -> ModelDefaults:
     """Return the defaults to apply for the supplied model name."""
     normalized = model_name.lower()
+
+    capabilities = get_openai_model_capabilities(normalized)
+    if capabilities is not None:
+        return ModelDefaults(
+            default_reasoning=capabilities.default_reasoning,
+            default_temperature=capabilities.default_temperature,
+            use_responses_api=capabilities.transport == "responses",
+        )
 
     if normalized in _MODEL_DEFAULTS:
         return _MODEL_DEFAULTS[normalized]

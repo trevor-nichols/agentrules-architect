@@ -143,6 +143,7 @@
 │       │   │   ├── openai/  # OpenAI integration
 │       │   │   │   ├── __init__.py  # OpenAI package
 │       │   │   │   ├── architect.py  # BaseArchitect implementation for OpenAI
+│       │   │   │   ├── capabilities.py
 │       │   │   │   ├── client.py  # OpenAI SDK wrapper
 │       │   │   │   ├── compat.py  # Legacy OpenAIAgent wrapper
 │       │   │   │   ├── config.py  # OpenAI default configurations
@@ -362,6 +363,7 @@
 │   │   │   ├── test_gemini_agent_parsing.py  # Tests for Gemini parser
 │   │   │   ├── test_gemini_capabilities.py  # Tests for Gemini capability flags
 │   │   │   ├── test_openai_agent_parsing.py  # Tests for OpenAI parser
+│   │   │   ├── test_openai_gpt6_contract.py
 │   │   │   ├── test_openai_helpers.py  # Tests for OpenAI helpers
 │   │   │   ├── test_system_prompt_policy.py  # Tests for system prompt handling
 │   │   │   ├── test_token_logging.py  # Tests for token usage logging
@@ -403,6 +405,7 @@
 │   │   ├── test_final_analysis_prompt.py  # Unit tests for final prompt rendering
 │   │   ├── test_model_config_helper.py  # Unit tests for config name lookup
 │   │   ├── test_model_overrides.py  # Unit tests for overriding defaults
+│   │   ├── test_openai_lifecycle.py
 │   │   ├── test_output_validation.py  # Unit tests for filename validations
 │   │   ├── test_phase_events.py  # Unit tests for event emission in phases
 │   │   ├── test_phase_prompt_separation.py  # Unit tests for prompt templating

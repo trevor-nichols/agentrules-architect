@@ -4,12 +4,20 @@ This guide records model-selection and lifecycle constraints that affect AgentRu
 
 ## Direct OpenAI API
 
-GPT-5.6 Sol is the default AgentRules preset. Terra and Luna remain explicit alternative tiers, and all
-three use the Responses API with a 1,050,000-token total context and 128,000-token maximum output. AgentRules
-therefore records 922,000 as their maximum input before applying its local packing safety margin. Sol
-accepts `none`, `low`, `medium`, `high`, `xhigh`, and `max` reasoning; AgentRules sends the selected value
-without reducing `max` to an older effort. GPT-5.5 presets remain available as the immediate fallback when
-account availability or behavior requires a conservative rollback.
+GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, and GPT-6 Luna are reviewed direct-API choices. All use the Responses
+API with a 1,050,000-token total context and 128,000-token maximum output, leaving 922,000 tokens for
+input before the local packing margin. Astra and 6.1 Sol accept `low`, `medium`, `high`, `xhigh`, and `max`
+reasoning; Sol and Luna additionally accept `none`. `minimal` is unsupported for all four. AgentRules
+rejects unsupported effort or transport combinations before dispatch and does not silently lower effort.
+
+GPT-5.6 Sol remains the AgentRules phase default pending representative project evaluation. Its Terra and
+Luna tiers, plus GPT-5.5, remain explicit rollback choices. GPT-5.6 tiers also have a 922,000-token input
+ceiling before the safety margin. Direct GPT-6 availability does not add static Codex runtime models.
+
+The input budget records each model's maximum input after reserving its maximum output from total context.
+GPT-5.4 Mini/Nano and GPT-5.3-Codex therefore use 272,000 input tokens, not their 400,000-token total
+window. GPT-5.5 uses 922,000 and GPT-4.1 uses 1,014,808 before the packing margin. Phase 3 file content
+is JSON-escaped and the packer counts its skeleton once plus each file once.
 
 GPT-5.6 Terra is OpenAI's supported replacement for o4-mini and accepts low, medium, and high reasoning,
 so AgentRules exposes matching presets for effort-preserving migrations. The saved keys `o4-mini-low`,
@@ -25,6 +33,13 @@ matching GPT-5.6 Terra effort. OpenAI schedules the pinned GPT-5 Mini snapshot t
 context and 128,000-token maximum output leave a 272,000-token maximum input before AgentRules' safety
 margin.
 
+Scheduled OpenAI retirement mappings preserve saved wire models until the documented shutdown date, then
+resolve each saved key directly to an active preset. GPT-5/o3 route to matching GPT-5.6 Sol efforts on
+December 11, 2026; GPT-4.1 routes to GPT-6 Luna on January 14, 2027; GPT-5.1 and GPT-5.3-Codex route to
+GPT-6 Sol, and GPT-5.4 Nano routes to GPT-6 Luna, on April 1, 2027. GPT-4.1's temperature variants share
+the recommended Luna default after retirement. Picker warnings show deprecated saved selections while
+excluding them from new choices.
+
 The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` are retired compatibility IDs. They resolve to
 the medium-reasoning GPT-5.6 Sol preset before dispatch, preserving the original effort while following
 OpenAI's documented replacement. Their static Codex-derived counterparts remain runtime-owned selections:
@@ -35,6 +50,10 @@ excluded because their transport or execution-mode contracts are not represented
 Official references:
 
 - [OpenAI latest model guide](https://developers.openai.com/api/docs/guides/latest-model)
+- [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra)
+- [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+- [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol)
+- [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna)
 - [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations)
 - [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra)
 - [GPT-5 Mini](https://developers.openai.com/api/docs/models/gpt-5-mini)
@@ -210,7 +229,7 @@ skip every provider and make no paid request.
 
 | Provider | Preferred fallback | Important restriction |
 | --- | --- | --- |
-| OpenAI | GPT-5.5 | Saved GPT-5.6 configurations require the new presets to remain registered. |
+| OpenAI | GPT-5.6 Sol, then GPT-5.5 | Keep saved GPT-6 and GPT-5.6 keys registered; leave the phase default on GPT-5.6 Sol pending evaluation. |
 | DeepSeek | V4.1 Flash | Use `deepseek-flash`; old V4 Flash and Chat/Reasoner keys are compatibility selections. |
 | Anthropic | Claude Opus 4.8 | Keep explicit Opus 5 keys registered; do not auto-fallback from a Fable refusal. |
 | xAI | Grok 4.5 | Do not select Multi-Agent through the Chat Completions adapter. |

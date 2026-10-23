@@ -7,6 +7,8 @@ It defines functions to format prompts for the dynamic agents based on their ass
 
 from __future__ import annotations
 
+import json
+
 from agentrules.core.utils.system_prompt import normalize_responsibilities
 
 PHASE_3_SYSTEM_PROMPT = (
@@ -70,7 +72,9 @@ def format_phase3_prompt(context: dict) -> str:
     if isinstance(file_contents, dict):
         formatted_contents = []
         for path, content in file_contents.items():
-            formatted_contents.append(f"<file path=\"{path}\">\n{content}\n</file>")
+            formatted_contents.append(
+                json.dumps({"path": path, "content": content}, ensure_ascii=False)
+            )
 
         file_content_str = "\n\n".join(formatted_contents)
     else:

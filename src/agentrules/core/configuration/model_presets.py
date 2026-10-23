@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
 
 from agentrules.config import agents as agent_settings
 from agentrules.config.agents import PresetDefinition
@@ -69,6 +70,17 @@ class PresetInfo:
 class PresetDeprecationInfo:
     replacement_key: str | None = None
     reason: str | None = None
+    retirement_date: date | None = None
+    retirement_replacement_key: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.retirement_date is None) != (self.retirement_replacement_key is None):
+            raise ValueError("Scheduled retirement requires both a date and replacement key")
+
+    def runtime_replacement_key(self, *, as_of: date) -> str | None:
+        if self.retirement_date is not None and as_of >= self.retirement_date:
+            return self.retirement_replacement_key
+        return self.replacement_key
 
 
 @dataclass(frozen=True)
@@ -229,6 +241,60 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
     ),
 }
 
+
+def _add_scheduled_openai_retirements() -> None:
+    scheduled_groups = (
+        (
+            date(2026, 12, 11),
+            {
+                "o3-low": "gpt56-sol-low",
+                "o3-medium": "gpt56-sol-default",
+                "o3-high": "gpt56-sol-high",
+                "gpt5-default": "gpt56-sol-default",
+                "gpt5-minimal": "gpt56-sol-none",
+                "gpt5-high": "gpt56-sol-high",
+            },
+        ),
+        (
+            date(2027, 1, 14),
+            {
+                "gpt4.1-default": "gpt6-luna-default",
+                "gpt4.1-creative": "gpt6-luna-default",
+                "gpt4.1-precise": "gpt6-luna-default",
+            },
+        ),
+        (
+            date(2027, 4, 1),
+            {
+                "gpt51-default": "gpt6-sol-default",
+                "gpt51-minimal": "gpt6-sol-none",
+                "gpt51-high": "gpt6-sol-high",
+                "gpt-5.3-codex": "gpt6-sol-default",
+                "gpt54-nano-none": "gpt6-luna-none",
+                "gpt54-nano-low": "gpt6-luna-low",
+                "gpt54-nano-medium": "gpt6-luna-default",
+                "gpt54-nano-high": "gpt6-luna-high",
+                "gpt54-nano-xhigh": "gpt6-luna-xhigh",
+            },
+        ),
+    )
+    for retirement_date, replacements in scheduled_groups:
+        for key, replacement in replacements.items():
+            if key not in agent_settings.MODEL_PRESETS or replacement not in agent_settings.MODEL_PRESETS:
+                raise ValueError(f"OpenAI retirement mapping is not registered: {key} -> {replacement}")
+            DEPRECATED_PRESETS[key] = PresetDeprecationInfo(
+                reason=(
+                    f"OpenAI retires this API model on {retirement_date.isoformat()}; "
+                    "saved selections stay on their original endpoint until then "
+                    f"and use {replacement} after retirement."
+                ),
+                retirement_date=retirement_date,
+                retirement_replacement_key=replacement,
+            )
+
+
+_add_scheduled_openai_retirements()
+
 CONFIG_MANAGER = get_config_manager()
 _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS: set[str] = set()
 
@@ -271,12 +337,17 @@ def get_preset_deprecation_info(key: str | None) -> PresetDeprecationInfo | None
     return DEPRECATED_PRESETS.get(key)
 
 
-def resolve_runtime_preset_key(preset_key: str | None, *, warn: bool = False) -> str | None:
+def resolve_runtime_preset_key(
+    preset_key: str | None, *, warn: bool = False, as_of: date | None = None
+) -> str | None:
     if preset_key is None:
         return None
 
     deprecation = get_preset_deprecation_info(preset_key)
-    replacement_key = deprecation.replacement_key if deprecation is not None else None
+    current_date = as_of or datetime.now(UTC).date()
+    replacement_key = (
+        deprecation.runtime_replacement_key(as_of=current_date) if deprecation is not None else None
+    )
     replacement_is_registered = bool(replacement_key and replacement_key in agent_settings.MODEL_PRESETS)
 
     if deprecation is not None and warn and preset_key not in _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS:

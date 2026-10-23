@@ -306,7 +306,7 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 
 | Provider | Current or recommended selection | Compatibility and fallback |
 | --- | --- | --- |
-| OpenAI | GPT-5.6 Sol (the default), with Terra and Luna tiers | GPT-5.5 remains selectable as the immediate direct-API fallback. |
+| OpenAI | GPT-5.6 Sol remains the phase default; direct GPT-6 Astra, 6.1 Sol, Sol, and Luna choices are available | GPT-5.6 tiers and GPT-5.5 remain selectable rollback choices. GPT-6 options use Responses with validated effort and 922K input ceilings before packing margin. |
 | DeepSeek | V4.1 Flash (`deepseek-flash`) or V4 Pro | Saved V4 Flash, `deepseek-chat`, and `deepseek-reasoner` keys resolve directly to matching V4.1 Flash modes. |
 | Anthropic | Claude Sonnet 5 or Fable 5; generic Opus keys use Opus 4.8 | Opus 4.8 is the conservative fallback. Fable 5 requires the provider's 30-day retention policy. |
 | xAI | Grok 4.5; pinned Grok 4.20 reasoning and non-reasoning variants are available | Grok 4.3 remains selectable. The 4.20 Multi-Agent model is intentionally excluded because this adapter uses Chat Completions. |
