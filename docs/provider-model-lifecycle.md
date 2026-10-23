@@ -89,6 +89,37 @@ Official references:
 
 ## Direct Anthropic API
 
+### Claude 5.5 and Fable 5.1
+
+Direct presets use `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`, and
+`claude-fable-5-1`. Each has a 1M-token context window and 128K maximum output. AgentRules
+reserves the full output capacity and packs at most 872K input tokens before its usual safety
+margin. A directly constructed `AnthropicArchitect` defaults to Sonnet 5.5 with no up-front
+thinking, preserving the old direct constructor's reasoning setting. Opus 5.5 and Haiku 5.5
+default to medium effort; Sonnet 5.5 and Fable 5.1 default to high. All four accept low,
+medium, high, xhigh, and max effort with adaptive thinking.
+Manual thinking budgets are rejected by Anthropic on these models.
+
+Opus 5.5 and Fable 5.1 always use adaptive thinking. Sonnet 5.5 cannot use
+`thinking: {"type": "disabled"}`; its **No Upfront Thinking** preset sends
+`thinking: {"type": "between_tools"}` at high effort, and progress notes may still appear
+between tool calls. Haiku 5.5 can disable thinking at low, medium, or high effort only.
+The request builder rejects unsupported mode/effort combinations and output budgets above
+128K before dispatch. Structured JSON schemas use `output_config.format`.
+
+Fable 5.1 requires 30-day data retention and is unavailable under zero data retention
+unless Anthropic expressly authorizes it. The picker displays this requirement. AgentRules
+does not change workspace retention settings. All four new models may return an HTTP 200
+response with `stop_reason="refusal"`; direct calls return an explicit refusal error, and
+streams hold content until the final message confirms success so partial refused content
+cannot be delivered. Automatic fallback is not configured.
+
+Claude Sonnet 4.5 is deprecated but remains live until **November 30, 2026**. Saved
+`claude-sonnet` and `claude-sonnet-reasoning` keys keep their Sonnet 4.5 wire model before
+that date. From the retirement date, they resolve in one hop to the Sonnet 5.5 No Upfront
+Thinking and default adaptive profiles respectively. Other older model choices remain
+explicit rollback options where Anthropic still serves them.
+
 ### Claude Sonnet 5
 
 `claude-sonnet-5` has a 1,000,000-token context and uses adaptive thinking by default. AgentRules offers an explicit non-thinking preset that sends `thinking: {"type": "disabled"}` plus adaptive presets at low, medium, high, xhigh, and max effort. Manual thinking budgets are not supported. Sonnet 5 remains compatible with zero-data-retention arrangements.
@@ -117,6 +148,11 @@ moving `claude-code-opus` alias remains runtime-owned and is not treated as a pi
 
 Official references:
 
+- [Current Claude model comparison](https://platform.claude.com/docs/en/models/overview)
+- [Thinking modes](https://platform.claude.com/docs/en/build-with-claude/thinking)
+- [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+- [Stop reasons](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons)
+- [Context window accounting](https://platform.claude.com/docs/en/build-with-claude/context-windows)
 - [Claude Sonnet 5 changes](https://platform.claude.com/docs/en/about-claude/models/whats-new-sonnet-5)
 - [Claude Fable 5 introduction](https://platform.claude.com/docs/en/about-claude/models/introducing-claude-fable-5-and-claude-mythos-5)
 - [Claude Code v2.1.219 release](https://github.com/anthropics/claude-code/releases/tag/v2.1.219)

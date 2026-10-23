@@ -351,6 +351,7 @@
 │   │   │   ├── test_anthropic_agent_parsing.py  # Tests for Anthropic parser
 │   │   │   ├── test_anthropic_capabilities.py  # Tests for Anthropic capability flags
 │   │   │   ├── test_anthropic_client_compat.py  # Tests for Anthropic client
+│   │   │   ├── test_anthropic_latest_contract.py
 │   │   │   ├── test_anthropic_request_builder.py  # Tests for Anthropic request building
 │   │   │   ├── test_claude_code_architect.py
 │   │   │   ├── test_claude_code_client.py

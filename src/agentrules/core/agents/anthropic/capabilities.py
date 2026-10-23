@@ -23,6 +23,7 @@ class ThinkingPolicy(Enum):
     ADAPTIVE_OPT_IN = "adaptive_opt_in"
     ADAPTIVE_DEFAULT = "adaptive_default"
     ALWAYS_ADAPTIVE = "always_adaptive"
+    BETWEEN_TOOLS = "between_tools"
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,8 @@ class CapabilityProfile:
     supported_effort_levels_with_thinking_disabled: frozenset[AnthropicEffort] | None = None
     thinking_policy: ThinkingPolicy = ThinkingPolicy.LEGACY
     may_return_midstream_refusal: bool = False
+    max_input_tokens: int | None = None
+    max_output_tokens: int | None = None
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -52,8 +55,59 @@ _DEFAULT_PROFILE = CapabilityProfile(
 _SUPPORTED_EFFORT_LEVELS: frozenset[AnthropicEffort] = frozenset(
     {"low", "medium", "high", "xhigh", "max"}
 )
+_NEW_MODEL_INPUT_LIMIT = 1_000_000 - 128_000
 
 _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
+    CapabilityProfile(
+        family_prefix="claude-fable-5-1",
+        display_name="Claude Fable 5.1",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=_SUPPORTED_EFFORT_LEVELS,
+        thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
+        may_return_midstream_refusal=True,
+        max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
+        max_output_tokens=128_000,
+    ),
+    CapabilityProfile(
+        family_prefix="claude-opus-5-5",
+        display_name="Claude Opus 5.5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=_SUPPORTED_EFFORT_LEVELS,
+        thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
+        may_return_midstream_refusal=True,
+        max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
+        max_output_tokens=128_000,
+    ),
+    CapabilityProfile(
+        family_prefix="claude-sonnet-5-5",
+        display_name="Claude Sonnet 5.5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=_SUPPORTED_EFFORT_LEVELS,
+        supported_effort_levels_with_thinking_disabled=frozenset({"low", "medium", "high"}),
+        thinking_policy=ThinkingPolicy.BETWEEN_TOOLS,
+        may_return_midstream_refusal=True,
+        max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
+        max_output_tokens=128_000,
+    ),
+    CapabilityProfile(
+        family_prefix="claude-haiku-5-5",
+        display_name="Claude Haiku 5.5",
+        supports_structured_output_format=True,
+        supports_adaptive_thinking=True,
+        supports_manual_thinking=False,
+        supported_effort_levels=_SUPPORTED_EFFORT_LEVELS,
+        supported_effort_levels_with_thinking_disabled=frozenset({"low", "medium", "high"}),
+        thinking_policy=ThinkingPolicy.ADAPTIVE_DEFAULT,
+        may_return_midstream_refusal=True,
+        max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
+        max_output_tokens=128_000,
+    ),
     CapabilityProfile(
         family_prefix="claude-fable-5",
         display_name="Claude Fable 5",
@@ -243,7 +297,7 @@ def validate_thinking_effort_compatibility(
 ) -> None:
     """Reject provider-invalid combinations of thinking policy and effort."""
 
-    if thinking_type != "disabled" or effort is None:
+    if thinking_type not in {"disabled", "between_tools"} or effort is None:
         return
 
     allowed_effort_levels = (

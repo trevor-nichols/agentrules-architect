@@ -98,6 +98,11 @@ CLAUDE_FABLE_5 = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+CLAUDE_FABLE_51 = CLAUDE_FABLE_5._replace(model_name="claude-fable-5-1")
+CLAUDE_OPUS_55 = CLAUDE_FABLE_5._replace(model_name="claude-opus-5-5")
+CLAUDE_SONNET_55 = CLAUDE_FABLE_5._replace(model_name="claude-sonnet-5-5")
+CLAUDE_HAIKU_55 = CLAUDE_FABLE_5._replace(model_name="claude-haiku-5-5")
+
 CLAUDE_HAIKU = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
     model_name="claude-haiku-4-5",

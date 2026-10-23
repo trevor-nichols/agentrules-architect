@@ -2,18 +2,22 @@
 id: EP-20261023-001/MS004
 execplan_id: EP-20261023-001
 ms: 4
-title: "Add Anthropic 5.5 models and refusal handling"
-status: planned
+title: Add Anthropic 5.5 models and refusal handling
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [anthropic, thinking, refusals, lifecycle]
+updated: '2026-10-23'
+tags:
+- anthropic
+- thinking
+- refusals
+- lifecycle
 risk: high
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Add Anthropic 5.5 models and refusal handling
@@ -72,3 +76,4 @@ Keep prior Opus/Haiku choices as explicit rollback options. If exact model or re
 ## Changelog
 
 - 2026-10-23: Defined direct Anthropic thinking, refusal, retention, and lifecycle acceptance.
+- 2026-10-23: Added four current direct profiles with exact thinking and input/output limits; buffered new-model streams until final refusal status, moved synchronous token preflight, packing, and message calls off the event loop, and scheduled one-hop Sonnet 4.5 retirement routing. Full offline suite: 1,073 passed, 11 opt-in skips, 57 subtests; ruff, pyright, import smoke, and diff checks passed. Bugbot's picker-label findings were fixed and follow-up review found no remaining actionable issues.

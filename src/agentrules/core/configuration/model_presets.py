@@ -127,6 +127,16 @@ def _build_preset_infos(
 
 PRESET_INFOS: dict[str, PresetInfo] = _build_preset_infos(agent_settings.MODEL_PRESETS.items())
 DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
+    "claude-sonnet": PresetDeprecationInfo(
+        retirement_date=date(2026, 11, 30),
+        retirement_replacement_key="claude-sonnet-5.5-between-tools",
+        reason="Claude Sonnet 4.5 retires November 30, 2026; saved key stays on 4.5 until then.",
+    ),
+    "claude-sonnet-reasoning": PresetDeprecationInfo(
+        retirement_date=date(2026, 11, 30),
+        retirement_replacement_key="claude-sonnet-5.5",
+        reason="Claude Sonnet 4.5 retires November 30, 2026; saved key stays on 4.5 until then.",
+    ),
     "o4-mini-low": PresetDeprecationInfo(
         reason=(
             "OpenAI deprecated o4-mini but has not retired it; "

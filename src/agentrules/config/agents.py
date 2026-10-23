@@ -9,6 +9,7 @@ Users can specify a different model for each phase and whether to use reasoning.
 
 from typing import TypedDict
 
+from agentrules.core.agents.anthropic.capabilities import resolve_capability_profile as resolve_anthropic_profile
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.agents.gemini.capabilities import resolve_capability_profile
 from agentrules.core.agents.openai.capabilities import get_openai_model_capabilities
@@ -16,7 +17,9 @@ from agentrules.core.types.models import (
     CLAUDE_BASIC,
     CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
     CLAUDE_FABLE_5,
+    CLAUDE_FABLE_51,
     CLAUDE_HAIKU,
+    CLAUDE_HAIKU_55,
     CLAUDE_HAIKU_WITH_REASONING,
     CLAUDE_OPUS,
     CLAUDE_OPUS_5,
@@ -29,11 +32,13 @@ from agentrules.core.types.models import (
     CLAUDE_OPUS_47_WITH_REASONING,
     CLAUDE_OPUS_48,
     CLAUDE_OPUS_48_WITH_REASONING,
+    CLAUDE_OPUS_55,
     CLAUDE_OPUS_WITH_REASONING,
     CLAUDE_SONNET_5,
     CLAUDE_SONNET_5_WITH_REASONING,
     CLAUDE_SONNET_46,
     CLAUDE_SONNET_46_WITH_REASONING,
+    CLAUDE_SONNET_55,
     CLAUDE_WITH_REASONING,
     DEEPSEEK_CHAT,
     DEEPSEEK_FLASH,
@@ -209,6 +214,9 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
     estimator_family: str | None = getattr(config, "estimator_family", None)
 
     if provider == ModelProvider.ANTHROPIC:
+        profile = resolve_anthropic_profile(name)
+        if profile.max_input_tokens is not None:
+            limit = profile.max_input_tokens if limit is None else min(limit, profile.max_input_tokens)
         if limit is None:
             if (
                 name.startswith("claude-fable-5")
@@ -294,6 +302,42 @@ def _gpt6_presets(
             label=f"{family_label} ({effort} reasoning)",
             description=f"{family_label} via Responses API with {effort} reasoning and 1.05M total context.",
             provider=ModelProvider.OPENAI,
+        )
+    return presets
+
+
+def _claude_latest_presets(
+    *,
+    key: str,
+    label: str,
+    config: ModelConfig,
+    default_effort: str,
+    retention_notice: str = "",
+    no_upfront_thinking: bool = False,
+    disabled_efforts: tuple[str, ...] = (),
+) -> dict[str, PresetDefinition]:
+    presets: dict[str, PresetDefinition] = {}
+    for effort in ("low", "medium", "high", "xhigh", "max"):
+        suffix = "" if effort == default_effort else f"-reasoning-{effort}"
+        presets[f"{key}{suffix}"] = _preset(
+            config=config._replace(anthropic_effort=effort),
+            label=f"{label}{retention_notice} (Adaptive, {effort} effort)",
+            description=f"{label} with adaptive thinking, {effort} effort, and 1M context.{retention_notice}",
+            provider=ModelProvider.ANTHROPIC,
+        )
+    if no_upfront_thinking:
+        presets[f"{key}-between-tools"] = _preset(
+            config=config._replace(reasoning=ReasoningMode.DISABLED, anthropic_effort="high"),
+            label=f"{label} (No Upfront Thinking)",
+            description="Uses between_tools at high effort; progress notes may still appear between tools.",
+            provider=ModelProvider.ANTHROPIC,
+        )
+    for effort in disabled_efforts:
+        presets[f"{key}-thinking-disabled-{effort}"] = _preset(
+            config=config._replace(reasoning=ReasoningMode.DISABLED, anthropic_effort=effort),
+            label=f"{label} (Thinking Disabled, {effort} effort)",
+            description=f"{label} with thinking disabled at {effort} effort.",
+            provider=ModelProvider.ANTHROPIC,
         )
     return presets
 
@@ -551,14 +595,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-sonnet": _preset(
         config=CLAUDE_BASIC,
-        label="Claude Sonnet 4.5",
-        description="Balanced Claude 4.5 release for default analysis work.",
+        label="Claude Sonnet 4.5 [retires 2026-11-30 → Sonnet 5.5] (No Upfront Thinking)",
+        description=(
+            "Saved selection stays on Sonnet 4.5 until retirement, then uses Sonnet 5.5 "
+            "with no up-front thinking."
+        ),
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-sonnet-reasoning": _preset(
         config=CLAUDE_WITH_REASONING,
-        label="Claude Sonnet 4.5 (Thinking)",
-        description="Enables extended thinking for deeper investigations.",
+        label="Claude Sonnet 4.5 [retires 2026-11-30 → Sonnet 5.5] (Extended Thinking → Adaptive)",
+        description=(
+            "Saved selection stays on Sonnet 4.5 extended thinking until retirement, "
+            "then uses Sonnet 5.5 adaptive thinking."
+        ),
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-sonnet-4.6": _preset(
@@ -623,31 +673,31 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-fable-5-reasoning-low": _preset(
         config=CLAUDE_FABLE_5._replace(anthropic_effort="low"),
-        label="Claude Fable 5 (Always-Adaptive, Low Effort)",
+        label="Claude Fable 5 [30-day retention] (Always-Adaptive, Low Effort)",
         description="Claude Fable 5 always-on adaptive thinking at low effort with 1M context.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-fable-5-reasoning-medium": _preset(
         config=CLAUDE_FABLE_5._replace(anthropic_effort="medium"),
-        label="Claude Fable 5 (Always-Adaptive, Medium Effort)",
+        label="Claude Fable 5 [30-day retention] (Always-Adaptive, Medium Effort)",
         description="Claude Fable 5 always-on adaptive thinking at medium effort with 1M context.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-fable-5-reasoning-high": _preset(
         config=CLAUDE_FABLE_5._replace(anthropic_effort="high"),
-        label="Claude Fable 5 (Always-Adaptive, High Effort)",
+        label="Claude Fable 5 [30-day retention] (Always-Adaptive, High Effort)",
         description="Claude Fable 5 always-on adaptive thinking at high effort with 1M context.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-fable-5-reasoning-xhigh": _preset(
         config=CLAUDE_FABLE_5._replace(anthropic_effort="xhigh"),
-        label="Claude Fable 5 (Always-Adaptive, XHigh Effort)",
+        label="Claude Fable 5 [30-day retention] (Always-Adaptive, XHigh Effort)",
         description="Claude Fable 5 always-on adaptive thinking at xhigh effort for long-horizon agentic work.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-fable-5-reasoning-max": _preset(
         config=CLAUDE_FABLE_5._replace(anthropic_effort="max"),
-        label="Claude Fable 5 (Always-Adaptive, Max Effort)",
+        label="Claude Fable 5 [30-day retention] (Always-Adaptive, Max Effort)",
         description="Claude Fable 5 always-on adaptive thinking at maximum effort for the hardest workloads.",
         provider=ModelProvider.ANTHROPIC,
     ),
@@ -824,6 +874,33 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         label="Claude Opus 4.8 (Adaptive Thinking, Max Effort)",
         description="Opus 4.8 adaptive thinking with max effort for the deepest available reasoning.",
         provider=ModelProvider.ANTHROPIC,
+    ),
+    **_claude_latest_presets(
+        key="claude-opus-5.5",
+        label="Claude Opus 5.5",
+        config=CLAUDE_OPUS_55,
+        default_effort="medium",
+    ),
+    **_claude_latest_presets(
+        key="claude-sonnet-5.5",
+        label="Claude Sonnet 5.5",
+        config=CLAUDE_SONNET_55,
+        default_effort="high",
+        no_upfront_thinking=True,
+    ),
+    **_claude_latest_presets(
+        key="claude-haiku-5.5",
+        label="Claude Haiku 5.5",
+        config=CLAUDE_HAIKU_55,
+        default_effort="medium",
+        disabled_efforts=("low", "medium", "high"),
+    ),
+    **_claude_latest_presets(
+        key="claude-fable-5.1",
+        label="Claude Fable 5.1",
+        config=CLAUDE_FABLE_51,
+        default_effort="high",
+        retention_notice=" [30-day retention; ZDR unavailable without Anthropic approval]",
     ),
     "o3-low": _preset(
         config=O3_LOW,

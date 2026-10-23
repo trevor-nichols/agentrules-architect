@@ -178,7 +178,8 @@ class Phase3Analysis:
                     file_contents = await self._get_file_contents(directory, assigned_files)
 
                 # Pack into batches respecting model limits
-                batches = self._pack_batches(
+                batches = await asyncio.to_thread(
+                    self._pack_batches,
                     architect=architect,
                     agent_def=agent_def,
                     file_contents=file_contents,
