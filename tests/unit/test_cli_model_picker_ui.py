@@ -15,6 +15,7 @@ from agentrules.cli.ui.settings.models.utils import (
 )
 from agentrules.core.agents.base import ModelProvider
 from agentrules.core.configuration import model_presets
+from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
 
 
 def _preset(
@@ -155,14 +156,18 @@ def test_selection_filter_preserves_current_deprecated_preset_with_label() -> No
     assert filtered[0].label.endswith("[deprecated]")
 
 
-def test_gemini_deprecated_picker_choices_show_shutdown_date() -> None:
+def test_gemini_picker_discloses_prior_user_access_and_upstream_aliases() -> None:
     flash = model_presets.get_preset_info("gemini-flash")
     pro = model_presets.get_preset_info("gemini-pro")
+    flash37 = model_presets.get_preset_info("gemini-3.7-flash")
+    flash35 = model_presets.get_preset_info("gemini-3.5-flash")
     assert flash is not None
     assert pro is not None
+    assert flash37 is not None
+    assert flash35 is not None
 
     state = build_model_choice_state(
-        [flash, pro],
+        [flash, pro, flash37, flash35],
         current_key="gemini-flash",
         default_key=None,
         include_reset=False,
@@ -170,8 +175,51 @@ def test_gemini_deprecated_picker_choices_show_shutdown_date() -> None:
     )
     rendered_titles = [str(choice.title) for choice in state.choices if hasattr(choice, "title")]
 
-    assert any("2026-10-16" in title and "2.5 Flash" in title for title in rendered_titles)
-    assert any("2026-10-16" in title and "2.5 Pro" in title for title in rendered_titles)
+    assert any("2.5 Flash (Existing-User Access)" in title for title in rendered_titles)
+    assert any("2.5 Pro (Existing-User Access)" in title for title in rendered_titles)
+    assert any("3.7 Flash (API Alias → 3.8 Flash" in title for title in rendered_titles)
+    assert any("3.5 Flash (API Alias → 3.6 Flash" in title for title in rendered_titles)
+    assert all("2026-10-16" not in title for title in rendered_titles)
+
+
+def test_claude_code_picker_filters_pins_by_exact_runtime_version(monkeypatch) -> None:
+    keys = (
+        "claude-code-haiku-alias",
+        "claude-code-fable-5.1",
+        "claude-code-opus-5.5",
+        "claude-code-sonnet-5.5",
+        "claude-code-haiku-5.5",
+    )
+    presets = [model_presets.get_preset_info(key) for key in keys]
+    assert all(preset is not None for preset in presets)
+    available_presets = [preset for preset in presets if preset is not None]
+    monkeypatch.setattr(
+        model_settings.configuration.CONFIG_MANAGER,
+        "get_claude_code_runtime_version",
+        lambda: ClaudeCodeVersion(2, 1, 280),
+    )
+
+    filtered = model_settings._filter_claude_code_presets_for_runtime(
+        available_presets,
+        preserved_key=None,
+    )
+    assert [preset.key for preset in filtered] == [
+        "claude-code-haiku-alias",
+        "claude-code-fable-5.1",
+        "claude-code-opus-5.5",
+    ]
+
+    monkeypatch.setattr(
+        model_settings.configuration.CONFIG_MANAGER,
+        "get_claude_code_runtime_version",
+        lambda: None,
+    )
+    preserved = model_settings._filter_claude_code_presets_for_runtime(
+        available_presets,
+        preserved_key="claude-code-haiku-5.5",
+    )
+    assert [preset.key for preset in preserved] == ["claude-code-haiku-alias", "claude-code-haiku-5.5"]
+    assert "runtime version unverified; needs 2.1.293+" in preserved[-1].label
 
 
 def test_configure_models_preserves_saved_deprecated_preset_in_picker(monkeypatch) -> None:

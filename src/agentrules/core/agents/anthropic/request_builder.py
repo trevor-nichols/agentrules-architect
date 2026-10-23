@@ -53,9 +53,18 @@ def prepare_request(
         output_format=output_format,
     )
     normalized_effort = output_config.get("effort") if output_config is not None else None
+    profile = resolve_capability_profile(model_name)
+    resolved_max_tokens = _resolve_max_tokens(max_tokens, normalized_effort)
+    if resolved_max_tokens <= 0:
+        raise ValueError("max_tokens must be positive.")
+    if profile.max_output_tokens is not None and resolved_max_tokens > profile.max_output_tokens:
+        raise ValueError(
+            f"max_tokens={resolved_max_tokens} exceeds model '{model_name}' maximum "
+            f"of {profile.max_output_tokens}."
+        )
     payload: dict[str, Any] = {
         "model": model_name,
-        "max_tokens": _resolve_max_tokens(max_tokens, normalized_effort),
+        "max_tokens": resolved_max_tokens,
         "messages": [
             {
                 "role": "user",
@@ -105,6 +114,13 @@ def _build_thinking_payload(*, model_name: str, reasoning: ReasoningMode) -> dic
         # the provider-recommended request shape.
         return None
 
+    if profile.thinking_policy == ThinkingPolicy.BETWEEN_TOOLS:
+        if reasoning == ReasoningMode.DISABLED:
+            return {"type": "between_tools"}
+        if reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
+            return {"type": "adaptive"}
+        return None
+
     if profile.thinking_policy == ThinkingPolicy.ADAPTIVE_DEFAULT:
         if reasoning == ReasoningMode.DISABLED:
             return {"type": "disabled"}
@@ -151,7 +167,9 @@ def _build_output_config(
     if effort is not None:
         output_config["effort"] = effort
 
-    if output_format is not None and supports_structured_output_format(model_name):
+    if output_format is not None:
+        if not supports_structured_output_format(model_name):
+            raise ValueError(f"Model '{model_name}' does not support structured JSON output.")
         output_config["format"] = output_format
 
     if not output_config:

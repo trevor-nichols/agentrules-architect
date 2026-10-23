@@ -10,6 +10,12 @@ from .request_builder import PreparedRequest
 _client: OpenAI | None = None
 
 
+def set_client(client: OpenAI | None) -> None:
+    """Inject a client for offline provider contract tests."""
+    global _client
+    _client = client
+
+
 def get_client() -> OpenAI:
     """Return a cached OpenAI SDK client."""
     global _client

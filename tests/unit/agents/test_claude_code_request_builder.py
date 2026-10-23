@@ -6,11 +6,13 @@ from pathlib import Path
 import pytest
 from claude_agent_sdk import ClaudeAgentOptions
 
+from agentrules.config.agents import MODEL_PRESETS
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.claude_code.request_builder import prepare_request
 from agentrules.core.configuration.manager import ConfigManager
 from agentrules.core.configuration.models import ClaudeCodeConfig
 from agentrules.core.configuration.repository import TomlConfigRepository
+from agentrules.core.configuration.services import claude_code as claude_code_service
 from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
 from agentrules.core.types.models import (
     CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
@@ -287,6 +289,157 @@ def test_prepare_request_fails_closed_when_opus5_runtime_version_is_unknown(
         )
 
 
+@pytest.mark.parametrize(
+    ("preset_key", "minimum_version", "effort"),
+    [
+        ("claude-code-fable-5.1", ClaudeCodeVersion(2, 1, 257), "high"),
+        ("claude-code-opus-5.5", ClaudeCodeVersion(2, 1, 280), "medium"),
+        ("claude-code-sonnet-5.5", ClaudeCodeVersion(2, 1, 284), "high"),
+        ("claude-code-haiku-5.5", ClaudeCodeVersion(2, 1, 293), "medium"),
+    ],
+)
+def test_pinned_claude_code_model_requires_its_exact_runtime_minimum(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    preset_key: str,
+    minimum_version: ClaudeCodeVersion,
+    effort: str,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    config = MODEL_PRESETS[preset_key]["config"]
+    too_old = ClaudeCodeVersion(minimum_version.major, minimum_version.minor, minimum_version.patch - 1)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: too_old)
+
+    with pytest.raises(ValueError, match=f"requires Claude Code {minimum_version} or later"):
+        prepare_request(
+            config_manager=manager,
+            model_name=config.model_name,
+            content="Plan the analysis.",
+            system_prompt="Keep responses concise.",
+            reasoning=config.reasoning,
+            effort=config.anthropic_effort,
+            phase_name="phase2",
+            cwd=str(tmp_path),
+        )
+
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: minimum_version)
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name=config.model_name,
+        content="Plan the analysis.",
+        system_prompt="Keep responses concise.",
+        reasoning=config.reasoning,
+        effort=config.anthropic_effort,
+        phase_name="phase2",
+        cwd=str(tmp_path),
+    )
+
+    ClaudeAgentOptions(**prepared.options)
+    assert prepared.options["model"] == config.model_name
+    assert prepared.options["effort"] == effort
+    assert prepared.options["output_format"]["type"] == "json_schema"
+
+
+@pytest.mark.parametrize("model_name", ["claude-fable-5-1", "claude-opus-5-5"])
+def test_pinned_claude_code_model_fails_closed_for_unversionable_executable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    model_name: str,
+) -> None:
+    manager = _build_config_manager(tmp_path)
+    monkeypatch.setattr(manager, "get_claude_code_runtime_version", lambda: None)
+
+    with pytest.raises(ValueError, match="resolved runtime version could not be verified"):
+        prepare_request(
+            config_manager=manager,
+            model_name=model_name,
+            content="Plan the analysis.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
+            phase_name="phase2",
+            cwd=str(tmp_path),
+        )
+
+
+def test_pinned_model_versions_the_executable_passed_to_sdk(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = tmp_path / "sdk-bundled-claude"
+    configured = tmp_path / "configured-claude"
+    global_cli = tmp_path / "global-claude"
+    for executable in (bundle, configured, global_cli):
+        executable.write_text("fake", encoding="utf-8")
+        executable.chmod(0o755)
+
+    versions: dict[str, ClaudeCodeVersion | None] = {
+        str(bundle): ClaudeCodeVersion(2, 1, 279),
+        str(configured): ClaudeCodeVersion(2, 1, 280),
+        str(global_cli): ClaudeCodeVersion(2, 1, 309),
+    }
+    probed_paths: list[str] = []
+
+    def fake_probe(path: str, *, env_vars_to_remove: tuple[str, ...] = ()) -> ClaudeCodeVersion | None:
+        del env_vars_to_remove
+        probed_paths.append(path)
+        return versions[path]
+
+    monkeypatch.setattr(claude_code_service, "_resolve_sdk_bundled_executable", lambda: str(bundle))
+    monkeypatch.setattr(claude_code_service.shutil, "which", lambda _name: str(global_cli))
+    monkeypatch.setattr(claude_code_service, "_probe_claude_code_executable_version", fake_probe)
+    manager = _build_sdk_default_config_manager(tmp_path)
+
+    with pytest.raises(ValueError, match="requires Claude Code 2.1.280 or later"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-opus-5-5",
+            content="Plan the analysis.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+    assert probed_paths == [str(bundle)]
+
+    versions[str(bundle)] = None
+    with pytest.raises(ValueError, match="resolved runtime version could not be verified"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-opus-5-5",
+            content="Plan the analysis.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+    assert probed_paths == [str(bundle), str(bundle)]
+
+    manager.set_claude_code_cli_path(str(configured))
+    prepared = prepare_request(
+        config_manager=manager,
+        model_name="claude-opus-5-5",
+        content="Plan the analysis.",
+        system_prompt="Keep responses concise.",
+        reasoning=ReasoningMode.DYNAMIC,
+        phase_name=None,
+        cwd=str(tmp_path),
+    )
+    assert prepared.options["cli_path"] == str(configured)
+    assert probed_paths == [str(bundle), str(bundle), str(configured)]
+
+    with pytest.raises(ValueError, match="requires Claude Code 2.1.293 or later"):
+        prepare_request(
+            config_manager=manager,
+            model_name="claude-haiku-5-5",
+            content="Plan the analysis.",
+            system_prompt="Keep responses concise.",
+            reasoning=ReasoningMode.DYNAMIC,
+            phase_name=None,
+            cwd=str(tmp_path),
+        )
+    assert str(global_cli) not in probed_paths
+
+
 def test_prepare_request_omits_model_for_runtime_default(tmp_path: Path) -> None:
     prepared = prepare_request(
         config_manager=_build_config_manager(tmp_path),
@@ -305,7 +458,7 @@ def test_prepare_request_omits_model_for_runtime_default(tmp_path: Path) -> None
     assert "effort" not in prepared.options
 
 
-@pytest.mark.parametrize("alias", ["best", "sonnet", "opus", "fable"])
+@pytest.mark.parametrize("alias", ["best", "sonnet", "opus", "fable", "haiku"])
 def test_prepare_request_preserves_runtime_managed_aliases(tmp_path: Path, alias: str) -> None:
     prepared = prepare_request(
         config_manager=_build_config_manager(tmp_path),

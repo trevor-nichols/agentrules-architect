@@ -14,7 +14,7 @@ class OpenAIAgent:
     Prefer instantiating :class:`OpenAIArchitect` directly.
     """
 
-    def __init__(self, model: str = "o3", temperature: float | None = None):
+    def __init__(self, model: str = "gpt-5.6-sol", temperature: float | None = None):
         self.model = model
 
         if model in ["o3", "o4-mini"]:

@@ -1,6 +1,7 @@
 """Anthropic provider implementation of ``BaseArchitect``."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator, Iterator
@@ -44,7 +45,7 @@ class AnthropicArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "claude-sonnet-4-5",
+        model_name: str = "claude-sonnet-5-5",
         reasoning: ReasoningMode = ReasoningMode.DISABLED,
         name: str | None = None,
         role: str | None = None,
@@ -125,7 +126,7 @@ class AnthropicArchitect(BaseArchitect):
                 system_prompt=system_prompt,
                 output_format=output_format,
             )
-            self._log_token_estimate(prepared)
+            await asyncio.to_thread(self._log_token_estimate, prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
 
@@ -150,7 +151,7 @@ class AnthropicArchitect(BaseArchitect):
                 f"(Config: {model_config_name}){detail_suffix}"
             )
 
-            response = execute_message_request(prepared.payload)
+            response = await asyncio.to_thread(execute_message_request, prepared.payload)
 
             logger.info(
                 f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}"
@@ -187,7 +188,7 @@ class AnthropicArchitect(BaseArchitect):
             system_prompt = self._resolve_system_prompt(context)
             provider_tools = resolve_tool_config(tools, self.tools_config)
             prepared = self._prepare_request(prompt, provider_tools, system_prompt=system_prompt)
-            self._log_token_estimate(prepared)
+            await asyncio.to_thread(self._log_token_estimate, prepared)
 
             from agentrules.core.utils.model_config_helper import get_model_config_name  # Local import to avoid cycles
 
@@ -482,9 +483,6 @@ class AnthropicArchitect(BaseArchitect):
                             ),
                             pending_chunks,
                         )
-                    if pending_chunks is not None and getattr(delta_event, "stop_reason", None) is not None:
-                        yield from pending_chunks
-                        pending_chunks.clear()
                     continue
 
                 if event_type == "message_stop":

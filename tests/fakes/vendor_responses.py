@@ -4,7 +4,10 @@ Lightweight fake response objects that mimic vendor SDK shapes used in the code.
 These keep tests fully offline and stable without incurring API charges.
 """
 
+from types import SimpleNamespace
 from typing import Any
+
+from google.genai import types as genai_types
 
 # -------------------------------
 # OpenAI / DeepSeek (OpenAI-style)
@@ -94,29 +97,19 @@ class _FunctionCallFake:
         self.args = args
 
 
-class _PartFake:
-    def __init__(self, text: str | None = None, function_call: _FunctionCallFake | None = None) -> None:
-        self.text = text
-        self.function_call = function_call
-
-
-class _ContentFake:
-    def __init__(self, parts: list[_PartFake]) -> None:
-        self.parts = parts
-
-
-class _CandidateFake:
-    def __init__(self, parts: list[_PartFake]) -> None:
-        self.content = _ContentFake(parts)
-
-
 class GeminiGenerateContentResponseFake:
     def __init__(self, text: str | None = None, function_call: _FunctionCallFake | None = None) -> None:
-        # Some responses provide `.text`; others require reading from parts
         self.text = text or ""
-        parts = []
+        parts: list[genai_types.Part] = []
         if text:
-            parts.append(_PartFake(text=text))
+            parts.append(genai_types.Part(text=text))
         if function_call:
-            parts.append(_PartFake(function_call=function_call))
-        self.candidates = [_CandidateFake(parts)]
+            parts.append(
+                genai_types.Part(
+                    function_call=genai_types.FunctionCall(
+                        name=function_call.name,
+                        args=function_call.args,
+                    )
+                )
+            )
+        self.candidates = [SimpleNamespace(content=genai_types.Content(role="model", parts=parts))]

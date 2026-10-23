@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
 
 from agentrules.config import agents as agent_settings
 from agentrules.config.agents import PresetDefinition
@@ -69,6 +70,17 @@ class PresetInfo:
 class PresetDeprecationInfo:
     replacement_key: str | None = None
     reason: str | None = None
+    retirement_date: date | None = None
+    retirement_replacement_key: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.retirement_date is None) != (self.retirement_replacement_key is None):
+            raise ValueError("Scheduled retirement requires both a date and replacement key")
+
+    def runtime_replacement_key(self, *, as_of: date) -> str | None:
+        if self.retirement_date is not None and as_of >= self.retirement_date:
+            return self.retirement_replacement_key
+        return self.replacement_key
 
 
 @dataclass(frozen=True)
@@ -115,6 +127,16 @@ def _build_preset_infos(
 
 PRESET_INFOS: dict[str, PresetInfo] = _build_preset_infos(agent_settings.MODEL_PRESETS.items())
 DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
+    "claude-sonnet": PresetDeprecationInfo(
+        retirement_date=date(2026, 11, 30),
+        retirement_replacement_key="claude-sonnet-5.5-between-tools",
+        reason="Claude Sonnet 4.5 retires November 30, 2026; saved key stays on 4.5 until then.",
+    ),
+    "claude-sonnet-reasoning": PresetDeprecationInfo(
+        retirement_date=date(2026, 11, 30),
+        retirement_replacement_key="claude-sonnet-5.5",
+        reason="Claude Sonnet 4.5 retires November 30, 2026; saved key stays on 4.5 until then.",
+    ),
     "o4-mini-low": PresetDeprecationInfo(
         reason=(
             "OpenAI deprecated o4-mini but has not retired it; "
@@ -172,12 +194,28 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         ),
     ),
     "deepseek-chat": PresetDeprecationInfo(
-        replacement_key="deepseek-v4-flash-non-reasoning",
-        reason="DeepSeek retires this alias on July 24, 2026.",
+        replacement_key="deepseek-flash-non-reasoning",
+        reason="Legacy DeepSeek Chat selection now uses canonical V4.1 Flash with thinking disabled.",
     ),
     "deepseek-reasoner": PresetDeprecationInfo(
-        replacement_key="deepseek-v4-flash",
-        reason="DeepSeek retires this alias on July 24, 2026.",
+        replacement_key="deepseek-flash",
+        reason="Legacy DeepSeek Reasoner selection now uses canonical V4.1 Flash with high thinking.",
+    ),
+    "deepseek-v4-flash": PresetDeprecationInfo(
+        replacement_key="deepseek-flash",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
+    ),
+    "deepseek-v4-flash-low": PresetDeprecationInfo(
+        replacement_key="deepseek-flash-low",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
+    ),
+    "deepseek-v4-flash-max": PresetDeprecationInfo(
+        replacement_key="deepseek-flash-max",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
+    ),
+    "deepseek-v4-flash-non-reasoning": PresetDeprecationInfo(
+        replacement_key="deepseek-flash-non-reasoning",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
     ),
     "gemini-3-pro-preview": PresetDeprecationInfo(
         replacement_key="gemini-3.1-pro-preview",
@@ -212,6 +250,60 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         reason="xAI retired this coding alias; use the canonical Grok Build 0.1 preset.",
     ),
 }
+
+
+def _add_scheduled_openai_retirements() -> None:
+    scheduled_groups = (
+        (
+            date(2026, 12, 11),
+            {
+                "o3-low": "gpt56-sol-low",
+                "o3-medium": "gpt56-sol-default",
+                "o3-high": "gpt56-sol-high",
+                "gpt5-default": "gpt56-sol-default",
+                "gpt5-minimal": "gpt56-sol-none",
+                "gpt5-high": "gpt56-sol-high",
+            },
+        ),
+        (
+            date(2027, 1, 14),
+            {
+                "gpt4.1-default": "gpt6-luna-default",
+                "gpt4.1-creative": "gpt6-luna-default",
+                "gpt4.1-precise": "gpt6-luna-default",
+            },
+        ),
+        (
+            date(2027, 4, 1),
+            {
+                "gpt51-default": "gpt6-sol-default",
+                "gpt51-minimal": "gpt6-sol-none",
+                "gpt51-high": "gpt6-sol-high",
+                "gpt-5.3-codex": "gpt6-sol-default",
+                "gpt54-nano-none": "gpt6-luna-none",
+                "gpt54-nano-low": "gpt6-luna-low",
+                "gpt54-nano-medium": "gpt6-luna-default",
+                "gpt54-nano-high": "gpt6-luna-high",
+                "gpt54-nano-xhigh": "gpt6-luna-xhigh",
+            },
+        ),
+    )
+    for retirement_date, replacements in scheduled_groups:
+        for key, replacement in replacements.items():
+            if key not in agent_settings.MODEL_PRESETS or replacement not in agent_settings.MODEL_PRESETS:
+                raise ValueError(f"OpenAI retirement mapping is not registered: {key} -> {replacement}")
+            DEPRECATED_PRESETS[key] = PresetDeprecationInfo(
+                reason=(
+                    f"OpenAI retires this API model on {retirement_date.isoformat()}; "
+                    "saved selections stay on their original endpoint until then "
+                    f"and use {replacement} after retirement."
+                ),
+                retirement_date=retirement_date,
+                retirement_replacement_key=replacement,
+            )
+
+
+_add_scheduled_openai_retirements()
 
 CONFIG_MANAGER = get_config_manager()
 _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS: set[str] = set()
@@ -255,12 +347,17 @@ def get_preset_deprecation_info(key: str | None) -> PresetDeprecationInfo | None
     return DEPRECATED_PRESETS.get(key)
 
 
-def resolve_runtime_preset_key(preset_key: str | None, *, warn: bool = False) -> str | None:
+def resolve_runtime_preset_key(
+    preset_key: str | None, *, warn: bool = False, as_of: date | None = None
+) -> str | None:
     if preset_key is None:
         return None
 
     deprecation = get_preset_deprecation_info(preset_key)
-    replacement_key = deprecation.replacement_key if deprecation is not None else None
+    current_date = as_of or datetime.now(UTC).date()
+    replacement_key = (
+        deprecation.runtime_replacement_key(as_of=current_date) if deprecation is not None else None
+    )
     replacement_is_registered = bool(replacement_key and replacement_key in agent_settings.MODEL_PRESETS)
 
     if deprecation is not None and warn and preset_key not in _WARNED_DEPRECATED_RUNTIME_PRESET_KEYS:

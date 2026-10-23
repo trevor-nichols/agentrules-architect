@@ -13,6 +13,7 @@
 │   │       └── phase5_consolidation.md
 │   ├── claude-code-runtime.md
 │   ├── codex-runtime.md
+│   ├── provider-model-audit-2026-10.md
 │   ├── provider-model-lifecycle.md
 │   ├── provider-system-prompts.md
 │   └── structured-output-contracts.md
@@ -142,6 +143,7 @@
 │       │   │   ├── openai/  # OpenAI integration
 │       │   │   │   ├── __init__.py  # OpenAI package
 │       │   │   │   ├── architect.py  # BaseArchitect implementation for OpenAI
+│       │   │   │   ├── capabilities.py
 │       │   │   │   ├── client.py  # OpenAI SDK wrapper
 │       │   │   │   ├── compat.py  # Legacy OpenAIAgent wrapper
 │       │   │   │   ├── config.py  # OpenAI default configurations
@@ -302,6 +304,7 @@
 │   │   │   └── phase1_results.json  # Example output
 │   │   ├── __init__.py  # Test package
 │   │   ├── run_test.py  # Standalone phase 1 runner
+│   │   ├── test_phase1_gemini_tool_turn.py
 │   │   ├── test_phase1_offline.py  # Offline tests for phase 1
 │   │   ├── test_phase1_profile_agents.py
 │   │   └── test_phase1_researcher_guards.py  # Tests for researcher constraints
@@ -348,6 +351,7 @@
 │   │   │   ├── test_anthropic_agent_parsing.py  # Tests for Anthropic parser
 │   │   │   ├── test_anthropic_capabilities.py  # Tests for Anthropic capability flags
 │   │   │   ├── test_anthropic_client_compat.py  # Tests for Anthropic client
+│   │   │   ├── test_anthropic_latest_contract.py
 │   │   │   ├── test_anthropic_request_builder.py  # Tests for Anthropic request building
 │   │   │   ├── test_claude_code_architect.py
 │   │   │   ├── test_claude_code_client.py
@@ -361,6 +365,7 @@
 │   │   │   ├── test_gemini_agent_parsing.py  # Tests for Gemini parser
 │   │   │   ├── test_gemini_capabilities.py  # Tests for Gemini capability flags
 │   │   │   ├── test_openai_agent_parsing.py  # Tests for OpenAI parser
+│   │   │   ├── test_openai_gpt6_contract.py
 │   │   │   ├── test_openai_helpers.py  # Tests for OpenAI helpers
 │   │   │   ├── test_system_prompt_policy.py  # Tests for system prompt handling
 │   │   │   ├── test_token_logging.py  # Tests for token usage logging
@@ -400,8 +405,10 @@
 │   │   ├── test_execplan_registry_cli.py  # Unit tests for registry CLI command
 │   │   ├── test_file_retriever.py  # Unit tests for getting file contents
 │   │   ├── test_final_analysis_prompt.py  # Unit tests for final prompt rendering
+│   │   ├── test_gemini_current_presets.py
 │   │   ├── test_model_config_helper.py  # Unit tests for config name lookup
 │   │   ├── test_model_overrides.py  # Unit tests for overriding defaults
+│   │   ├── test_openai_lifecycle.py
 │   │   ├── test_output_validation.py  # Unit tests for filename validations
 │   │   ├── test_phase_events.py  # Unit tests for event emission in phases
 │   │   ├── test_phase_prompt_separation.py  # Unit tests for prompt templating

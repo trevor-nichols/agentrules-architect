@@ -23,6 +23,14 @@ class ModelDefaults:
     accepted_reasoning_efforts: frozenset[str] = frozenset()
 
 
+_FLASH_DEFAULTS = ModelDefaults(
+    default_reasoning=ReasoningMode.HIGH,
+    max_output_tokens=32_000,
+    tools_allowed=True,
+    supports_thinking_toggle=True,
+    accepted_reasoning_efforts=frozenset({"low", "high", "max"}),
+)
+
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
     "deepseek-chat": ModelDefaults(
         default_reasoning=ReasoningMode.DISABLED,
@@ -34,13 +42,8 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
         tools_allowed=False,
         supports_sampling=False,
     ),
-    "deepseek-v4-flash": ModelDefaults(
-        default_reasoning=ReasoningMode.HIGH,
-        max_output_tokens=32_000,
-        tools_allowed=True,
-        supports_thinking_toggle=True,
-        accepted_reasoning_efforts=frozenset({"low", "high", "max"}),
-    ),
+    "deepseek-flash": _FLASH_DEFAULTS,
+    "deepseek-v4-flash": _FLASH_DEFAULTS,
     "deepseek-v4-pro": ModelDefaults(
         default_reasoning=ReasoningMode.HIGH,
         max_output_tokens=32_000,
@@ -50,9 +53,10 @@ _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
     ),
 }
 
-_LEGACY_MODEL_ALIASES: dict[str, tuple[str, ReasoningMode]] = {
-    "deepseek-chat": ("deepseek-v4-flash", ReasoningMode.DISABLED),
-    "deepseek-reasoner": ("deepseek-v4-flash", ReasoningMode.HIGH),
+_LEGACY_MODEL_ALIASES: dict[str, tuple[str, ReasoningMode | None]] = {
+    "deepseek-chat": ("deepseek-flash", ReasoningMode.DISABLED),
+    "deepseek-reasoner": ("deepseek-flash", ReasoningMode.HIGH),
+    "deepseek-v4-flash": ("deepseek-flash", None),
 }
 
 _FALLBACK_DEFAULTS = ModelDefaults(

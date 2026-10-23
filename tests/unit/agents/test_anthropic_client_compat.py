@@ -293,7 +293,13 @@ def test_anthropic_stream_raises_for_refusal_message_delta() -> None:
         set_client(None)
 
 
-@pytest.mark.parametrize("model_name", ["claude-fable-5", "claude-opus-5"])
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "claude-fable-5", "claude-opus-5", "claude-fable-5-1", "claude-opus-5-5",
+        "claude-sonnet-5-5", "claude-haiku-5-5",
+    ],
+)
 def test_anthropic_stream_does_not_expose_partial_refusal_content(model_name: str) -> None:
     tool_start_event = SimpleNamespace(
         type="content_block_start",
@@ -377,7 +383,7 @@ def test_anthropic_stream_yields_immediately_without_partial_refusal_capability(
         set_client(None)
 
 
-@pytest.mark.parametrize("model_name", ["claude-fable-5", "claude-opus-5"])
+@pytest.mark.parametrize("model_name", ["claude-fable-5", "claude-opus-5", "claude-sonnet-5-5"])
 def test_anthropic_stream_releases_content_after_terminal_stop_reason(model_name: str) -> None:
     text_event = SimpleNamespace(
         type="content_block_delta",
@@ -418,5 +424,33 @@ def test_anthropic_stream_releases_content_after_terminal_stop_reason(model_name
             StreamEventType.MESSAGE_END,
         ]
         assert chunks[0].text == "accepted output"
+    finally:
+        set_client(None)
+
+
+def test_latest_anthropic_stream_waits_for_final_message_before_releasing_text() -> None:
+    text_event = SimpleNamespace(
+        type="content_block_delta", index=0,
+        delta=SimpleNamespace(type="text_delta", text="partial text"),
+    )
+    message_delta = SimpleNamespace(
+        type="message_delta", delta=SimpleNamespace(stop_reason="end_turn", usage=None),
+    )
+    final_message = SimpleNamespace(
+        stop_reason="refusal", stop_details=SimpleNamespace(category="policy"), usage=None,
+    )
+    message_stop = SimpleNamespace(type="message_stop", message=final_message)
+    set_client(_EventClient(text_event, message_delta, message_stop))
+    try:
+        architect = AnthropicArchitect(model_name="claude-sonnet-5-5", reasoning=ReasoningMode.DYNAMIC)
+        prepared = PreparedRequest(
+            payload={
+                "model": "claude-sonnet-5-5", "max_tokens": 1,
+                "messages": [{"role": "user", "content": "hi"}],
+            }
+        )
+
+        with pytest.raises(AnthropicRefusalError):
+            next(architect._stream_messages(prepared))
     finally:
         set_client(None)

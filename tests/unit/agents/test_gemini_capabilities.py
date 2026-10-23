@@ -6,6 +6,7 @@ import pytest
 
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.gemini.capabilities import (
+    model_requires_function_call_id,
     model_supports_structured_output_with_tools,
     resolve_capability_profile,
     resolve_thinking_level,
@@ -153,3 +154,56 @@ def test_stable_model_name_and_schema_tool_support_follow_family_profile() -> No
     assert stable_model_name("gemini-3.1-flash-lite") == "gemini-3.1-flash-lite"
     assert model_supports_structured_output_with_tools("gemini-3.5-flash")
     assert not model_supports_structured_output_with_tools("gemini-2.5-flash")
+
+
+@pytest.mark.parametrize(
+    ("model_name", "expected_input_limit"),
+    [
+        ("gemini-3.8-flash", 1_048_576),
+        ("gemini-4-argon", 1_048_576 - 65_536),
+    ],
+)
+def test_new_gemini_models_reserve_the_documented_token_budget(
+    model_name: str, expected_input_limit: int
+) -> None:
+    profile = resolve_capability_profile(model_name)
+
+    assert profile.max_input_tokens == expected_input_limit
+    assert profile.max_output_tokens == 65_536
+    assert profile.supported_thinking_levels == ("low", "medium", "high")
+    assert profile.requires_exact_thinking_level
+    assert model_requires_function_call_id(model_name)
+
+
+@pytest.mark.parametrize("model_name", ["gemini-3.8-flash", "gemini-4-argon"])
+@pytest.mark.parametrize("reasoning_mode", [ReasoningMode.DISABLED, ReasoningMode.MINIMAL])
+def test_new_gemini_models_reject_disallowed_thinking(
+    model_name: str, reasoning_mode: ReasoningMode
+) -> None:
+    with pytest.raises(ValueError, match="not supported"):
+        resolve_thinking_level(
+            model_name=model_name,
+            reasoning_mode=reasoning_mode,
+            thinking_level_enum=_THINKING_LEVELS,
+        )
+
+
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "gemini-3.1-pro-preview",
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-3.8-flash",
+        "gemini-4-argon",
+    ],
+)
+def test_gemini_3_and_4_function_calls_require_ids(model_name: str) -> None:
+    assert model_requires_function_call_id(model_name)
+
+
+def test_gemini25_function_calls_keep_legacy_optional_ids() -> None:
+    assert not model_requires_function_call_id("gemini-2.5-flash")

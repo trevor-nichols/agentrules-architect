@@ -462,14 +462,13 @@ def test_prepare_request_includes_output_format_for_supported_model() -> None:
     assert prepared.payload["output_config"] == {"format": output_format}
 
 
-def test_prepare_request_skips_output_format_for_unsupported_model() -> None:
+def test_prepare_request_rejects_output_format_for_unsupported_model() -> None:
     output_format = {"type": "json_schema", "schema": {"type": "object"}}
-    prepared: PreparedRequest = prepare_request(
-        model_name="claude-opus-4-1",
-        prompt="hello",
-        reasoning=ReasoningMode.DISABLED,
-        tools=None,
-        output_format=output_format,
-    )
-
-    assert "output_config" not in prepared.payload
+    with pytest.raises(ValueError, match="does not support structured JSON output"):
+        prepare_request(
+            model_name="claude-opus-4-1",
+            prompt="hello",
+            reasoning=ReasoningMode.DISABLED,
+            tools=None,
+            output_format=output_format,
+        )

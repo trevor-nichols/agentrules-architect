@@ -9,11 +9,14 @@ Goals:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from agentrules.config import agents as agent_config
+from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types.models import ModelConfig
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
@@ -38,44 +41,28 @@ def _default_summary(text: str, max_chars: int = 2000) -> str:
     return f"{text[: max_chars]}...\n[truncated summary]"
 
 
-def _estimate_prompt_tokens(
+def _estimate_text_tokens(
     *,
     provider: ModelProvider,
     model_name: str,
     estimator_family: str | None,
-    assigned_files: list[str],
-    file_blocks: Iterable[tuple[str, str]],
-    tree: str | list[str] | None,
+    text: str,
 ) -> int:
-    """Build a lightweight Phase3-shaped prompt and estimate its tokens."""
-    tree_text = "\n".join(tree) if isinstance(tree, list) else (tree or "")
-    files_list = "\n".join(f"- {f}" for f in assigned_files)
-    blocks = [
-        f'<file path="{path}">\n{content}\n</file>'
-        for path, content in file_blocks
-    ]
-    body = "\n\n".join(blocks)
-    prompt = (
-        f"TREE:\n{tree_text}\n\n"
-        f"ASSIGNED:\n{files_list}\n\n"
-        f"FILES:\n{body}"
-    )
-
     payload: dict[str, object]
     api: str | None = None
 
     if provider == ModelProvider.ANTHROPIC:
         payload = {
             "model": model_name,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": text}],
         }
     elif provider == ModelProvider.GEMINI:
-        payload = {"contents": prompt}
+        payload = {"contents": text}
     elif provider == ModelProvider.OPENAI:
-        payload = {"input": prompt}
+        payload = {"input": text}
         api = "responses"
     else:
-        payload = {"input": prompt}
+        payload = {"input": text}
 
     result = estimate_tokens(
         provider=provider,
@@ -85,19 +72,11 @@ def _estimate_prompt_tokens(
         api=api,
     )
     if result.estimated is not None:
+        if result.source == "heuristic":
+            return max(result.estimated, len(text.encode("utf-8")))
         return result.estimated
 
-    # Defensive fallback to avoid under-counting
-    fallback = estimate_tokens(
-        provider=provider,
-        model_name=model_name,
-        payload={"input": prompt},
-        estimator_family="heuristic",
-    )
-    if fallback.estimated is not None and fallback.estimated > 0:
-        return fallback.estimated
-
-    conservative = max(len(prompt) // 3, 1)
+    conservative = max(len(text.encode("utf-8")), 1)
     logger.warning(
         "Token estimate unavailable; using conservative fallback",
         extra={"provider": provider, "model": model_name, "estimate": conservative},
@@ -132,76 +111,89 @@ def pack_files_for_phase3(
         getattr(model_config, "max_input_tokens", None),
         getattr(model_config, "safety_margin_tokens", None),
     )
-    effective_limit = effective_limit or limit
 
     # If we have no limit, return a single batch as-is.
-    if not effective_limit:
+    if limit is None:
         return [
             PackedBatch(
                 assigned_files=list(files_with_content.keys()),
                 file_contents=dict(files_with_content),
             )
         ]
+    assert effective_limit is not None
 
     provider = model_config.provider
     model_name = model_config.model_name
     estimator_family = getattr(model_config, "estimator_family", None)
 
-    items: list[tuple[str, str]] = list(files_with_content.items())
-    batches: list[PackedBatch] = []
-    current_files: list[str] = []
-    current_contents: dict[str, str] = {}
+    tree_text = "\n".join(tree) if isinstance(tree, list) else (tree or "")
+    skeleton = format_phase3_prompt(
+        {"tree_structure": tree_text, "assigned_files": [], "file_contents": {}}
+    )
+    skeleton_tokens = _estimate_text_tokens(
+        provider=provider,
+        model_name=model_name,
+        estimator_family=estimator_family,
+        text=skeleton,
+    )
+    if skeleton_tokens >= effective_limit:
+        raise ValueError(f"Phase 3 prompt skeleton exceeds the input budget for {model_name}")
 
-    for path, content in items:
-        tentative_files = current_files + [path]
-        tentative_blocks: list[tuple[str, str]] = list(current_contents.items()) + [(path, content)]
+    content_token_cache: dict[tuple[str, str], int] = {}
 
-        tokens = _estimate_prompt_tokens(
+    def content_tokens(content: str) -> int:
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        key = (model_name, content_hash)
+        if key not in content_token_cache:
+            escaped_content = json.dumps(content, ensure_ascii=False)
+            content_token_cache[key] = _estimate_text_tokens(
+                provider=provider,
+                model_name=model_name,
+                estimator_family=estimator_family,
+                text=escaped_content,
+            )
+        return content_token_cache[key]
+
+    def file_tokens(path: str, content: str) -> int:
+        envelope = json.dumps({"path": path, "content": ""}, ensure_ascii=False)
+        envelope += f"\n\n- {path}\n"
+        overhead = _estimate_text_tokens(
             provider=provider,
             model_name=model_name,
             estimator_family=estimator_family,
-            assigned_files=tentative_files,
-            file_blocks=tentative_blocks,
-            tree=tree,
+            text=envelope,
         )
+        return content_tokens(content) + overhead + 16
 
-        if tokens <= effective_limit:
-            current_files.append(path)
-            current_contents[path] = content
-            continue
+    batches: list[PackedBatch] = []
+    current_files: list[str] = []
+    current_contents: dict[str, str] = {}
+    running_tokens = skeleton_tokens
 
-        # If nothing is in the current batch, the single file is too large—summarize it.
-        if not current_files:
-            summarized = summarizer(content)
-            current_files.append(path)
-            current_contents[path] = summarized
-            batches.append(
-                PackedBatch(
-                    assigned_files=list(current_files),
-                    file_contents=dict(current_contents),
-                )
-            )
+    for path, original_content in files_with_content.items():
+        content = original_content
+        estimated_tokens = file_tokens(path, content)
+        if skeleton_tokens + estimated_tokens > effective_limit:
+            content = summarizer(content)
+            estimated_tokens = file_tokens(path, content)
+            while skeleton_tokens + estimated_tokens > effective_limit and len(content) > 1:
+                content = content[: max(1, len(content) // 2)]
+                estimated_tokens = file_tokens(path, content)
+            if skeleton_tokens + estimated_tokens > effective_limit:
+                raise ValueError(f"File {path} cannot fit the input budget for {model_name}")
+
+        if running_tokens + estimated_tokens > effective_limit:
+            batches.append(PackedBatch(assigned_files=current_files, file_contents=current_contents))
             current_files = []
             current_contents = {}
-            continue
+            running_tokens = skeleton_tokens
 
-        # Flush current batch and start a new one with the pending file.
-        batches.append(
-            PackedBatch(
-                assigned_files=list(current_files),
-                file_contents=dict(current_contents),
-            )
-        )
-        current_files = [path]
-        current_contents = {path: content}
+        current_files.append(path)
+        current_contents[path] = content
+        running_tokens += estimated_tokens
 
     if current_files:
-        batches.append(
-            PackedBatch(
-                assigned_files=list(current_files),
-                file_contents=dict(current_contents),
-            )
-        )
+        batches.append(PackedBatch(assigned_files=current_files, file_contents=current_contents))
 
     return batches
 

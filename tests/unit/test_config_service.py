@@ -290,6 +290,15 @@ class ConfigServiceTestCase(unittest.TestCase):
             self.assertFalse(self.config_manager.is_claude_code_model_supported("claude-opus-4-8"))
 
     def test_claude_code_model_minimums_distinguish_aliases_and_full_ids(self) -> None:
+        for model_name, expected in (
+            ("claude-fable-5-1", ClaudeCodeVersion(2, 1, 257)),
+            ("claude-opus-5-5", ClaudeCodeVersion(2, 1, 280)),
+            ("claude-sonnet-5-5", ClaudeCodeVersion(2, 1, 284)),
+            ("claude-haiku-5-5", ClaudeCodeVersion(2, 1, 293)),
+        ):
+            self.assertEqual(minimum_claude_code_version_for_model(model_name), expected)
+            self.assertEqual(minimum_claude_code_version_for_model(f"{model_name}-20261023"), expected)
+
         self.assertEqual(
             minimum_claude_code_version_for_model("claude-fable-5"),
             ClaudeCodeVersion(2, 1, 170),
@@ -309,6 +318,7 @@ class ConfigServiceTestCase(unittest.TestCase):
         self.assertIsNone(minimum_claude_code_version_for_model("best"))
         self.assertIsNone(minimum_claude_code_version_for_model("sonnet"))
         self.assertIsNone(minimum_claude_code_version_for_model("opus"))
+        self.assertIsNone(minimum_claude_code_version_for_model("haiku"))
 
     def test_claude_code_model_support_fails_closed_for_unknown_version(self) -> None:
         with (
@@ -517,6 +527,53 @@ class ConfigServiceTestCase(unittest.TestCase):
             resolved = self.config_manager.resolve_claude_code_executable()
 
         self.assertEqual(resolved, str(executable.resolve()))
+
+    def test_claude_code_default_prefers_native_windows_executable_over_cmd_shim(self) -> None:
+        cmd_shim = Path(self.temp_dir.name) / "npm" / "claude.cmd"
+        native = Path(self.temp_dir.name) / "native" / "claude.exe"
+
+        with (
+            patch(
+                "agentrules.core.configuration.services.claude_code._resolve_sdk_bundled_executable",
+                return_value=None,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._running_on_windows",
+                return_value=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code.shutil.which",
+                side_effect=lambda command: str(cmd_shim) if command == "claude" else str(native),
+            ),
+        ):
+            resolved = self.config_manager.resolve_claude_code_executable()
+
+        self.assertEqual(resolved, str(native.resolve()))
+
+    def test_claude_code_default_rejects_windows_cmd_only_installation(self) -> None:
+        cmd_shim = Path(self.temp_dir.name) / "npm" / "claude.cmd"
+
+        with (
+            patch(
+                "agentrules.core.configuration.services.claude_code._resolve_sdk_bundled_executable",
+                return_value=None,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._running_on_windows",
+                return_value=True,
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code._claude_code_default_locations",
+                return_value=(),
+            ),
+            patch(
+                "agentrules.core.configuration.services.claude_code.shutil.which",
+                side_effect=lambda command: str(cmd_shim) if command == "claude" else None,
+            ),
+        ):
+            resolved = self.config_manager.resolve_claude_code_executable()
+
+        self.assertIsNone(resolved)
 
     @unittest.skipIf(os.name == "nt", "Executable-bit validation is platform-specific on Windows")
     def test_claude_code_non_executable_cli_path_is_unavailable(self) -> None:

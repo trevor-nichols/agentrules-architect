@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from agentrules.core.agents.base import ReasoningMode
@@ -229,6 +231,97 @@ def test_resolve_defaults_for_grok46() -> None:
         (ReasoningMode.DYNAMIC, "high"),
     ],
 )
+def test_grok47_chat_request_preserves_effort_tools_and_structured_output(
+    reasoning: ReasoningMode,
+    expected_effort: str,
+) -> None:
+    tools = [{"type": "function", "function": {"name": "inspect", "parameters": {"type": "object"}}}]
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {"name": "result", "schema": {"type": "object"}},
+    }
+    prepared = prepare_request(
+        model_name="grok-4.7",
+        content="Analyze",
+        reasoning=reasoning,
+        defaults=resolve_model_defaults("grok-4.7"),
+        tools=tools,
+        response_format=response_format,
+    )
+
+    assert prepared.payload == {
+        "model": "grok-4.7",
+        "messages": [{"role": "user", "content": "Analyze"}],
+        "tools": tools,
+        "tool_choice": "auto",
+        "reasoning_effort": expected_effort,
+        "response_format": response_format,
+    }
+
+
+@pytest.mark.asyncio
+async def test_grok47_architect_sends_tools_and_phase_structured_output() -> None:
+    class FakeCompletions:
+        def __init__(self) -> None:
+            self.payload: dict[str, object] | None = None
+
+        def create(self, **payload: object) -> SimpleNamespace:
+            self.payload = payload
+            message = SimpleNamespace(content='{"agents":[]}', tool_calls=None)
+            return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+    completions = FakeCompletions()
+    architect = XaiArchitect(model_name="grok-4.7")
+    architect.client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    tools = [{"type": "function", "function": {"name": "inspect", "parameters": {"type": "object"}}}]
+
+    result = await architect.analyze(
+        {"formatted_prompt": "Choose agents", "_structured_output_phase": "phase2"},
+        tools=tools,
+    )
+
+    assert result["findings"] == '{"agents":[]}'
+    assert completions.payload is not None
+    assert completions.payload["model"] == "grok-4.7"
+    assert completions.payload["reasoning_effort"] == "high"
+    assert completions.payload["tools"] == tools
+    assert completions.payload["tool_choice"] == "auto"
+    assert completions.payload["response_format"] == {"type": "json_object"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reasoning", [ReasoningMode.DISABLED, ReasoningMode.MINIMAL])
+async def test_grok47_rejects_unsupported_effort_before_client_dispatch(
+    reasoning: ReasoningMode,
+) -> None:
+    class FakeCompletions:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def create(self, **_payload: object) -> None:
+            self.calls += 1
+
+    completions = FakeCompletions()
+    architect = XaiArchitect(model_name="grok-4.7", reasoning=reasoning)
+    architect.client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+
+    result = await architect.analyze({"formatted_prompt": "Analyze"})
+
+    assert "not supported for xAI model 'grok-4.7'" in result["error"]
+    assert completions.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("reasoning", "expected_effort"),
+    [
+        (ReasoningMode.LOW, "low"),
+        (ReasoningMode.MEDIUM, "medium"),
+        (ReasoningMode.HIGH, "high"),
+        (ReasoningMode.XHIGH, "xhigh"),
+        (ReasoningMode.ENABLED, "high"),
+        (ReasoningMode.DYNAMIC, "high"),
+    ],
+)
 def test_prepare_request_maps_documented_grok46_efforts(
     reasoning: ReasoningMode,
     expected_effort: str,
@@ -332,7 +425,7 @@ def test_prepare_request_rejects_non_fixed_grok420_reasoning_modes(
         )
 
 
-def test_xai_architect_defaults_to_grok46_high() -> None:
+def test_xai_architect_keeps_grok46_default_pending_evaluation() -> None:
     architect = XaiArchitect()
 
     assert architect.model_name == "grok-4.6"

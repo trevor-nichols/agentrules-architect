@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from typing import Any, cast
 from unittest.mock import patch
@@ -95,6 +96,7 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         fc = res["function_calls"][0]
         self.assertEqual(fc["name"], "tavily_search")
         self.assertEqual(fc["args"].get("query"), "flask")
+        self.assertIsInstance(json.dumps(res), str)
 
     async def test_reasoning_disabled_disables_thinking_budget(self):
         arch = GeminiArchitect(reasoning=ReasoningMode.DISABLED)
@@ -168,6 +170,29 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
             await arch.analyze({})
 
         self.assertIsNone(arch.client.models.last_call)  # type: ignore[union-attr]
+
+    async def test_gemini38_disabled_thinking_fails_before_dispatch(self):
+        arch = GeminiArchitect(model_name="gemini-3.8-flash", reasoning=ReasoningMode.DISABLED)
+        arch.client = _GeminiFakeClient()  # type: ignore
+
+        with self.assertRaisesRegex(ValueError, "gemini-3.8-flash"):
+            await arch.analyze({})
+
+        self.assertIsNone(arch.client.models.last_call)  # type: ignore[union-attr]
+
+    async def test_argon_request_uses_sdk_continuation_and_shared_budget(self):
+        arch = GeminiArchitect(model_name="gemini-4-argon", reasoning=ReasoningMode.HIGH)
+        arch.client = _GeminiFakeClient()  # type: ignore
+
+        await arch.analyze({"formatted_prompt": "Analyze the project"})
+
+        request = arch.client.models.last_call  # type: ignore[union-attr]
+        self.assertEqual(request["model"], "gemini-4-argon")
+        config = request["config"]
+        self.assertEqual(config.thinking_config.thinking_level, genai_types.ThinkingLevel.HIGH)
+        self.assertEqual(config.max_output_tokens, 65_536)
+        self.assertTrue(config.automatic_continuation)
+        self.assertGreaterEqual(config.http_options.timeout, 1_200_000)
 
     async def test_gemini31_pro_medium_maps_to_thinking_level_high(self):
         arch = GeminiArchitect(model_name="gemini-3.1-pro-preview", reasoning=ReasoningMode.MEDIUM)

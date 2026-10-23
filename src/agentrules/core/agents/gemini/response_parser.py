@@ -14,6 +14,7 @@ class GeminiParsedResponse:
 
     findings: str | None = None
     function_calls: list[dict[str, Any]] = field(default_factory=list)
+    model_content: dict[str, Any] | None = None
 
 
 def _collect_candidate_parts(response: Any) -> list[Any]:
@@ -50,8 +51,9 @@ def _extract_function_call_args(function_call: Any) -> dict[str, Any]:
 def parse_generate_response(response: Any) -> GeminiParsedResponse:
     """Extract text content and function calls from a Gemini response object."""
     payload = GeminiParsedResponse()
-
-    candidate_parts = _collect_candidate_parts(response)
+    candidates = getattr(response, "candidates", None) or []
+    model_content = getattr(candidates[0], "content", None) if candidates else None
+    candidate_parts = getattr(model_content, "parts", None) or []
 
     text_segments: list[str] = []
     for part in candidate_parts:
@@ -71,9 +73,15 @@ def parse_generate_response(response: Any) -> GeminiParsedResponse:
             continue
         payload.function_calls.append(
             {
+                "id": getattr(function_call, "id", None),
                 "name": getattr(function_call, "name", None),
                 "args": _extract_function_call_args(function_call),
             }
         )
+
+    if payload.function_calls:
+        if model_content is None or not callable(getattr(model_content, "model_dump", None)):
+            raise ValueError("Gemini function-call response is missing serializable model content.")
+        payload.model_content = model_content.model_dump(mode="json", exclude_none=True)
 
     return payload
