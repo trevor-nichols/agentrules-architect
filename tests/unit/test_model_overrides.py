@@ -905,7 +905,21 @@ class ModelOverrideTestCase(unittest.TestCase):
             "grok-build-0.1",
         )
 
-    def test_xai_registry_includes_grok45_and_compatible_grok420_presets(self) -> None:
+    def test_xai_registry_includes_grok47_and_fallback_presets(self) -> None:
+        grok47_keys = {
+            "grok-4.7": ReasoningMode.HIGH,
+            "grok-4.7-reasoning-medium": ReasoningMode.MEDIUM,
+            "grok-4.7-reasoning-low": ReasoningMode.LOW,
+            "grok-4.7-reasoning-xhigh": ReasoningMode.XHIGH,
+        }
+        self.assertTrue(grok47_keys.keys() <= self.agents_module.MODEL_PRESETS.keys())
+        for key, effort in grok47_keys.items():
+            preset = self.agents_module.MODEL_PRESETS[key]
+            self.assertEqual(preset["config"].model_name, "grok-4.7")
+            self.assertEqual(preset["config"].reasoning, effort)
+            self.assertEqual(preset["config"].max_input_tokens, 500_000)
+        self.assertIn("Recommended", self.agents_module.MODEL_PRESETS["grok-4.7"]["label"])
+
         grok46_keys = {
             "grok-4.6",
             "grok-4.6-reasoning-medium",
@@ -917,7 +931,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             self.agents_module.MODEL_PRESETS["grok-4.6"]["config"].max_input_tokens,
             500_000,
         )
-        self.assertIn("Recommended", self.agents_module.MODEL_PRESETS["grok-4.6"]["label"])
+        self.assertIn("Fallback", self.agents_module.MODEL_PRESETS["grok-4.6"]["label"])
 
         grok45_keys = {
             "grok-4.5",

@@ -356,6 +356,17 @@ DEEPSEEK_REASONER = DEEPSEEK_FLASH
 DEEPSEEK_CHAT = DEEPSEEK_FLASH_NON_REASONING
 
 # xAI Grok models
+GROK_4_7 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.7",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GROK_4_7_LOW = GROK_4_7._replace(reasoning=ReasoningMode.LOW)
+GROK_4_7_MEDIUM = GROK_4_7._replace(reasoning=ReasoningMode.MEDIUM)
+GROK_4_7_XHIGH = GROK_4_7._replace(reasoning=ReasoningMode.XHIGH)
+
 GROK_4_6 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4.6",

@@ -165,15 +165,18 @@ Official references:
 
 ## Direct xAI API
 
-### Grok 4.6
+### Grok 4.7
 
-`grok-4.6` is the recommended direct xAI model and the default for a directly constructed
-`XaiArchitect`. It has a 500,000-token context and accepts low, medium, high, or xhigh reasoning effort;
-high is the provider default. Reasoning cannot be disabled. AgentRules rejects disabled, minimal, max, and
-temperature configurations before network dispatch rather than translating them to an unsupported wire
-value.
+`grok-4.7` is the recommended direct xAI selection. A directly constructed `XaiArchitect`
+continues to default to `grok-4.6` pending the representative-project evaluation in MS008. Grok 4.7
+has a 500,000-token context and accepts low, medium, high, or xhigh reasoning effort;
+high is the provider default. It supports Chat Completions tool calling and JSON-schema structured
+output. Reasoning cannot be disabled. AgentRules rejects disabled, minimal, max, and temperature
+configurations before network dispatch rather than translating them to an unsupported wire value.
 
-Grok 4.5 remains registered as the immediate direct-API fallback with low, medium, and high effort.
+Grok 4.6 remains registered as the immediate direct-API fallback with low, medium, high, and xhigh
+effort. Grok 4.5 is also retained with low, medium, and high effort. Grok 4.7 Fast is not exposed
+because xAI has not made it available on the public API.
 
 ### Grok 4.20 pinned variants
 
@@ -188,8 +191,10 @@ remains Chat-Completions-only, so adding a Multi-Agent preset would guarantee a 
 
 Official references:
 
+- [Grok 4.7](https://docs.x.ai/developers/grok-4-7)
 - [Grok 4.6](https://docs.x.ai/developers/models/grok-4.6)
 - [xAI reasoning controls](https://docs.x.ai/developers/model-capabilities/text/reasoning)
+- [xAI structured outputs](https://docs.x.ai/developers/model-capabilities/text/structured-outputs)
 - [Grok 4.20 reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-reasoning)
 - [Grok 4.20 non-reasoning model](https://docs.x.ai/developers/models/grok-4.20-0309-non-reasoning)
 - [Multi-Agent endpoint limitations](https://docs.x.ai/developers/model-capabilities/text/multi-agent)
@@ -281,7 +286,7 @@ skip every provider and make no paid request.
 | OpenAI | GPT-5.6 Sol, then GPT-5.5 | Keep saved GPT-6 and GPT-5.6 keys registered; leave the phase default on GPT-5.6 Sol pending evaluation. |
 | DeepSeek | V4.1 Flash | Use `deepseek-flash`; old V4 Flash and Chat/Reasoner keys are compatibility selections. |
 | Anthropic | Claude Opus 4.8 | Keep explicit Opus 5 keys registered; do not auto-fallback from a Fable refusal. |
-| xAI | Grok 4.5 | Do not select Multi-Agent through the Chat Completions adapter. |
+| xAI | Grok 4.6, then 4.5 | Do not select Multi-Agent through the Chat Completions adapter. |
 | Google | Gemini 3.5 Flash API ID (served as 3.6 Flash) | Gemini 2.5 has no announced shutdown; preserve existing selections and check prior-user access. |
 | Codex | Runtime default | Let the authenticated runtime catalog choose; do not synthesize a static model ID. |
 | Claude Code | Runtime default | Use a pinned model only after the resolved runtime passes its minimum-version gate. |

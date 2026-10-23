@@ -2,18 +2,21 @@
 id: EP-20261023-001/MS005
 execplan_id: EP-20261023-001
 ms: 5
-title: "Add Grok 4.7 with strict reasoning contracts"
-status: planned
+title: Add Grok 4.7 with strict reasoning contracts
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [xai, grok, capabilities]
+updated: '2026-10-23'
+tags:
+- xai
+- grok
+- capabilities
 risk: med
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Add Grok 4.7 with strict reasoning contracts
@@ -68,3 +71,5 @@ Keep old Grok profiles for rollback. Live smoke is optional and entitlement-depe
 ## Changelog
 
 - 2026-10-23: Defined Grok 4.7 request and fallback acceptance.
+- 2026-10-23: Revalidated xAI's Grok 4.7 model card, reasoning guide, and Chat Completions structured-output contract; implementation started.
+- 2026-10-23: Added four Grok 4.7 presets with an immutable 500K/effort profile, preserved the direct-constructor 4.6 default pending MS008 evaluation, and set the optional live smoke to 4.7. Fake-client tests cover actual Chat tools/structured-output dispatch and unsupported-effort rejection before dispatch. Full offline suite: 1,083 passed, 12 opt-in skips, 57 subtests; ruff, pyright, import smoke, and diff checks passed. Bugbot found no actionable issues.

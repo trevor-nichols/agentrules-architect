@@ -13,6 +13,7 @@ from agentrules.core.agents.anthropic.capabilities import resolve_capability_pro
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.agents.gemini.capabilities import resolve_capability_profile
 from agentrules.core.agents.openai.capabilities import get_openai_model_capabilities
+from agentrules.core.agents.xai.config import resolve_model_defaults as resolve_xai_model_defaults
 from agentrules.core.types.models import (
     CLAUDE_BASIC,
     CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
@@ -130,6 +131,10 @@ from agentrules.core.types.models import (
     GROK_4_6_LOW,
     GROK_4_6_MEDIUM,
     GROK_4_6_XHIGH,
+    GROK_4_7,
+    GROK_4_7_LOW,
+    GROK_4_7_MEDIUM,
+    GROK_4_7_XHIGH,
     GROK_4_20_NON_REASONING,
     GROK_4_20_REASONING,
     GROK_4_FAST_NON_REASONING,
@@ -255,11 +260,11 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
             limit = 1_000_000 if name == "deepseek-flash" or name.startswith("deepseek-v4-") else 64_000
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
+        context_window = resolve_xai_model_defaults(name).context_window_tokens
+        if context_window is not None:
+            limit = context_window if limit is None else min(limit, context_window)
         if limit is None:
-            if name.startswith(("grok-4.5", "grok-4.6")):
-                limit = 500_000
-            else:
-                limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
+            limit = 1_000_000 if name in _XAI_1M_CONTEXT_MODELS else 256_000
         estimator_family = estimator_family or "tiktoken"
 
     return config._replace(
@@ -1325,10 +1330,37 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         ),
         provider=ModelProvider.DEEPSEEK,
     ),
+    "grok-4.7": _preset(
+        config=GROK_4_7,
+        label="Grok 4.7 (Reasoning High, Recommended)",
+        description="Recommended general xAI model with default high reasoning and 500K context.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.7-reasoning-low": _preset(
+        config=GROK_4_7_LOW,
+        label="Grok 4.7 (Reasoning Low)",
+        description="Grok 4.7 with low reasoning for latency-sensitive work.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.7-reasoning-medium": _preset(
+        config=GROK_4_7_MEDIUM,
+        label="Grok 4.7 (Reasoning Medium)",
+        description="Grok 4.7 with medium reasoning for balanced latency and depth.",
+        provider=ModelProvider.XAI,
+    ),
+    "grok-4.7-reasoning-xhigh": _preset(
+        config=GROK_4_7_XHIGH,
+        label="Grok 4.7 (Reasoning XHigh)",
+        description="Grok 4.7 with xhigh reasoning for the most complex agentic work.",
+        provider=ModelProvider.XAI,
+    ),
     "grok-4.6": _preset(
         config=GROK_4_6,
-        label="Grok 4.6 (Reasoning High, Recommended)",
-        description="Recommended general xAI model with default high reasoning and 500K context.",
+        label="Grok 4.6 (Reasoning High, Fallback; Direct Default)",
+        description=(
+            "Previous general xAI model and direct-constructor default, retained as a "
+            "500K-context fallback pending evaluation."
+        ),
         provider=ModelProvider.XAI,
     ),
     "grok-4.6-reasoning-low": _preset(
