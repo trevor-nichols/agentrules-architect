@@ -172,12 +172,28 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         ),
     ),
     "deepseek-chat": PresetDeprecationInfo(
-        replacement_key="deepseek-v4-flash-non-reasoning",
-        reason="DeepSeek retires this alias on July 24, 2026.",
+        replacement_key="deepseek-flash-non-reasoning",
+        reason="Legacy DeepSeek Chat selection now uses canonical V4.1 Flash with thinking disabled.",
     ),
     "deepseek-reasoner": PresetDeprecationInfo(
-        replacement_key="deepseek-v4-flash",
-        reason="DeepSeek retires this alias on July 24, 2026.",
+        replacement_key="deepseek-flash",
+        reason="Legacy DeepSeek Reasoner selection now uses canonical V4.1 Flash with high thinking.",
+    ),
+    "deepseek-v4-flash": PresetDeprecationInfo(
+        replacement_key="deepseek-flash",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
+    ),
+    "deepseek-v4-flash-low": PresetDeprecationInfo(
+        replacement_key="deepseek-flash-low",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
+    ),
+    "deepseek-v4-flash-max": PresetDeprecationInfo(
+        replacement_key="deepseek-flash-max",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
+    ),
+    "deepseek-v4-flash-non-reasoning": PresetDeprecationInfo(
+        replacement_key="deepseek-flash-non-reasoning",
+        reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
     ),
     "gemini-3-pro-preview": PresetDeprecationInfo(
         replacement_key="gemini-3.1-pro-preview",

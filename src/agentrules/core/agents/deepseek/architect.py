@@ -36,7 +36,7 @@ class DeepSeekArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "deepseek-v4-flash",
+        model_name: str = "deepseek-flash",
         reasoning: ReasoningMode | None = None,
         temperature: float | None = None,
         name: str | None = None,

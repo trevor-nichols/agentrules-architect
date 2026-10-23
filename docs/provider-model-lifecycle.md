@@ -43,7 +43,8 @@ Official references:
 
 ## Direct DeepSeek API
 
-DeepSeek V4 Flash and V4 Pro are the canonical direct-API choices. Both have 1,000,000-token contexts and
+DeepSeek V4.1 Flash (`deepseek-flash`) and V4 Pro (`deepseek-v4-pro`) are the canonical direct-API
+choices. Both have 1,000,000-token contexts and
 support disabled thinking plus native low, high, and max effort. AgentRules sends an explicit
 `thinking.type`; low maps to low, medium/high/xhigh compatibility requests map to high, and max maps to
 max. Minimal reasoning fails before dispatch.
@@ -52,10 +53,11 @@ Both families retain a 32,000-token AgentRules output cap. This is an applicatio
 provider's advertised 384,000-token output ceiling. Expanding it requires separate cost, latency, and
 memory acceptance criteria.
 
-The saved preset keys `deepseek-chat` and `deepseek-reasoner` redirect to V4 Flash with disabled and
-enabled/high thinking respectively. DeepSeek scheduled those legacy identifiers to become inaccessible
-on July 24, 2026, so they are compatibility keys rather than valid rollback endpoints. If a V4 Pro issue
-appears, use V4 Flash; do not restore the retired wire identifiers.
+The four saved `deepseek-v4-flash*` preset keys redirect in one step to the matching canonical
+`deepseek-flash*` presets. `deepseek-chat` and `deepseek-reasoner` also redirect directly to the
+canonical non-thinking and high-thinking presets respectively. DeepSeek temporarily accepts the old V4
+Flash wire ID, but serves and bills it as V4.1 Flash; AgentRules sends `deepseek-flash` instead. V4 Pro
+remains available. These compatibility keys are not rollback endpoints.
 
 DeepSeek Vision Experimental is not exposed. The current adapter has not established the required image
 input, prompt, token, and multimodal response contract.
@@ -139,9 +141,9 @@ Official references:
 
 ## Google Gemini API
 
-`gemini-3.7-flash` is AgentRules' recommended current Flash choice. It has a 1,048,576-token input
-context, defaults to medium thinking, and accepts exactly low, medium, or high. Disabled and minimal
-requests fail before dispatch rather than being raised to low.
+`gemini-3.7-flash` remains an AgentRules preset and API wire ID, but Google automatically serves it as
+3.8 Flash. It has a 1,048,576-token input context, defaults to medium thinking, and accepts exactly low,
+medium, or high. Disabled and minimal requests fail before dispatch rather than being raised to low.
 
 `gemini-3.6-flash` defaults to medium and accepts minimal, low, medium, or high. The throughput-oriented
 `gemini-3.5-flash-lite` defaults to minimal and accepts the same four levels. All three families support
@@ -149,10 +151,14 @@ tools together with structured output. Their capability profiles require the ins
 requested exact level; AgentRules requires `google-genai>=1.56.0`, the first SDK release with `MINIMAL`
 and `MEDIUM`, and does not silently select a nearby enum value.
 
-The older explicit `gemini-3.5-flash` choice remains registered as a rollback path.
-Gemini 2.5 Flash and Gemini 2.5 Pro remain selectable until their documented October 16, 2026
-shutdown because silently changing an explicit active selection could alter behavior or cost. Their picker
-labels disclose the date and recommend Gemini 3.5 Flash or Gemini 3.1 Pro Preview respectively.
+The older explicit `gemini-3.5-flash` key also remains registered; Google automatically serves API
+requests to that ID as 3.6 Flash. Saved keys and wire IDs stay unchanged, while picker labels disclose
+the provider-side effective model.
+
+Gemini 2.5 Flash and Pro are **not deprecated** and have no announced shutdown date. Google limits access
+to users who previously used them and recommends newer models for new projects. AgentRules keeps these
+explicit choices available for existing users without a premature redirect. Picker labels disclose the
+access condition rather than claiming an October 16, 2026 shutdown.
 
 The saved keys `gemini-3-pro-preview` and `gemini-3.1-flash-lite-preview` remain loadable for backwards
 compatibility, but runtime resolution sends `gemini-3.1-pro-preview` and `gemini-3.1-flash-lite`. The
@@ -205,9 +211,9 @@ skip every provider and make no paid request.
 | Provider | Preferred fallback | Important restriction |
 | --- | --- | --- |
 | OpenAI | GPT-5.5 | Saved GPT-5.6 configurations require the new presets to remain registered. |
-| DeepSeek | V4 Flash | Never roll the wire model back to `deepseek-chat` or `deepseek-reasoner` after retirement. |
+| DeepSeek | V4.1 Flash | Use `deepseek-flash`; old V4 Flash and Chat/Reasoner keys are compatibility selections. |
 | Anthropic | Claude Opus 4.8 | Keep explicit Opus 5 keys registered; do not auto-fallback from a Fable refusal. |
 | xAI | Grok 4.5 | Do not select Multi-Agent through the Chat Completions adapter. |
-| Google | Gemini 3.5 Flash | Keep explicit 2.5 selections only until the documented shutdown. |
+| Google | Gemini 3.5 Flash API ID (served as 3.6 Flash) | Gemini 2.5 has no announced shutdown; preserve existing selections and check prior-user access. |
 | Codex | Runtime default | Let the authenticated runtime catalog choose; do not synthesize a static model ID. |
 | Claude Code | Runtime default | Use a pinned model only after the resolved runtime passes its minimum-version gate. |

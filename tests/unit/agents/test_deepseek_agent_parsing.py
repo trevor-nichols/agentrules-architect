@@ -43,7 +43,7 @@ class DeepSeekArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         params = self.fake_client.chat.completions.last_params
         self.assertIsNotNone(params)
         assert params is not None
-        self.assertEqual(params["model"], "deepseek-v4-flash")
+        self.assertEqual(params["model"], "deepseek-flash")
 
     async def test_v4_thinking_includes_reasoning_content(self):
         arch = DeepSeekArchitect(model_name="deepseek-v4-pro")

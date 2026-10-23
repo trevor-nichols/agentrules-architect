@@ -61,7 +61,7 @@ LIVE_PROVIDER_CASES = (
         enable_flag="AGENTRULES_RUN_DEEPSEEK_LIVE",
         key_env_vars=("DEEPSEEK_API_KEY",),
         model_env_var="AGENTRULES_DEEPSEEK_LIVE_MODEL",
-        default_model="deepseek-v4-flash",
+        default_model="deepseek-flash",
         runner=lambda api_key, model: _run_deepseek(api_key, model),
     ),
     LiveProviderCase(

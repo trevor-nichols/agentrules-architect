@@ -303,24 +303,24 @@ GPT4_1_PRECISE = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# DeepSeek V4 configurations. V4 exposes thinking and non-thinking modes on the
-# same model identifier; ReasoningMode selects the wire-level thinking toggle.
-DEEPSEEK_V4_FLASH = ModelConfig(
+# DeepSeek Flash exposes thinking and non-thinking modes on one wire identifier.
+DEEPSEEK_FLASH = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-v4-flash",
+    model_name="deepseek-flash",
     reasoning=ReasoningMode.HIGH,
     tools_config={"enabled": False, "tools": None},
 )
 
-DEEPSEEK_V4_FLASH_LOW = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.LOW)
-DEEPSEEK_V4_FLASH_MAX = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.MAX)
+DEEPSEEK_FLASH_LOW = DEEPSEEK_FLASH._replace(reasoning=ReasoningMode.LOW)
+DEEPSEEK_FLASH_MAX = DEEPSEEK_FLASH._replace(reasoning=ReasoningMode.MAX)
 
-DEEPSEEK_V4_FLASH_NON_REASONING = ModelConfig(
-    provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-v4-flash",
-    reasoning=ReasoningMode.DISABLED,
-    tools_config={"enabled": False, "tools": None},
-)
+DEEPSEEK_FLASH_NON_REASONING = DEEPSEEK_FLASH._replace(reasoning=ReasoningMode.DISABLED)
+
+# Public V4 constants remain importable while selecting the current Flash wire ID.
+DEEPSEEK_V4_FLASH = DEEPSEEK_FLASH
+DEEPSEEK_V4_FLASH_LOW = DEEPSEEK_FLASH_LOW
+DEEPSEEK_V4_FLASH_MAX = DEEPSEEK_FLASH_MAX
+DEEPSEEK_V4_FLASH_NON_REASONING = DEEPSEEK_FLASH_NON_REASONING
 
 DEEPSEEK_V4_PRO = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
@@ -347,8 +347,8 @@ DEEPSEEK_V4_PRO_NON_REASONING = ModelConfig(
 
 # Compatibility constants preserve public imports while ensuring callers do not
 # send the retired deepseek-chat/deepseek-reasoner wire identifiers.
-DEEPSEEK_REASONER = DEEPSEEK_V4_FLASH
-DEEPSEEK_CHAT = DEEPSEEK_V4_FLASH_NON_REASONING
+DEEPSEEK_REASONER = DEEPSEEK_FLASH
+DEEPSEEK_CHAT = DEEPSEEK_FLASH_NON_REASONING
 
 # xAI Grok models
 GROK_4_6 = ModelConfig(

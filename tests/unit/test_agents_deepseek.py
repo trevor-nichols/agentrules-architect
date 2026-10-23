@@ -1,6 +1,7 @@
 import types
 from typing import Any, cast
 
+from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.deepseek import DeepSeekArchitect
 
 
@@ -36,7 +37,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_deepseek_chat_returns_findings(monkeypatch):
+async def test_deepseek_chat_returns_findings():
     captured: dict[str, Any] = {}
     arch = DeepSeekArchitect(model_name="deepseek-chat")
 
@@ -53,13 +54,13 @@ async def test_deepseek_chat_returns_findings(monkeypatch):
     res = await arch.analyze({"formatted_prompt": "x"})
     assert res["findings"] == "hi"
     assert res["tool_calls"] is None
-    assert arch.model_name == "deepseek-v4-flash"
-    assert captured["model"] == "deepseek-v4-flash"
+    assert arch.model_name == "deepseek-flash"
+    assert captured["model"] == "deepseek-flash"
     assert captured["extra_body"] == {"thinking": {"type": "disabled"}}
 
 
 @pytest.mark.asyncio
-async def test_deepseek_default_uses_v4_flash_thinking_contract():
+async def test_deepseek_default_uses_current_flash_thinking_contract():
     captured: dict[str, Any] = {}
     arch = DeepSeekArchitect()
 
@@ -76,9 +77,31 @@ async def test_deepseek_default_uses_v4_flash_thinking_contract():
     res = await arch.analyze({"formatted_prompt": "x"})
 
     assert res["findings"] == "hi"
-    assert arch.model_name == "deepseek-v4-flash"
+    assert arch.model_name == "deepseek-flash"
+    assert captured["model"] == "deepseek-flash"
     assert captured["extra_body"] == {"thinking": {"type": "enabled"}}
     assert captured["reasoning_effort"] == "high"
+
+
+@pytest.mark.asyncio
+async def test_deepseek_v4_flash_direct_constructor_uses_current_wire_id():
+    captured: dict[str, Any] = {}
+    arch = DeepSeekArchitect(model_name="deepseek-v4-flash", reasoning=ReasoningMode.LOW)
+
+    def create(**kwargs):
+        captured.update(kwargs)
+        return _FakeResponse(_FakeMessage(content="hi"))
+
+    arch.client = cast(
+        Any,
+        types.SimpleNamespace(chat=types.SimpleNamespace(completions=types.SimpleNamespace(create=create))),
+    )
+    result = await arch.analyze({"formatted_prompt": "x"})
+
+    assert result["findings"] == "hi"
+    assert captured["model"] == "deepseek-flash"
+    assert captured["reasoning_effort"] == "low"
+    assert captured["max_tokens"] == 32_000
 
 
 @pytest.mark.asyncio
@@ -112,7 +135,7 @@ async def test_deepseek_v4_thinking_keeps_tools_enabled():
 
 
 @pytest.mark.asyncio
-async def test_deepseek_reasoner_includes_reasoning(monkeypatch):
+async def test_deepseek_reasoner_includes_reasoning():
     captured: dict[str, Any] = {}
     arch = DeepSeekArchitect(model_name="deepseek-reasoner")
 
@@ -129,9 +152,9 @@ async def test_deepseek_reasoner_includes_reasoning(monkeypatch):
     arch.client = cast(Any, Client())
     res = await arch.analyze({"formatted_prompt": "x"})
     assert res["reasoning"] == "think"
-    assert res["findings"] is None or res["findings"] is None or res["findings"] == ""
-    assert arch.model_name == "deepseek-v4-flash"
-    assert captured["model"] == "deepseek-v4-flash"
+    assert res["findings"] in (None, "")
+    assert arch.model_name == "deepseek-flash"
+    assert captured["model"] == "deepseek-flash"
     assert captured["extra_body"] == {"thinking": {"type": "enabled"}}
     assert captured["reasoning_effort"] == "high"
 

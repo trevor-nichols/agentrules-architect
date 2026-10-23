@@ -34,6 +34,10 @@ from agentrules.core.types.models import (
     CLAUDE_SONNET_46_WITH_REASONING,
     CLAUDE_WITH_REASONING,
     DEEPSEEK_CHAT,
+    DEEPSEEK_FLASH,
+    DEEPSEEK_FLASH_LOW,
+    DEEPSEEK_FLASH_MAX,
+    DEEPSEEK_FLASH_NON_REASONING,
     DEEPSEEK_REASONER,
     DEEPSEEK_V4_FLASH,
     DEEPSEEK_V4_FLASH_LOW,
@@ -233,7 +237,7 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
                 limit = 400_000
     elif provider == ModelProvider.DEEPSEEK:
         if limit is None:
-            limit = 1_000_000 if name.startswith("deepseek-v4-") else 64_000
+            limit = 1_000_000 if name == "deepseek-flash" or name.startswith("deepseek-v4-") else 64_000
         estimator_family = estimator_family or "tiktoken"
     elif provider == ModelProvider.XAI:
         if limit is None:
@@ -321,20 +325,20 @@ def _claude_code_runtime_managed_preset(
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     "gemini-3.7-flash": _preset(
         config=GEMINI_3_7_FLASH,
-        label="Gemini 3.7 Flash (Medium Thinking, Recommended)",
-        description="Current Gemini Flash model at its default medium thinking level.",
+        label="Gemini 3.7 Flash (API Alias → 3.8 Flash, Medium Thinking)",
+        description="Google routes this saved API model ID to Gemini 3.8 Flash; medium thinking.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3.7-flash-reasoning-low": _preset(
         config=GEMINI_3_7_FLASH._replace(reasoning=ReasoningMode.LOW),
-        label="Gemini 3.7 Flash (Low Thinking)",
-        description="Gemini 3.7 Flash at low thinking for latency-sensitive work.",
+        label="Gemini 3.7 Flash (API Alias → 3.8 Flash, Low Thinking)",
+        description="Google routes this saved API model ID to Gemini 3.8 Flash; low thinking.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3.7-flash-reasoning-high": _preset(
         config=GEMINI_3_7_FLASH._replace(reasoning=ReasoningMode.HIGH),
-        label="Gemini 3.7 Flash (High Thinking)",
-        description="Gemini 3.7 Flash at high thinking for complex work.",
+        label="Gemini 3.7 Flash (API Alias → 3.8 Flash, High Thinking)",
+        description="Google routes this saved API model ID to Gemini 3.8 Flash; high thinking.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3.6-flash": _preset(
@@ -387,8 +391,8 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-3.5-flash": _preset(
         config=GEMINI_3_5_FLASH,
-        label="Gemini 3.5 Flash",
-        description="Stable Gemini 3.5 Flash release for agentic coding and long-horizon tasks.",
+        label="Gemini 3.5 Flash (API Alias → 3.6 Flash)",
+        description="Google routes this saved API model ID to Gemini 3.6 Flash.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-3-flash-preview": _preset(
@@ -432,28 +436,28 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-flash": _preset(
         config=GEMINI_FLASH,
-        label="Gemini 2.5 Flash (Deprecated; shuts down 2026-10-16)",
+        label="Gemini 2.5 Flash (Existing-User Access)",
         description=(
-            "Still available until October 16, 2026. Migrate new configurations to stable "
-            "Gemini 3.5 Flash."
+            "Not deprecated; no shutdown date announced. Google limits access to prior users "
+            "and recommends Gemini 3.8 Flash for new projects."
         ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-flash-thinking": _preset(
         config=GEMINI_FLASH_DYNAMIC,
-        label="Gemini 2.5 Flash Thinking (Deprecated; shuts down 2026-10-16)",
+        label="Gemini 2.5 Flash Thinking (Existing-User Access)",
         description=(
-            "Gemini 2.5 Flash with dynamic thinking, available until October 16, 2026. "
-            "Migrate new configurations to stable Gemini 3.5 Flash."
+            "Not deprecated; no shutdown date announced. Google limits access to prior users "
+            "and recommends Gemini 3.8 Flash for new projects."
         ),
         provider=ModelProvider.GEMINI,
     ),
     "gemini-pro": _preset(
         config=GEMINI_PRO,
-        label="Gemini 2.5 Pro (Deprecated; shuts down 2026-10-16)",
+        label="Gemini 2.5 Pro (Existing-User Access)",
         description=(
-            "Gemini 2.5 Pro with dynamic thinking, available until October 16, 2026. "
-            "Migrate new configurations to Gemini 3.1 Pro Preview."
+            "Not deprecated; no shutdown date announced. Google limits access to prior users. "
+            "Choose a current model for new projects."
         ),
         provider=ModelProvider.GEMINI,
     ),
@@ -1063,28 +1067,55 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="GPT-5.4 Nano with maximum supported reasoning depth and high verbosity.",
         provider=ModelProvider.OPENAI,
     ),
+    "deepseek-flash": _preset(
+        config=DEEPSEEK_FLASH,
+        label="DeepSeek V4.1 Flash (Thinking, High)",
+        description=(
+            "Current DeepSeek Flash wire model with high thinking, 1M context, "
+            "and a 32K application output cap."
+        ),
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-flash-low": _preset(
+        config=DEEPSEEK_FLASH_LOW,
+        label="DeepSeek V4.1 Flash (Thinking, Low)",
+        description="Current DeepSeek Flash wire model with low thinking and a 32K application output cap.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-flash-max": _preset(
+        config=DEEPSEEK_FLASH_MAX,
+        label="DeepSeek V4.1 Flash (Thinking, Max)",
+        description="Current DeepSeek Flash wire model with max thinking and a 32K application output cap.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
+    "deepseek-flash-non-reasoning": _preset(
+        config=DEEPSEEK_FLASH_NON_REASONING,
+        label="DeepSeek V4.1 Flash (Non-Thinking)",
+        description="Current DeepSeek Flash wire model with thinking disabled and 1M context.",
+        provider=ModelProvider.DEEPSEEK,
+    ),
     "deepseek-v4-flash": _preset(
         config=DEEPSEEK_V4_FLASH,
-        label="DeepSeek V4 Flash (Thinking, High)",
-        description="Fast, cost-efficient DeepSeek V4 model with thinking enabled at high effort and 1M context.",
+        label="DeepSeek V4 Flash (Legacy Key → V4.1 Flash High)",
+        description="Saved-key compatibility choice; AgentRules sends deepseek-flash with high thinking.",
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-v4-flash-low": _preset(
         config=DEEPSEEK_V4_FLASH_LOW,
-        label="DeepSeek V4 Flash (Thinking, Low)",
-        description="DeepSeek V4 Flash with low thinking effort and the conservative 32K output cap.",
+        label="DeepSeek V4 Flash (Legacy Key → V4.1 Flash Low)",
+        description="Saved-key compatibility choice; AgentRules sends deepseek-flash with low thinking.",
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-v4-flash-max": _preset(
         config=DEEPSEEK_V4_FLASH_MAX,
-        label="DeepSeek V4 Flash (Thinking, Max)",
-        description="DeepSeek V4 Flash with maximum thinking effort and the conservative 32K output cap.",
+        label="DeepSeek V4 Flash (Legacy Key → V4.1 Flash Max)",
+        description="Saved-key compatibility choice; AgentRules sends deepseek-flash with max thinking.",
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-v4-flash-non-reasoning": _preset(
         config=DEEPSEEK_V4_FLASH_NON_REASONING,
-        label="DeepSeek V4 Flash (Non-Thinking)",
-        description="Fast, cost-efficient DeepSeek V4 model with thinking explicitly disabled and 1M context.",
+        label="DeepSeek V4 Flash (Legacy Key → V4.1 Flash Non-Thinking)",
+        description="Saved-key compatibility choice; AgentRules sends deepseek-flash with thinking disabled.",
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-v4-pro": _preset(
@@ -1113,19 +1144,19 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "deepseek-reasoner": _preset(
         config=DEEPSEEK_REASONER,
-        label="DeepSeek Reasoner (Legacy Key → V4 Flash)",
+        label="DeepSeek Reasoner (Legacy Key → V4.1 Flash High)",
         description=(
-            "Compatibility preset for saved configurations. Uses DeepSeek V4 Flash "
-            "with thinking enabled at high effort because deepseek-reasoner retires July 24, 2026."
+            "Compatibility preset for saved configurations. Uses deepseek-flash "
+            "with thinking enabled at high effort."
         ),
         provider=ModelProvider.DEEPSEEK,
     ),
     "deepseek-chat": _preset(
         config=DEEPSEEK_CHAT,
-        label="DeepSeek Chat (Legacy Key → V4 Flash Non-Thinking)",
+        label="DeepSeek Chat (Legacy Key → V4.1 Flash Non-Thinking)",
         description=(
-            "Compatibility preset for saved configurations. Uses DeepSeek V4 Flash "
-            "with thinking disabled because deepseek-chat retires July 24, 2026."
+            "Compatibility preset for saved configurations. Uses deepseek-flash "
+            "with thinking disabled."
         ),
         provider=ModelProvider.DEEPSEEK,
     ),

@@ -1,7 +1,7 @@
 ---
 id: EP-20261023-001
 title: "Refresh provider models and API contracts after October 2026 audit"
-status: planned
+status: active
 kind: refactor
 domain: cross-cutting
 owner: "@codex"
@@ -22,7 +22,7 @@ supersedes: []
 
 # EP-20261023-001 — Refresh provider models and API contracts
 
-This is a living plan governed by `.agent/PLANS.md`. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` accurate. This plan is **proposed for review**. Its creation does not authorize provider implementation; begin MS001 only after the user approves it. The source audit is `docs/provider-model-audit-2026-10.md`, dated 2026-10-23. Recheck official provider contracts when execution starts because model catalogs can change.
+This is a living plan governed by `.agent/PLANS.md`. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` accurate. The user approved execution on 2026-10-23. The source audit is `docs/provider-model-audit-2026-10.md`, dated 2026-10-23. Recheck official provider contracts when each slice starts because model catalogs can change.
 
 ## Purpose / Big Picture
 
@@ -44,8 +44,8 @@ The audit's P2 API topics are a bounded evaluation in MS007. xAI Responses, Anth
 
 - [x] (2026-10-23) Completed the read-only provider audit and opened PR #42 with its source report.
 - [x] (2026-10-23) Created this proposed ExecPlan and eight planned milestone documents for review.
-- [ ] User reviews and approves this plan before provider implementation begins.
-- [ ] MS001: Revalidate sources; correct urgent DeepSeek and Gemini lifecycle routing.
+- [x] (2026-10-23) User approved the plan and sequential milestone execution with validation, bugbot review, archive, commit, and push after each milestone.
+- [x] (2026-10-23) MS001: Revalidated official sources; shipped one-hop DeepSeek Flash routing and corrected Gemini lifecycle labels; unit, static, import, and bugbot review gates passed.
 - [ ] MS002: Implement OpenAI GPT-6 contracts and input-limit repair.
 - [ ] MS003: Repair Gemini tool continuation; onboard Gemini 3.8 Flash and 4 Argon.
 - [ ] MS004: Implement Anthropic direct-model contracts and refusal handling.
@@ -71,7 +71,7 @@ The audit's P2 API topics are a bounded evaluation in MS007. xAI Responses, Anth
 
 ## Outcomes & Retrospective
 
-Planning artifact only as of 2026-10-23. No provider behavior, dependency, default, or saved key has been changed. Record implementation outcomes, measured evaluations, remaining risks, and release decision here after the milestones run.
+MS001 completed on 2026-10-23. Six legacy DeepSeek preset keys now resolve directly to canonical Flash profiles while saved keys remain valid. Direct DeepSeek aliases send the current `deepseek-flash` wire ID. Gemini 2.5 access and Gemini 3.5/3.7 upstream aliases are labeled accurately. Offline unit suite: 958 passed, 57 subtests; ruff, pyright, import smoke, and diff checks passed. Live smoke tests remain opt-in and were skipped without credentials. Bugbot's two review findings were fixed and its follow-up review found no remaining actionable issues.
 
 ## Context and Orientation
 
@@ -81,9 +81,9 @@ The request path is: load saved preset key → resolve lifecycle mapping → obt
 
 ## Plan of Work and Milestone Sequence
 
-All milestone files named below are under `.agent/exec_plans/active/provider-model-api-refresh-2026-10/milestones/active/` until the CLI marks them complete.
+Milestone files are under this plan's `milestones/active/` or `milestones/complete/` directory according to status.
 
-MS001 (`milestones/active/MS001_lock-contracts-and-correct-urgent-lifecycle-routing.md`) locks an implementation-day official-source matrix and fixes two urgent lifecycle claims. In `model_presets.py` and DeepSeek config/defaults, expose canonical `deepseek-flash` profiles and point old V4 Flash and `deepseek-chat`/`deepseek-reasoner` keys directly to them. Keep V4 Pro and its text Chat transport. In `config/agents.py`, lifecycle docs, and README, correct Gemini 2.5 Flash/Pro from “retired” to active for prior users, and disclose Gemini 3.7→3.8 and 3.5→3.6 upstream aliases. Test picker, saved-key load, one-hop resolution, and direct constructor.
+MS001 (`milestones/complete/MS001_lock-contracts-and-correct-urgent-lifecycle-routing.md`) locks an implementation-day official-source matrix and fixes two urgent lifecycle claims. In `model_presets.py` and DeepSeek config/defaults, expose canonical `deepseek-flash` profiles and point old V4 Flash and `deepseek-chat`/`deepseek-reasoner` keys directly to them. Keep V4 Pro and its text Chat transport. In `config/agents.py`, lifecycle docs, and README, correct Gemini 2.5 Flash/Pro from “retired” to active for prior users, and disclose Gemini 3.7→3.8 and 3.5→3.6 upstream aliases. Test picker, saved-key load, one-hop resolution, and direct constructor.
 
 MS002 (`MS002_add-openai-gpt-6-and-repair-input-limits.md`) replaces broad name-based limit selection in `config/agents.py` with explicit total/input/output metadata used by the packer. Effective input budget must respect maximum input and total context after output reservation and normal packing margin; test 272K input for GPT-5.4 Mini/Nano and GPT-5.3-Codex plus current GPT-5.5/4.1 values. Extend `openai/request_builder.py` and config with four GPT-6 families and exact accepted efforts on Responses. Preserve GPT-5.6 rollback choices. Add dated deprecation metadata for GPT-5/o3, GPT-4.1, GPT-5.1/5.3-Codex/5.4 Nano; keep live keys bound until retirement, then provide direct replacements. Replace the direct architect's `o3` default before shutdown. Move its synchronous SDK call off the event loop.
 
@@ -132,8 +132,12 @@ Each milestone should be additive and independently shippable. Do not delete old
 
 The source report is `docs/provider-model-audit-2026-10.md`; its official links are evidence snapshots to recheck. The eight milestone documents under this plan carry file-level tasks, dependencies, risks, and before/after checks. PR #42 currently contains the audit and this plan only. Record implementation-day source matrix, representative default evaluation, and optional API migration decisions here as execution proceeds.
 
+MS001 implementation-day source check, 2026-10-23: [DeepSeek Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/) lists canonical `deepseek-flash` serving DeepSeek-V4.1-Flash-1017 with 1M context and 384K maximum output. It says old `deepseek-v4-flash` requests temporarily route to that model; `deepseek-v4-pro` remains listed. The [DeepSeek change log](https://api-docs.deepseek.com/updates/) says the Flash wire ID changed on 2026-09-10 and the 1017 update uses the same ID. [Google's deprecation schedule](https://ai.google.dev/gemini-api/docs/deprecations) says 2.5 Flash and Pro are not deprecated, have no announced shutdown date, and are limited to prior users. It says `gemini-3.7-flash` API calls automatically serve 3.8 Flash and `gemini-3.5-flash` calls automatically serve 3.6 Flash without shutting down those endpoints. No relevant source drift from the audit was found.
+
 ## Interfaces and Dependencies
 
 Extend existing capability types where possible instead of adding a second registry. Authoritative profiles need wire ID, total context, maximum input where separately documented, maximum output, accepted reasoning/thinking, tool and structured-output compatibility, and refusal/retention constraints. The packer consumes effective input budget; request builders consume validated provider-native values. Keep provider object coercion in `src/agentrules/core/utils/provider_utils.py`; keep Codex phase exceptions in `src/agentrules/core/utils/provider_capabilities.py`. Use `google-genai>=2.30.1` for Argon continuation and a Claude Agent SDK release whose bundled exact Claude Code version passes pinned gates, updating `uv.lock` and local stubs in the same milestone. Avoid new dependencies for optional xAI/Anthropic transports until MS007 proves need.
 
-Plan revision note, 2026-10-23: Initial review draft derived from the dated provider audit; implementation awaits user approval.
+Plan revision note, 2026-10-23: Initial review draft derived from the dated provider audit.
+
+Plan revision note, 2026-10-23: User approved execution; MS001 started after revalidating official provider sources.

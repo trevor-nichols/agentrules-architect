@@ -467,7 +467,7 @@
       "owner": "@codex",
       "path": ".agent/exec_plans/active/provider-model-api-refresh-2026-10/EP-20261023-001_provider-model-api-refresh-2026-10.md",
       "risk": "high",
-      "status": "planned",
+      "status": "active",
       "supersedes": [],
       "tags": [
         "providers",

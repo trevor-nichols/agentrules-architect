@@ -155,14 +155,18 @@ def test_selection_filter_preserves_current_deprecated_preset_with_label() -> No
     assert filtered[0].label.endswith("[deprecated]")
 
 
-def test_gemini_deprecated_picker_choices_show_shutdown_date() -> None:
+def test_gemini_picker_discloses_prior_user_access_and_upstream_aliases() -> None:
     flash = model_presets.get_preset_info("gemini-flash")
     pro = model_presets.get_preset_info("gemini-pro")
+    flash37 = model_presets.get_preset_info("gemini-3.7-flash")
+    flash35 = model_presets.get_preset_info("gemini-3.5-flash")
     assert flash is not None
     assert pro is not None
+    assert flash37 is not None
+    assert flash35 is not None
 
     state = build_model_choice_state(
-        [flash, pro],
+        [flash, pro, flash37, flash35],
         current_key="gemini-flash",
         default_key=None,
         include_reset=False,
@@ -170,8 +174,11 @@ def test_gemini_deprecated_picker_choices_show_shutdown_date() -> None:
     )
     rendered_titles = [str(choice.title) for choice in state.choices if hasattr(choice, "title")]
 
-    assert any("2026-10-16" in title and "2.5 Flash" in title for title in rendered_titles)
-    assert any("2026-10-16" in title and "2.5 Pro" in title for title in rendered_titles)
+    assert any("2.5 Flash (Existing-User Access)" in title for title in rendered_titles)
+    assert any("2.5 Pro (Existing-User Access)" in title for title in rendered_titles)
+    assert any("3.7 Flash (API Alias → 3.8 Flash" in title for title in rendered_titles)
+    assert any("3.5 Flash (API Alias → 3.6 Flash" in title for title in rendered_titles)
+    assert all("2026-10-16" not in title for title in rendered_titles)
 
 
 def test_configure_models_preserves_saved_deprecated_preset_in_picker(monkeypatch) -> None:
