@@ -251,11 +251,13 @@ efforts come from app-server `model/list`; the runtime default follows the insta
 AgentRules preserves new short lowercase effort values reported by that catalog, including values newer
 than the application, but rejects malformed tokens. It does not add static Codex GPT-5.6 presets.
 
-Claude Code offers a runtime-owned default and moving `best`, `sonnet`, `opus`, and `fable` aliases as
+Claude Code offers a runtime-owned default and moving `best`, `sonnet`, `opus`, `fable`, and `haiku` aliases as
 well as pinned model IDs. Moving selections intentionally have no static AgentRules context limit because
 the runtime owns concrete-model resolution. Pinned Claude 5 choices fail closed when AgentRules cannot
 prove that the exact resolved bundled or configured Claude Code executable meets the model's minimum
-version. A newer global binary does not upgrade the SDK-bundled runtime automatically.
+version. Fable 5.1 needs Claude Code 2.1.257+, Opus 5.5 needs 2.1.280+, Sonnet 5.5 needs 2.1.284+,
+and Haiku 5.5 needs 2.1.293+. The lockfile resolves Claude Agent SDK 0.2.173, whose bundled CLI is
+2.1.309. A newer global binary does not upgrade the SDK-bundled runtime automatically.
 
 See [`codex-runtime.md`](codex-runtime.md) and [`claude-code-runtime.md`](claude-code-runtime.md) for
 configuration, authentication, version diagnostics, and runtime-specific live smokes.

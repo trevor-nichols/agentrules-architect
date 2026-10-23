@@ -33,7 +33,7 @@ dependencies = [
   "tomli; python_version < '3.11'",
   "tomli-w",
   "tiktoken>=0.7.0",
-  "claude-agent-sdk>=0.2.119",
+  "claude-agent-sdk>=0.2.165",
 ]
 
 [project.optional-dependencies]

@@ -17,7 +17,7 @@ from agentrules.core.types.tool_config import ToolConfig
 
 AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
 CLAUDE_CODE_RUNTIME_DEFAULT_MODEL = "__claude_code_runtime_default__"
-CLAUDE_CODE_RUNTIME_MANAGED_ALIASES = frozenset({"best", "sonnet", "opus", "fable"})
+CLAUDE_CODE_RUNTIME_MANAGED_ALIASES = frozenset({"best", "sonnet", "opus", "fable", "haiku"})
 
 
 def is_claude_code_runtime_managed_model(model_name: str) -> bool:

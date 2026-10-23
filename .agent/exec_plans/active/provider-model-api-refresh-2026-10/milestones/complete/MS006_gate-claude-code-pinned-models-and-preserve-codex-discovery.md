@@ -2,18 +2,22 @@
 id: EP-20261023-001/MS006
 execplan_id: EP-20261023-001
 ms: 6
-title: "Gate Claude Code pinned models and preserve Codex discovery"
-status: planned
+title: Gate Claude Code pinned models and preserve Codex discovery
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [claude-code, codex, runtime, sdk]
+updated: '2026-10-23'
+tags:
+- claude-code
+- codex
+- runtime
+- sdk
 risk: high
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Gate Claude Code pinned models and preserve Codex discovery
@@ -71,3 +75,5 @@ Keep runtime aliases for recovery. If the new SDK cannot bundle a suitable runti
 ## Changelog
 
 - 2026-10-23: Defined exact-runtime gates and Codex dynamic-catalog acceptance.
+- 2026-10-23: Revalidated Claude Code model/version guidance and Claude Agent SDK 0.2.165 bundle; implementation started.
+- 2026-10-23: Added exact-version gates and picker choices for four pinned models, preserved moving aliases, and upgraded Claude Agent SDK to 0.2.173 (bundled Claude Code 2.1.309). Pinned requests pass the same resolved executable to the SDK that the gate probes; on Windows, default resolution prefers a native executable over an npm cmd shim. Codex fake app-server tests cover a future discovered model, extreme effort, and structured output without a static preset. Full offline suite: 1,095 passed, 12 opt-in skips, 57 subtests; lock check, ruff, pyright, import smoke, and diff checks passed. Bugbot's Windows resolver finding was fixed and follow-up review found no remaining actionable issues.

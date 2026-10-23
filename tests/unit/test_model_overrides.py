@@ -769,6 +769,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             "claude-code-sonnet": "sonnet",
             "claude-code-opus": "opus",
             "claude-code-fable": "fable",
+            "claude-code-haiku-alias": "haiku",
         }
         for preset_key, model_name in alias_models.items():
             preset = self.agents_module.MODEL_PRESETS[preset_key]
@@ -794,6 +795,18 @@ class ModelOverrideTestCase(unittest.TestCase):
         }
         self.assertTrue(sonnet_keys.issubset(self.agents_module.MODEL_PRESETS))
         self.assertTrue(fable_keys.issubset(self.agents_module.MODEL_PRESETS))
+        for key, model_name, effort in (
+            ("claude-code-fable-5.1", "claude-fable-5-1", "high"),
+            ("claude-code-opus-5.5", "claude-opus-5-5", "medium"),
+            ("claude-code-sonnet-5.5", "claude-sonnet-5-5", "high"),
+            ("claude-code-haiku-5.5", "claude-haiku-5-5", "medium"),
+        ):
+            preset = self.agents_module.MODEL_PRESETS[key]
+            self.assertEqual(preset["config"].provider, ModelProvider.CLAUDE_CODE)
+            self.assertEqual(preset["config"].model_name, model_name)
+            self.assertEqual(preset["config"].anthropic_effort, effort)
+            self.assertEqual(preset["config"].max_input_tokens, 872_000)
+        self.assertIn("30-day retention", self.agents_module.MODEL_PRESETS["claude-code-fable-5.1"]["label"])
         self.assertFalse(
             any(
                 key.startswith("claude-code-fable-5") and "non-reasoning" in key

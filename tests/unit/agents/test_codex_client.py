@@ -71,10 +71,14 @@ async def test_codex_client_buffers_notifications_before_response_is_consumed(tm
 async def test_codex_client_lists_all_models_across_pages(tmp_path: Path) -> None:
     async with _build_client(tmp_path) as client:
         visible_models = await client.list_all_models(limit=1)
-        assert [model.model for model in visible_models] == ["gpt-5.3-codex", "gpt-5.4"]
+        assert [model.model for model in visible_models] == [
+            "gpt-5.3-codex", "gpt-5.4", "gpt-6-codex-preview"
+        ]
 
         all_models = await client.list_all_models(limit=2, include_hidden=True)
-        assert [model.model for model in all_models] == ["gpt-5.3-codex", "gpt-5.4", "gpt-5.2-codex"]
+        assert [model.model for model in all_models] == [
+            "gpt-5.3-codex", "gpt-5.4", "gpt-6-codex-preview", "gpt-5.2-codex"
+        ]
 
         efforts = [
             option.reasoning_effort

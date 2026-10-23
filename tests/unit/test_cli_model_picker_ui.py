@@ -15,6 +15,7 @@ from agentrules.cli.ui.settings.models.utils import (
 )
 from agentrules.core.agents.base import ModelProvider
 from agentrules.core.configuration import model_presets
+from agentrules.core.configuration.services.claude_code import ClaudeCodeVersion
 
 
 def _preset(
@@ -179,6 +180,46 @@ def test_gemini_picker_discloses_prior_user_access_and_upstream_aliases() -> Non
     assert any("3.7 Flash (API Alias → 3.8 Flash" in title for title in rendered_titles)
     assert any("3.5 Flash (API Alias → 3.6 Flash" in title for title in rendered_titles)
     assert all("2026-10-16" not in title for title in rendered_titles)
+
+
+def test_claude_code_picker_filters_pins_by_exact_runtime_version(monkeypatch) -> None:
+    keys = (
+        "claude-code-haiku-alias",
+        "claude-code-fable-5.1",
+        "claude-code-opus-5.5",
+        "claude-code-sonnet-5.5",
+        "claude-code-haiku-5.5",
+    )
+    presets = [model_presets.get_preset_info(key) for key in keys]
+    assert all(preset is not None for preset in presets)
+    available_presets = [preset for preset in presets if preset is not None]
+    monkeypatch.setattr(
+        model_settings.configuration.CONFIG_MANAGER,
+        "get_claude_code_runtime_version",
+        lambda: ClaudeCodeVersion(2, 1, 280),
+    )
+
+    filtered = model_settings._filter_claude_code_presets_for_runtime(
+        available_presets,
+        preserved_key=None,
+    )
+    assert [preset.key for preset in filtered] == [
+        "claude-code-haiku-alias",
+        "claude-code-fable-5.1",
+        "claude-code-opus-5.5",
+    ]
+
+    monkeypatch.setattr(
+        model_settings.configuration.CONFIG_MANAGER,
+        "get_claude_code_runtime_version",
+        lambda: None,
+    )
+    preserved = model_settings._filter_claude_code_presets_for_runtime(
+        available_presets,
+        preserved_key="claude-code-haiku-5.5",
+    )
+    assert [preset.key for preset in preserved] == ["claude-code-haiku-alias", "claude-code-haiku-5.5"]
+    assert "runtime version unverified; needs 2.1.293+" in preserved[-1].label
 
 
 def test_configure_models_preserves_saved_deprecated_preset_in_picker(monkeypatch) -> None:

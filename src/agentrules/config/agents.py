@@ -1552,6 +1552,23 @@ def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
                 "requires Claude Code 2.1.170 or later."
             ),
         ),
+        "claude-code-haiku-alias": _claude_code_runtime_managed_preset(
+            model_name="haiku",
+            label="Claude Code Haiku Alias (Moving)",
+            description="Uses Claude Code's moving haiku alias rather than a reproducible model ID.",
+        ),
+        "claude-code-fable-5.1": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5.1"]
+        ),
+        "claude-code-opus-5.5": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-opus-5.5"]
+        ),
+        "claude-code-sonnet-5.5": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-sonnet-5.5"]
+        ),
+        "claude-code-haiku-5.5": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-haiku-5.5"]
+        ),
         "claude-code-sonnet-5": _derive_claude_code_runtime_preset(BASE_MODEL_PRESETS["claude-sonnet-5"]),
         "claude-code-sonnet-5-reasoning-low": _derive_claude_code_runtime_preset(
             BASE_MODEL_PRESETS["claude-sonnet-5-reasoning-low"]

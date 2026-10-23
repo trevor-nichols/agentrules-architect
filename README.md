@@ -312,7 +312,7 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 | xAI | Grok 4.7 is recommended; Grok 4.6 and 4.5 remain fallbacks, and pinned Grok 4.20 reasoning and non-reasoning variants are available | Direct `XaiArchitect` construction still defaults to 4.6 pending evaluation. Grok 4.3 remains selectable. The 4.20 Multi-Agent model is excluded because this adapter uses Chat Completions. |
 | Google | Gemini 3.8 Flash or 4 Argon, with low/medium/high thinking | Gemini 3.7 Flash API ID serves 3.8; 3.5 Flash API ID serves 3.6. Gemini 2.5 Flash/Pro remain available to prior users; retired preview keys redirect to active 3.1 endpoints. |
 | Codex | Runtime default or a model/effort discovered from app-server | Availability follows the installed runtime and account. AgentRules does not maintain a static Codex GPT-5.6 list. |
-| Claude Code | Runtime default/moving aliases or a supported pinned Claude model | Moving choices follow runtime/account policy; pinned Claude 5 choices are guarded by the exact resolved runtime version. |
+| Claude Code | Runtime default/moving aliases or pinned Fable 5.1, Opus/Sonnet/Haiku 5.5 | Moving choices follow runtime/account policy; pinned choices require the exact resolved Claude Code version. The lockfile bundles CLI 2.1.309 through Claude Agent SDK 0.2.173. |
 
 See [`docs/provider-model-lifecycle.md`](docs/provider-model-lifecycle.md) for reasoning contracts, retirements, data-retention caveats, safe live-smoke commands, and rollback choices.
 
