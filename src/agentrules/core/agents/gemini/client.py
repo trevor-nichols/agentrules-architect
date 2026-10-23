@@ -34,7 +34,7 @@ async def generate_content_async(
     client: genai.Client,
     *,
     model: str,
-    contents: str,
+    contents: Any,
     config: Any | None,
 ) -> Any:
     """Run ``models.generate_content`` on a thread to avoid blocking the event loop."""

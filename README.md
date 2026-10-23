@@ -310,7 +310,7 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 | DeepSeek | V4.1 Flash (`deepseek-flash`) or V4 Pro | Saved V4 Flash, `deepseek-chat`, and `deepseek-reasoner` keys resolve directly to matching V4.1 Flash modes. |
 | Anthropic | Claude Sonnet 5 or Fable 5; generic Opus keys use Opus 4.8 | Opus 4.8 is the conservative fallback. Fable 5 requires the provider's 30-day retention policy. |
 | xAI | Grok 4.5; pinned Grok 4.20 reasoning and non-reasoning variants are available | Grok 4.3 remains selectable. The 4.20 Multi-Agent model is intentionally excluded because this adapter uses Chat Completions. |
-| Google | Gemini 3.7 Flash API ID (Google serves 3.8 Flash) | Gemini 3.5 Flash API ID serves 3.6 Flash. Gemini 2.5 Flash/Pro are not deprecated but access is limited to prior users; retired preview keys redirect to active 3.1 endpoints. |
+| Google | Gemini 3.8 Flash or 4 Argon, with low/medium/high thinking | Gemini 3.7 Flash API ID serves 3.8; 3.5 Flash API ID serves 3.6. Gemini 2.5 Flash/Pro remain available to prior users; retired preview keys redirect to active 3.1 endpoints. |
 | Codex | Runtime default or a model/effort discovered from app-server | Availability follows the installed runtime and account. AgentRules does not maintain a static Codex GPT-5.6 list. |
 | Claude Code | Runtime default/moving aliases or a supported pinned Claude model | Moving choices follow runtime/account policy; pinned Claude 5 choices are guarded by the exact resolved runtime version. |
 

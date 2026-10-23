@@ -26,6 +26,11 @@ class GeminiCapabilityProfile:
     supports_disabling_thinking: bool = True
     supported_thinking_levels: tuple[GeminiThinkingLevelName, ...] = ()
     requires_exact_thinking_level: bool = False
+    requires_function_call_id: bool = False
+    max_input_tokens: int | None = None
+    max_output_tokens: int | None = None
+    automatic_continuation: bool = False
+    request_timeout_ms: int | None = None
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -40,6 +45,34 @@ _DEFAULT_PROFILE = GeminiCapabilityProfile(
 
 _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
     GeminiCapabilityProfile(
+        family_prefix="gemini-4-argon",
+        stable_name="gemini-4-argon",
+        display_name="Gemini 4 Argon",
+        uses_thinking_level=True,
+        supports_structured_output_with_tools=True,
+        supports_disabling_thinking=False,
+        supported_thinking_levels=("low", "medium", "high"),
+        requires_exact_thinking_level=True,
+        requires_function_call_id=True,
+        max_input_tokens=1_048_576 - 65_536,
+        max_output_tokens=65_536,
+        automatic_continuation=True,
+        request_timeout_ms=1_200_000,
+    ),
+    GeminiCapabilityProfile(
+        family_prefix="gemini-3.8-flash",
+        stable_name="gemini-3.8-flash",
+        display_name="Gemini 3.8 Flash",
+        uses_thinking_level=True,
+        supports_structured_output_with_tools=True,
+        supports_disabling_thinking=False,
+        supported_thinking_levels=("low", "medium", "high"),
+        requires_exact_thinking_level=True,
+        requires_function_call_id=True,
+        max_input_tokens=1_048_576,
+        max_output_tokens=65_536,
+    ),
+    GeminiCapabilityProfile(
         family_prefix="gemini-3.7-flash",
         stable_name="gemini-3.7-flash",
         display_name="Gemini 3.7 Flash",
@@ -48,6 +81,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_disabling_thinking=False,
         supported_thinking_levels=("low", "medium", "high"),
         requires_exact_thinking_level=True,
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.6-flash",
@@ -58,6 +92,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
         requires_exact_thinking_level=True,
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.1-pro",
@@ -67,6 +102,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("low", "high"),
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3-pro",
@@ -76,6 +112,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("low", "high"),
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.1-flash-lite-preview",
@@ -85,6 +122,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.1-flash-lite",
@@ -94,6 +132,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.5-flash-lite",
@@ -104,6 +143,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
         requires_exact_thinking_level=True,
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.5-flash",
@@ -113,6 +153,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3-flash",
@@ -122,6 +163,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
         supported_thinking_levels=("minimal", "low", "medium", "high"),
+        requires_function_call_id=True,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-2.5-pro",
@@ -162,6 +204,10 @@ def model_supports_thinking_level(model_name: str) -> bool:
     """Return True when the model uses thinking_level controls."""
 
     return resolve_capability_profile(model_name).uses_thinking_level
+
+
+def model_requires_function_call_id(model_name: str) -> bool:
+    return resolve_capability_profile(model_name).requires_function_call_id
 
 
 def model_supports_structured_output_with_tools(model_name: str) -> bool:

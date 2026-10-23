@@ -10,6 +10,7 @@ Users can specify a different model for each phase and whether to use reasoning.
 from typing import TypedDict
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
+from agentrules.core.agents.gemini.capabilities import resolve_capability_profile
 from agentrules.core.agents.openai.capabilities import get_openai_model_capabilities
 from agentrules.core.types.models import (
     CLAUDE_BASIC,
@@ -55,8 +56,10 @@ from agentrules.core.types.models import (
     GEMINI_3_5_FLASH_LITE,
     GEMINI_3_6_FLASH,
     GEMINI_3_7_FLASH,
+    GEMINI_3_8_FLASH,
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
+    GEMINI_4_ARGON,
     GEMINI_FLASH,
     GEMINI_FLASH_DYNAMIC,
     GEMINI_PRO,
@@ -222,7 +225,10 @@ def _apply_model_limits(config: ModelConfig) -> ModelConfig:
         estimator_family = estimator_family or "anthropic_api"
     elif provider == ModelProvider.GEMINI:
         estimator_family = estimator_family or "gemini_api"
-        if limit is None:
+        profile = resolve_capability_profile(name)
+        if profile.max_input_tokens is not None:
+            limit = profile.max_input_tokens if limit is None else min(limit, profile.max_input_tokens)
+        elif limit is None:
             if "3-pro" in name:
                 limit = 1_000_000
             else:
@@ -368,6 +374,42 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         family_label="GPT-6 Luna",
         base_config=GPT6_LUNA_DEFAULT,
         efforts=("none", "low", "medium", "high", "xhigh", "max"),
+    ),
+    "gemini-3.8-flash": _preset(
+        config=GEMINI_3_8_FLASH,
+        label="Gemini 3.8 Flash (Medium Thinking)",
+        description="Gemini 3.8 Flash with medium thinking and a 1,048,576-token input limit.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.8-flash-reasoning-low": _preset(
+        config=GEMINI_3_8_FLASH._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 3.8 Flash (Low Thinking)",
+        description="Gemini 3.8 Flash with low thinking.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-3.8-flash-reasoning-high": _preset(
+        config=GEMINI_3_8_FLASH._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 3.8 Flash (High Thinking)",
+        description="Gemini 3.8 Flash with high thinking.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-4-argon": _preset(
+        config=GEMINI_4_ARGON,
+        label="Gemini 4 Argon (Medium Thinking)",
+        description="Gemini 4 Argon with medium thinking and a shared input, thinking, and output window.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-4-argon-reasoning-low": _preset(
+        config=GEMINI_4_ARGON._replace(reasoning=ReasoningMode.LOW),
+        label="Gemini 4 Argon (Low Thinking)",
+        description="Gemini 4 Argon with low thinking and a shared token window.",
+        provider=ModelProvider.GEMINI,
+    ),
+    "gemini-4-argon-reasoning-high": _preset(
+        config=GEMINI_4_ARGON._replace(reasoning=ReasoningMode.HIGH),
+        label="Gemini 4 Argon (High Thinking)",
+        description="Gemini 4 Argon with high thinking and a shared token window.",
+        provider=ModelProvider.GEMINI,
     ),
     "gemini-3.7-flash": _preset(
         config=GEMINI_3_7_FLASH,

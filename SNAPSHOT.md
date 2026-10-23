@@ -304,6 +304,7 @@
 │   │   │   └── phase1_results.json  # Example output
 │   │   ├── __init__.py  # Test package
 │   │   ├── run_test.py  # Standalone phase 1 runner
+│   │   ├── test_phase1_gemini_tool_turn.py
 │   │   ├── test_phase1_offline.py  # Offline tests for phase 1
 │   │   ├── test_phase1_profile_agents.py
 │   │   └── test_phase1_researcher_guards.py  # Tests for researcher constraints
@@ -403,6 +404,7 @@
 │   │   ├── test_execplan_registry_cli.py  # Unit tests for registry CLI command
 │   │   ├── test_file_retriever.py  # Unit tests for getting file contents
 │   │   ├── test_final_analysis_prompt.py  # Unit tests for final prompt rendering
+│   │   ├── test_gemini_current_presets.py
 │   │   ├── test_model_config_helper.py  # Unit tests for config name lookup
 │   │   ├── test_model_overrides.py  # Unit tests for overriding defaults
 │   │   ├── test_openai_lifecycle.py

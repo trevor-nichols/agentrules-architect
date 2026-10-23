@@ -2,18 +2,22 @@
 id: EP-20261023-001/MS003
 execplan_id: EP-20261023-001
 ms: 3
-title: "Repair Gemini tool turns and add current models"
-status: planned
+title: Repair Gemini tool turns and add current models
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [gemini, tools, sdk, capabilities]
+updated: '2026-10-23'
+tags:
+- gemini
+- tools
+- sdk
+- capabilities
 risk: high
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Repair Gemini tool turns and add current models
@@ -72,3 +76,5 @@ Expose 3.8/4 researcher choices only after continuation tests pass. If SDK upgra
 ## Changelog
 
 - 2026-10-23: Defined two-turn Gemini and Argon dependency gates.
+- 2026-10-23: Started after MS002. Revalidated official model and GenerateContent guides; Argon model card lists a 65,536 synchronous SDK generation cap with automatic continuation, while a single non-streaming API hop remains capped at 32,768. The implementation will follow the SDK contract and reserve the requested thinking/output budget within the shared window.
+- 2026-10-23: Completed signed two-turn tool continuation, strict call-ID handling across Gemini 3.x/4, 3.8 Flash and 4 Argon presets and budgets, SDK 2.33.0 lock and minimal stubs, and lifecycle docs. Bugbot findings on tool-only replies, legacy 3.x IDs, and JSON-safe results were fixed. Full offline suite passed (1,046 tests, 57 subtests); ruff, pyright, import smoke, lock check, and diff check passed.

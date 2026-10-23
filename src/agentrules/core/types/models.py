@@ -478,6 +478,20 @@ GEMINI_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
+GEMINI_3_8_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.8-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GEMINI_4_ARGON = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-4-argon",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
 GEMINI_3_5_FLASH = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3.5-flash",

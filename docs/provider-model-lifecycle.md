@@ -160,6 +160,15 @@ Official references:
 
 ## Google Gemini API
 
+Direct `gemini-3.8-flash` and `gemini-4-argon` presets expose low, medium, and high thinking.
+Minimal and disabled reasoning fail before dispatch. Flash accepts 1,048,576 input tokens and requests
+up to 65,536 output tokens. Argon's 1,048,576-token window includes input, thinking, and output, so
+AgentRules reserves 65,536 tokens for generation and limits packed input to 983,040 before its safety
+margin. Its SDK request uses automatic continuation, a 65,536-token generation limit, and a 20-minute
+timeout; a single non-streaming API hop is capped at 32,768 tokens. Researcher tool turns retain the
+complete model content (including thought signatures) and return matching function-call IDs and names.
+AgentRules requires `google-genai>=2.30.1` for this continuation behavior.
+
 `gemini-3.7-flash` remains an AgentRules preset and API wire ID, but Google automatically serves it as
 3.8 Flash. It has a 1,048,576-token input context, defaults to medium thinking, and accepts exactly low,
 medium, or high. Disabled and minimal requests fail before dispatch rather than being raised to low.
@@ -167,8 +176,8 @@ medium, or high. Disabled and minimal requests fail before dispatch rather than 
 `gemini-3.6-flash` defaults to medium and accepts minimal, low, medium, or high. The throughput-oriented
 `gemini-3.5-flash-lite` defaults to minimal and accepts the same four levels. All three families support
 tools together with structured output. Their capability profiles require the installed SDK to expose the
-requested exact level; AgentRules requires `google-genai>=1.56.0`, the first SDK release with `MINIMAL`
-and `MEDIUM`, and does not silently select a nearby enum value.
+requested exact level; the required SDK includes `MINIMAL` and `MEDIUM`, and AgentRules does not silently
+select a nearby enum value.
 
 The older explicit `gemini-3.5-flash` key also remains registered; Google automatically serves API
 requests to that ID as 3.6 Flash. Saved keys and wire IDs stay unchanged, while picker labels disclose
@@ -186,6 +195,10 @@ picker labels disclose those redirects so operators do not mistake compatibility
 Official references:
 
 - [Gemini model catalog](https://ai.google.dev/gemini-api/docs/models)
+- [Gemini 3.8 Flash model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash)
+- [Gemini 4 Argon model card](https://ai.google.dev/gemini-api/docs/models/gemini-4-argon)
+- [Argon GenerateContent and continuation guide](https://ai.google.dev/gemini-api/docs/generate-content/latest-model)
+- [Gemini 3.8 function-call migration rules](https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.8)
 - [Gemini thinking levels](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
 - [Gemini model deprecations](https://ai.google.dev/gemini-api/docs/deprecations)
 - [Google Gen AI Python SDK changelog](https://github.com/googleapis/python-genai/blob/main/CHANGELOG.md#1560-2025-12-16)
