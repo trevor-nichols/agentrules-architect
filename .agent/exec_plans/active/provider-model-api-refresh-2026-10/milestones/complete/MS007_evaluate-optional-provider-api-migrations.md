@@ -2,18 +2,22 @@
 id: EP-20261023-001/MS007
 execplan_id: EP-20261023-001
 ms: 7
-title: "Evaluate optional provider API migrations"
-status: planned
+title: Evaluate optional provider API migrations
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [api, spike, migration, decision]
+updated: '2026-10-31'
+tags:
+- api
+- spike
+- migration
+- decision
 risk: med
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Evaluate optional provider API migrations
@@ -35,6 +39,7 @@ The team has an evidence-backed go/no-go for each optional API migration and kno
 
 ### In Scope
 - Read-only source review and disposable or test-only probes around `src/agentrules/core/agents/{xai,anthropic,gemini}`, plus a migration decision record in the parent plan and lifecycle docs if operator guidance changes.
+- Bound the Anthropic dependency below 2.0 so fresh installs preserve the chosen 2023 API/auth contract until a reviewed migration.
 - Confirm OpenAI Responses and DeepSeek Chat remain documented for their current text pipeline.
 
 ### Out of Scope
@@ -68,3 +73,6 @@ No deployment effect. Dispose of throwaway probes or retain only meaningful cont
 ## Changelog
 
 - 2026-10-23: Defined optional API migration decision gates and scope boundary.
+- 2026-10-23: Began official-source and installed-SDK contract review for all three optional transports.
+- 2026-10-31: Rechecked official migration and version docs. Current-adapter focused suite passed (204 tests). Disposable mock-transport probes passed for xAI Responses request, structured output, function continuation, typed output/SSE; Anthropic SDK 2.0 request, structured output, tool replay, stream, gateway header rewrite, and credential conflict; and Gemini Interactions request, structured output, function result, typed steps/SSE. The parent Decision Log records three no-go decisions, future triggers, dependency effects, retention/gateway risks, and rollback paths. OpenAI Responses and DeepSeek Chat remain documented. No production request builder changed. Bugbot found that the unbounded Anthropic dependency could silently adopt 2.x on a fresh install; capped it below 2.0 and refreshed `uv.lock`.
+- 2026-10-31: Full offline suite passed (1,095 tests, 12 opt-in skips, 57 subtests); lock, ruff, pyright, import smoke, and diff checks passed. Bugbot follow-up found no remaining actionable issues.

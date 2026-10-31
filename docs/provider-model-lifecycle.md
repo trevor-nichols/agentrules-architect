@@ -262,6 +262,22 @@ and Haiku 5.5 needs 2.1.293+. The lockfile resolves Claude Agent SDK 0.2.173, wh
 See [`codex-runtime.md`](codex-runtime.md) and [`claude-code-runtime.md`](claude-code-runtime.md) for
 configuration, authentication, version diagnostics, and runtime-specific live smokes.
 
+## Direct API transport status
+
+As of October 31, 2026, AgentRules keeps its current direct transports. The MS007 offline contract
+review found no model requirement that forces a production migration. A future switch needs a separate
+review of request, tool, stream, parser, and retention behavior.
+
+| Provider | Current AgentRules path | Migration consideration |
+| --- | --- | --- |
+| xAI | Chat Completions for Grok 4.7 and fallback models | [Responses](https://docs.x.ai/developers/model-capabilities/text/comparison) carries encrypted reasoning and hosted tools, but changes typed output and defaults to 30-day storage. Keep the current stateless behavior unless a reviewed migration explicitly chooses storage or `store=false`. |
+| Anthropic | Python SDK 0.83 and Messages API version `2023-06-01`; the dependency is bounded below 2.0 | [SDK 2.x / API `2026-10-21`](https://platform.claude.com/docs/en/api/migration-2026-10-21) changes API-key transport from `X-Api-Key` to `Authorization: Bearer`, affecting gateways; it also removes sampling parameters. Current 5.5/Fable request contracts are covered offline on the existing path. |
+| Gemini | GenerateContent with full signed model-turn replay for tools | [Interactions](https://ai.google.dev/gemini-api/docs/interactions-overview) introduces typed steps and optional server-side state. Its default stored requests have different retention; `store=false` cannot continue with `previous_interaction_id`. GenerateContent remains supported. |
+
+OpenAI direct models use Responses, and [DeepSeek Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/)
+remains a documented current endpoint. The dated source comparison, offline probes, rollback paths, and
+revisit triggers are recorded in the provider refresh ExecPlan.
+
 ## Optional direct-provider live smoke
 
 The direct-provider smoke suite is disabled unless all three gates are satisfied: `pytest --run-live`, a

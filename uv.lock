@@ -40,7 +40,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", specifier = ">=0.78.0" },
+    { name = "anthropic", specifier = ">=0.78.0,<2.0.0" },
     { name = "claude-agent-sdk", specifier = ">=0.2.165" },
     { name = "flask", marker = "extra == 'dev'" },
     { name = "google-genai", specifier = ">=2.30.1" },
