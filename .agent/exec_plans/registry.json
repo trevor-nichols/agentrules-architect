@@ -465,9 +465,9 @@
       },
       "migration": true,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/provider-model-api-refresh-2026-10/EP-20261023-001_provider-model-api-refresh-2026-10.md",
+      "path": ".agent/exec_plans/complete/2026/10/31/EP-20261023-001_provider-model-api-refresh-2026-10/EP-20261023-001_provider-model-api-refresh-2026-10.md",
       "risk": "high",
-      "status": "active",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "providers",
@@ -483,7 +483,7 @@
         "docs",
         "tests"
       ],
-      "updated": "2026-10-23"
+      "updated": "2026-10-31"
     }
   ],
   "schema_version": 1

@@ -1,21 +1,30 @@
 ---
 id: EP-20261023-001
-title: "Refresh provider models and API contracts after October 2026 audit"
-status: active
+title: Refresh provider models and API contracts after October 2026 audit
+status: done
 kind: refactor
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-23
-tags: [providers, models, capabilities, lifecycle]
-touches: [api, cli, agents, docs, tests]
+updated: '2026-10-31'
+tags:
+- providers
+- models
+- capabilities
+- lifecycle
+touches:
+- api
+- cli
+- agents
+- docs
+- tests
 risk: high
 breaking: false
 migration: true
 links:
-  issue: ""
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
-  docs: "docs/provider-model-audit-2026-10.md"
+  issue: ''
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
+  docs: docs/provider-model-audit-2026-10.md
 depends_on: []
 supersedes: []
 ---
@@ -52,7 +61,7 @@ The audit's P2 API topics are a bounded evaluation in MS007. xAI Responses, Anth
 - [x] (2026-10-23) MS005: Revalidated Grok 4.7; added strict 500K/effort presets and Chat contract tests; preserved direct 4.6 default; full offline suite and bugbot review passed.
 - [x] (2026-10-23) MS006: Added exact-runtime gates for Claude Code pins and native executable selection, upgraded SDK/lockfile, and preserved dynamic Codex discovery; full offline suite and bugbot review passed.
 - [x] (2026-10-31) MS007: Recorded three evidence-backed transport no-go decisions, enforced the Anthropic SDK boundary, and passed full offline gates plus bugbot review.
-- [ ] (2026-10-31) MS008 in progress: cross-checking saved keys, picker labels, offline pipeline, default evidence, and PR CI before final release assessment.
+- [x] (2026-10-31) MS008: Cross-provider and saved-key matrix, full offline pipeline, Linux/Python 3.11 portability fixes, full offline CI, and review passed; defaults stayed unchanged without comparative live evidence.
 
 ## Surprises & Discoveries
 
@@ -99,6 +108,8 @@ MS008 local validation, 2026-10-31: The cross-provider matrix now exercises all 
 MS008 portability follow-up, 2026-10-31: The first new PR quality job failed 17 tests on Linux/Python 3.11. `file_retriever.list_files` passed absolute paths to exclusion logic, causing the `/tmp` ancestor to exclude every project file; the scaffold used a two-argument `Traversable.joinpath` unsupported by Python 3.11; and a CLI test compared ANSI-styled error output as plain text. The project-root regression was reproduced locally under `/tmp`; all three fixes now pass the complete 1,111-test unit suite in an isolated locked Python 3.11 environment. PR rerun remains pending.
 
 MS008 review follow-up, 2026-10-31: The first Linux PR rerun passed all six new jobs and lockfile validation. Review then found that the quality job omitted phase and top-level offline tests; it now runs the complete non-live `tests` tree. Local `pytest -q` passed 1,158 tests, 12 opt-in live skips, and 57 subtests. The expanded PR run is pending.
+
+MS008 completed on 2026-10-31. The expanded Linux PR workflow and lockfile job passed; quality now runs all non-live tests (1,158 locally), Ruff, and Pyright. The new jobs independently validate package import, prompt rendering, parser corpus, 100-file token packing, and a real offline CLI pipeline. Saved-key and provider request contracts passed 137 matrix cases. A read-only follow-up review found no remaining actionable issue after the CI coverage fix. No live flags were set, so paid availability, cost, latency, and task-quality comparisons were not run; GPT-5.6 Sol phase defaults and the Grok 4.6 direct-constructor default remain in place. The optional transport migrations retain their documented no-go status for this release.
 
 ## Context and Orientation
 

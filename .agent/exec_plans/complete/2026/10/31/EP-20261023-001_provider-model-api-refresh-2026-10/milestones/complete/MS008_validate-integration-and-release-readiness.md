@@ -2,18 +2,22 @@
 id: EP-20261023-001/MS008
 execplan_id: EP-20261023-001
 ms: 8
-title: "Validate integration and release readiness"
-status: in_progress
+title: Validate integration and release readiness
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-10-23
-updated: 2026-10-31
-tags: [integration, qa, rollout, defaults]
+updated: '2026-10-31'
+tags:
+- integration
+- qa
+- rollout
+- defaults
 risk: med
 links:
-  issue: ""
-  docs: "docs/provider-model-audit-2026-10.md"
-  pr: "https://github.com/trevor-nichols/agentrules-architect/pull/42"
+  issue: ''
+  docs: docs/provider-model-audit-2026-10.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/42
 ---
 
 # Validate integration and release readiness
@@ -75,6 +79,7 @@ Release in reviewed provider slices with old explicit models available as rollba
 - Local gates: `pytest -q tests/unit` (1,110 passed, 57 subtests), `ruff check .`, `pyright`, import smoke, and `uv lock --check` passed. PR CI for the new workflow is pending.
 - The first Linux/Python 3.11 quality job found 17 portability failures outside provider adapters. Exclusion matching now uses paths relative to the project root; scaffold templates load with Python 3.11-compatible resource joins; the CLI error assertion ignores ANSI styling. The full unit suite now passes locally under locked Python 3.11 (1,111 passed, 57 subtests); PR rerun is pending.
 - Review found that the new quality job ran only unit tests. It now runs `pytest -q tests --ignore=tests/live` so CI covers the full non-live phase and pipeline suites. Local `pytest -q` passed 1,158 tests with 12 opt-in live skips and 57 subtests; the updated PR run is pending.
+- The expanded Linux PR workflow and lockfile check passed. Review found no further actionable defects after the quality job was expanded. Static contracts and offline integration are release-ready; live entitlement and comparative default evaluation remain unmeasured because all provider opt-in flags were unset.
 
 ## Changelog
 
@@ -83,3 +88,4 @@ Release in reviewed provider slices with old explicit models available as rollba
 - 2026-10-31: Added cross-provider cases, focused prompt/parser fixtures, full offline CLI smoke, and missing PR test jobs; local gates passed, PR check pending.
 - 2026-10-31: Fixed Linux/Python 3.11 failures exposed by the new quality job and reproduced the complete suite in a locked 3.11 environment.
 - 2026-10-31: Expanded PR quality job to the complete non-live test tree after review.
+- 2026-10-31: Final PR CI and read-only review passed; milestone ready for CLI completion.
