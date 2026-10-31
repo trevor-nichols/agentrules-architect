@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 import unittest
 from importlib import reload
@@ -179,7 +180,8 @@ class CLITestCase(unittest.TestCase):
             )
 
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Choose either --check or --force, not both.", result.output)
+        plain_output = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        self.assertIn("Choose either --check or --force, not both.", plain_output)
 
     def test_snapshot_find_searches_recursively_from_path(self) -> None:
         from agentrules import cli

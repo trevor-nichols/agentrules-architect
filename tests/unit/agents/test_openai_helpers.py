@@ -250,35 +250,29 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
                     )
                     self.assertEqual(prepared.payload["reasoning"], {"effort": expected_effort})
 
-    def test_prepare_request_for_gpt55_max_downgrades_to_xhigh(self) -> None:
-        prepared = prepare_request(
-            model_name="gpt-5.5",
-            content="Hello GPT-5.5",
-            reasoning=ReasoningMode.MAX,
-            temperature=None,
-            tools=None,
-            text_verbosity="high",
-            use_responses_api=True,
-        )
+    def test_prepare_request_for_gpt55_rejects_unsupported_max(self) -> None:
+        with self.assertRaisesRegex(ValueError, "does not support reasoning effort 'max'"):
+            prepare_request(
+                model_name="gpt-5.5",
+                content="Hello GPT-5.5",
+                reasoning=ReasoningMode.MAX,
+                temperature=None,
+                tools=None,
+                text_verbosity="high",
+                use_responses_api=True,
+            )
 
-        self.assertEqual(prepared.payload["reasoning"], {"effort": "xhigh"})
-
-    def test_prepare_request_for_responses_api_gpt55_minimal_downgrades_to_none(self) -> None:
-        prepared = prepare_request(
-            model_name="gpt-5.5",
-            content="Hello gpt-5.5",
-            reasoning=ReasoningMode.MINIMAL,
-            temperature=None,
-            tools=None,
-            text_verbosity="low",
-            use_responses_api=True,
-        )
-
-        self.assertEqual(prepared.api, "responses")
-        payload = prepared.payload
-        self.assertEqual(payload["model"], "gpt-5.5")
-        self.assertEqual(payload["reasoning"], {"effort": "none"})
-        self.assertEqual(payload["text"], {"verbosity": "low"})
+    def test_prepare_request_for_responses_api_gpt55_rejects_minimal(self) -> None:
+        with self.assertRaisesRegex(ValueError, "does not support reasoning effort 'minimal'"):
+            prepare_request(
+                model_name="gpt-5.5",
+                content="Hello gpt-5.5",
+                reasoning=ReasoningMode.MINIMAL,
+                temperature=None,
+                tools=None,
+                text_verbosity="low",
+                use_responses_api=True,
+            )
 
     def test_prepare_request_for_responses_api_gpt54_mini_none(self) -> None:
         prepared = prepare_request(
@@ -399,22 +393,17 @@ class OpenAIRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["reasoning"], {"effort": "xhigh"})
         self.assertEqual(payload["text"], {"verbosity": "high"})
 
-    def test_prepare_request_for_responses_api_gpt51_codex_disabled_omits_reasoning(self) -> None:
-        prepared = prepare_request(
-            model_name="gpt-5.1-codex",
-            content="Hello gpt-5.1-codex",
-            reasoning=ReasoningMode.DISABLED,
-            temperature=None,
-            tools=None,
-            text_verbosity="medium",
-            use_responses_api=True,
-        )
-
-        self.assertEqual(prepared.api, "responses")
-        payload = prepared.payload
-        self.assertEqual(payload["model"], "gpt-5.1-codex")
-        self.assertNotIn("reasoning", payload)
-        self.assertEqual(payload["text"], {"verbosity": "medium"})
+    def test_prepare_request_for_responses_api_gpt51_codex_rejects_disabled(self) -> None:
+        with self.assertRaisesRegex(ValueError, "does not support reasoning effort 'none'"):
+            prepare_request(
+                model_name="gpt-5.1-codex",
+                content="Hello gpt-5.1-codex",
+                reasoning=ReasoningMode.DISABLED,
+                temperature=None,
+                tools=None,
+                text_verbosity="medium",
+                use_responses_api=True,
+            )
 
     def test_prepare_request_for_responses_api_gpt41_temperature(self) -> None:
         prepared = prepare_request(

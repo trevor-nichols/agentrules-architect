@@ -17,7 +17,7 @@ from agentrules.core.types.tool_config import ToolConfig
 
 AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
 CLAUDE_CODE_RUNTIME_DEFAULT_MODEL = "__claude_code_runtime_default__"
-CLAUDE_CODE_RUNTIME_MANAGED_ALIASES = frozenset({"best", "sonnet", "opus", "fable"})
+CLAUDE_CODE_RUNTIME_MANAGED_ALIASES = frozenset({"best", "sonnet", "opus", "fable", "haiku"})
 
 
 def is_claude_code_runtime_managed_model(model_name: str) -> bool:
@@ -97,6 +97,11 @@ CLAUDE_FABLE_5 = ModelConfig(
     reasoning=ReasoningMode.DYNAMIC,
     tools_config={"enabled": False, "tools": None},
 )
+
+CLAUDE_FABLE_51 = CLAUDE_FABLE_5._replace(model_name="claude-fable-5-1")
+CLAUDE_OPUS_55 = CLAUDE_FABLE_5._replace(model_name="claude-opus-5-5")
+CLAUDE_SONNET_55 = CLAUDE_FABLE_5._replace(model_name="claude-sonnet-5-5")
+CLAUDE_HAIKU_55 = CLAUDE_FABLE_5._replace(model_name="claude-haiku-5-5")
 
 CLAUDE_HAIKU = ModelConfig(
     provider=ModelProvider.ANTHROPIC,
@@ -303,24 +308,24 @@ GPT4_1_PRECISE = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# DeepSeek V4 configurations. V4 exposes thinking and non-thinking modes on the
-# same model identifier; ReasoningMode selects the wire-level thinking toggle.
-DEEPSEEK_V4_FLASH = ModelConfig(
+# DeepSeek Flash exposes thinking and non-thinking modes on one wire identifier.
+DEEPSEEK_FLASH = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-v4-flash",
+    model_name="deepseek-flash",
     reasoning=ReasoningMode.HIGH,
     tools_config={"enabled": False, "tools": None},
 )
 
-DEEPSEEK_V4_FLASH_LOW = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.LOW)
-DEEPSEEK_V4_FLASH_MAX = DEEPSEEK_V4_FLASH._replace(reasoning=ReasoningMode.MAX)
+DEEPSEEK_FLASH_LOW = DEEPSEEK_FLASH._replace(reasoning=ReasoningMode.LOW)
+DEEPSEEK_FLASH_MAX = DEEPSEEK_FLASH._replace(reasoning=ReasoningMode.MAX)
 
-DEEPSEEK_V4_FLASH_NON_REASONING = ModelConfig(
-    provider=ModelProvider.DEEPSEEK,
-    model_name="deepseek-v4-flash",
-    reasoning=ReasoningMode.DISABLED,
-    tools_config={"enabled": False, "tools": None},
-)
+DEEPSEEK_FLASH_NON_REASONING = DEEPSEEK_FLASH._replace(reasoning=ReasoningMode.DISABLED)
+
+# Public V4 constants remain importable while selecting the current Flash wire ID.
+DEEPSEEK_V4_FLASH = DEEPSEEK_FLASH
+DEEPSEEK_V4_FLASH_LOW = DEEPSEEK_FLASH_LOW
+DEEPSEEK_V4_FLASH_MAX = DEEPSEEK_FLASH_MAX
+DEEPSEEK_V4_FLASH_NON_REASONING = DEEPSEEK_FLASH_NON_REASONING
 
 DEEPSEEK_V4_PRO = ModelConfig(
     provider=ModelProvider.DEEPSEEK,
@@ -347,10 +352,21 @@ DEEPSEEK_V4_PRO_NON_REASONING = ModelConfig(
 
 # Compatibility constants preserve public imports while ensuring callers do not
 # send the retired deepseek-chat/deepseek-reasoner wire identifiers.
-DEEPSEEK_REASONER = DEEPSEEK_V4_FLASH
-DEEPSEEK_CHAT = DEEPSEEK_V4_FLASH_NON_REASONING
+DEEPSEEK_REASONER = DEEPSEEK_FLASH
+DEEPSEEK_CHAT = DEEPSEEK_FLASH_NON_REASONING
 
 # xAI Grok models
+GROK_4_7 = ModelConfig(
+    provider=ModelProvider.XAI,
+    model_name="grok-4.7",
+    reasoning=ReasoningMode.HIGH,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GROK_4_7_LOW = GROK_4_7._replace(reasoning=ReasoningMode.LOW)
+GROK_4_7_MEDIUM = GROK_4_7._replace(reasoning=ReasoningMode.MEDIUM)
+GROK_4_7_XHIGH = GROK_4_7._replace(reasoning=ReasoningMode.XHIGH)
+
 GROK_4_6 = ModelConfig(
     provider=ModelProvider.XAI,
     model_name="grok-4.6",
@@ -478,6 +494,20 @@ GEMINI_PRO = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
+GEMINI_3_8_FLASH = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-3.8-flash",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
+GEMINI_4_ARGON = ModelConfig(
+    provider=ModelProvider.GEMINI,
+    model_name="gemini-4-argon",
+    reasoning=ReasoningMode.MEDIUM,
+    tools_config={"enabled": False, "tools": None},
+)
+
 GEMINI_3_5_FLASH = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3.5-flash",
@@ -541,7 +571,7 @@ GEMINI_3_1_PRO_PREVIEW = ModelConfig(
     tools_config={"enabled": False, "tools": None}
 )
 
-# GPT-5 configurations (Responses API only)
+# OpenAI reasoning-model configurations (Responses API only)
 
 
 def _gpt5_responses_model(
@@ -558,6 +588,28 @@ def _gpt5_responses_model(
         tools_config={"enabled": False, "tools": None},
         text_verbosity=text_verbosity,
     )
+
+
+GPT6_ASTRA_DEFAULT = _gpt5_responses_model(
+    "gpt-6-astra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_1_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-6.1-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-6-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_LUNA_DEFAULT = _gpt5_responses_model(
+    "gpt-6-luna",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
 
 
 GPT5_DEFAULT = _gpt5_responses_model(

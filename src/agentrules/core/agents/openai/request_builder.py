@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from agentrules.core.agents.base import ReasoningMode
 
+from .capabilities import get_openai_model_capabilities
+
 ApiType = Literal["responses", "chat"]
 
 _GPT5_RESPONSES_REASONING_SUPPORT: tuple[tuple[str, frozenset[str]], ...] = (
@@ -47,6 +49,15 @@ def prepare_request(
     chat_response_format: dict[str, Any] | None = None,
 ) -> PreparedRequest:
     """Build an OpenAI SDK request payload based on the active model pathway."""
+    capabilities = get_openai_model_capabilities(model_name)
+    if capabilities is not None:
+        if use_responses_api != (capabilities.transport == "responses"):
+            raise ValueError(f"{model_name} requires the {capabilities.transport} API")
+        if tools and not capabilities.supports_tools:
+            raise ValueError(f"{model_name} does not support tools")
+        if (structured_text or chat_response_format) and not capabilities.supports_structured_output:
+            raise ValueError(f"{model_name} does not support structured output")
+
     if use_responses_api:
         payload: dict[str, Any] = {
             "model": model_name,
@@ -117,6 +128,10 @@ def _build_responses_reasoning_payload(
     model_name: str,
     reasoning: ReasoningMode,
 ) -> dict[str, str] | None:
+    capabilities = get_openai_model_capabilities(model_name)
+    if capabilities is not None:
+        return _strict_reasoning_payload(model_name, reasoning, capabilities.accepted_efforts)
+
     supported_efforts = _resolve_supported_responses_efforts(model_name)
 
     if not supported_efforts:
@@ -139,6 +154,28 @@ def _build_responses_reasoning_payload(
     )
     if effort is None:
         return None
+    return {"effort": effort}
+
+
+def _strict_reasoning_payload(
+    model_name: str,
+    reasoning: ReasoningMode,
+    accepted_efforts: frozenset[str],
+) -> dict[str, str] | None:
+    if not accepted_efforts:
+        if reasoning in {ReasoningMode.DISABLED, ReasoningMode.TEMPERATURE}:
+            return None
+        raise ValueError(f"{model_name} does not support reasoning effort")
+
+    if reasoning == ReasoningMode.DISABLED:
+        effort = "none"
+    elif reasoning in {ReasoningMode.ENABLED, ReasoningMode.DYNAMIC}:
+        effort = "medium"
+    else:
+        effort = reasoning.value
+
+    if effort not in accepted_efforts:
+        raise ValueError(f"{model_name} does not support reasoning effort '{effort}'")
     return {"effort": effort}
 
 

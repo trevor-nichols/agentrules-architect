@@ -204,7 +204,7 @@ Provide explicit, numbered requirements that govern development behavior. Use fo
 
 1. Hold the implementation to production-grade standards: clean architecture, DRY, minimal coupling, clear module boundaries, predictable conventions and maintainable patterns.
 2. ONLY USE camelCase naming style for all files and folders.
-3. **Anthropic DEVELOPMENT**: You are required to use the brand new latest model: **'claude-3-5-sonnet-20241022'**.
+3. **Anthropic DEVELOPMENT**: Use the configured Anthropic model and follow its documented thinking and tool behavior.
    - !!!NEVER use 'claude-3-sonnet-20240229' or 'claude-3-haiku-20240307'.
 4. Develop systematically and logically, but DO NOT over complicate the codebase.
 

@@ -17,6 +17,7 @@ class ModelDefaults:
     """Provider-specific defaults applied when initialising an xAI architect."""
 
     default_reasoning: ReasoningMode
+    context_window_tokens: int | None = None
     tools_allowed: bool = True
     accepted_reasoning_efforts: frozenset[str] = frozenset()
     enabled_reasoning_effort: str | None = None
@@ -27,14 +28,20 @@ class ModelDefaults:
 _LEGACY_ACCEPTED_REASONING_EFFORTS = frozenset({"none", "minimal", "low", "medium", "high"})
 
 
+_GROK_4X_DEFAULTS = ModelDefaults(
+    default_reasoning=ReasoningMode.HIGH,
+    context_window_tokens=500_000,
+    accepted_reasoning_efforts=frozenset({"low", "medium", "high", "xhigh"}),
+    enabled_reasoning_effort="high",
+)
+
+
 _MODEL_DEFAULTS: dict[str, ModelDefaults] = {
-    DEFAULT_MODEL_NAME: ModelDefaults(
-        default_reasoning=ReasoningMode.HIGH,
-        accepted_reasoning_efforts=frozenset({"low", "medium", "high", "xhigh"}),
-        enabled_reasoning_effort="high",
-    ),
+    "grok-4.7": _GROK_4X_DEFAULTS,
+    "grok-4.6": _GROK_4X_DEFAULTS,
     "grok-4.5": ModelDefaults(
         default_reasoning=ReasoningMode.HIGH,
+        context_window_tokens=500_000,
         accepted_reasoning_efforts=frozenset({"low", "medium", "high"}),
         enabled_reasoning_effort="high",
     ),

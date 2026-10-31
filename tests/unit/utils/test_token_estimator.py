@@ -50,7 +50,7 @@ def test_tiktoken_unavailable(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", _raise)
     result = estimate_tokens(
         provider=ModelProvider.OPENAI,
-        model_name="gpt-4.1",
+        model_name="unavailable-test-model",
         payload={"input": "hello"},
         estimator_family="tiktoken",
     )
@@ -61,7 +61,7 @@ def test_tiktoken_unavailable(monkeypatch):
 
 def test_tiktoken_encode_error(monkeypatch):
     class DummyEncoding:
-        def encode(self, _text):
+        def encode_ordinary(self, _text):
             raise RuntimeError("boom")
 
     class DummyTiktoken:
@@ -76,13 +76,36 @@ def test_tiktoken_encode_error(monkeypatch):
     monkeypatch.setitem(sys.modules, "tiktoken", DummyTiktoken())
     result = estimate_tokens(
         provider=ModelProvider.OPENAI,
-        model_name="gpt-5",
+        model_name="failing-encoding-test-model",
         payload={"messages": [{"role": "user", "content": "hi"}]},
         estimator_family="tiktoken",
     )
     assert result.source == "tiktoken_error"
     assert result.estimated is None
     assert "boom" in (result.error or "")
+
+
+def test_tiktoken_encoding_load_error_falls_back_to_error_result(monkeypatch):
+    class DummyTiktoken:
+        @staticmethod
+        def encoding_for_model(_name):
+            raise OSError("encoding data unavailable")
+
+        @staticmethod
+        def get_encoding(_name):
+            raise OSError("encoding data unavailable")
+
+    monkeypatch.setitem(sys.modules, "tiktoken", DummyTiktoken())
+    result = estimate_tokens(
+        provider=ModelProvider.OPENAI,
+        model_name="encoding-load-error-test-model",
+        payload={"input": "hello"},
+        estimator_family="tiktoken",
+    )
+
+    assert result.estimated is None
+    assert result.source == "tiktoken_error"
+    assert "encoding data unavailable" in (result.error or "")
 
 
 def test_anthropic_estimator_strips_output_config() -> None:
@@ -118,7 +141,7 @@ def test_anthropic_estimator_strips_output_config() -> None:
 def test_compute_effective_limits_defaults():
     limit, margin, effective = compute_effective_limits(20_000, None)
     assert limit == 20_000
-    assert margin == 4_000  # min(10%, 4000) chooses 4000 here
+    assert margin == 4_000
     assert effective == 16_000
 
 
@@ -154,7 +177,7 @@ def test_compute_effective_limits_margin_exceeds_limit():
 
 def test_apply_model_limits_openai_defaults():
     cfg = agents_config._apply_model_limits(agents_config.GPT5_1_DEFAULT)
-    assert cfg.max_input_tokens == 400_000
+    assert cfg.max_input_tokens == 272_000
     assert cfg.estimator_family == "tiktoken"
 
 

@@ -22,11 +22,11 @@ class DeepSeekConfigTests(unittest.TestCase):
     def test_resolve_legacy_model_aliases(self) -> None:
         self.assertEqual(
             resolve_model_alias("deepseek-chat"),
-            ("deepseek-v4-flash", ReasoningMode.DISABLED),
+            ("deepseek-flash", ReasoningMode.DISABLED),
         )
         self.assertEqual(
             resolve_model_alias("deepseek-reasoner"),
-            ("deepseek-v4-flash", ReasoningMode.HIGH),
+            ("deepseek-flash", ReasoningMode.HIGH),
         )
 
     def test_resolve_defaults_for_v4_flash(self) -> None:

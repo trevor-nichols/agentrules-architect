@@ -45,7 +45,9 @@ def test_codex_runtime_diagnostics_reports_account_and_models(tmp_path: Path) ->
     assert diagnostics.account is not None
     assert diagnostics.account.is_authenticated is False
     assert diagnostics.models_error is None
-    assert [model.model for model in diagnostics.models] == ["gpt-5.3-codex", "gpt-5.4"]
+    assert [model.model for model in diagnostics.models] == [
+        "gpt-5.3-codex", "gpt-5.4", "gpt-6-codex-preview"
+    ]
     assert diagnostics.codex_home == str(tmp_path / "codex-home")
 
 

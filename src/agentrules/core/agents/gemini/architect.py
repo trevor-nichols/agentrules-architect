@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -24,9 +25,11 @@ from agentrules.core.utils.system_prompt import build_agent_system_prompt, resol
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
 from .capabilities import (
+    model_requires_function_call_id,
     model_supports_disabling_thinking,
     model_supports_structured_output_with_tools,
     model_supports_thinking_level,
+    resolve_capability_profile,
     resolve_thinking_level,
     stable_model_name,
 )
@@ -133,7 +136,9 @@ class GeminiArchitect(BaseArchitect):
         phase_name = context.get("_structured_output_phase")
         force_unstructured = bool(context.get("_force_unstructured_output"))
         disable_tools_for_request = bool(context.get("_disable_tools_for_request"))
-        prompt = context.get("formatted_prompt") or self.format_prompt(context)
+        contents = context.get("_gemini_contents")
+        if contents is None:
+            contents = context.get("formatted_prompt") or self.format_prompt(context)
         system_prompt = self._resolve_system_prompt(context)
 
         config_kwargs: dict[str, Any] = {}
@@ -185,6 +190,7 @@ class GeminiArchitect(BaseArchitect):
         thinking_config = self._build_thinking_config()
         if thinking_config is not None:
             config_kwargs["thinking_config"] = thinking_config
+        self._add_generation_limits(config_kwargs)
 
         if response_schema is not None:
             config_kwargs["response_mime_type"] = "application/json"
@@ -206,10 +212,10 @@ class GeminiArchitect(BaseArchitect):
         response = await generate_content_async(
             client,
             model=self.model_name,
-            contents=prompt,
+            contents=contents,
             config=generation_config,
         )
-        self._log_token_estimate(prompt, generation_config)
+        await asyncio.to_thread(self._log_token_estimate, contents, generation_config)
 
         logger.info(f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}")
 
@@ -220,6 +226,9 @@ class GeminiArchitect(BaseArchitect):
         }
         if parsed.function_calls:
             result["function_calls"] = parsed.function_calls
+            result["_gemini_request_contents"] = contents
+            result["_gemini_model_content"] = parsed.model_content
+            result["_gemini_requires_call_id"] = model_requires_function_call_id(self.model_name)
             logger.info(f"[bold magenta]{agent_name}:[/bold magenta] Model requested function call(s).")
             if not parsed.findings:
                 result["findings"] = None
@@ -300,6 +309,7 @@ class GeminiArchitect(BaseArchitect):
             thinking_config = self._build_thinking_config()
             if thinking_config is not None:
                 config_kwargs["thinking_config"] = thinking_config
+            self._add_generation_limits(config_kwargs)
 
             generation_config = genai_types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
@@ -314,7 +324,7 @@ class GeminiArchitect(BaseArchitect):
                 f"(Config: {model_config_name}){detail_suffix}"
             )
 
-            self._log_token_estimate(prompt, generation_config)
+            await asyncio.to_thread(self._log_token_estimate, prompt, generation_config)
 
             try:
                 async for chunk in iterate_in_thread(
@@ -379,8 +389,8 @@ class GeminiArchitect(BaseArchitect):
             "error": message,
         }
 
-    def _log_token_estimate(self, prompt: str, config: Any) -> None:
-        payload = {"contents": prompt, "config": config}
+    def _log_token_estimate(self, contents: Any, config: Any) -> None:
+        payload = {"contents": contents, "config": config}
         result = estimate_tokens(
             provider=self.provider,
             model_name=self.model_name,
@@ -457,6 +467,15 @@ class GeminiArchitect(BaseArchitect):
             )
             return ThinkingConfig(thinking_budget=DYNAMIC_THINKING_BUDGET)
         return None
+
+    def _add_generation_limits(self, config_kwargs: dict[str, Any]) -> None:
+        profile = resolve_capability_profile(self.model_name)
+        if profile.max_output_tokens is not None:
+            config_kwargs["max_output_tokens"] = profile.max_output_tokens
+        if profile.automatic_continuation:
+            config_kwargs["automatic_continuation"] = True
+        if profile.request_timeout_ms is not None:
+            config_kwargs["http_options"] = genai_types.HttpOptions(timeout=profile.request_timeout_ms)
 
     def _map_reasoning_mode_to_thinking_level(
         self,

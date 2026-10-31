@@ -54,6 +54,10 @@ class ClaudeCodeVersionProbe:
 _CLAUDE_CODE_VERSION_PATTERN = re.compile(r"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)")
 CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS = 10.0
 _MINIMUM_CLAUDE_CODE_VERSIONS: tuple[tuple[str, ClaudeCodeVersion], ...] = (
+    ("claude-haiku-5-5", ClaudeCodeVersion(2, 1, 293)),
+    ("claude-sonnet-5-5", ClaudeCodeVersion(2, 1, 284)),
+    ("claude-opus-5-5", ClaudeCodeVersion(2, 1, 280)),
+    ("claude-fable-5-1", ClaudeCodeVersion(2, 1, 257)),
     ("claude-opus-5", ClaudeCodeVersion(2, 1, 219)),
     ("claude-sonnet-5", ClaudeCodeVersion(2, 1, 197)),
     ("claude-fable-5", ClaudeCodeVersion(2, 1, 170)),
@@ -167,13 +171,28 @@ def _resolve_sdk_default_executable() -> str | None:
         return bundled
 
     resolved = shutil.which("claude")
-    if resolved is not None:
+    if _running_on_windows():
+        if resolved is not None and _is_windows_native_executable(resolved):
+            return str(Path(resolved).resolve())
+        native = shutil.which("claude.exe")
+        if native is not None and _is_windows_native_executable(native):
+            return str(Path(native).resolve())
+    elif resolved is not None:
         return str(Path(resolved).resolve())
 
     for candidate in _claude_code_default_locations():
         if _is_executable_file(candidate):
             return str(candidate.resolve())
     return None
+
+
+def _running_on_windows() -> bool:
+    return os.name == "nt"
+
+
+def _is_windows_native_executable(path: str) -> bool:
+    name = path.replace("\\", "/").rsplit("/", 1)[-1]
+    return name.rstrip(". ").lower().endswith((".exe", ".com"))
 
 
 def _resolve_sdk_bundled_executable() -> str | None:
@@ -189,6 +208,8 @@ def _resolve_sdk_bundled_executable() -> str | None:
 
 
 def _claude_code_default_locations() -> tuple[Path, ...]:
+    if _running_on_windows():
+        return (Path.home() / ".local/bin/claude.exe",)
     return (
         Path.home() / ".npm-global/bin/claude",
         Path("/usr/local/bin/claude"),

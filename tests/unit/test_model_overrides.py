@@ -146,21 +146,31 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertTrue(any("gpt-5.1-codex" in message and "will resolve" in message for message in captured.output))
         self.assertTrue(any("gpt-5.2-codex" in message and "will resolve" in message for message in captured.output))
 
-    def test_apply_user_overrides_remaps_legacy_deepseek_presets(self) -> None:
-        self.config_manager.set_phase_model("phase3", "deepseek-chat")
-        self.config_manager.set_phase_model("phase4", "deepseek-reasoner")
+    def test_saved_deepseek_flash_keys_keep_identity_and_dispatch_canonical_model(self) -> None:
+        selections = {
+            "phase1": ("deepseek-v4-flash", "deepseek-flash", ReasoningMode.HIGH),
+            "phase2": ("deepseek-v4-flash-low", "deepseek-flash-low", ReasoningMode.LOW),
+            "phase3": ("deepseek-v4-flash-max", "deepseek-flash-max", ReasoningMode.MAX),
+            "phase4": (
+                "deepseek-v4-flash-non-reasoning",
+                "deepseek-flash-non-reasoning",
+                ReasoningMode.DISABLED,
+            ),
+            "phase5": ("deepseek-chat", "deepseek-flash-non-reasoning", ReasoningMode.DISABLED),
+            "final": ("deepseek-reasoner", "deepseek-flash", ReasoningMode.HIGH),
+        }
+        for phase, (saved_key, _, _) in selections.items():
+            self.config_manager.set_phase_model(phase, saved_key)
 
-        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
-            applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+        configured = self.model_config.get_configured_presets()
+        with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING"):
+            active = self.model_config.apply_user_overrides(warn_deprecated=True)
 
-        self.assertEqual(applied["phase3"], "deepseek-v4-flash-non-reasoning")
-        self.assertEqual(applied["phase4"], "deepseek-v4-flash")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "deepseek-v4-flash")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.DISABLED)
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "deepseek-v4-flash")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.HIGH)
-        self.assertTrue(any("deepseek-chat" in message for message in captured.output))
-        self.assertTrue(any("deepseek-reasoner" in message for message in captured.output))
+        for phase, (saved_key, active_key, reasoning) in selections.items():
+            self.assertEqual(configured[phase], saved_key)
+            self.assertEqual(active[phase], active_key)
+            self.assertEqual(self.agents_module.MODEL_CONFIG[phase].model_name, "deepseek-flash")
+            self.assertEqual(self.agents_module.MODEL_CONFIG[phase].reasoning, reasoning)
 
     def test_get_configured_presets_preserves_legacy_deepseek_keys(self) -> None:
         configured = self.model_config.get_configured_presets(
@@ -169,27 +179,6 @@ class ModelOverrideTestCase(unittest.TestCase):
 
         self.assertEqual(configured["phase3"], "deepseek-chat")
         self.assertEqual(configured["phase4"], "deepseek-reasoner")
-
-    def test_deepseek_registry_includes_v4_presets_and_legacy_configs_use_v4(self) -> None:
-        expected_keys = {
-            "deepseek-v4-flash",
-            "deepseek-v4-flash-low",
-            "deepseek-v4-flash-max",
-            "deepseek-v4-flash-non-reasoning",
-            "deepseek-v4-pro",
-            "deepseek-v4-pro-low",
-            "deepseek-v4-pro-max",
-            "deepseek-v4-pro-non-reasoning",
-            "deepseek-chat",
-            "deepseek-reasoner",
-        }
-        self.assertTrue(expected_keys.issubset(self.agents_module.MODEL_PRESETS))
-        self.assertEqual(self.agents_module.MODEL_PRESETS["deepseek-chat"]["config"].model_name, "deepseek-v4-flash")
-        self.assertEqual(
-            self.agents_module.MODEL_PRESETS["deepseek-reasoner"]["config"].model_name,
-            "deepseek-v4-flash",
-        )
-        self.assertNotIn("deepseek-v4-vision-exp", self.agents_module.MODEL_PRESETS)
 
     def test_get_active_presets_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
         active = self.model_config.get_active_presets(
@@ -780,6 +769,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             "claude-code-sonnet": "sonnet",
             "claude-code-opus": "opus",
             "claude-code-fable": "fable",
+            "claude-code-haiku-alias": "haiku",
         }
         for preset_key, model_name in alias_models.items():
             preset = self.agents_module.MODEL_PRESETS[preset_key]
@@ -805,6 +795,18 @@ class ModelOverrideTestCase(unittest.TestCase):
         }
         self.assertTrue(sonnet_keys.issubset(self.agents_module.MODEL_PRESETS))
         self.assertTrue(fable_keys.issubset(self.agents_module.MODEL_PRESETS))
+        for key, model_name, effort in (
+            ("claude-code-fable-5.1", "claude-fable-5-1", "high"),
+            ("claude-code-opus-5.5", "claude-opus-5-5", "medium"),
+            ("claude-code-sonnet-5.5", "claude-sonnet-5-5", "high"),
+            ("claude-code-haiku-5.5", "claude-haiku-5-5", "medium"),
+        ):
+            preset = self.agents_module.MODEL_PRESETS[key]
+            self.assertEqual(preset["config"].provider, ModelProvider.CLAUDE_CODE)
+            self.assertEqual(preset["config"].model_name, model_name)
+            self.assertEqual(preset["config"].anthropic_effort, effort)
+            self.assertEqual(preset["config"].max_input_tokens, 872_000)
+        self.assertIn("30-day retention", self.agents_module.MODEL_PRESETS["claude-code-fable-5.1"]["label"])
         self.assertFalse(
             any(
                 key.startswith("claude-code-fable-5") and "non-reasoning" in key
@@ -916,7 +918,21 @@ class ModelOverrideTestCase(unittest.TestCase):
             "grok-build-0.1",
         )
 
-    def test_xai_registry_includes_grok45_and_compatible_grok420_presets(self) -> None:
+    def test_xai_registry_includes_grok47_and_fallback_presets(self) -> None:
+        grok47_keys = {
+            "grok-4.7": ReasoningMode.HIGH,
+            "grok-4.7-reasoning-medium": ReasoningMode.MEDIUM,
+            "grok-4.7-reasoning-low": ReasoningMode.LOW,
+            "grok-4.7-reasoning-xhigh": ReasoningMode.XHIGH,
+        }
+        self.assertTrue(grok47_keys.keys() <= self.agents_module.MODEL_PRESETS.keys())
+        for key, effort in grok47_keys.items():
+            preset = self.agents_module.MODEL_PRESETS[key]
+            self.assertEqual(preset["config"].model_name, "grok-4.7")
+            self.assertEqual(preset["config"].reasoning, effort)
+            self.assertEqual(preset["config"].max_input_tokens, 500_000)
+        self.assertIn("Recommended", self.agents_module.MODEL_PRESETS["grok-4.7"]["label"])
+
         grok46_keys = {
             "grok-4.6",
             "grok-4.6-reasoning-medium",
@@ -928,7 +944,7 @@ class ModelOverrideTestCase(unittest.TestCase):
             self.agents_module.MODEL_PRESETS["grok-4.6"]["config"].max_input_tokens,
             500_000,
         )
-        self.assertIn("Recommended", self.agents_module.MODEL_PRESETS["grok-4.6"]["label"])
+        self.assertIn("Fallback", self.agents_module.MODEL_PRESETS["grok-4.6"]["label"])
 
         grok45_keys = {
             "grok-4.5",
@@ -981,18 +997,8 @@ class ModelOverrideTestCase(unittest.TestCase):
         gemini35 = self.agents_module.MODEL_PRESETS["gemini-3.5-flash"]
         self.assertEqual(gemini35["config"].model_name, "gemini-3.5-flash")
         self.assertEqual(gemini35["config"].reasoning, ReasoningMode.MEDIUM)
-        self.assertEqual(gemini35["label"], "Gemini 3.5 Flash")
 
-    def test_gemini_lifecycle_labels_disclose_shutdowns_and_redirects(self) -> None:
-        for key in ("gemini-flash", "gemini-flash-thinking"):
-            preset = self.agents_module.MODEL_PRESETS[key]
-            self.assertIn("2026-10-16", preset["label"])
-            self.assertIn("Gemini 3.5 Flash", preset["description"])
-
-        pro = self.agents_module.MODEL_PRESETS["gemini-pro"]
-        self.assertIn("2026-10-16", pro["label"])
-        self.assertIn("Gemini 3.1 Pro Preview", pro["description"])
-
+    def test_gemini_retired_preview_labels_disclose_redirects(self) -> None:
         retired_pro = self.agents_module.MODEL_PRESETS["gemini-3-pro-preview"]
         retired_lite = self.agents_module.MODEL_PRESETS["gemini-3.1-flash-lite-preview"]
         self.assertIn("Retired", retired_pro["label"])

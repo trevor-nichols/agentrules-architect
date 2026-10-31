@@ -791,7 +791,7 @@ async def test_codex_analyze_accepts_hidden_legacy_model_with_default_explicit_e
 async def test_codex_analyze_reports_unavailable_pinned_model(tmp_path: Path) -> None:
     architect = _build_architect(
         tmp_path,
-        model_name="gpt-6-codex-preview",
+        model_name="gpt-7-codex-preview",
         reasoning=ReasoningMode.MEDIUM,
     )
 
@@ -815,6 +815,29 @@ async def test_codex_phase_request_parses_structured_output(tmp_path: Path) -> N
     assert result["plan"] == "Analyze the repository in focused batches."
     assert result["structured_output"]["reasoning"] == "The fake runtime returned a deterministic phase 2 plan."
     assert result["agents"][0]["id"] == "agent_1"
+
+
+@pytest.mark.asyncio
+async def test_codex_discovers_future_model_and_effort_without_static_preset(tmp_path: Path) -> None:
+    assert not any(key.startswith("codex-gpt-6") for key in MODEL_PRESETS)
+    architect = _build_architect(
+        tmp_path,
+        model_name="gpt-6-codex-preview",
+        reasoning=ReasoningMode.DYNAMIC,
+        runtime_reasoning_effort="extreme",
+    )
+
+    effort_result = await architect.analyze(
+        {"formatted_prompt": "REPORT_EFFORT", "_codex_cwd": str(tmp_path)}
+    )
+    structured_result = await architect.create_analysis_plan({}, prompt="Plan the repository analysis.")
+
+    assert effort_result["findings"] == "Codex effort: extreme"
+    assert structured_result["error"] is None
+    assert structured_result["plan"] == "Analyze the repository in focused batches."
+    assert structured_result["structured_output"]["reasoning"] == (
+        "The fake runtime returned a deterministic phase 2 plan."
+    )
 
 
 @pytest.mark.asyncio

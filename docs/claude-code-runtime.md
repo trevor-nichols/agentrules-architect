@@ -4,7 +4,7 @@ AgentRules supports Claude Code as a local runtime provider through the Anthropi
 
 ## What this integration does
 
-- Uses `claude-agent-sdk` 0.2.119 or newer. The 0.2.119 wheel bundles Claude Code 2.1.210, which is new enough for pinned Sonnet 5 and Fable 5 selections.
+- Requires `claude-agent-sdk` 0.2.165 or newer. The lockfile resolves 0.2.173, whose wheel bundles Claude Code 2.1.309 for the pinned 5.5/5.1 choices.
 - Reuses Claude Code OAuth state instead of asking AgentRules for an Anthropic API key.
 - Adds `Claude Code ...` model presets that route AgentRules phases through `ModelProvider.CLAUDE_CODE`.
 - Keeps structured outputs enabled for schema-backed phases.
@@ -78,7 +78,11 @@ These settings belong in the `[claude_code]` config section when non-default val
 
 ## CLI Resolution
 
-AgentRules treats a missing `claude_code.cli_path` value as "SDK default." In that mode, `prepare_request()` omits `cli_path` from `ClaudeAgentOptions`, matching the SDK's documented `None` default. Availability checks still validate that the SDK default executable can be resolved before Claude Code presets are offered.
+AgentRules treats a missing `claude_code.cli_path` value as "SDK default." For the runtime default and
+ungated moving aliases, `prepare_request()` omits `cli_path` from `ClaudeAgentOptions`, matching the
+SDK's documented `None` default. For a version-gated model, it resolves and passes the exact executable
+that it probes, including when the SDK bundle is selected. Availability checks validate that the SDK
+default executable can be resolved before Claude Code presets are offered.
 
 Configure `Claude executable path` only when you need an explicit runtime override. Existing configs
 with `cli_path = "claude"` remain valid and are treated as explicit settings; AgentRules resolves
@@ -93,7 +97,8 @@ does not replace that bundle. To use a global or separately managed installation
 Version probing runs the exact resolved binary with `--version`, uses a bounded ten-second timeout, and
 caches the parsed result by executable path. Timeout, execution, nonzero-exit, and parse failures remain
 distinct diagnostics. A pinned model with a documented minimum is unavailable when its runtime version
-cannot be verified; AgentRules does not fail open.
+cannot be verified; AgentRules does not fail open. For version-gated requests, the verified absolute
+path is also passed to the SDK, so the subprocess uses the executable that passed the gate.
 
 ## Select Claude Code presets
 
@@ -107,11 +112,14 @@ Notes:
 
 - `Claude Code Runtime Default (Moving)` omits the SDK `model` option. Claude Code applies the account,
   organization, and runtime default rather than receiving a literal sentinel or pinned model.
-- `Best`, `Sonnet`, `Opus`, and `Fable` alias presets pass those aliases verbatim. Aliases can move as
+- `Best`, `Sonnet`, `Opus`, `Fable`, and `Haiku` alias presets pass those aliases verbatim. Aliases can move as
   Claude Code and account policy evolve, so their model, price, and availability are not reproducible.
 - Moving defaults and aliases do not advertise a static context limit in AgentRules. Claude Code owns
   concrete-model resolution; use a pinned model preset when local context-limit preflight is required.
 - Full model IDs are pinned and reproducible whether selected by a preset or supplied programmatically.
+  Pinned Fable 5.1 requires Claude Code 2.1.257+, Opus 5.5 requires 2.1.280+, Sonnet 5.5 requires
+  2.1.284+, and Haiku 5.5 requires 2.1.293+. The picker hides unavailable pins while preserving a
+  saved selection with an explicit minimum-version note. Fable 5.1 retains its 30-day retention label.
   Pinned Fable 5 requires Claude Code 2.1.170 or newer, pinned Sonnet 5 requires 2.1.197 or newer, and
   pinned Opus 5 requires 2.1.219 or newer. The `fable` alias is gated at its own introduction version,
   while older aliases are not treated as if they always resolve to the newest full model.
@@ -180,3 +188,4 @@ runtime or version probe is unavailable, or if Claude Code reports an authentica
 - [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
 - [Claude Code changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
 - [Claude Agent SDK Python releases](https://github.com/anthropics/claude-agent-sdk-python/releases)
+- [Claude Agent SDK Python v0.2.173](https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.173)

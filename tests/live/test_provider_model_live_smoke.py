@@ -61,7 +61,7 @@ LIVE_PROVIDER_CASES = (
         enable_flag="AGENTRULES_RUN_DEEPSEEK_LIVE",
         key_env_vars=("DEEPSEEK_API_KEY",),
         model_env_var="AGENTRULES_DEEPSEEK_LIVE_MODEL",
-        default_model="deepseek-v4-flash",
+        default_model="deepseek-flash",
         runner=lambda api_key, model: _run_deepseek(api_key, model),
     ),
     LiveProviderCase(
@@ -69,7 +69,7 @@ LIVE_PROVIDER_CASES = (
         enable_flag="AGENTRULES_RUN_XAI_LIVE",
         key_env_vars=("XAI_API_KEY",),
         model_env_var="AGENTRULES_XAI_LIVE_MODEL",
-        default_model=xai_config.DEFAULT_MODEL_NAME,
+        default_model="grok-4.7",
         runner=lambda api_key, model: _run_xai(api_key, model),
     ),
 )
@@ -163,6 +163,7 @@ def _build_xai_live_payload(model: str) -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("model", "expected_effort"),
     [
+        ("grok-4.7", "high"),
         (xai_config.DEFAULT_MODEL_NAME, "high"),
         ("grok-4.5", "high"),
         ("grok-4.20-0309-reasoning", None),

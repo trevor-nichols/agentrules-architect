@@ -70,6 +70,7 @@ def prepare_request(
     resolved_cli_path = _resolve_cli_path(
         config_manager,
         configured_cli_path=runtime_config.cli_path,
+        model_name=model_name,
     )
     _validate_runtime_model_support(config_manager, model_name)
 
@@ -211,14 +212,20 @@ def _resolve_cli_path(
     config_manager: ConfigManager,
     *,
     configured_cli_path: str | None,
+    model_name: str,
 ) -> str | None:
-    if configured_cli_path is None:
+    if (
+        configured_cli_path is None
+        and config_manager.minimum_claude_code_version_for_model(model_name) is None
+    ):
         return None
     resolved = config_manager.resolve_claude_code_executable()
     if resolved is None:
-        raise ValueError(
-            f"Configured Claude Code executable could not be resolved: {configured_cli_path!r}."
-        )
+        if configured_cli_path is not None:
+            raise ValueError(
+                f"Configured Claude Code executable could not be resolved: {configured_cli_path!r}."
+            )
+        raise ValueError("Claude Code executable could not be resolved for a version-gated model.")
     return resolved
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator, Iterator
@@ -42,7 +43,7 @@ class OpenAIArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "o3",
+        model_name: str = "gpt-5.6-sol",
         reasoning: ReasoningMode | None = None,
         temperature: float | None = None,
         name: str | None = None,
@@ -159,7 +160,7 @@ class OpenAIArchitect(BaseArchitect):
                 f"via {api_label} (Config: {model_config_name}){detail_suffix}"
             )
 
-            response = execute_request(prepared)
+            response = await asyncio.to_thread(execute_request, prepared)
 
             logger.info(
                 f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}"
@@ -336,7 +337,7 @@ class OpenAIArchitect(BaseArchitect):
                 chat_response_format=chat_response_format,
             )
             self._log_token_estimate(prepared)
-            response = execute_request(prepared)
+            response = await asyncio.to_thread(execute_request, prepared)
             parsed = parse_response(response, prepared.api)
 
             value, structured_payload = resolve_phase_result_value(

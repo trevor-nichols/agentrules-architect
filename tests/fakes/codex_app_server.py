@@ -44,6 +44,21 @@ MODELS = [
         "isDefault": False,
     },
     {
+        "id": "gpt-6-codex-preview",
+        "model": "gpt-6-codex-preview",
+        "displayName": "Future runtime model",
+        "description": "Model available only through fake app-server discovery.",
+        "hidden": False,
+        "defaultReasoningEffort": "medium",
+        "supportedReasoningEfforts": [
+            {"reasoningEffort": "medium", "description": "Balanced"},
+            {"reasoningEffort": "extreme", "description": "Future runtime effort"},
+        ],
+        "inputModalities": ["text"],
+        "supportsPersonality": False,
+        "isDefault": False,
+    },
+    {
         "id": "gpt-5.2-codex",
         "model": "gpt-5.2-codex",
         "displayName": "gpt-5.2-codex",
