@@ -74,6 +74,7 @@ Release in reviewed provider slices with old explicit models available as rollba
 - The picker labels disclose Fable retention, Gemini aliases, and runtime ownership; DeepSeek legacy keys resolve directly to canonical Flash modes. GPT-5.6 Sol phase defaults remain in place. No provider live opt-in flag was set, so paid smokes and comparative default measurements were skipped.
 - Local gates: `pytest -q tests/unit` (1,110 passed, 57 subtests), `ruff check .`, `pyright`, import smoke, and `uv lock --check` passed. PR CI for the new workflow is pending.
 - The first Linux/Python 3.11 quality job found 17 portability failures outside provider adapters. Exclusion matching now uses paths relative to the project root; scaffold templates load with Python 3.11-compatible resource joins; the CLI error assertion ignores ANSI styling. The full unit suite now passes locally under locked Python 3.11 (1,111 passed, 57 subtests); PR rerun is pending.
+- Review found that the new quality job ran only unit tests. It now runs `pytest -q tests --ignore=tests/live` so CI covers the full non-live phase and pipeline suites. Local `pytest -q` passed 1,158 tests with 12 opt-in live skips and 57 subtests; the updated PR run is pending.
 
 ## Changelog
 
@@ -81,3 +82,4 @@ Release in reviewed provider slices with old explicit models available as rollba
 - 2026-10-31: Began integrated saved-key, picker, request, pipeline, and release validation after MS001–MS007 completion.
 - 2026-10-31: Added cross-provider cases, focused prompt/parser fixtures, full offline CLI smoke, and missing PR test jobs; local gates passed, PR check pending.
 - 2026-10-31: Fixed Linux/Python 3.11 failures exposed by the new quality job and reproduced the complete suite in a locked 3.11 environment.
+- 2026-10-31: Expanded PR quality job to the complete non-live test tree after review.

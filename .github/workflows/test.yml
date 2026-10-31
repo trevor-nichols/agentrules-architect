@@ -81,4 +81,4 @@ jobs:
       - run: uv sync --locked --extra dev
       - run: uv run --no-sync ruff check .
       - run: uv run --no-sync pyright
-      - run: uv run --no-sync pytest -q tests/unit
+      - run: uv run --no-sync pytest -q tests --ignore=tests/live
