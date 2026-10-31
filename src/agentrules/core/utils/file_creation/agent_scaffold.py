@@ -37,10 +37,8 @@ def _iter_scaffold_files(target_directory: Path) -> tuple[tuple[Path, str], ...]
 
 
 def _load_template_text(template_name: str) -> str:
-    template_path = resources.files("agentrules.core.utils.file_creation").joinpath(
-        "templates",
-        template_name,
-    )
+    resource_root = resources.files("agentrules.core.utils.file_creation")
+    template_path = resource_root.joinpath("templates").joinpath(template_name)
     if not template_path.is_file():
         raise FileNotFoundError(f"Template not found: {template_name}")
     return template_path.read_text(encoding="utf-8")

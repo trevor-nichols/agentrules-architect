@@ -56,6 +56,19 @@ def test_list_files_respects_exclusions_and_depth(tmp_path: Path):
     assert "deep/d1/d2/d3/deep.py" not in rels  # beyond max_depth
 
 
+def test_list_files_excludes_only_paths_inside_project_root(tmp_path: Path):
+    project_root = tmp_path / "build"
+    project_root.mkdir()
+    (project_root / "keep.py").write_text("pass", encoding="utf-8")
+    excluded_subdirectory = project_root / "build"
+    excluded_subdirectory.mkdir()
+    (excluded_subdirectory / "skip.py").write_text("pass", encoding="utf-8")
+
+    files = {path.relative_to(project_root).as_posix() for path in list_files(project_root)}
+
+    assert files == {"keep.py"}
+
+
 def test_list_files_applies_new_default_exclusion_patterns(tmp_path: Path):
     (tmp_path / "keep.py").write_text("print('keep')")
     (tmp_path / ".claude").mkdir()

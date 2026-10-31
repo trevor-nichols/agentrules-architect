@@ -215,7 +215,7 @@ def list_files(
                     or normalized_relative.casefold() in folded_exclude_relative_paths
                 ):
                     continue
-                if should_exclude(item, exclude_dirs, exclude_patterns):
+                if should_exclude(Path(relative), exclude_dirs, exclude_patterns):
                     continue
 
                 if item.is_file():
