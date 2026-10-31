@@ -52,7 +52,7 @@ The audit's P2 API topics are a bounded evaluation in MS007. xAI Responses, Anth
 - [x] (2026-10-23) MS005: Revalidated Grok 4.7; added strict 500K/effort presets and Chat contract tests; preserved direct 4.6 default; full offline suite and bugbot review passed.
 - [x] (2026-10-23) MS006: Added exact-runtime gates for Claude Code pins and native executable selection, upgraded SDK/lockfile, and preserved dynamic Codex discovery; full offline suite and bugbot review passed.
 - [x] (2026-10-31) MS007: Recorded three evidence-backed transport no-go decisions, enforced the Anthropic SDK boundary, and passed full offline gates plus bugbot review.
-- [ ] MS008: Run integrated validation, lifecycle review, default evaluation, and release checks.
+- [ ] (2026-10-31) MS008 in progress: cross-checking saved keys, picker labels, offline pipeline, default evidence, and PR CI before final release assessment.
 
 ## Surprises & Discoveries
 
@@ -60,6 +60,7 @@ The audit's P2 API topics are a bounded evaluation in MS007. xAI Responses, Anth
 - The Gemini researcher loop sends tool feedback as fresh text, and its parser discards function-call IDs. Merely adding 3.8/4 presets would expose a broken tool path.
 - The lockfile's bundled Claude Code version is below every proposed pinned 5.5/5.1 minimum. Runtime gates and the dependency update must land together.
 - The audit found Gemini 2.5 Flash/Pro still active for prior users, contrary to the repository's October 16 shutdown claim. Recheck this dated upstream fact at execution.
+- MS008 found the PR only had a lockfile workflow; the import, prompt, parser, token-packer, offline-pipeline, and static/unit release checks were not being run in GitHub Actions. Added a focused test workflow so release readiness can be verified on the PR.
 
 ## Decision Log
 
@@ -68,6 +69,7 @@ The audit's P2 API topics are a bounded evaluation in MS007. xAI Responses, Anth
 - Decision: Use explicit immutable capability records rather than infer behavior from name substrings or coerce invalid reasoning. Rationale: Families differ in limits, thinking, tools, refusals, and retention. Date/Author: 2026-10-23 / @codex.
 - Decision: Keep Codex discovery and Claude Code moving aliases runtime-owned; version-gate pinned Claude Code IDs against the exact resolved executable. Rationale: Direct API announcements do not establish local availability. Date/Author: 2026-10-23 / @codex.
 - Decision: Treat transport migrations as a P2 decision gate and keep defaults stable pending evaluation. Rationale: Current endpoints still serve these models; migration and default changes add independent behavior and cost risk. Date/Author: 2026-10-23 / @codex.
+- Decision: Retain GPT-5.6 Sol phase defaults and the Grok 4.6 direct-constructor default in MS008. Rationale: No provider live opt-in flags or representative quality, latency, cost, and entitlement measurements were available; an offline contract matrix cannot establish a better default. Date/Author: 2026-10-31 / @codex.
 
 ### MS007 transport decisions (2026-10-31)
 
@@ -90,6 +92,8 @@ MS005 completed on 2026-10-23. Grok 4.7 has four selectable low/medium/high/xhig
 MS006 completed on 2026-10-23. Four pinned Claude Code models are version-gated against the exact executable passed to the SDK; moving aliases remain available, including `haiku`. The Claude Agent SDK lock resolves 0.2.173 with bundled Claude Code 2.1.309. Windows default discovery now prefers a native executable over a cmd shim. The fake Codex app-server demonstrates future model and effort discovery plus structured requests without a static Codex preset. Offline full suite: 1,095 passed, 12 opt-in skips, 57 subtests; lock, ruff, pyright, import smoke, and diff checks passed. Bugbot's Windows finding was fixed and follow-up review found no remaining actionable issues.
 
 MS007 completed on 2026-10-31 with no required production transport change. Current xAI Chat, Anthropic 0.83/2023 Messages, and Gemini GenerateContent contracts passed 204 focused tests. Disposable mock-transport probes exercised xAI Responses request, typed output, stateless function continuation, and SSE; Anthropic SDK 2.0.0 request, tool response, stream, gateway header rewrite, and credential conflict; and Gemini Interactions request, structured output, tool-result continuation, and typed SSE. These probes do not prove live account entitlement or gateway routing. The `anthropic<2.0.0` package bound enforces the no-go on fresh installs. OpenAI Responses and DeepSeek Chat remain documented current paths. Full offline suite: 1,095 passed, 12 opt-in skips, 57 subtests; lock, ruff, pyright, import smoke, and diff checks passed. Bugbot's dependency-bound finding was fixed and follow-up review found no remaining actionable issues.
+
+MS008 local validation, 2026-10-31: The cross-provider matrix now exercises all new direct preset variants through saved-key resolution and provider request construction (137 matrix cases). A temporary Python project completed the real `agentrules analyze --offline` CLI path and wrote rules, snapshot, and phase artifacts; the same path is now covered by a CI smoke test. Prompt rendering and parser fallback have focused fixture checks. The full local unit suite passed (1,110 tests and 57 subtests), as did ruff, pyright, import smoke, and `uv lock --check`. The only pre-existing PR workflow was lockfile validation; the new workflow's PR result is pending. All direct-provider live flags were unset, so no paid calls or default comparison was made.
 
 ## Context and Orientation
 

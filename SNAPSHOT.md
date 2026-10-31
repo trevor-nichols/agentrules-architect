@@ -292,13 +292,18 @@
 │   │   ├── run_test.py  # Standalone final analysis runner
 │   │   ├── test_date.py  # Date format testing
 │   │   └── test_final_offline.py  # Offline tests for final analysis
+│   ├── fixtures
+│   │   └── parser_corpus
+│   │       ├── malformed_xml.md
+│   │       └── structured_agents.json
 │   ├── live/  # Tests hitting live APIs
 │   │   ├── test_claude_code_live_smoke.py
 │   │   ├── test_codex_live_smoke.py  # Live smoke tests for Codex integration
 │   │   └── test_provider_model_live_smoke.py
 │   ├── offline/  # Offline pipeline tests
 │   │   ├── __init__.py  # Test package
-│   │   └── test_offline_smoke.py  # Offline pipeline tests using DummyArchitect
+│   │   ├── test_offline_smoke.py  # Offline pipeline tests using DummyArchitect
+│   │   └── test_pipeline_smoke.py
 │   ├── phase_1_test/  # Phase 1 tests
 │   │   ├── output/  # Output artifacts
 │   │   │   └── phase1_results.json  # Example output
@@ -410,6 +415,7 @@
 │   │   ├── test_model_overrides.py  # Unit tests for overriding defaults
 │   │   ├── test_openai_lifecycle.py
 │   │   ├── test_output_validation.py  # Unit tests for filename validations
+│   │   ├── test_parser_corpus.py
 │   │   ├── test_phase_events.py  # Unit tests for event emission in phases
 │   │   ├── test_phase_prompt_separation.py  # Unit tests for prompt templating
 │   │   ├── test_phases_edges.py  # Unit tests for edge cases across all phases
@@ -418,6 +424,7 @@
 │   │   ├── test_pipeline_output_writer.py  # Unit tests for full pipeline execution output
 │   │   ├── test_pipeline_snapshot.py  # Unit tests for grabbing project state before pipeline runs
 │   │   ├── test_project_profile.py
+│   │   ├── test_prompt_template_validation.py
 │   │   ├── test_provider_model_compatibility_matrix.py
 │   │   ├── test_release_metadata.py  # Unit tests for the release script
 │   │   ├── test_settings_output_validation.py  # Unit tests for validating custom output filenames

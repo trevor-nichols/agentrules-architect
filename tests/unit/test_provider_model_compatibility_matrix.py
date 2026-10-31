@@ -32,7 +32,93 @@ class ModelContract:
     anthropic_effort: str | None = None
 
 
-DIRECT_MODEL_CONTRACTS = (
+LATEST_MODEL_CONTRACTS = (
+    *(
+        ModelContract(
+            f"{prefix}-{'default' if effort == 'medium' else effort}",
+            ModelProvider.OPENAI,
+            model_name,
+            ReasoningMode.DISABLED if effort == "none" else ReasoningMode(effort),
+            922_000,
+            ("responses", effort),
+        )
+        for prefix, model_name, efforts in (
+            ("gpt6-astra", "gpt-6-astra", ("low", "medium", "high", "xhigh", "max")),
+            ("gpt61-sol", "gpt-6.1-sol", ("low", "medium", "high", "xhigh", "max")),
+            ("gpt6-sol", "gpt-6-sol", ("none", "low", "medium", "high", "xhigh", "max")),
+            ("gpt6-luna", "gpt-6-luna", ("none", "low", "medium", "high", "xhigh", "max")),
+        )
+        for effort in efforts
+    ),
+    *(
+        ModelContract(
+            f"{key}{'' if effort == default_effort else f'-reasoning-{effort}'}",
+            ModelProvider.ANTHROPIC,
+            model_name,
+            ReasoningMode.DYNAMIC,
+            872_000,
+            (None if model_name in {"claude-opus-5-5", "claude-fable-5-1"} else "adaptive", effort),
+            effort,
+        )
+        for key, model_name, default_effort in (
+            ("claude-opus-5.5", "claude-opus-5-5", "medium"),
+            ("claude-sonnet-5.5", "claude-sonnet-5-5", "high"),
+            ("claude-haiku-5.5", "claude-haiku-5-5", "medium"),
+            ("claude-fable-5.1", "claude-fable-5-1", "high"),
+        )
+        for effort in ("low", "medium", "high", "xhigh", "max")
+    ),
+    ModelContract(
+        "claude-sonnet-5.5-between-tools",
+        ModelProvider.ANTHROPIC,
+        "claude-sonnet-5-5",
+        ReasoningMode.DISABLED,
+        872_000,
+        ("between_tools", "high"),
+        "high",
+    ),
+    *(
+        ModelContract(
+            f"claude-haiku-5.5-thinking-disabled-{effort}",
+            ModelProvider.ANTHROPIC,
+            "claude-haiku-5-5",
+            ReasoningMode.DISABLED,
+            872_000,
+            ("disabled", effort),
+            effort,
+        )
+        for effort in ("low", "medium", "high")
+    ),
+    *(
+        ModelContract(
+            "grok-4.7" if effort == "high" else f"grok-4.7-reasoning-{effort}",
+            ModelProvider.XAI,
+            "grok-4.7",
+            ReasoningMode(effort),
+            500_000,
+            effort,
+        )
+        for effort in ("low", "medium", "high", "xhigh")
+    ),
+    *(
+        ModelContract(
+            key if effort == "medium" else f"{key}-reasoning-{effort}",
+            ModelProvider.GEMINI,
+            model_name,
+            ReasoningMode(effort),
+            max_input_tokens,
+            effort,
+        )
+        for key, model_name, max_input_tokens in (
+            ("gemini-3.8-flash", "gemini-3.8-flash", 1_048_576),
+            ("gemini-4-argon", "gemini-4-argon", 983_040),
+        )
+        for effort in ("low", "medium", "high")
+    ),
+)
+
+
+DIRECT_MODEL_CONTRACTS = LATEST_MODEL_CONTRACTS + (
     ModelContract(
         "deepseek-flash",
         ModelProvider.DEEPSEEK,
@@ -106,9 +192,7 @@ DIRECT_MODEL_CONTRACTS = (
         272_000,
         ("responses", "medium"),
     ),
-    ModelContract(
-        "gpt5-mini", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.HIGH, 272_000, ("responses", "high")
-    ),
+    ModelContract("gpt5-mini", ModelProvider.OPENAI, "gpt-5-mini", ReasoningMode.HIGH, 272_000, ("responses", "high")),
     ModelContract(
         "gpt56-sol-low", ModelProvider.OPENAI, "gpt-5.6-sol", ReasoningMode.LOW, 922_000, ("responses", "low")
     ),
@@ -320,13 +404,9 @@ DIRECT_MODEL_CONTRACTS = (
     ModelContract("grok-4.5-reasoning-medium", ModelProvider.XAI, "grok-4.5", ReasoningMode.MEDIUM, 500_000, "medium"),
     ModelContract("grok-4.5-reasoning-low", ModelProvider.XAI, "grok-4.5", ReasoningMode.LOW, 500_000, "low"),
     ModelContract("grok-4.6", ModelProvider.XAI, "grok-4.6", ReasoningMode.HIGH, 500_000, "high"),
-    ModelContract(
-        "grok-4.6-reasoning-medium", ModelProvider.XAI, "grok-4.6", ReasoningMode.MEDIUM, 500_000, "medium"
-    ),
+    ModelContract("grok-4.6-reasoning-medium", ModelProvider.XAI, "grok-4.6", ReasoningMode.MEDIUM, 500_000, "medium"),
     ModelContract("grok-4.6-reasoning-low", ModelProvider.XAI, "grok-4.6", ReasoningMode.LOW, 500_000, "low"),
-    ModelContract(
-        "grok-4.6-reasoning-xhigh", ModelProvider.XAI, "grok-4.6", ReasoningMode.XHIGH, 500_000, "xhigh"
-    ),
+    ModelContract("grok-4.6-reasoning-xhigh", ModelProvider.XAI, "grok-4.6", ReasoningMode.XHIGH, 500_000, "xhigh"),
     ModelContract(
         "grok-4.20-reasoning", ModelProvider.XAI, "grok-4.20-0309-reasoning", ReasoningMode.ENABLED, 1_000_000, None
     ),

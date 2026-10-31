@@ -1,0 +1,19 @@
+{
+  "plan": "Review project entry points and configuration.",
+  "agents": [
+    {
+      "id": "agent_1",
+      "name": "Entry Points",
+      "description": "Explain the command-line entry point.",
+      "responsibilities": ["Trace startup"],
+      "file_assignments": ["src/main.py"]
+    },
+    {
+      "id": "agent_2",
+      "name": "Configuration",
+      "description": "Explain configuration loading.",
+      "responsibilities": ["Trace defaults"],
+      "file_assignments": ["src/config.py"]
+    }
+  ]
+}

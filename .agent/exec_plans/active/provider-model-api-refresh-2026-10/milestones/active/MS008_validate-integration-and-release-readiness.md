@@ -3,11 +3,11 @@ id: EP-20261023-001/MS008
 execplan_id: EP-20261023-001
 ms: 8
 title: "Validate integration and release readiness"
-status: planned
+status: in_progress
 domain: cross-cutting
 owner: "@codex"
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-31
 tags: [integration, qa, rollout, defaults]
 risk: med
 links:
@@ -67,6 +67,15 @@ MS001–MS007 complete, including an explicit decision for each optional API mig
 
 Release in reviewed provider slices with old explicit models available as rollback. Record any skipped live smoke and exact reason. Only after passing mandatory gates, complete each milestone and `EP-20261023-001` via the CLI; attach final evidence to PR.
 
+## Execution Evidence
+
+- The direct preset matrix now covers every new GPT-6, Claude 5.5/Fable 5.1, Grok 4.7, and Gemini 3.8/4 variant from saved key through request construction; 137 cases pass. Existing lifecycle and invalid-effort tests remain in the full unit suite.
+- An isolated `agentrules analyze --offline` run completed Phase 1 through final analysis and wrote `AGENTS.md`, `SNAPSHOT.md`, and all phase outputs. The new CI smoke test repeats this public CLI path with a temporary Python project.
+- The picker labels disclose Fable retention, Gemini aliases, and runtime ownership; DeepSeek legacy keys resolve directly to canonical Flash modes. GPT-5.6 Sol phase defaults remain in place. No provider live opt-in flag was set, so paid smokes and comparative default measurements were skipped.
+- Local gates: `pytest -q tests/unit` (1,110 passed, 57 subtests), `ruff check .`, `pyright`, import smoke, and `uv lock --check` passed. PR CI for the new workflow is pending.
+
 ## Changelog
 
 - 2026-10-23: Defined integration, default-evaluation, and release acceptance.
+- 2026-10-31: Began integrated saved-key, picker, request, pipeline, and release validation after MS001–MS007 completion.
+- 2026-10-31: Added cross-provider cases, focused prompt/parser fixtures, full offline CLI smoke, and missing PR test jobs; local gates passed, PR check pending.
