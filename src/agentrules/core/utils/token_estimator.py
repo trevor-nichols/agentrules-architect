@@ -155,13 +155,11 @@ def _encoding_for_model(model_name: str) -> Any:
 def _estimate_tiktoken(model_name: str, payload: dict[str, Any], api: str | None) -> TokenEstimateResult:
     try:
         encoding = _encoding_for_model(model_name)
-    except ImportError:
-        return TokenEstimateResult(None, "tiktoken_unavailable", "Install tiktoken to enable local estimates.")
-
-    try:
         text = _extract_text(payload, api)
         tokens = len(encoding.encode_ordinary(text))
         return TokenEstimateResult(tokens, "tiktoken")
+    except ImportError:
+        return TokenEstimateResult(None, "tiktoken_unavailable", "Install tiktoken to enable local estimates.")
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.debug("tiktoken estimate failed: %s", exc, exc_info=True)
         return TokenEstimateResult(None, "tiktoken_error", str(exc))

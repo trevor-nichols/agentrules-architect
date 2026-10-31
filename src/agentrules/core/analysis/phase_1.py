@@ -444,7 +444,16 @@ class Phase1Analysis:
         for fc in function_calls or []:
             fn_name = fc.get("name")
             args = fc.get("args", {}) or {}
-            result = await self._execute_supported_tool(fn_name, args)
+            try:
+                result = await self._execute_supported_tool(fn_name, args)
+            except Exception as tool_error:
+                error = str(tool_error)
+                result = {
+                    "name": fn_name,
+                    "args": args,
+                    "result": json.dumps({"error": error}),
+                    "error": error,
+                }
             result["call_id"] = fc.get("id")
             results.append(result)
 

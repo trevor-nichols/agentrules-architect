@@ -16,7 +16,11 @@ from agentrules.core.analysis.phase_1 import Phase1Analysis
 
 
 class _TwoTurnModels:
-    def __init__(self, call_id: str | None = "research-call-1") -> None:
+    def __init__(
+        self,
+        call_id: str | None = "research-call-1",
+        function_args: dict[str, Any] | None = None,
+    ) -> None:
         self.calls: list[dict[str, Any]] = []
         self.model_turn = types.Content(
             role="model",
@@ -25,7 +29,7 @@ class _TwoTurnModels:
                     function_call=types.FunctionCall(
                         id=call_id,
                         name="tavily_web_search",
-                        args={"query": "flask release"},
+                        args=function_args or {"query": "flask release"},
                     ),
                     thought_signature=b"signed-thinking-state",
                 )
@@ -92,3 +96,23 @@ async def test_researcher_rejects_gemini38_call_without_id_before_second_request
         await analysis._run_researcher_with_tools({}, [])
 
     assert len(models.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_researcher_returns_matching_gemini_error_response_for_failed_tool() -> None:
+    models = _TwoTurnModels(function_args={"query": "flask release", "max_results": "invalid"})
+    architect = GeminiArchitect(model_name="gemini-3.8-flash", reasoning=ReasoningMode.MEDIUM)
+    architect.client = cast(Any, SimpleNamespace(models=models))
+    analysis = Phase1Analysis(researcher_enabled=False)
+    analysis.researcher_architect = architect
+
+    with patch("agentrules.core.agents.gemini.architect.resolve_tool_config", return_value=[]):
+        result = await analysis._run_researcher_with_tools({}, [])
+
+    assert len(models.calls) == 2
+    history = models.calls[1]["contents"]
+    response = history[2].parts[0].function_response
+    assert response.id == "research-call-1"
+    assert response.name == "tavily_web_search"
+    assert "invalid literal" in response.response["error"]
+    assert result["executed_tools"][0]["error"] == response.response["error"]

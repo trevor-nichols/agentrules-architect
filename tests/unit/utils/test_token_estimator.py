@@ -85,6 +85,29 @@ def test_tiktoken_encode_error(monkeypatch):
     assert "boom" in (result.error or "")
 
 
+def test_tiktoken_encoding_load_error_falls_back_to_error_result(monkeypatch):
+    class DummyTiktoken:
+        @staticmethod
+        def encoding_for_model(_name):
+            raise OSError("encoding data unavailable")
+
+        @staticmethod
+        def get_encoding(_name):
+            raise OSError("encoding data unavailable")
+
+    monkeypatch.setitem(sys.modules, "tiktoken", DummyTiktoken())
+    result = estimate_tokens(
+        provider=ModelProvider.OPENAI,
+        model_name="encoding-load-error-test-model",
+        payload={"input": "hello"},
+        estimator_family="tiktoken",
+    )
+
+    assert result.estimated is None
+    assert result.source == "tiktoken_error"
+    assert "encoding data unavailable" in (result.error or "")
+
+
 def test_anthropic_estimator_strips_output_config() -> None:
     recorded: dict[str, object] = {}
 
