@@ -16,7 +16,7 @@ tags:
 risk: med
 links:
   issue: ''
-  docs: .agent/exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/EP-20260715-001_provider-model-refresh-2026.md
+  docs: .exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/EP-20260715-001_provider-model-refresh-2026.md
   pr: ''
 ---
 

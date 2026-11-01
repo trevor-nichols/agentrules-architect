@@ -24,7 +24,7 @@ migration: true
 links:
   issue: ''
   pr: ''
-  docs: .agent/exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/milestones/complete
+  docs: .exec_plans/complete/2026/07/15/EP-20260715-001_provider-model-refresh-2026/milestones/complete
 depends_on: []
 supersedes: []
 ---

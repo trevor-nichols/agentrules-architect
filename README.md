@@ -43,7 +43,7 @@ AgentRules Architect analyzes a repository, coordinates specialized model-backed
 - 🔍 Six-phase pipeline: discovery → planning → deep dives → synthesis → consolidation → final AGENTS.md generation.
 - 🧩 Researcher tooling via Tavily search with provider-aware tool translation.
 - 📊 Rich terminal UI (Rich) showing per-agent progress, duration, and failures in real time.
-- 🪵 Configurable outputs: `AGENTS.md`, `SNAPSHOT.md` (enabled by default), `.cursorignore`, optional `.agent/` scaffold templates, and per-phase markdown/json snapshots.
+- 🪵 Configurable outputs: `AGENTS.md`, `SNAPSHOT.md` (enabled by default), `.cursorignore`, optional `.exec_plans/` scaffold templates, and per-phase markdown/json snapshots.
 - 🧭 ExecPlan and milestone commands for long-running work with deterministic IDs and registry validation.
 - 🔧 Declarative model presets plus runtime overrides via CLI or TOML.
 
@@ -173,17 +173,18 @@ See [docs/codex-runtime.md](docs/codex-runtime.md) and [docs/claude-code-runtime
 - `agentrules analyze /path/to/project --rules-filename CLAUDE.md` – one-run override for output rules filename.
 - `agentrules snapshot generate [path]` – create (or refresh) `SNAPSHOT.md` in the current directory by default.
 - `agentrules snapshot sync [path]` – sync an existing snapshot as project files evolve (also creates if missing).
-- `agentrules execplan new "Title"` – create a new ExecPlan markdown file under `.agent/exec_plans/active/<slug>/`.
-- `agentrules execplan complete EP-YYYYMMDD-NNN [--date YYYYMMDD]` – move a full ExecPlan directory under `.agent/exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/`.
+- `agentrules execplan new "Title"` – create a new ExecPlan markdown file under `.exec_plans/active/<slug>/`.
+- `agentrules execplan complete EP-YYYYMMDD-NNN [--date YYYYMMDD]` – move a full ExecPlan directory under `.exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<slug>/`.
 - `agentrules execplan list [--path]` – list active ExecPlans with compact milestone progress (`completed/total`).
+- `agentrules execplan migrate [--dry-run]` – move a legacy `.agent/` ExecPlan workspace to `.exec_plans/` (see [Migrating from `.agent/`](#migrating-from-agent)).
 - `agentrules execplan milestone new EP-YYYYMMDD-NNN "Title" [--ms N]` – create a milestone under a specific ExecPlan (auto sequence by default, or explicit `MS###` when provided).
 - `agentrules execplan milestone list EP-YYYYMMDD-NNN [--active-only]` – list milestones for one ExecPlan.
 - `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>` – move an active milestone sequence into the `milestones/complete/` directory.
 - `agentrules execplan milestone remaining EP-YYYYMMDD-NNN [--path]` – show active milestones left for one ExecPlan.
-- `agentrules execplan-registry [build|check|update]` – manage `.agent/exec_plans/registry.json` from ExecPlan front matter.
-- `agentrules scaffold sync [--check|--force]` – sync `.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md` with packaged defaults.
+- `agentrules execplan-registry [build|check|update]` – manage `.exec_plans/registry.json` from ExecPlan front matter.
+- `agentrules scaffold sync [--check|--force]` – sync `.exec_plans/PLANS.md` and `.exec_plans/templates/MILESTONE_TEMPLATE.md` with packaged defaults.
 - `agentrules configure --models` – assign presets per phase with guided prompts; the Phase 1 → Researcher entry lets you toggle the agent On/Off once a Tavily key is configured.
-- `agentrules configure --outputs` – toggle `.cursorignore`, `.agent/` scaffold generation, `phases_output/`, and custom rules filename.
+- `agentrules configure --outputs` – toggle `.cursorignore`, `.exec_plans/` scaffold generation, `phases_output/`, and custom rules filename.
 - `agentrules configure --logging` – set verbosity (`quiet`, `standard`, `verbose`) or export via `AGENTRULES_LOG_LEVEL`.
 - `agentrules tree [path]` – preview the exclusion-aware project tree and optionally save it.
 
@@ -211,17 +212,17 @@ ExecPlans and milestones use canonical IDs and deterministic file locations:
 
 - ExecPlan ID: `EP-YYYYMMDD-NNN`
 - Milestone ID: `EP-YYYYMMDD-NNN/MS###`
-- Active ExecPlan path: `.agent/exec_plans/active/<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
-- Complete ExecPlan path: `.agent/exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
-- Active milestone path: `.agent/exec_plans/active/<plan-slug>/milestones/active/MS###_<milestone-slug>.md`
-- Complete milestone path: `.agent/exec_plans/active/<plan-slug>/milestones/complete/MS###_<milestone-slug>.md`
+- Active ExecPlan path: `.exec_plans/active/<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
+- Complete ExecPlan path: `.exec_plans/complete/YYYY/MM/DD/EP-YYYYMMDD-NNN_<plan-slug>/EP-YYYYMMDD-NNN_<plan-slug>.md`
+- Active milestone path: `.exec_plans/active/<plan-slug>/milestones/active/MS###_<milestone-slug>.md`
+- Complete milestone path: `.exec_plans/active/<plan-slug>/milestones/complete/MS###_<milestone-slug>.md`
 
 Milestone creation is parent-first and sequence-safe:
 
 - Users provide parent ExecPlan ID + milestone title.
 - CLI/API assign `MS###` automatically, or accept `--ms N` to request a specific sequence.
 - Sequence is monotonic per plan across active and completed milestones (`MS001`, `MS002`, ...).
-- `.agent/templates/MILESTONE_TEMPLATE.md` is a guidance scaffold for authors.
+- `.exec_plans/templates/MILESTONE_TEMPLATE.md` is a guidance scaffold for authors.
   Generated milestone files come from an internal file template used by `execplan milestone new`.
 
 Examples:
@@ -253,6 +254,17 @@ agentrules execplan complete EP-20260207-001 --date 20260212
 # Optional: list all active plans with compact milestone progress
 agentrules execplan list
 ```
+
+### Migrating from `.agent/`
+
+Earlier releases kept the guides in `.agent/` (`.agent/PLANS.md`, `.agent/templates/`) and plans in `.agent/exec_plans/`. Those repositories keep working: every ExecPlan command uses the legacy workspace and prints a hint. To move to `.exec_plans/`:
+
+```bash
+agentrules execplan migrate --dry-run   # show the planned moves
+agentrules execplan migrate             # move plans, guides, and registry
+```
+
+Migration moves everything under `.agent/exec_plans/` plus both guides into `.exec_plans/`, updates guide paths, refreshes the ExecPlans block in your rules file, and rebuilds `registry.json`. It refuses to start, changing nothing, if a destination already exists. Other files in `.agent/` stay where they are. Rerunning is safe: an interrupted run finishes, and a completed one reports nothing to migrate. Plan and milestone bodies are not edited, so update any `.agent/...` references in active plans by hand if you want them current. If both `.exec_plans/` and a legacy workspace exist, ExecPlan commands exit with code 2 until you migrate or pass `--execplans-dir`.
 
 ## ⚙️ Configuration & Preferences
 
@@ -348,7 +360,7 @@ By default the pipeline produces:
 - `AGENTS.md` (or your custom rules filename) – cleaned, standardized agent instructions.
 - `SNAPSHOT.md` – full project tree snapshot (no depth limit by default) generated at the project root after the pipeline finishes.
 - `.cursorignore` – generated when enabled to keep editor agents focused on relevant files.
-- `.agent/` scaffold – generated when enabled (`.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md`).
+- `.exec_plans/` scaffold – generated when enabled (`.exec_plans/PLANS.md` and `.exec_plans/templates/MILESTONE_TEMPLATE.md`).
 - `phases_output/` – per-phase markdown/JSON snapshots for auditing and downstream automation.
 - Want a concrete sample? See `docs/examples/phases_output/` for a full run’s phase artifacts.
 - Rich console logs summarizing model usage, timing, and file counts.

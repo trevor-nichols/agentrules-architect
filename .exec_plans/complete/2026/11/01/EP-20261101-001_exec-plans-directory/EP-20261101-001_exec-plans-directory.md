@@ -1,21 +1,28 @@
 ---
 id: EP-20261101-001
-title: "Move ExecPlan workspace from .agent to .exec_plans"
-status: active
+title: Move ExecPlan workspace from .agent to .exec_plans
+status: done
 kind: migration
 domain: cross-cutting
-owner: "@claude"
+owner: '@claude'
 created: 2026-11-01
-updated: 2026-11-01
-tags: [execplan, layout, migration, scaffold]
-touches: [cli, docs, tests]
+updated: '2026-11-01'
+tags:
+- execplan
+- layout
+- migration
+- scaffold
+touches:
+- cli
+- docs
+- tests
 risk: med
 breaking: false
 migration: true
 links:
-  issue: ""
-  pr: ""
-  docs: ""
+  issue: ''
+  pr: ''
+  docs: ''
 depends_on: []
 supersedes: []
 ---
@@ -45,7 +52,7 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 - [x] (2026-11-01 15:45Z) Milestone 1: added `core/execplan/layout.py` and `cli/services/execplan_paths.py`; core and CLI defaults now resolve through `resolve_execplan_paths`; five private `_resolve_path` copies removed. Full suite 1,164 passed (6 new), with only the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean. The two new CLI tests fail on the pre-change source and pass after.
 - [x] (2026-11-01 16:20Z) Milestone 2: scaffold writes only `.exec_plans/` and refuses legacy repositories with a migrate hint; packaged guides and the ExecPlan body template follow the layout; rules guidance is built from the detected layout and written atomically; `.exec_plans` excluded from analysis; labels say "ExecPlan scaffold". Full suite 1,167 passed (3 new), plus the 2 pre-existing failures; new-layout assertions fail on the pre-change source.
 - [x] (2026-11-01 17:05Z) Milestone 3: added `core/execplan/migration.py` and `agentrules execplan migrate [--root] [--dry-run]`. Full suite 1,176 passed (9 new), plus the 2 pre-existing failures. Disabling the registry staleness check, conflict check, empty-directory cleanup, or guide rewrite at runtime each fails at least one migration test. The end-to-end transcript in Concrete Steps matches.
-- [ ] Milestone 4: migrate this repository, update documentation, full validation, complete this plan.
+- [x] (2026-11-01 17:40Z) Milestone 4: ran `agentrules execplan migrate` on this repository (65 renames, 16 plans, registry check passes, `.agent/` removed, rerun reports nothing to migrate). Fixed the blank line lost by rules-block replacement, removed the stale `.gitignore` entry, fixed two stale `links.docs` front-matter pointers in EP-20260715-001, and updated `README.md` (paths, `migrate` command, "Migrating from `.agent/`"), `AGENTS.md` (paths plus an "ExecPlan Workspace Layout" section), and `SNAPSHOT.md`. Full suite 1,176 passed with the 2 pre-existing failures; ruff, pyright, import smoke, diff check clean.
 
 ## Surprises & Discoveries
 
@@ -60,6 +67,10 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 - Observation: `migration.py` cannot be re-exported from `agentrules.core.execplan`. `clean_agentrules.py` imports `agentrules.core.execplan.layout`, which initializes the package `__init__`; if `__init__` imported `migration`, that would import `clean_agentrules` while it is still half-initialized.
   Evidence: Import graph: `formatters/clean_agentrules -> core/execplan/__init__ -> migration -> formatters/clean_agentrules`. The CLI imports `agentrules.core.execplan.migration` directly, as it already does for `creator` and `milestones`.
 - Observation: `.agent/exec_plans/.locks/` in `.gitignore` is stale. `src/agentrules/core/execplan/locks.py` now locks the ExecPlan file itself and never creates a `.locks` directory.
+- Observation: Replacing an existing rules-file ExecPlans block dropped the blank line before the next heading. This bug predates the plan, but migration routes every migrating repository through that path. Found by dogfooding on this repository.
+  Evidence: `git diff AGENTS.md` after migrate showed `--ms <N>`\n# 2. TEMPORAL FRAMEWORK`. A new assertion in `test_replaces_outdated_execplans_block` failed before the fix (excluding trailing blank lines from the replaced range) and passes after.
+- Observation: This repository's guides had already drifted from the packaged templates before this plan (older wording, an `archived` status, a different `--ms` note), so `scaffold sync --check` reports them as outdated. That drift is unrelated to the move and was left alone.
+  Evidence: `git show 7133408:src/agentrules/core/utils/file_creation/templates/PLANS.md | diff - .agent/PLANS.md` before migration showed only wording differences.
 
 ## Decision Log
 
@@ -105,7 +116,11 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 
 ## Outcomes & Retrospective
 
-Not started.
+Outcome: New repositories get one `.exec_plans/` workspace (guides, `templates/`, `registry.json`, `active/`, `complete/`). Legacy `.agent/` repositories keep working with a one-line hint, and `agentrules execplan migrate` moves them over in one idempotent step that refuses before changing anything when a destination is occupied. This repository now runs on the new layout. Every acceptance behavior in Validation and Acceptance was observed: new repositories, legacy repositories, the ambiguous state, migration, rerun, and scaffold refusal. The suite grew from 1,158 to 1,176 passing tests, with no new failures.
+
+What went well: centralizing paths in `layout.py` first made later milestones mechanical and removed five duplicate `_resolve_path` helpers. Dogfooding the migration here found a real formatting bug that unit tests had missed.
+
+Remaining gaps and follow-ups: migrated plan bodies keep their generated "If `.agent/PLANS.md` exists" sentence (documented in the README). The repository's guides have pre-existing wording drift from the packaged templates (`agentrules scaffold sync --force` would reconcile them). Consider excluding `.agents/` (plural) from analysis. Once PR #42 merges and this branch is rebased, rerun `agentrules execplan migrate` to pick up any plans #42 added under `.agent/exec_plans/`.
 
 ## Context and Orientation
 
@@ -272,6 +287,8 @@ In `src/agentrules/cli/services/execplan_paths.py`, define `resolve_cli_execplan
 ---
 
 Revision note (2026-11-01): Initial plan written after investigation and user decisions.
+
+Revision note (2026-11-01): Milestone 4 complete and plan closed. Recorded the rules-block blank-line fix and the pre-existing guide drift found while dogfooding, and wrote Outcomes & Retrospective.
 
 Revision note (2026-11-01): Milestone 3 complete. Added symlink refusal and path-based registry staleness, and recorded why `migration.py` is not re-exported and why plan bodies keep their old guide sentence.
 

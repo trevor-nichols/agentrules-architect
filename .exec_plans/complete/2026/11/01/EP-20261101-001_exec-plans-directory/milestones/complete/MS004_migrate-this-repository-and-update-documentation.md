@@ -2,18 +2,21 @@
 id: EP-20261101-001/MS004
 execplan_id: EP-20261101-001
 ms: 4
-title: "Migrate this repository and update documentation"
-status: planned
+title: Migrate this repository and update documentation
+status: completed
 domain: cross-cutting
-owner: "@claude"
+owner: '@claude'
 created: 2026-11-01
-updated: 2026-11-01
-tags: [execplan, migration, docs]
+updated: '2026-11-01'
+tags:
+- execplan
+- migration
+- docs
 risk: low
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Migrate this repository and update documentation
@@ -60,3 +63,4 @@ This repository uses `.exec_plans/` itself, which proves the migration on real d
 ## Changelog
 
 - 2026-11-01: Milestone created and scoped.
+- 2026-11-01: Migrated this repository (dry run first, then the real run; 65 renames; registry check passed with 16 plans; rerun reported nothing to migrate). Fixed the rules-block blank-line bug the run exposed, with a failing-first assertion. Removed the stale `.gitignore` lock entry, fixed two stale `links.docs` pointers, updated README, AGENTS.md, and SNAPSHOT.md (with comments on new entries). Full suite 1,176 passed with the 2 pre-existing failures; ruff, pyright, import smoke, diff check clean.

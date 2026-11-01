@@ -38,6 +38,7 @@
 │       │   │   ├── claude_code_runtime.py
 │       │   │   ├── codex_runtime.py  # Interaction with Codex local app-server
 │       │   │   ├── configuration.py  # Interface to the core configuration manager
+│       │   │   ├── execplan_paths.py  # CLI ExecPlan path resolution, legacy hint, and ambiguity exit
 │       │   │   ├── output_validation.py  # Output filename validation logic
 │       │   │   ├── pipeline_runner.py  # Executes the analysis pipeline
 │       │   │   └── tree_preview.py  # Snapshot preview generator
@@ -196,7 +197,9 @@
 │       │   │   ├── __init__.py  # ExecPlan package
 │       │   │   ├── creator.py  # Creates and completes ExecPlans
 │       │   │   ├── identity.py  # ExecPlan filename parsing
+│       │   │   ├── layout.py  # Current (.exec_plans/) and legacy (.agent/) workspace layouts and detection
 │       │   │   ├── locks.py  # Legacy file locking (now no-ops)
+│       │   │   ├── migration.py  # Moves a legacy .agent/ workspace to .exec_plans/
 │       │   │   ├── milestones.py  # Manages ExecPlan milestones
 │       │   │   ├── paths.py  # Path resolution and layout classification
 │       │   │   └── registry.py  # Builds the ExecPlan JSON registry
@@ -248,7 +251,7 @@
 │       │   │   │   ├── templates/  # File creation templates
 │       │   │   │   │   ├── MILESTONE_TEMPLATE.md
 │       │   │   │   │   └── PLANS.md
-│       │   │   │   ├── agent_scaffold.py  # Generates the .agent directory scaffold
+│       │   │   │   ├── agent_scaffold.py  # Generates the ExecPlan scaffold (.exec_plans/)
 │       │   │   │   ├── atomic_write.py  # Atomically writes file contents
 │       │   │   │   ├── cursorignore.py  # CLI and helper for managing .cursorignore
 │       │   │   │   ├── phases_output.py  # Dumps individual phase outputs
@@ -403,6 +406,8 @@
 │   │   ├── test_execplan_cli.py  # Unit tests for execplan command
 │   │   ├── test_execplan_creator.py  # Unit tests for creating ExecPlans
 │   │   ├── test_execplan_identity.py  # Unit tests for parsing plan paths
+│   │   ├── test_execplan_layout.py  # Unit tests for workspace layout detection
+│   │   ├── test_execplan_migration.py  # Unit tests for legacy workspace migration
 │   │   ├── test_execplan_milestone_cli.py  # Unit tests for milestone CLI commands
 │   │   ├── test_execplan_milestones.py  # Unit tests for milestone manipulation
 │   │   ├── test_execplan_paths.py  # Unit tests for detecting ExecPlan files

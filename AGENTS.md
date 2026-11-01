@@ -13,10 +13,10 @@ You are an expert senior software engineer and AI coding agent assigned to maint
 - Throughout the codebase you will see SNAPSHOT.md files. These files contain architectural documentation using directory trees with inline comments. Refer to them to understand and navigate the project efficiently. When files are added/removed/moved, update SNAPSHOT.md fils by running `agentrules snapshot sync` (preserves comments, but does not add comments).
 
 ## ExecPlans
-- When writing complex features or refactors, use an ExecPlan (as described in `.agent/PLANS.md`) from design to implementation.
+- When writing complex features or refactors, use an ExecPlan (as described in `.exec_plans/PLANS.md`) from design to implementation.
 
 ### Milestones
-- When the feature or refactor your writing is significantly complex, disaggregate the ExecPlan into milestones (as described in `.agent/templates/MILESTONE_TEMPLATE.md`)
+- When the feature or refactor your writing is significantly complex, disaggregate the ExecPlan into milestones (as described in `.exec_plans/templates/MILESTONE_TEMPLATE.md`)
 
 ### Prefer CLI creation over manual file creation:
 * ExecPlan:
@@ -57,7 +57,7 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
   - Providers: src/agentrules/core/agents/{anthropic,openai,gemini,deepseek,xai}
   - Prompt templates: src/agentrules/config/prompts/*
   - Parser: src/agentrules/core/utils/parsers/agent_parser.py
-- Output artifacts: AGENTS.md (`rules_filename`), optional `phases_output/`, optional `.cursorignore`, and optional `.agent` scaffold (`.agent/PLANS.md` and `.agent/templates/MILESTONE_TEMPLATE.md`).
+- Output artifacts: AGENTS.md (`rules_filename`), optional `phases_output/`, optional `.cursorignore`, and optional ExecPlan scaffold (`.exec_plans/PLANS.md` and `.exec_plans/templates/MILESTONE_TEMPLATE.md`).
 - Scaffold template sources: src/agentrules/core/utils/file_creation/templates/{PLANS.md,MILESTONE_TEMPLATE.md} (packaged via pyproject package-data).
 - Concurrency defaults: AGENTRULES_IO_CONCURRENCY = 8 (configurable)
 - Token cache: in-memory per-run cache keyed by (model_name, sha256(content)); persisted caching optional but disabled by default.
@@ -148,9 +148,14 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
 - Optionally create a backup/rotate scheme if desired.
 
 # Output Artifact Scaffolding
-- Materialize optional `.agent` scaffolding from package templates during output persistence (not during analysis phases).
-- `.agent` generation must be configurable via output preferences (`generate_agent_scaffold`) and default to disabled.
-- Scaffold generation must be idempotent and non-destructive by default (do not overwrite existing `.agent` files unless explicitly requested).
+- Materialize optional ExecPlan scaffolding (`.exec_plans/`) from package templates during output persistence (not during analysis phases).
+- Scaffold generation must be configurable via output preferences (`generate_agent_scaffold`) and default to disabled.
+- Scaffold generation must be idempotent and non-destructive by default (do not overwrite existing `.exec_plans` guide files unless explicitly requested).
+
+# ExecPlan Workspace Layout
+- The workspace is `.exec_plans/` (guides, `templates/`, `registry.json`, `active/`, `complete/`). Repositories with only the legacy layout (`.agent/PLANS.md`, `.agent/templates/`, `.agent/exec_plans/`) keep working with a migrate hint until users run `agentrules execplan migrate`.
+- Define workspace paths only in `src/agentrules/core/execplan/layout.py`; resolve them through `resolve_execplan_paths` (CLI: `cli/services/execplan_paths.py`) and never hard-code `.exec_plans` or `.agent` elsewhere.
+- When both layouts exist, commands fail closed with exit code 2 instead of guessing. Migration moves files without overwriting or deleting them, and never rewrites ExecPlan or milestone bodies.
 
 # CLI & UX
 - All questionary prompts must use CLI_STYLE.
@@ -352,7 +357,7 @@ output = template.format(items="x")  # can raise KeyError / ValueError
 - [ ] No blocking I/O in async functions in modified files (checked by review / tests)
 - [ ] Token packer uses per-file token cache and runs in O(n) for test fixture
 - [ ] Critical outputs (AGENTS.md, phase artifacts) written atomically
-- [ ] Optional `.agent` scaffold generation is configurable and templates are packaged/importable in installed builds
+- [ ] Optional ExecPlan scaffold generation is configurable and templates are packaged/importable in installed builds
 - [ ] ToolManager returns plain dicts in all code paths
 - [ ] Provider coercion logic centralized in provider_utils.py
 - [ ] Prompt templates validated in CI

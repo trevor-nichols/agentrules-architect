@@ -36,9 +36,6 @@ wheels/
 htmlcov/
 coverage.xml
 
-# Agent exec plan locks
-.agent/exec_plans/.locks/
-
 # Project specific
 project_tree_*
 our-notes/

@@ -118,6 +118,8 @@ def _inject_execplans_guidance(content: str, layout: ExecPlanLayout) -> tuple[st
             if len(heading_match.group("hashes")) <= execplans_heading_level:
                 execplans_block_end = index
                 break
+        while execplans_block_end > execplans_heading_index + 1 and not lines[execplans_block_end - 1].strip():
+            execplans_block_end -= 1
 
         replacement_lines = list(guidance_block)
         updated_lines = lines[:execplans_heading_index] + replacement_lines + lines[execplans_block_end:]

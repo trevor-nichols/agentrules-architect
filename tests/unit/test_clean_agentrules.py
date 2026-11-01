@@ -131,6 +131,7 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
             self.assertIn("### Prefer CLI creation over manual file creation:", content)
             self.assertIn("(as described in `.exec_plans/PLANS.md`)", content)
             self.assertNotIn(".agent/PLANS.md", content)
+            self.assertIn("--ms <N>`\n\n# 2. TEMPORAL FRAMEWORK\n", content)
             self.assertNotIn(
                 "When writing complex features or significant refactors, use an ExecPlan",
                 content,
