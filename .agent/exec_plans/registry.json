@@ -484,6 +484,38 @@
         "tests"
       ],
       "updated": "2026-10-31"
+    },
+    {
+      "breaking": false,
+      "created": "2026-11-01",
+      "depends_on": [],
+      "domain": "cross-cutting",
+      "id": "EP-20261101-001",
+      "kind": "migration",
+      "links": {
+        "docs": "",
+        "issue": "",
+        "pr": ""
+      },
+      "migration": true,
+      "owner": "@claude",
+      "path": ".agent/exec_plans/active/exec-plans-directory/EP-20261101-001_exec-plans-directory.md",
+      "risk": "med",
+      "status": "active",
+      "supersedes": [],
+      "tags": [
+        "execplan",
+        "layout",
+        "migration",
+        "scaffold"
+      ],
+      "title": "Move ExecPlan workspace from .agent to .exec_plans",
+      "touches": [
+        "cli",
+        "docs",
+        "tests"
+      ],
+      "updated": "2026-11-01"
     }
   ],
   "schema_version": 1
