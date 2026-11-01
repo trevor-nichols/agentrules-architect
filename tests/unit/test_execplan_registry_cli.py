@@ -109,7 +109,7 @@ class ExecPlanRegistryCLITests(unittest.TestCase):
 
         output_buffer = io.StringIO()
         context = CliContext(console=Console(file=output_buffer, width=120))
-        out_path = Path(self.temp_dir.name) / ".agent" / "exec_plans" / "registry.json"
+        out_path = Path(self.temp_dir.name) / ".exec_plans" / "registry.json"
         result_payload = RegistryBuildResult(
             registry={"schema_version": 1, "plans": [{"id": "EP-20260207-001"}]},
             issues=tuple(),

@@ -2,18 +2,21 @@
 id: EP-20261101-001/MS001
 execplan_id: EP-20261101-001
 ms: 1
-title: "Add layout resolver and wire core and CLI defaults"
-status: in_progress
+title: Add layout resolver and wire core and CLI defaults
+status: completed
 domain: cross-cutting
-owner: "@claude"
+owner: '@claude'
 created: 2026-11-01
-updated: 2026-11-01
-tags: [execplan, layout, cli]
+updated: '2026-11-01'
+tags:
+- execplan
+- layout
+- cli
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Add layout resolver and wire core and CLI defaults
@@ -63,3 +66,4 @@ Every ExecPlan command and core library function picks its workspace from one re
 ## Changelog
 
 - 2026-11-01: Milestone created and scoped.
+- 2026-11-01: Implemented the resolver, core/CLI wiring, and tests. Core tests that pass `.agent/exec_plans` explicitly were left unchanged, since the directory name there is incidental. CLI tests that rely on defaults now assert `.exec_plans/`. Full suite 1,164 passed with the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean.

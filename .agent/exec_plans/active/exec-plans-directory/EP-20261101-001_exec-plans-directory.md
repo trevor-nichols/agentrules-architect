@@ -42,7 +42,7 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 
 - [x] (2026-11-01 15:00Z) Investigated all `.agent` touchpoints and verified with real data that a flattened `.exec_plans/` (guides next to `active/` and `complete/`) yields the same registry: 15 plans, 0 errors, 0 warnings.
 - [x] (2026-11-01 15:10Z) User chose detection plus explicit migrate, migrate updates the rules file, and ExecPlan-first delivery. Plan and milestones created via CLI on branch `feat/exec-plans-directory`.
-- [ ] Milestone 1: layout resolver and core/CLI wiring.
+- [x] (2026-11-01 15:45Z) Milestone 1: added `core/execplan/layout.py` and `cli/services/execplan_paths.py`; core and CLI defaults now resolve through `resolve_execplan_paths`; five private `_resolve_path` copies removed. Full suite 1,164 passed (6 new), with only the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean. The two new CLI tests fail on the pre-change source and pass after.
 - [ ] Milestone 2: scaffold, packaged templates, rules guidance, exclusions, labels.
 - [ ] Milestone 3: `agentrules execplan migrate`.
 - [ ] Milestone 4: migrate this repository, update documentation, full validation, complete this plan.
@@ -55,6 +55,8 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
   Evidence: `rg -- --execplans-dir tests` returns no matches.
 - Observation: With a custom `--execplans-dir` and no `--out`, the registry is still written to `.agent/exec_plans/registry.json`, which is outside the chosen directory.
   Evidence: `src/agentrules/cli/commands/execplan.py` passes the static `DEFAULT_REGISTRY_PATH` default regardless of `--execplans-dir`.
+- Observation: The base branch already has 2 failing tests in `tests/unit/test_cli_model_picker_ui.py`. Rich wraps the console message at 80 columns, so the asserted substring "Saved replacement" spans a line break. They are unrelated to this plan and fail identically before and after each milestone. New CLI tests here normalize whitespace before asserting to avoid the same trap.
+  Evidence: `2 failed, 1158 passed` on the untouched base; the same two failures after Milestone 1 with `1164 passed`.
 - Observation: `.agent/exec_plans/.locks/` in `.gitignore` is stale. `src/agentrules/core/execplan/locks.py` now locks the ExecPlan file itself and never creates a `.locks` directory.
 
 ## Decision Log
@@ -212,7 +214,8 @@ No new third-party dependencies. In `src/agentrules/core/execplan/layout.py`, de
         registry_path: Path        # property: execplans_dir / REGISTRY_FILENAME
         plans_guide_path: Path     # property: workspace_dir / "PLANS.md"
         milestone_guide_path: Path # property: workspace_dir / "templates" / "MILESTONE_TEMPLATE.md"
-        legacy_markers: tuple[Path, ...]  # property: (execplans_dir, plans_guide_path, milestone_guide_path)
+        markers: tuple[Path, ...]  # property: (execplans_dir, plans_guide_path, milestone_guide_path)
+        def is_present(self, root: Path) -> bool: ...  # any marker exists under root
 
     CURRENT_LAYOUT: ExecPlanLayout
     LEGACY_LAYOUT: ExecPlanLayout
@@ -247,8 +250,10 @@ In `src/agentrules/core/execplan/migration.py`, define:
 
     def migrate_execplan_workspace(root: Path, *, rules_filename: str | None, dry_run: bool = False) -> ExecPlanMigrationResult: ...
 
-In `src/agentrules/cli/services/execplan_paths.py`, define `resolve_cli_execplan_paths(console, *, root: Path, execplans_dir: Path | None, registry_path: Path | None = None) -> ResolvedExecPlanPaths`.
+In `src/agentrules/cli/services/execplan_paths.py`, define `resolve_cli_execplan_paths(context: CliContext, *, root: Path, execplans_dir: Path | None, registry_path: Path | None = None) -> ResolvedExecPlanPaths`. It takes the `CliContext` like other CLI services and raises `typer.Exit(2)` on ambiguity, so each command stays a single call.
 
 ---
 
 Revision note (2026-11-01): Initial plan written after investigation and user decisions.
+
+Revision note (2026-11-01): Milestone 1 complete. `ExecPlanLayout` uses one `markers` tuple plus `is_present` for both layouts, so detection is symmetric. The CLI helper takes `CliContext`, matching `cli/services/pipeline_runner.py`.

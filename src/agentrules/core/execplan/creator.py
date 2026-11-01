@@ -16,6 +16,7 @@ from typing import Literal, TypeAlias
 import yaml
 
 from agentrules.core.execplan.identity import extract_execplan_id_from_filename, parse_execplan_filename
+from agentrules.core.execplan.layout import resolve_execplan_paths
 from agentrules.core.execplan.locks import execplan_mutation_lock
 from agentrules.core.execplan.milestones import scan_active_milestones_for_completion
 from agentrules.core.execplan.paths import (
@@ -31,8 +32,6 @@ from agentrules.core.execplan.paths import (
 from agentrules.core.execplan.registry import (
     ALLOWED_DOMAINS,
     ALLOWED_KINDS,
-    DEFAULT_EXECPLANS_DIR,
-    DEFAULT_REGISTRY_PATH,
     RegistryBuildResult,
     build_execplan_registry,
 )
@@ -131,10 +130,6 @@ def _load_execplan_template() -> Template:
     if not template_path.is_file():
         raise FileNotFoundError(f"Template not found: {_TEMPLATE_NAME}")
     return Template(template_path.read_text(encoding="utf-8"))
-
-
-def _resolve_path(root: Path, value: Path) -> Path:
-    return value.resolve() if value.is_absolute() else (root / value).resolve()
 
 
 def _normalize_archive_destination_dir(destination_dir: str) -> str:
@@ -302,15 +297,16 @@ def create_execplan(
     kind: str = "feature",
     domain: str = "backend",
     date_yyyymmdd: str | None = None,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     update_registry: bool = True,
-    registry_path: Path = DEFAULT_REGISTRY_PATH,
+    registry_path: Path | None = None,
     include_registry_timestamp: bool = False,
     fail_on_registry_warn: bool = False,
 ) -> ExecPlanCreateResult:
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-    resolved_registry_path = _resolve_path(resolved_root, registry_path)
+    paths = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir, registry_path=registry_path)
+    resolved_execplans_dir = paths.execplans_dir
+    resolved_registry_path = paths.registry_path
 
     normalized_title = _validate_single_line_field(title.strip(), field_name="title")
     if not normalized_title:
@@ -407,16 +403,17 @@ def complete_execplan(
     *,
     root: Path,
     execplan_id: str,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     completion_date_yyyymmdd: str | None = None,
     update_registry: bool = True,
-    registry_path: Path = DEFAULT_REGISTRY_PATH,
+    registry_path: Path | None = None,
     include_registry_timestamp: bool = False,
     fail_on_registry_warn: bool = False,
 ) -> ExecPlanCompleteResult:
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-    resolved_registry_path = _resolve_path(resolved_root, registry_path)
+    paths = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir, registry_path=registry_path)
+    resolved_execplans_dir = paths.execplans_dir
+    resolved_registry_path = paths.registry_path
 
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         source_plan_path = _resolve_execplan_by_id(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id)
@@ -615,11 +612,11 @@ def archive_execplan(
     *,
     root: Path,
     execplan_id: str,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     archive_date_yyyymmdd: str | None = None,
     destination_dir: Literal["complete", "archive"] = EXECPLAN_COMPLETE_DIR,
     update_registry: bool = True,
-    registry_path: Path = DEFAULT_REGISTRY_PATH,
+    registry_path: Path | None = None,
     include_registry_timestamp: bool = False,
     fail_on_registry_warn: bool = False,
 ) -> ExecPlanCompleteResult:

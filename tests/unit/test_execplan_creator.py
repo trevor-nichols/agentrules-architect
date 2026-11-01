@@ -404,8 +404,8 @@ class ExecPlanCreatorTests(unittest.TestCase):
                 os.chdir(original_cwd)
 
             self.assertTrue(result.plan_path.resolve().is_relative_to(root))
-            self.assertTrue((root / ".agent" / "exec_plans" / "registry.json").exists())
-            self.assertFalse((cwd / ".agent" / "exec_plans" / "registry.json").exists())
+            self.assertTrue((root / ".exec_plans" / "registry.json").exists())
+            self.assertFalse((cwd / ".exec_plans" / "registry.json").exists())
 
     def test_complete_execplan_moves_active_directory_and_sets_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

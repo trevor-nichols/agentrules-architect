@@ -8,6 +8,17 @@ from agentrules.core.execplan.creator import (
     complete_execplan,
     create_execplan,
 )
+from agentrules.core.execplan.layout import (
+    CURRENT_LAYOUT,
+    DEFAULT_EXECPLANS_DIR,
+    DEFAULT_REGISTRY_PATH,
+    LEGACY_LAYOUT,
+    AmbiguousExecPlanLayoutError,
+    ExecPlanLayout,
+    ResolvedExecPlanPaths,
+    detect_execplan_layout,
+    resolve_execplan_paths,
+)
 from agentrules.core.execplan.milestones import (
     MilestoneArchiveResult,
     MilestoneCompleteResult,
@@ -21,8 +32,6 @@ from agentrules.core.execplan.milestones import (
     parse_milestone_id,
 )
 from agentrules.core.execplan.registry import (
-    DEFAULT_EXECPLANS_DIR,
-    DEFAULT_REGISTRY_PATH,
     RegistryBuildResult,
     RegistryIssue,
     RegistryPlan,
@@ -31,11 +40,15 @@ from agentrules.core.execplan.registry import (
 )
 
 __all__ = [
+    "CURRENT_LAYOUT",
     "DEFAULT_EXECPLANS_DIR",
     "DEFAULT_REGISTRY_PATH",
+    "LEGACY_LAYOUT",
+    "AmbiguousExecPlanLayoutError",
     "ExecPlanArchiveResult",
     "ExecPlanCompleteResult",
     "ExecPlanCreateResult",
+    "ExecPlanLayout",
     "MilestoneArchiveResult",
     "MilestoneCompleteResult",
     "MilestoneCreateResult",
@@ -43,6 +56,7 @@ __all__ = [
     "RegistryBuildResult",
     "RegistryIssue",
     "RegistryPlan",
+    "ResolvedExecPlanPaths",
     "archive_execplan_milestone",
     "archive_execplan",
     "build_execplan_registry",
@@ -51,7 +65,9 @@ __all__ = [
     "complete_execplan",
     "create_execplan_milestone",
     "create_execplan",
+    "detect_execplan_layout",
     "list_execplan_milestones",
     "parse_milestone_filename",
     "parse_milestone_id",
+    "resolve_execplan_paths",
 ]

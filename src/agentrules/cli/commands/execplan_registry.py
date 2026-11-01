@@ -8,8 +8,6 @@ from typing import Any
 import typer
 
 from agentrules.core.execplan.registry import (
-    DEFAULT_EXECPLANS_DIR,
-    DEFAULT_REGISTRY_PATH,
     RegistryBuildResult,
     build_execplan_registry,
     collect_execplan_registry,
@@ -17,10 +15,7 @@ from agentrules.core.execplan.registry import (
 )
 
 from ..bootstrap import bootstrap_runtime
-
-
-def _resolve_path(root: Path, value: Path) -> Path:
-    return value.resolve() if value.is_absolute() else (root / value).resolve()
+from ..services.execplan_paths import resolve_cli_execplan_paths
 
 
 def _print_issues(result: RegistryBuildResult, *, console) -> None:
@@ -93,14 +88,20 @@ def _shared_options() -> tuple[Any, Any, Any, Any]:
             help="Repository root directory. Defaults to current working directory.",
         ),
         typer.Option(
-            DEFAULT_EXECPLANS_DIR,
+            None,
             "--execplans-dir",
-            help="Path to ExecPlans directory (relative to --root unless absolute).",
+            help=(
+                "Path to ExecPlans directory (relative to --root unless absolute). "
+                "Defaults to .exec_plans, or legacy .agent/exec_plans when only that exists."
+            ),
         ),
         typer.Option(
-            DEFAULT_REGISTRY_PATH,
+            None,
             "--out",
-            help="Path to registry.json output (relative to --root unless absolute).",
+            help=(
+                "Path to registry.json output (relative to --root unless absolute). "
+                "Defaults to <execplans-dir>/registry.json."
+            ),
         ),
         typer.Option(
             False,
@@ -113,7 +114,7 @@ def _shared_options() -> tuple[Any, Any, Any, Any]:
 def register(app: typer.Typer) -> None:
     """Register the `execplan-registry` command group."""
 
-    registry_app = typer.Typer(help="Build and validate .agent/exec_plans/registry.json.")
+    registry_app = typer.Typer(help="Build and validate the ExecPlans registry.json.")
     app.add_typer(registry_app, name="execplan-registry")
 
     ROOT_OPTION, EXECPLANS_DIR_OPTION, OUT_OPTION, TIMESTAMP_OPTION = _shared_options()
@@ -121,7 +122,7 @@ def register(app: typer.Typer) -> None:
     @registry_app.command("check")
     def check_registry(  # type: ignore[func-returns-value]
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         timestamp: bool = TIMESTAMP_OPTION,
         fail_on_warn: bool = typer.Option(
             False,
@@ -133,7 +134,9 @@ def register(app: typer.Typer) -> None:
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+        resolved_execplans_dir = resolve_cli_execplan_paths(
+            context, root=resolved_root, execplans_dir=execplans_dir
+        ).execplans_dir
 
         try:
             result, exit_code = _run_check(
@@ -161,8 +164,8 @@ def register(app: typer.Typer) -> None:
     @registry_app.command("build")
     def build_registry(  # type: ignore[func-returns-value]
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
-        out: Path = OUT_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
+        out: Path | None = OUT_OPTION,
         timestamp: bool = TIMESTAMP_OPTION,
         fail_on_warn: bool = typer.Option(
             False,
@@ -174,8 +177,9 @@ def register(app: typer.Typer) -> None:
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-        resolved_output = _resolve_path(resolved_root, out)
+        paths = resolve_cli_execplan_paths(context, root=resolved_root, execplans_dir=execplans_dir, registry_path=out)
+        resolved_execplans_dir = paths.execplans_dir
+        resolved_output = paths.registry_path
 
         try:
             result, exit_code = _run_build(
@@ -213,8 +217,8 @@ def register(app: typer.Typer) -> None:
     @registry_app.command("update")
     def update_registry(  # type: ignore[func-returns-value]
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
-        out: Path = OUT_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
+        out: Path | None = OUT_OPTION,
         timestamp: bool = TIMESTAMP_OPTION,
         fail_on_warn: bool = typer.Option(
             False,
@@ -227,8 +231,9 @@ def register(app: typer.Typer) -> None:
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-        resolved_output = _resolve_path(resolved_root, out)
+        paths = resolve_cli_execplan_paths(context, root=resolved_root, execplans_dir=execplans_dir, registry_path=out)
+        resolved_execplans_dir = paths.execplans_dir
+        resolved_output = paths.registry_path
 
         try:
             result, exit_code = _run_build(

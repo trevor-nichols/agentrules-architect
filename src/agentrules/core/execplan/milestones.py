@@ -15,6 +15,7 @@ from typing import Any, Literal, TypeAlias
 import yaml
 
 from agentrules.core.execplan.identity import extract_execplan_id_from_filename
+from agentrules.core.execplan.layout import resolve_execplan_paths
 from agentrules.core.execplan.locks import execplan_mutation_lock
 from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
@@ -25,7 +26,7 @@ from agentrules.core.execplan.paths import (
     is_execplan_complete_path,
     is_execplan_milestone_path,
 )
-from agentrules.core.execplan.registry import ALLOWED_DOMAINS, DEFAULT_EXECPLANS_DIR
+from agentrules.core.execplan.registry import ALLOWED_DOMAINS
 from agentrules.core.utils.file_creation.atomic_write import atomic_write_text
 
 EXECPLAN_ID_RE = re.compile(r"^EP-\d{8}-\d{3}$")
@@ -354,10 +355,6 @@ def scan_active_milestones_for_archive(*, plan_root: Path, execplan_id: str) -> 
     return scan_active_milestones_for_completion(plan_root=plan_root, execplan_id=execplan_id)
 
 
-def _resolve_path(root: Path, value: Path) -> Path:
-    return value.resolve() if value.is_absolute() else (root / value).resolve()
-
-
 def _today_yyyymmdd_local() -> str:
     return datetime.now().astimezone().strftime("%Y%m%d")
 
@@ -572,12 +569,12 @@ def create_execplan_milestone(
     slug: str | None = None,
     owner: str | None = None,
     domain: str | None = None,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     created_yyyymmdd: str | None = None,
     sequence: int | None = None,
 ) -> MilestoneCreateResult:
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    resolved_execplans_dir = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir).execplans_dir
 
     normalized_title = _validate_single_line_field(title.strip(), field_name="title")
     if not normalized_title:
@@ -711,7 +708,7 @@ def list_execplan_milestones(
     *,
     root: Path,
     execplan_id: str,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     include_completed: bool = True,
     include_archived: bool | None = None,
 ) -> tuple[MilestoneRef, ...]:
@@ -724,7 +721,7 @@ def list_execplan_milestones(
         include_completed = include_archived
 
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    resolved_execplans_dir = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir).execplans_dir
     _, plan_root, _ = _resolve_parent_execplan(
         execplans_dir=resolved_execplans_dir,
         execplan_id=execplan_id,
@@ -768,14 +765,14 @@ def complete_execplan_milestone(
     root: Path,
     execplan_id: str,
     sequence: int,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     completion_date_yyyymmdd: str | None = None,
 ) -> MilestoneCompleteResult:
     if sequence < 1 or sequence > 999:
         raise ValueError("Milestone sequence must be between 1 and 999.")
 
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    resolved_execplans_dir = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir).execplans_dir
     with execplan_mutation_lock(execplans_dir=resolved_execplans_dir, execplan_id=execplan_id):
         plan_path, plan_root, _ = _resolve_parent_execplan(
             execplans_dir=resolved_execplans_dir,
@@ -844,7 +841,7 @@ def archive_execplan_milestone(
     root: Path,
     execplan_id: str,
     sequence: int,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     archive_date_yyyymmdd: str | None = None,
     destination_dir: Literal["complete", "archive"] = COMPLETE_DIR,
 ) -> MilestoneCompleteResult:

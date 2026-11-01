@@ -36,18 +36,47 @@ class ExecPlanCLITests(unittest.TestCase):
 
         plan_path = (
             self.root
-            / ".agent"
-            / "exec_plans"
+            / ".exec_plans"
             / "active"
             / "auth-refresh"
             / "EP-20260207-001_auth-refresh.md"
         )
         self.assertTrue(plan_path.exists())
 
-        registry_path = self.root / ".agent" / "exec_plans" / "registry.json"
+        registry_path = self.root / ".exec_plans" / "registry.json"
         self.assertTrue(registry_path.exists())
         payload = json.loads(registry_path.read_text(encoding="utf-8"))
         self.assertEqual(payload["plans"][0]["id"], "EP-20260207-001")
+
+    def test_new_keeps_using_legacy_workspace_and_suggests_migration(self) -> None:
+        from agentrules import cli
+
+        legacy_execplans_dir = self.root / ".agent" / "exec_plans"
+        legacy_execplans_dir.mkdir(parents=True)
+
+        result = self.runner.invoke(
+            cli.app,
+            ["execplan", "new", "Legacy Plan", "--root", str(self.root), "--date", "20260207"],
+        )
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Run `agentrules execplan migrate`", " ".join(result.output.split()))
+        self.assertTrue(
+            (legacy_execplans_dir / "active" / "legacy-plan" / "EP-20260207-001_legacy-plan.md").exists()
+        )
+        self.assertTrue((legacy_execplans_dir / "registry.json").exists())
+        self.assertFalse((self.root / ".exec_plans").exists())
+
+    def test_commands_exit_when_current_and_legacy_workspaces_both_exist(self) -> None:
+        from agentrules import cli
+
+        (self.root / ".exec_plans").mkdir()
+        (self.root / ".agent" / "exec_plans").mkdir(parents=True)
+
+        result = self.runner.invoke(cli.app, ["execplan", "list", "--root", str(self.root)])
+
+        self.assertEqual(result.exit_code, 2, msg=result.output)
+        self.assertIn("Run `agentrules execplan migrate`", " ".join(result.output.split()))
 
     def test_new_supports_no_update_registry(self) -> None:
         from agentrules import cli
@@ -67,13 +96,13 @@ class ExecPlanCLITests(unittest.TestCase):
         )
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        registry_path = self.root / ".agent" / "exec_plans" / "registry.json"
+        registry_path = self.root / ".exec_plans" / "registry.json"
         self.assertFalse(registry_path.exists())
 
     def test_new_returns_non_zero_when_registry_update_fails(self) -> None:
         from agentrules import cli
 
-        bad_path = self.root / ".agent" / "exec_plans" / "bad" / "EP-20260207-001_bad.md"
+        bad_path = self.root / ".exec_plans" / "bad" / "EP-20260207-001_bad.md"
         bad_path.parent.mkdir(parents=True, exist_ok=True)
         bad_path.write_text("---\nid: EP-20260207-001\n---\n", encoding="utf-8")
 
@@ -93,8 +122,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertEqual(result.exit_code, 1, msg=result.output)
         created = (
             self.root
-            / ".agent"
-            / "exec_plans"
+            / ".exec_plans"
             / "active"
             / "good-plan"
             / "EP-20260207-002_good-plan.md"
@@ -141,7 +169,7 @@ class ExecPlanCLITests(unittest.TestCase):
         )
         self.assertEqual(create_result.exit_code, 0, msg=create_result.output)
 
-        source_root = self.root / ".agent" / "exec_plans" / "active" / "frontend-architecture-refactor"
+        source_root = self.root / ".exec_plans" / "active" / "frontend-architecture-refactor"
         source_plan = source_root / "EP-20260207-001_frontend-architecture-refactor.md"
         self.assertTrue(source_plan.exists())
 
@@ -163,8 +191,7 @@ class ExecPlanCLITests(unittest.TestCase):
 
         completed_root = (
             self.root
-            / ".agent"
-            / "exec_plans"
+            / ".exec_plans"
             / "complete"
             / "2026"
             / "02"
@@ -177,7 +204,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertIn("status: done", content)
         self.assertIn("updated: '2026-02-12'", content)
 
-        registry_path = self.root / ".agent" / "exec_plans" / "registry.json"
+        registry_path = self.root / ".exec_plans" / "registry.json"
         payload = json.loads(registry_path.read_text(encoding="utf-8"))
         self.assertEqual(payload["plans"][0]["id"], "EP-20260207-001")
         self.assertIn("complete/2026/02/12/", payload["plans"][0]["path"])
@@ -216,8 +243,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertEqual(first_complete.exit_code, 0, msg=first_complete.output)
         completed_root = (
             self.root
-            / ".agent"
-            / "exec_plans"
+            / ".exec_plans"
             / "complete"
             / "2026"
             / "02"
@@ -376,7 +402,7 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertIn("Active ExecPlans: 2 (milestones 1/1 completed)", listed.output)
         self.assertIn("EP-20260207-001 [planned] Checkout Improvements (milestones 1/1 completed)", listed.output)
         self.assertIn("EP-20260208-001 [planned] Search Improvements (milestones none)", listed.output)
-        self.assertNotIn("-> .agent/exec_plans", listed.output)
+        self.assertNotIn("-> .exec_plans", listed.output)
 
     def test_list_execplans_with_path_includes_plan_path(self) -> None:
         from agentrules import cli
@@ -407,7 +433,7 @@ class ExecPlanCLITests(unittest.TestCase):
             ],
         )
         self.assertEqual(listed.exit_code, 0, msg=listed.output)
-        self.assertIn("-> .agent/exec_plans/active/path-visibility/EP-20260207-001_path-visibility.md", listed.output)
+        self.assertIn("-> .exec_plans/active/path-visibility/EP-20260207-001_path-visibility.md", listed.output)
 
     def test_complete_rejects_when_active_milestones_exist(self) -> None:
         from agentrules import cli
@@ -429,8 +455,7 @@ class ExecPlanCLITests(unittest.TestCase):
 
         active_milestone = (
             self.root
-            / ".agent"
-            / "exec_plans"
+            / ".exec_plans"
             / "active"
             / "complete-guard-rail"
             / "milestones"

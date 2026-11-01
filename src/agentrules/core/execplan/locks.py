@@ -3,7 +3,7 @@
 ExecPlan and milestone mutations must serialize per ExecPlan ID so concurrent
 CLI invocations cannot allocate duplicate milestone identifiers. We lock the
 owning ExecPlan markdown file directly, which avoids leaving historical
-``.agent/exec_plans/.locks`` artifacts behind.
+``<execplans_dir>/.locks`` artifacts behind.
 """
 
 from __future__ import annotations

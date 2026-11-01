@@ -1,4 +1,4 @@
-"""Build and validate the ExecPlan registry under .agent/exec_plans."""
+"""Build and validate the ExecPlan registry (``registry.json`` in the ExecPlans directory)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from typing import Any, Literal
 import yaml
 
 from agentrules.core.execplan.identity import extract_execplan_id_from_filename
+from agentrules.core.execplan.layout import resolve_execplan_paths
 from agentrules.core.execplan.paths import (
     ACTIVE_DIR,
     ARCHIVE_DIR,
@@ -48,13 +49,6 @@ ALLOWED_TOUCHES = frozenset(
     {"api", "db", "ui", "cli", "agents", "ops", "security", "tests", "docs", "backend", "frontend"}
 )
 ALLOWED_RISK = frozenset({"low", "med", "high"})
-
-DEFAULT_EXECPLANS_DIR = Path(".agent/exec_plans")
-DEFAULT_REGISTRY_PATH = Path(".agent/exec_plans/registry.json")
-
-
-def _resolve_path(root: Path, value: Path) -> Path:
-    return value.resolve() if value.is_absolute() else (root / value).resolve()
 
 
 @dataclass(frozen=True, slots=True)
@@ -458,11 +452,11 @@ def _build_plan(
 def collect_execplan_registry(
     *,
     root: Path,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
     include_timestamp: bool = False,
 ) -> RegistryBuildResult:
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    resolved_execplans_dir = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir).execplans_dir
     if not resolved_execplans_dir.exists():
         raise FileNotFoundError(f"ExecPlans directory not found: {resolved_execplans_dir}")
 
@@ -605,7 +599,7 @@ def list_active_execplan_summaries(
     *,
     registry: dict[str, Any],
     root: Path,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
 ) -> tuple[ActiveExecPlanSummary, ...]:
     """
     Return active ExecPlans with per-plan milestone progress.
@@ -615,7 +609,7 @@ def list_active_execplan_summaries(
     and legacy milestones/archive.
     """
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+    resolved_execplans_dir = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir).execplans_dir
 
     plans = registry.get("plans", [])
     if not isinstance(plans, list):
@@ -658,7 +652,7 @@ def summarize_registry_activity(
     *,
     registry: dict[str, Any],
     root: Path,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
+    execplans_dir: Path | None = None,
 ) -> RegistryActivitySummary:
     """
     Summarize active ExecPlans and milestone progress for CLI reporting.
@@ -699,18 +693,17 @@ def write_registry_atomic(registry: dict[str, Any], output_path: Path) -> Path:
 def build_execplan_registry(
     *,
     root: Path,
-    execplans_dir: Path = DEFAULT_EXECPLANS_DIR,
-    output_path: Path = DEFAULT_REGISTRY_PATH,
+    execplans_dir: Path | None = None,
+    output_path: Path | None = None,
     include_timestamp: bool = False,
     fail_on_warn: bool = False,
 ) -> RegistryBuildResult:
     resolved_root = root.resolve()
-    resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-    resolved_output_path = _resolve_path(resolved_root, output_path)
+    paths = resolve_execplan_paths(resolved_root, execplans_dir=execplans_dir, registry_path=output_path)
 
     result = collect_execplan_registry(
         root=resolved_root,
-        execplans_dir=resolved_execplans_dir,
+        execplans_dir=paths.execplans_dir,
         include_timestamp=include_timestamp,
     )
     if result.error_count > 0:
@@ -718,7 +711,7 @@ def build_execplan_registry(
     if fail_on_warn and result.warning_count > 0:
         return result
 
-    written_path = write_registry_atomic(result.registry, resolved_output_path)
+    written_path = write_registry_atomic(result.registry, paths.registry_path)
     return RegistryBuildResult(
         registry=result.registry,
         issues=result.issues,

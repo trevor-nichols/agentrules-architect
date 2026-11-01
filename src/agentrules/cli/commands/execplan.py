@@ -14,14 +14,13 @@ from agentrules.core.execplan.milestones import (
     list_execplan_milestones,
 )
 from agentrules.core.execplan.registry import (
-    DEFAULT_EXECPLANS_DIR,
-    DEFAULT_REGISTRY_PATH,
     collect_execplan_registry,
     list_active_execplan_summaries,
     summarize_registry_activity,
 )
 
 from ..bootstrap import bootstrap_runtime
+from ..services.execplan_paths import resolve_cli_execplan_paths
 
 TITLE_ARGUMENT = typer.Argument(..., help="Human-readable ExecPlan title.")
 EXECPLAN_ID_ARGUMENT = typer.Argument(..., help="Canonical ExecPlan ID (EP-YYYYMMDD-NNN).")
@@ -52,19 +51,22 @@ COMPLETION_DATE_OPTION = typer.Option(
     help="Override completion date token used in destination path and metadata update.",
 )
 EXECPLANS_DIR_OPTION = typer.Option(
-    DEFAULT_EXECPLANS_DIR,
+    None,
     "--execplans-dir",
-    help="Path to ExecPlans directory (relative to --root unless absolute).",
+    help=(
+        "Path to ExecPlans directory (relative to --root unless absolute). "
+        "Defaults to .exec_plans, or legacy .agent/exec_plans when only that exists."
+    ),
 )
 OUT_OPTION = typer.Option(
-    DEFAULT_REGISTRY_PATH,
+    None,
     "--out",
-    help="Path to registry output (relative to --root unless absolute).",
+    help="Path to registry output (relative to --root unless absolute). Defaults to <execplans-dir>/registry.json.",
 )
 UPDATE_REGISTRY_OPTION = typer.Option(
     True,
     "--update-registry/--no-update-registry",
-    help="Update .agent/exec_plans/registry.json after the command completes.",
+    help="Update the ExecPlans registry.json after the command completes.",
 )
 FAIL_ON_REGISTRY_WARN_OPTION = typer.Option(
     False,
@@ -122,10 +124,6 @@ MILESTONE_REMAINING_INCLUDE_PATH_OPTION = typer.Option(
 )
 
 
-def _resolve_path(root: Path, value: Path) -> Path:
-    return value.resolve() if value.is_absolute() else (root / value).resolve()
-
-
 def _count_active_execplans(
     *,
     root: Path,
@@ -167,8 +165,8 @@ def register(app: typer.Typer) -> None:
         kind: str = KIND_OPTION,
         domain: str = DOMAIN_OPTION,
         date: str | None = DATE_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
-        out: Path = OUT_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
+        out: Path | None = OUT_OPTION,
         update_registry: bool = UPDATE_REGISTRY_OPTION,
         fail_on_registry_warn: bool = FAIL_ON_REGISTRY_WARN_OPTION,
         registry_timestamp: bool = REGISTRY_TIMESTAMP_OPTION,
@@ -177,8 +175,7 @@ def register(app: typer.Typer) -> None:
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-        resolved_registry = _resolve_path(resolved_root, out)
+        paths = resolve_cli_execplan_paths(context, root=resolved_root, execplans_dir=execplans_dir, registry_path=out)
 
         try:
             result = create_execplan(
@@ -189,9 +186,9 @@ def register(app: typer.Typer) -> None:
                 kind=kind,
                 domain=domain,
                 date_yyyymmdd=date,
-                execplans_dir=resolved_execplans_dir,
+                execplans_dir=paths.execplans_dir,
                 update_registry=update_registry,
-                registry_path=resolved_registry,
+                registry_path=paths.registry_path,
                 include_registry_timestamp=registry_timestamp,
                 fail_on_registry_warn=fail_on_registry_warn,
             )
@@ -244,9 +241,9 @@ def register(app: typer.Typer) -> None:
         *,
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         date: str | None = COMPLETION_DATE_OPTION,
-        out: Path = OUT_OPTION,
+        out: Path | None = OUT_OPTION,
         update_registry: bool = UPDATE_REGISTRY_OPTION,
         fail_on_registry_warn: bool = FAIL_ON_REGISTRY_WARN_OPTION,
         registry_timestamp: bool = REGISTRY_TIMESTAMP_OPTION,
@@ -255,17 +252,16 @@ def register(app: typer.Typer) -> None:
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
-        resolved_registry = _resolve_path(resolved_root, out)
+        paths = resolve_cli_execplan_paths(context, root=resolved_root, execplans_dir=execplans_dir, registry_path=out)
 
         try:
             result = complete_execplan(
                 root=resolved_root,
                 execplan_id=execplan_id.strip(),
-                execplans_dir=resolved_execplans_dir,
+                execplans_dir=paths.execplans_dir,
                 completion_date_yyyymmdd=date,
                 update_registry=update_registry,
-                registry_path=resolved_registry,
+                registry_path=paths.registry_path,
                 include_registry_timestamp=registry_timestamp,
                 fail_on_registry_warn=fail_on_registry_warn,
             )
@@ -283,7 +279,7 @@ def register(app: typer.Typer) -> None:
         console.print(f"[green]To:[/] {result.completed_plan_root.as_posix()}")
         active_count = _count_active_execplans(
             root=resolved_root,
-            execplans_dir=resolved_execplans_dir,
+            execplans_dir=paths.execplans_dir,
             registry=result.registry_result.registry if result.registry_result is not None else None,
         )
         if active_count == 0:
@@ -327,9 +323,9 @@ def register(app: typer.Typer) -> None:
     def complete_existing_execplan(  # type: ignore[func-returns-value]
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         date: str | None = COMPLETION_DATE_OPTION,
-        out: Path = OUT_OPTION,
+        out: Path | None = OUT_OPTION,
         update_registry: bool = UPDATE_REGISTRY_OPTION,
         fail_on_registry_warn: bool = FAIL_ON_REGISTRY_WARN_OPTION,
         registry_timestamp: bool = REGISTRY_TIMESTAMP_OPTION,
@@ -348,14 +344,16 @@ def register(app: typer.Typer) -> None:
     @execplan_app.command("list")
     def list_execplans(  # type: ignore[func-returns-value]
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         include_path: bool = PLAN_LIST_INCLUDE_PATH_OPTION,
     ) -> None:
         context = bootstrap_runtime()
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+        resolved_execplans_dir = resolve_cli_execplan_paths(
+            context, root=resolved_root, execplans_dir=execplans_dir
+        ).execplans_dir
 
         try:
             collected = collect_execplan_registry(
@@ -414,7 +412,7 @@ def register(app: typer.Typer) -> None:
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         title: str = MILESTONE_TITLE_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         slug: str | None = MILESTONE_SLUG_OPTION,
         owner: str | None = MILESTONE_OWNER_OPTION,
         domain: str | None = MILESTONE_DOMAIN_OPTION,
@@ -424,7 +422,9 @@ def register(app: typer.Typer) -> None:
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+        resolved_execplans_dir = resolve_cli_execplan_paths(
+            context, root=resolved_root, execplans_dir=execplans_dir
+        ).execplans_dir
 
         try:
             result = create_execplan_milestone(
@@ -454,14 +454,16 @@ def register(app: typer.Typer) -> None:
     def list_milestones(  # type: ignore[func-returns-value]
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         include_completed: bool = MILESTONE_INCLUDE_COMPLETED_OPTION,
     ) -> None:
         context = bootstrap_runtime()
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+        resolved_execplans_dir = resolve_cli_execplan_paths(
+            context, root=resolved_root, execplans_dir=execplans_dir
+        ).execplans_dir
 
         try:
             milestones = list_execplan_milestones(
@@ -486,14 +488,16 @@ def register(app: typer.Typer) -> None:
         *,
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         ms: int = MILESTONE_MS_OPTION,
     ) -> None:
         context = bootstrap_runtime()
         console = context.console
 
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+        resolved_execplans_dir = resolve_cli_execplan_paths(
+            context, root=resolved_root, execplans_dir=execplans_dir
+        ).execplans_dir
 
         try:
             result = complete_execplan_milestone(
@@ -520,7 +524,7 @@ def register(app: typer.Typer) -> None:
     def complete_milestone(  # type: ignore[func-returns-value]
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         ms: int = MILESTONE_MS_OPTION,
     ) -> None:
         _complete_milestone(
@@ -534,7 +538,7 @@ def register(app: typer.Typer) -> None:
     def list_remaining_milestones(  # type: ignore[func-returns-value]
         execplan_id: str = EXECPLAN_ID_ARGUMENT,
         root: Path | None = ROOT_OPTION,
-        execplans_dir: Path = EXECPLANS_DIR_OPTION,
+        execplans_dir: Path | None = EXECPLANS_DIR_OPTION,
         include_path: bool = MILESTONE_REMAINING_INCLUDE_PATH_OPTION,
     ) -> None:
         context = bootstrap_runtime()
@@ -542,7 +546,9 @@ def register(app: typer.Typer) -> None:
 
         normalized_execplan_id = execplan_id.strip()
         resolved_root = (root or Path.cwd()).resolve()
-        resolved_execplans_dir = _resolve_path(resolved_root, execplans_dir)
+        resolved_execplans_dir = resolve_cli_execplan_paths(
+            context, root=resolved_root, execplans_dir=execplans_dir
+        ).execplans_dir
 
         try:
             milestones = list_execplan_milestones(

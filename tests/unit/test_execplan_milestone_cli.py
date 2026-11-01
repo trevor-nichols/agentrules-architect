@@ -180,7 +180,7 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         self.assertEqual(create_milestone.exit_code, 0, msg=create_milestone.output)
 
         active_glob = list(
-            (self.root / ".agent" / "exec_plans" / "active" / "billing-foundation" / "milestones" / "active").glob(
+            (self.root / ".exec_plans" / "active" / "billing-foundation" / "milestones" / "active").glob(
                 "MS001*.md"
             )
         )
@@ -206,8 +206,7 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         completed_glob = list(
             (
                 self.root
-                / ".agent"
-                / "exec_plans"
+                / ".exec_plans"
                 / "active"
                 / "billing-foundation"
                 / "milestones"
@@ -299,8 +298,7 @@ class ExecPlanMilestoneCLITests(unittest.TestCase):
         completed_glob = list(
             (
                 self.root
-                / ".agent"
-                / "exec_plans"
+                / ".exec_plans"
                 / "active"
                 / "milestone-remaining"
                 / "milestones"
