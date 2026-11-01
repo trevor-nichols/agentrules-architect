@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -159,6 +160,30 @@ class ExecPlanMigrationTests(unittest.TestCase):
         self.assertEqual((), result.moves)
         self.assert_fully_migrated()
 
+    def test_rerun_finishes_a_registry_rebuild_that_failed(self) -> None:
+        legacy_execplans_dir = self.root / ".agent" / "exec_plans"
+        legacy_execplans_dir.mkdir(parents=True)
+        create_execplan(root=self.root, title="Valid Work", date_yyyymmdd="20261001", update_registry=False)
+        (legacy_execplans_dir / "registry.json").write_text('{"schema_version": 1, "plans": []}\n', encoding="utf-8")
+        broken_plan_dir = legacy_execplans_dir / "active" / "broken"
+        broken_plan_dir.mkdir()
+        (broken_plan_dir / "EP-20261002-001_broken.md").write_text("no front matter\n", encoding="utf-8")
+
+        failed = migrate_execplan_workspace(self.root, rules_filename="AGENTS.md")
+        assert failed.registry_result is not None
+        self.assertGreater(failed.registry_result.error_count, 0)
+        shutil.rmtree(self.root / ".exec_plans" / "active" / "broken")
+
+        retried = migrate_execplan_workspace(self.root, rules_filename="AGENTS.md")
+
+        self.assertIsNotNone(retried.registry_result)
+        registry = json.loads((self.root / ".exec_plans" / "registry.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            [".exec_plans/active/valid-work/EP-20261001-001_valid-work.md"],
+            [plan["path"] for plan in registry["plans"]],
+        )
+        self.assertTrue(migrate_execplan_workspace(self.root, rules_filename="AGENTS.md").is_noop)
+
     def test_refuses_without_changing_files(self) -> None:
         def existing_destination(root: Path) -> None:
             (root / ".exec_plans").mkdir()
@@ -190,7 +215,12 @@ class ExecPlanMigrationTests(unittest.TestCase):
                 self.assertEqual(before, _tree_snapshot(root))
 
     def test_repository_without_legacy_workspace_has_nothing_to_migrate(self) -> None:
-        create_execplan(root=self.root, title="Current Work", date_yyyymmdd="20261001")
+        create_execplan(
+            root=self.root,
+            title="Current Work",
+            date_yyyymmdd="20261001",
+            include_registry_timestamp=True,
+        )
         before = _tree_snapshot(self.root)
 
         result = migrate_execplan_workspace(self.root, rules_filename="AGENTS.md")

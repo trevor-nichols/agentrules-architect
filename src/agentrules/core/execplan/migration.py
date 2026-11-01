@@ -14,9 +14,14 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from agentrules.core.execplan.layout import CURRENT_LAYOUT, LEGACY_LAYOUT, MIGRATE_COMMAND
-from agentrules.core.execplan.registry import RegistryBuildResult, build_execplan_registry
+from agentrules.core.execplan.registry import (
+    RegistryBuildResult,
+    build_execplan_registry,
+    collect_execplan_registry,
+)
 from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
 from agentrules.core.utils.file_creation.atomic_write import atomic_write_text
 from agentrules.core.utils.formatters.clean_agentrules import ensure_execplans_guidance
@@ -151,20 +156,23 @@ def _update_rules_guidance(root: Path, rules_filename: str) -> str | None:
     return message
 
 
-def _registry_lists_legacy_paths(registry_path: Path) -> bool:
+def _stored_registry_matches(registry_path: Path, discovered_registry: dict[str, Any]) -> bool:
     try:
-        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        stored_registry = json.loads(registry_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        return True
-    legacy_prefix = f"{LEGACY_LAYOUT.execplans_dir.as_posix()}/"
-    return any(str(plan.get("path", "")).startswith(legacy_prefix) for plan in registry.get("plans", []))
+        return False
+    if not isinstance(stored_registry, dict):
+        return False
+    stored_registry.pop("generated_at", None)
+    return stored_registry == discovered_registry
 
 
-def _rebuild_registry_if_stale(root: Path, *, moved: bool) -> RegistryBuildResult | None:
+def _rebuild_registry_if_stale(root: Path) -> RegistryBuildResult | None:
     registry_path = root / CURRENT_LAYOUT.registry_path
     if not registry_path.is_file():
         return None
-    if not moved and not _registry_lists_legacy_paths(registry_path):
+    discovered = collect_execplan_registry(root=root, execplans_dir=root / CURRENT_LAYOUT.execplans_dir)
+    if discovered.error_count == 0 and _stored_registry_matches(registry_path, discovered.registry):
         return None
     return build_execplan_registry(root=root, execplans_dir=CURRENT_LAYOUT.execplans_dir)
 
@@ -208,7 +216,7 @@ def migrate_execplan_workspace(
     # rules update must run after cleanup.
     removed_directories = _remove_empty_legacy_directories(resolved_root)
     rules_message = _update_rules_guidance(resolved_root, rules_filename or DEFAULT_RULES_FILENAME)
-    registry_result = _rebuild_registry_if_stale(resolved_root, moved=bool(moves))
+    registry_result = _rebuild_registry_if_stale(resolved_root)
 
     return ExecPlanMigrationResult(
         moves=moves,

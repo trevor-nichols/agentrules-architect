@@ -104,8 +104,11 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 - Decision: Migration also refuses when `.agent`, `.agent/exec_plans`, `.agent/templates`, `.exec_plans`, or `.exec_plans/templates` is a symlink.
   Rationale: `os.replace` through a symlinked directory would move plans outside the repository, or fail partway across devices. This matches the scaffold's existing symlink refusal.
   Date/Author: 2026-11-01 / @claude
-- Decision: Rebuild the registry when entries moved or when any registry plan `path` still starts with `.agent/exec_plans/` (an unparsable registry counts as stale).
+- Decision (superseded below): Rebuild the registry when entries moved or when any registry plan `path` still starts with `.agent/exec_plans/` (an unparsable registry counts as stale).
   Rationale: `build_execplan_registry` always rewrites the file, so rebuilding unconditionally would make every run report work and break the "nothing to migrate" no-op. Checking the plan paths rather than the raw text avoids false positives from titles that mention the old directory.
+  Date/Author: 2026-11-01 / @claude
+- Decision: Rebuild the registry whenever the stored `registry.json` (ignoring `generated_at`) differs from the registry discovered from plans on disk, or discovery reports errors. This replaces the moved-or-legacy-path rule above.
+  Rationale: Review found that the old rule left a stale registry behind. If a legacy registry held `plans: []` and the rebuild failed, or the run stopped before rebuilding, a rerun after the fix reported "nothing to migrate" with an empty registry. Comparing against discovered plans is stateless, finishes any interrupted rebuild, and keeps the no-op for current registries, including timestamped ones.
   Date/Author: 2026-11-01 / @claude
 - Decision: Migrated ExecPlan bodies keep their generated sentence "If `.agent/PLANS.md` exists in this repository...".
   Rationale: Plan bodies stay untouched by design. The rules file, which agents read first, is updated. The README migration notes tell users to adjust active plans if they want.
@@ -287,6 +290,8 @@ In `src/agentrules/cli/services/execplan_paths.py`, define `resolve_cli_execplan
 ---
 
 Revision note (2026-11-01): Initial plan written after investigation and user decisions.
+
+Revision note (2026-11-01): Post-completion review fix. Migration now rebuilds the registry whenever it differs from the plans on disk, so a rerun finishes a failed or interrupted rebuild. Added a regression test for the reviewed scenario.
 
 Revision note (2026-11-01): Milestone 4 complete and plan closed. Recorded the rules-block blank-line fix and the pre-existing guide drift found while dogfooding, and wrote Outcomes & Retrospective.
 
