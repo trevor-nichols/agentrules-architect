@@ -24,7 +24,7 @@ supersedes: []
 
 This ExecPlan is a living document. Keep `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` up to date as work proceeds.
 
-If `.agent/PLANS.md` exists in this repository, maintain this plan in accordance with that guidance.
+If `${plans_guide_path}` exists in this repository, maintain this plan in accordance with that guidance.
 
 ## Purpose / Big Picture
 

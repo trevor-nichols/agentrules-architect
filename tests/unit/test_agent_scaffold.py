@@ -13,13 +13,13 @@ class AgentScaffoldTests(unittest.TestCase):
             success, messages = create_agent_scaffold(project_root)
 
             self.assertTrue(success)
-            self.assertTrue(any(msg.startswith("Created .agent/PLANS.md") for msg in messages))
+            self.assertTrue(any(msg.startswith("Created .exec_plans/PLANS.md") for msg in messages))
             self.assertTrue(
-                any(msg.startswith("Created .agent/templates/MILESTONE_TEMPLATE.md") for msg in messages)
+                any(msg.startswith("Created .exec_plans/templates/MILESTONE_TEMPLATE.md") for msg in messages)
             )
 
-            plans_path = project_root / ".agent" / "PLANS.md"
-            milestone_path = project_root / ".agent" / "templates" / "MILESTONE_TEMPLATE.md"
+            plans_path = project_root / ".exec_plans" / "PLANS.md"
+            milestone_path = project_root / ".exec_plans" / "templates" / "MILESTONE_TEMPLATE.md"
 
             self.assertTrue(plans_path.is_file())
             self.assertTrue(milestone_path.is_file())
@@ -29,7 +29,7 @@ class AgentScaffoldTests(unittest.TestCase):
     def test_create_agent_scaffold_is_idempotent_and_non_destructive(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
-            plans_path = project_root / ".agent" / "PLANS.md"
+            plans_path = project_root / ".exec_plans" / "PLANS.md"
 
             first_success, _ = create_agent_scaffold(project_root)
             self.assertTrue(first_success)
@@ -39,7 +39,7 @@ class AgentScaffoldTests(unittest.TestCase):
 
             self.assertTrue(second_success)
             self.assertEqual("custom-plans-content", plans_path.read_text(encoding="utf-8"))
-            self.assertTrue(any(msg.startswith("Skipped .agent/PLANS.md") for msg in second_messages))
+            self.assertTrue(any(msg.startswith("Skipped .exec_plans/PLANS.md") for msg in second_messages))
 
     def test_sync_agent_scaffold_check_reports_missing_without_writes(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -49,9 +49,9 @@ class AgentScaffoldTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertFalse(result.changed)
-            self.assertIn("Missing .agent/PLANS.md", result.messages)
-            self.assertIn("Missing .agent/templates/MILESTONE_TEMPLATE.md", result.messages)
-            self.assertFalse((project_root / ".agent").exists())
+            self.assertIn("Missing .exec_plans/PLANS.md", result.messages)
+            self.assertIn("Missing .exec_plans/templates/MILESTONE_TEMPLATE.md", result.messages)
+            self.assertFalse((project_root / ".exec_plans").exists())
 
     def test_sync_agent_scaffold_default_keeps_outdated_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -59,7 +59,7 @@ class AgentScaffoldTests(unittest.TestCase):
             create_success, _ = create_agent_scaffold(project_root)
             self.assertTrue(create_success)
 
-            plans_path = project_root / ".agent" / "PLANS.md"
+            plans_path = project_root / ".exec_plans" / "PLANS.md"
             plans_path.write_text("custom-plans-content", encoding="utf-8")
 
             result = sync_agent_scaffold(project_root)
@@ -67,7 +67,7 @@ class AgentScaffoldTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertFalse(result.changed)
             self.assertEqual("custom-plans-content", plans_path.read_text(encoding="utf-8"))
-            self.assertTrue(any(msg.startswith("Outdated .agent/PLANS.md") for msg in result.messages))
+            self.assertTrue(any(msg.startswith("Outdated .exec_plans/PLANS.md") for msg in result.messages))
 
     def test_sync_agent_scaffold_force_updates_with_backup(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -75,7 +75,7 @@ class AgentScaffoldTests(unittest.TestCase):
             create_success, _ = create_agent_scaffold(project_root)
             self.assertTrue(create_success)
 
-            milestone_path = project_root / ".agent" / "templates" / "MILESTONE_TEMPLATE.md"
+            milestone_path = project_root / ".exec_plans" / "templates" / "MILESTONE_TEMPLATE.md"
             milestone_path.write_text("custom-milestone-template", encoding="utf-8")
 
             result = sync_agent_scaffold(project_root, force=True)
@@ -86,7 +86,7 @@ class AgentScaffoldTests(unittest.TestCase):
             backup_candidates = list(milestone_path.parent.glob("MILESTONE_TEMPLATE.md.bak.*"))
             self.assertTrue(backup_candidates)
             self.assertTrue(
-                any(msg.startswith("Updated .agent/templates/MILESTONE_TEMPLATE.md") for msg in result.messages)
+                any(msg.startswith("Updated .exec_plans/templates/MILESTONE_TEMPLATE.md") for msg in result.messages)
             )
 
     def test_sync_agent_scaffold_rejects_check_and_force_combination(self) -> None:
@@ -107,7 +107,7 @@ class AgentScaffoldTests(unittest.TestCase):
             create_success, _ = create_agent_scaffold(project_root)
             self.assertTrue(create_success)
 
-            plans_path = project_root / ".agent" / "PLANS.md"
+            plans_path = project_root / ".exec_plans" / "PLANS.md"
             plans_path.unlink()
             try:
                 plans_path.symlink_to(outside_path)
@@ -124,12 +124,12 @@ class AgentScaffoldTests(unittest.TestCase):
             workspace = Path(tmpdir)
             project_root = workspace / "repo"
             project_root.mkdir(parents=True, exist_ok=True)
-            external_agent_dir = workspace / "external-agent"
-            external_agent_dir.mkdir(parents=True, exist_ok=True)
+            external_workspace_dir = workspace / "external-exec-plans"
+            external_workspace_dir.mkdir(parents=True, exist_ok=True)
 
-            agent_dir = project_root / ".agent"
+            workspace_dir = project_root / ".exec_plans"
             try:
-                agent_dir.symlink_to(external_agent_dir, target_is_directory=True)
+                workspace_dir.symlink_to(external_workspace_dir, target_is_directory=True)
             except OSError as error:
                 self.skipTest(f"Symlinks unavailable on this platform: {error}")
 
@@ -144,8 +144,8 @@ class AgentScaffoldTests(unittest.TestCase):
             outside_path = workspace / "outside.txt"
             outside_path.write_text("outside", encoding="utf-8")
 
-            (project_root / ".agent").mkdir(parents=True, exist_ok=True)
-            plans_path = project_root / ".agent" / "PLANS.md"
+            (project_root / ".exec_plans").mkdir(parents=True, exist_ok=True)
+            plans_path = project_root / ".exec_plans" / "PLANS.md"
             try:
                 plans_path.symlink_to(outside_path)
             except OSError as error:
@@ -154,6 +154,28 @@ class AgentScaffoldTests(unittest.TestCase):
             success, messages = create_agent_scaffold(project_root)
             self.assertFalse(success)
             self.assertTrue(any("Symlinked scaffold path is not allowed" in message for message in messages))
+
+    def test_create_agent_scaffold_refuses_legacy_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            (project_root / ".agent" / "exec_plans").mkdir(parents=True)
+
+            success, messages = create_agent_scaffold(project_root)
+
+            self.assertFalse(success)
+            self.assertTrue(any("Run `agentrules execplan migrate`" in message for message in messages))
+            self.assertFalse((project_root / ".exec_plans").exists())
+
+    def test_sync_agent_scaffold_refuses_legacy_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            (project_root / ".agent").mkdir()
+            (project_root / ".agent" / "PLANS.md").write_text("# legacy guide\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Run `agentrules execplan migrate`"):
+                sync_agent_scaffold(project_root, force=True)
+
+            self.assertFalse((project_root / ".exec_plans").exists())
 
 
 if __name__ == "__main__":

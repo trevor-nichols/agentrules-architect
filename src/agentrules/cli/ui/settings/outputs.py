@@ -81,7 +81,7 @@ def configure_output_preferences(context: CliContext) -> None:
                     value="__TOGGLE_CURSORIGNORE__",
                 ),
                 toggle_choice(
-                    "Generate .agent planning scaffold after analysis",
+                    "Generate ExecPlan scaffold (.exec_plans/) after analysis",
                     preferences.generate_agent_scaffold,
                     value="__TOGGLE_AGENT_SCAFFOLD__",
                 ),
@@ -129,7 +129,7 @@ def configure_output_preferences(context: CliContext) -> None:
             new_value = not preferences.generate_agent_scaffold
             configuration.save_generate_agent_scaffold_preference(new_value)
             status = "enabled" if new_value else "disabled"
-            console.print(f"[green].agent scaffold generation {status}.[/]")
+            console.print(f"[green]ExecPlan scaffold generation {status}.[/]")
         elif selection == "__TOGGLE_PHASE_OUTPUTS__":
             new_value = not preferences.generate_phase_outputs
             configuration.save_generate_phase_outputs_preference(new_value)

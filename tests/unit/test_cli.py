@@ -154,7 +154,7 @@ class CLITestCase(unittest.TestCase):
             mock_sync.return_value = AgentScaffoldSyncResult(
                 ok=False,
                 changed=False,
-                messages=("Missing .agent/PLANS.md",),
+                messages=("Missing .exec_plans/PLANS.md",),
             )
             result = runner.invoke(
                 cli.app,

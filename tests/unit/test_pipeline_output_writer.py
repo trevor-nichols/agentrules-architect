@@ -35,8 +35,8 @@ class PipelineOutputWriterTests(unittest.TestCase):
         mock_create_agent_scaffold.return_value = (
             True,
             [
-                "Created .agent/PLANS.md",
-                "Created .agent/templates/MILESTONE_TEMPLATE.md",
+                "Created .exec_plans/PLANS.md",
+                "Created .exec_plans/templates/MILESTONE_TEMPLATE.md",
             ],
         )
         mock_clean_agentrules.return_value = (True, "cleaned")
@@ -118,7 +118,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
 
         self.assertIn("Individual phase outputs saved to:", " ".join(summary.messages))
         self.assertIn("Cursor ignore created at:", " ".join(summary.messages))
-        self.assertIn("Created .agent/PLANS.md", " ".join(summary.messages))
+        self.assertIn("Created .exec_plans/PLANS.md", " ".join(summary.messages))
         self.assertIn("Added ExecPlans guidance under Development Principles.", " ".join(summary.messages))
         self.assertIn("Cleaned Agent rules file", " ".join(summary.messages))
         self.assertIn("Snapshot artifact written to:", " ".join(summary.messages))
@@ -151,14 +151,14 @@ class PipelineOutputWriterTests(unittest.TestCase):
                 return True, ".cursorignore created"
 
             def _create_agent_scaffold(_path: Path) -> tuple[bool, list[str]]:
-                scaffold_dir = target_directory / ".agent"
+                scaffold_dir = target_directory / ".exec_plans"
                 scaffold_dir.mkdir(parents=True, exist_ok=True)
                 (scaffold_dir / "PLANS.md").write_text("# plans\n", encoding="utf-8")
-                return True, ["Created .agent/PLANS.md"]
+                return True, ["Created .exec_plans/PLANS.md"]
 
             def _sync_snapshot(*_args, **_kwargs):
                 self.assertTrue((target_directory / ".cursorignore").exists())
-                self.assertTrue((target_directory / ".agent" / "PLANS.md").exists())
+                self.assertTrue((target_directory / ".exec_plans" / "PLANS.md").exists())
                 snapshot_path.write_text("<project_structure>\n</project_structure>\n", encoding="utf-8")
                 return MagicMock(
                     changed=True,
@@ -292,7 +292,7 @@ class PipelineOutputWriterTests(unittest.TestCase):
         joined = " ".join(summary.messages)
         self.assertIn("Skipped phase report archive", joined)
         self.assertIn("Skipped .cursorignore generation", joined)
-        self.assertIn("Skipped .agent scaffold generation", joined)
+        self.assertIn("Skipped ExecPlan scaffold generation", joined)
         self.assertIn("Skipped snapshot artifact generation", joined)
         self.assertIn("ExecPlans guidance already present.", joined)
         self.assertIn("not found", joined)

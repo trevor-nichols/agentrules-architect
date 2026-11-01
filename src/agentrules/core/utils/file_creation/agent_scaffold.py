@@ -1,7 +1,7 @@
-"""Helpers for creating the optional .agent planning scaffold.
+"""Helpers for creating the optional ExecPlan planning scaffold.
 
 This scaffold materializes human-facing planning guides (for example
-``.agent/templates/MILESTONE_TEMPLATE.md``). It is intentionally separate
+``.exec_plans/templates/MILESTONE_TEMPLATE.md``). It is intentionally separate
 from internal runtime templates used by ExecPlan command handlers.
 """
 
@@ -14,10 +14,14 @@ from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
 
-AGENT_DIRNAME = ".agent"
-TEMPLATES_DIRNAME = "templates"
-PLANS_FILENAME = "PLANS.md"
-MILESTONE_GUIDE_TEMPLATE_FILENAME = "MILESTONE_TEMPLATE.md"
+from agentrules.core.execplan.layout import (
+    CURRENT_LAYOUT,
+    LEGACY_LAYOUT,
+    MIGRATE_COMMAND,
+    MILESTONE_GUIDE_FILENAME,
+    PLANS_GUIDE_FILENAME,
+    detect_execplan_layout,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,12 +32,19 @@ class AgentScaffoldSyncResult:
 
 
 def _iter_scaffold_files(target_directory: Path) -> tuple[tuple[Path, str], ...]:
-    agent_dir = target_directory / AGENT_DIRNAME
-    templates_dir = agent_dir / TEMPLATES_DIRNAME
     return (
-        (agent_dir / PLANS_FILENAME, PLANS_FILENAME),
-        (templates_dir / MILESTONE_GUIDE_TEMPLATE_FILENAME, MILESTONE_GUIDE_TEMPLATE_FILENAME),
+        (target_directory / CURRENT_LAYOUT.plans_guide_path, PLANS_GUIDE_FILENAME),
+        (target_directory / CURRENT_LAYOUT.milestone_guide_path, MILESTONE_GUIDE_FILENAME),
     )
+
+
+def _ensure_not_legacy_workspace(target_directory: Path) -> None:
+    if detect_execplan_layout(target_directory).is_legacy:
+        raise ValueError(
+            f"Legacy {LEGACY_LAYOUT.workspace_dir.as_posix()}/ ExecPlan workspace found. "
+            f"Run `{MIGRATE_COMMAND}` to move it to {CURRENT_LAYOUT.workspace_dir.as_posix()}/ "
+            "before generating the scaffold."
+        )
 
 
 def _load_template_text(template_name: str) -> str:
@@ -115,7 +126,7 @@ def sync_agent_scaffold(
     check: bool = False,
     force: bool = False,
 ) -> AgentScaffoldSyncResult:
-    """Sync .agent scaffold templates with optional drift-check and forced updates."""
+    """Sync ExecPlan scaffold templates with optional drift-check and forced updates."""
 
     if check and force:
         raise ValueError("Cannot combine check and force modes.")
@@ -123,6 +134,7 @@ def sync_agent_scaffold(
         raise FileNotFoundError(f"Target directory does not exist: {target_directory}")
     if not target_directory.is_dir():
         raise NotADirectoryError(f"Target path is not a directory: {target_directory}")
+    _ensure_not_legacy_workspace(target_directory)
 
     files_to_sync = _iter_scaffold_files(target_directory)
     for destination, _ in files_to_sync:
@@ -177,8 +189,9 @@ def sync_agent_scaffold(
 
 
 def create_agent_scaffold(target_directory: Path) -> tuple[bool, list[str]]:
-    """Create .agent directories and template files without overwriting existing files."""
+    """Create ExecPlan scaffold directories and template files without overwriting existing files."""
     try:
+        _ensure_not_legacy_workspace(target_directory)
         files_to_create = _iter_scaffold_files(target_directory)
         for destination, _ in files_to_create:
             _assert_scaffold_path_safe(destination, target_directory=target_directory)
@@ -194,5 +207,5 @@ def create_agent_scaffold(target_directory: Path) -> tuple[bool, list[str]]:
                 messages.append(f"Skipped {relative_path} (already exists)")
 
         return True, messages
-    except Exception as error:  # pragma: no cover - defensive error boundary
-        return False, [f"Failed to create .agent scaffold: {error}"]
+    except Exception as error:
+        return False, [f"Failed to create ExecPlan scaffold: {error}"]

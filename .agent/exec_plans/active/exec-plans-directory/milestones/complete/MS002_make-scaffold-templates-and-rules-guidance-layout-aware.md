@@ -2,18 +2,21 @@
 id: EP-20261101-001/MS002
 execplan_id: EP-20261101-001
 ms: 2
-title: "Make scaffold, templates, and rules guidance layout-aware"
-status: planned
+title: Make scaffold, templates, and rules guidance layout-aware
+status: completed
 domain: cross-cutting
-owner: "@claude"
+owner: '@claude'
 created: 2026-11-01
-updated: 2026-11-01
-tags: [execplan, scaffold, templates]
+updated: '2026-11-01'
+tags:
+- execplan
+- scaffold
+- templates
 risk: low
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Make scaffold, templates, and rules guidance layout-aware
@@ -29,7 +32,7 @@ Everything AgentRules generates points at the workspace a repository actually us
 - `create_agent_scaffold` and `sync_agent_scaffold` write `CURRENT_LAYOUT` paths. In a legacy repository, create returns failure with a migrate hint and sync raises `ValueError`; neither creates `.exec_plans/`.
 - The packaged `PLANS.md` and `MILESTONE_TEMPLATE.md` reference `.exec_plans/...` only.
 - `EXECPLAN_TEMPLATE.md` uses `${plans_guide_path}` and `create_execplan` substitutes the resolved layout's guide path.
-- `ensure_execplans_guidance` accepts an optional `layout` (default: detect), builds the block from it, and writes atomically.
+- `ensure_execplans_guidance` detects the layout from its directory, builds the block from it, and writes atomically.
 - `.exec_plans` is in `EXCLUDED_DIRS`; user-facing labels say "ExecPlan scaffold" or "ExecPlans registry".
 - Tests cover scaffold paths and legacy refusal, guidance per layout, and the new-plan guide reference. Full validation passes.
 
@@ -65,3 +68,4 @@ Everything AgentRules generates points at the workspace a repository actually us
 ## Changelog
 
 - 2026-11-01: Milestone created and scoped.
+- 2026-11-01: Implemented. `agentrules scaffold sync` creates `.exec_plans/PLANS.md` and `.exec_plans/templates/MILESTONE_TEMPLATE.md` in a fresh repository, and exits 2 with the migrate hint in a legacy one without creating anything. Dropped the planned `layout` keyword on `ensure_execplans_guidance` because detection covers the migrate case. Full suite 1,167 passed with the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean.

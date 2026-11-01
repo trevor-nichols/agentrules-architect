@@ -40,41 +40,50 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
                 "`agentrules execplan new \"<title>\" --slug <short-slug>`",
                 content,
             )
+            self.assertIn("(as described in `.exec_plans/PLANS.md`)", content)
+            self.assertIn("(as described in `.exec_plans/templates/MILESTONE_TEMPLATE.md`)", content)
             self.assertLess(content.index("## ExecPlans"), content.index("# 2. TEMPORAL FRAMEWORK"))
 
     def test_is_idempotent_when_guidance_already_exists(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            rules_path = Path(tmpdir) / "AGENTS.md"
-            original = (
-                "You are a coding agent.\n\n"
-                "# Development Principles:\n"
-                "- Keep changes maintainable.\n\n"
-                "## ExecPlans\n"
-                "- When writing complex features or refactors, use an ExecPlan "
-                "(as described in `.agent/PLANS.md`) from design to implementation.\n\n"
-                "### Milestones\n"
-                "- When the feature or refactor your writing is significantly complex, "
-                "disaggregate the ExecPlan into milestones "
-                "(as described in `.agent/templates/MILESTONE_TEMPLATE.md`)\n\n"
-                "### Prefer CLI creation over manual file creation:\n"
-                "* ExecPlan:\n"
-                "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug>`\n"
-                "  * Complete: `agentrules execplan complete EP-YYYYMMDD-NNN`\n"
-                "* Milestones:\n"
-                "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`\n"
-                "  * Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`\n"
-                "\n"
-                "# 2. TEMPORAL FRAMEWORK\n"
-                "It is February 2026.\n"
-            )
-            rules_path.write_text(original, encoding="utf-8")
+        cases = (
+            ("current layout", None, ".exec_plans/PLANS.md", ".exec_plans/templates/MILESTONE_TEMPLATE.md"),
+            ("legacy layout", ".agent/exec_plans", ".agent/PLANS.md", ".agent/templates/MILESTONE_TEMPLATE.md"),
+        )
+        for label, workspace_marker, plans_guide, milestone_guide in cases:
+            with self.subTest(label), tempfile.TemporaryDirectory() as tmpdir:
+                if workspace_marker is not None:
+                    (Path(tmpdir) / workspace_marker).mkdir(parents=True)
+                rules_path = Path(tmpdir) / "AGENTS.md"
+                original = (
+                    "You are a coding agent.\n\n"
+                    "# Development Principles:\n"
+                    "- Keep changes maintainable.\n\n"
+                    "## ExecPlans\n"
+                    "- When writing complex features or refactors, use an ExecPlan "
+                    f"(as described in `{plans_guide}`) from design to implementation.\n\n"
+                    "### Milestones\n"
+                    "- When the feature or refactor your writing is significantly complex, "
+                    "disaggregate the ExecPlan into milestones "
+                    f"(as described in `{milestone_guide}`)\n\n"
+                    "### Prefer CLI creation over manual file creation:\n"
+                    "* ExecPlan:\n"
+                    "  * Create: `agentrules execplan new \"<title>\" --slug <short-slug>`\n"
+                    "  * Complete: `agentrules execplan complete EP-YYYYMMDD-NNN`\n"
+                    "* Milestones:\n"
+                    "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`\n"
+                    "  * Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`\n"
+                    "\n"
+                    "# 2. TEMPORAL FRAMEWORK\n"
+                    "It is February 2026.\n"
+                )
+                rules_path.write_text(original, encoding="utf-8")
 
-            success, message = ensure_execplans_guidance(tmpdir, filename="AGENTS.md")
-            content = rules_path.read_text(encoding="utf-8")
+                success, message = ensure_execplans_guidance(tmpdir, filename="AGENTS.md")
+                content = rules_path.read_text(encoding="utf-8")
 
-            self.assertTrue(success)
-            self.assertIn("already present", message.lower())
-            self.assertEqual(original, content)
+                self.assertTrue(success)
+                self.assertIn("already present", message.lower())
+                self.assertEqual(original, content)
 
     def test_adds_section_when_development_principles_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -120,6 +129,8 @@ class EnsureExecPlansGuidanceTests(unittest.TestCase):
             )
             self.assertIn("### Milestones", content)
             self.assertIn("### Prefer CLI creation over manual file creation:", content)
+            self.assertIn("(as described in `.exec_plans/PLANS.md`)", content)
+            self.assertNotIn(".agent/PLANS.md", content)
             self.assertNotIn(
                 "When writing complex features or significant refactors, use an ExecPlan",
                 content,

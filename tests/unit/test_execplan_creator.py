@@ -407,6 +407,21 @@ class ExecPlanCreatorTests(unittest.TestCase):
             self.assertTrue((root / ".exec_plans" / "registry.json").exists())
             self.assertFalse((cwd / ".exec_plans" / "registry.json").exists())
 
+    def test_create_execplan_references_the_plans_guide_for_the_detected_layout(self) -> None:
+        cases = (
+            ("current layout", None, "If `.exec_plans/PLANS.md` exists in this repository"),
+            ("legacy layout", ".agent/exec_plans", "If `.agent/PLANS.md` exists in this repository"),
+        )
+        for label, workspace_marker, expected_reference in cases:
+            with self.subTest(label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                if workspace_marker is not None:
+                    (root / workspace_marker).mkdir(parents=True)
+
+                result = create_execplan(root=root, title="Guide Reference", date_yyyymmdd="20260207")
+
+                self.assertIn(expected_reference, result.plan_path.read_text(encoding="utf-8"))
+
     def test_complete_execplan_moves_active_directory_and_sets_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -43,7 +43,7 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 - [x] (2026-11-01 15:00Z) Investigated all `.agent` touchpoints and verified with real data that a flattened `.exec_plans/` (guides next to `active/` and `complete/`) yields the same registry: 15 plans, 0 errors, 0 warnings.
 - [x] (2026-11-01 15:10Z) User chose detection plus explicit migrate, migrate updates the rules file, and ExecPlan-first delivery. Plan and milestones created via CLI on branch `feat/exec-plans-directory`.
 - [x] (2026-11-01 15:45Z) Milestone 1: added `core/execplan/layout.py` and `cli/services/execplan_paths.py`; core and CLI defaults now resolve through `resolve_execplan_paths`; five private `_resolve_path` copies removed. Full suite 1,164 passed (6 new), with only the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean. The two new CLI tests fail on the pre-change source and pass after.
-- [ ] Milestone 2: scaffold, packaged templates, rules guidance, exclusions, labels.
+- [x] (2026-11-01 16:20Z) Milestone 2: scaffold writes only `.exec_plans/` and refuses legacy repositories with a migrate hint; packaged guides and the ExecPlan body template follow the layout; rules guidance is built from the detected layout and written atomically; `.exec_plans` excluded from analysis; labels say "ExecPlan scaffold". Full suite 1,167 passed (3 new), plus the 2 pre-existing failures; new-layout assertions fail on the pre-change source.
 - [ ] Milestone 3: `agentrules execplan migrate`.
 - [ ] Milestone 4: migrate this repository, update documentation, full validation, complete this plan.
 
@@ -88,6 +88,9 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 - Decision: Stack the branch on `codex/provider-model-api-audit-2026-10` (open PR #42) instead of `main`.
   Rationale: PR #42 adds a completed ExecPlan under `.agent/exec_plans/` and edits `README.md`, `AGENTS.md`, and `agent_scaffold.py`; branching from `main` would conflict with the directory move once #42 merges.
   Date/Author: 2026-11-01 / @claude
+- Decision: Rules-file guidance follows the detected layout and keeps its exact wording, including the existing "your writing" typo.
+  Rationale: Changing any required line rewrites the block in every rules file on the next analysis. Keeping the legacy text byte-identical means unmigrated repositories see no churn; only the path changes once a repository is on `.exec_plans/`.
+  Date/Author: 2026-11-01 / @claude
 
 ## Outcomes & Retrospective
 
@@ -127,7 +130,7 @@ The scaffold generator is `src/agentrules/core/utils/file_creation/agent_scaffol
 
 Milestone 1 adds `src/agentrules/core/execplan/layout.py`. It defines the frozen dataclass `ExecPlanLayout` with `workspace_dir`, `execplans_dir`, and `is_legacy`, plus derived `registry_path`, `plans_guide_path`, `milestone_guide_path`, and `legacy_markers`. Two constants describe the layouts: `CURRENT_LAYOUT` (`.exec_plans`, `.exec_plans`) and `LEGACY_LAYOUT` (`.agent`, `.agent/exec_plans`). `detect_execplan_layout(root)` returns the current layout when `.exec_plans/` exists or nothing exists, the legacy layout when only legacy markers exist, and raises `AmbiguousExecPlanLayoutError` (a `ValueError`) when both exist. `resolve_execplan_paths(root, *, execplans_dir=None, registry_path=None)` returns a frozen `ResolvedExecPlanPaths(layout, execplans_dir, registry_path)` with absolute paths. With `execplans_dir=None` it uses detection; with an explicit directory it uses it as given and reports the legacy layout only when that directory equals `<root>/.agent/exec_plans`. The registry defaults to `<execplans_dir>/registry.json`. `DEFAULT_EXECPLANS_DIR` and `DEFAULT_REGISTRY_PATH` move to `layout.py` with the new values and stay exported from `agentrules.core.execplan`. Core functions in `creator.py`, `milestones.py`, and `registry.py` change `execplans_dir` and `registry_path` defaults to `None` and resolve through `resolve_execplan_paths`; their private `_resolve_path` helpers go away. The two CLI modules change option defaults to `None` and share one helper, `resolve_cli_execplan_paths` in the new `src/agentrules/cli/services/execplan_paths.py`. It turns the ambiguity error into a red message and exit code 2, and prints `Using legacy .agent/exec_plans layout. Run \`agentrules execplan migrate\` to move it to .exec_plans/.` when the resolved layout is legacy.
 
-Milestone 2 makes the generators follow the layout. `agent_scaffold.py` builds its file list from `CURRENT_LAYOUT`. `create_agent_scaffold` returns failure with a migrate hint in legacy repositories, and `sync_agent_scaffold` raises `ValueError` with the same hint. The packaged `PLANS.md` and `MILESTONE_TEMPLATE.md` replace `.agent/exec_plans` with `.exec_plans` and `.agent/templates/` with `.exec_plans/templates/`. `EXECPLAN_TEMPLATE.md` line 27 becomes ``If `${plans_guide_path}` exists in this repository, ...``, and `create_execplan` substitutes the resolved layout's guide path. `clean_agentrules.py` builds the guidance block from an `ExecPlanLayout`. `ensure_execplans_guidance` gains an optional `layout` keyword (default: detect from the directory) and writes with `atomic_write_text`. `exclusions.py` adds `.exec_plans`, and the labels in `outputs.py`, `output.py`, `scaffold.py`, and the registry CLI help say "ExecPlan scaffold" or "ExecPlans registry" instead of `.agent`.
+Milestone 2 makes the generators follow the layout. `agent_scaffold.py` builds its file list from `CURRENT_LAYOUT`. `create_agent_scaffold` returns failure with a migrate hint in legacy repositories, and `sync_agent_scaffold` raises `ValueError` with the same hint. The packaged `PLANS.md` and `MILESTONE_TEMPLATE.md` replace `.agent/exec_plans` with `.exec_plans` and `.agent/templates/` with `.exec_plans/templates/`. `EXECPLAN_TEMPLATE.md` line 27 becomes ``If `${plans_guide_path}` exists in this repository, ...``, and `create_execplan` substitutes the resolved layout's guide path. `clean_agentrules.py` builds the guidance block from an `ExecPlanLayout`. `ensure_execplans_guidance` keeps its signature, detects the layout from the directory, and writes with `atomic_write_text`. `exclusions.py` adds `.exec_plans`, and the labels in `outputs.py`, `output.py`, `scaffold.py`, and the registry CLI help say "ExecPlan scaffold" or "ExecPlans registry" instead of `.agent`.
 
 Milestone 3 adds `src/agentrules/core/execplan/migration.py` and the `execplan migrate [--root PATH] [--dry-run]` command. The core function `migrate_execplan_workspace(root, *, rules_filename, dry_run=False)` plans the moves:
 - every child of `.agent/exec_plans/` moves to `.exec_plans/<name>`;
@@ -138,7 +141,7 @@ It refuses with a `ValueError` before moving anything if a destination already e
 1. Move each entry with `os.replace`.
 2. Rewrite the legacy path prefixes in the two guide files.
 3. Remove `.agent/templates`, `.agent/exec_plans`, and `.agent` only when empty.
-4. When the rules file contains a legacy guide path, call `ensure_execplans_guidance` with `CURRENT_LAYOUT`.
+4. When the rules file contains a legacy guide path, call `ensure_execplans_guidance`. The moves have already removed every legacy marker, so detection returns the current layout.
 5. When `.exec_plans/registry.json` exists, rebuild it.
 
 Each step checks current state, so rerunning after a crash finishes the job, and rerunning after success is a no-op. Dry-run reports the planned moves and writes nothing.
@@ -255,5 +258,7 @@ In `src/agentrules/cli/services/execplan_paths.py`, define `resolve_cli_execplan
 ---
 
 Revision note (2026-11-01): Initial plan written after investigation and user decisions.
+
+Revision note (2026-11-01): Milestone 2 complete. Dropped the planned `layout` keyword on `ensure_execplans_guidance`: after migrate moves the files, detection already yields the current layout, so the override had no caller.
 
 Revision note (2026-11-01): Milestone 1 complete. `ExecPlanLayout` uses one `markers` tuple plus `is_present` for both layouts, so detection is symmetric. The CLI helper takes `CliContext`, matching `cli/services/pipeline_runner.py`.

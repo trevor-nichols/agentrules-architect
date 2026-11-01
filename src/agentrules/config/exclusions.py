@@ -19,7 +19,7 @@ EXCLUDED_DIRS = {
     'dist', 'build', '.vscode', '.idea', '.claude', '.codex', '.cursor', '.github', 'coverage',
     '.pytest_cache', '.mypy_cache', '.ruff_cache', '.tox',
     'env', '.env', '.venv', 'site-packages', '.egg-info',
-    '.gradle', '.parcel-cache', 'buck-out', 'out', 'tmp', 'temp', '.agent',
+    '.gradle', '.parcel-cache', 'buck-out', 'out', 'tmp', 'temp', '.agent', '.exec_plans',
     'log', 'logs', 'logfile', 'logfiles', 'artifacts', 'target'
 }
 

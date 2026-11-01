@@ -375,6 +375,7 @@ def create_execplan(
             "owner_yaml": _yaml_dquote(normalized_owner),
             "created": created_updated,
             "updated": created_updated,
+            "plans_guide_path": paths.layout.plans_guide_path.as_posix(),
         }
     )
 

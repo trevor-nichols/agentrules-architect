@@ -30,7 +30,7 @@ FORCE_OPTION = typer.Option(
 def register(app: typer.Typer) -> None:
     """Register the `scaffold` command group."""
 
-    scaffold_app = typer.Typer(help="Manage .agent planning scaffold templates.")
+    scaffold_app = typer.Typer(help="Manage ExecPlan scaffold templates (.exec_plans/PLANS.md and templates/).")
     app.add_typer(scaffold_app, name="scaffold")
 
     @scaffold_app.command("sync")

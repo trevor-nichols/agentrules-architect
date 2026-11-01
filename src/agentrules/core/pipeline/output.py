@@ -95,12 +95,12 @@ class PipelineOutputWriter:
                 success, scaffold_messages = create_agent_scaffold(settings.target_directory)
             except Exception as error:
                 logger.warning(
-                    "Agent scaffold generation failed for %s: %s",
+                    "ExecPlan scaffold generation failed for %s: %s",
                     settings.target_directory,
                     error,
                     exc_info=True,
                 )
-                agent_scaffold_messages.append(f"[yellow]Agent scaffold generation failed:[/] {error}")
+                agent_scaffold_messages.append(f"[yellow]ExecPlan scaffold generation failed:[/] {error}")
             else:
                 if success:
                     for scaffold_message in scaffold_messages:
@@ -110,7 +110,7 @@ class PipelineOutputWriter:
                     for scaffold_message in scaffold_messages:
                         agent_scaffold_messages.append(f"[yellow]{scaffold_message}[/]")
         else:
-            agent_scaffold_messages.append("[dim]Skipped .agent scaffold generation (disabled in settings).[/]")
+            agent_scaffold_messages.append("[dim]Skipped ExecPlan scaffold generation (disabled in settings).[/]")
 
         snapshot_reference_filename: str | None = None
         snapshot_messages: list[str] = []

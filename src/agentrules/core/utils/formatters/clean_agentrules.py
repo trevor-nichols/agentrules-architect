@@ -14,8 +14,11 @@ This ensures that agent rules files start with the proper system prompt format.
 
 import os
 import re
+from pathlib import Path
 
+from agentrules.core.execplan.layout import ExecPlanLayout, detect_execplan_layout
 from agentrules.core.utils.constants import DEFAULT_RULES_FILENAME
+from agentrules.core.utils.file_creation.atomic_write import atomic_write_text
 
 # ====================================================
 # Constants
@@ -27,16 +30,7 @@ DEVELOPMENT_PRINCIPLES_HEADING_PATTERN = re.compile(
 )
 MARKDOWN_HEADING_PATTERN = re.compile(r'^(?P<hashes>#{1,6})\s+\S')
 EXECPLANS_HEADING = "## ExecPlans"
-EXECPLANS_GUIDANCE_LINE = (
-    "- When writing complex features or refactors, use an ExecPlan "
-    "(as described in `.agent/PLANS.md`) from design to implementation."
-)
 EXECPLANS_MILESTONES_HEADING = "### Milestones"
-EXECPLANS_MILESTONES_LINE = (
-    "- When the feature or refactor your writing is significantly complex, "
-    "disaggregate the ExecPlan into milestones "
-    "(as described in `.agent/templates/MILESTONE_TEMPLATE.md`)"
-)
 EXECPLANS_CLI_HEADING = "### Prefer CLI creation over manual file creation:"
 EXECPLANS_CLI_LINES = (
     "* ExecPlan:",
@@ -46,27 +40,28 @@ EXECPLANS_CLI_LINES = (
     "  * Create: `agentrules execplan milestone new EP-YYYYMMDD-NNN \"<Milestone Title>\" [--ms <N>]`",
     "  * Complete: `agentrules execplan milestone complete EP-YYYYMMDD-NNN --ms <N>`",
 )
-EXECPLANS_GUIDANCE_BLOCK = (
-    EXECPLANS_HEADING,
-    EXECPLANS_GUIDANCE_LINE,
-    "",
-    EXECPLANS_MILESTONES_HEADING,
-    EXECPLANS_MILESTONES_LINE,
-    "",
-    EXECPLANS_CLI_HEADING,
-    *EXECPLANS_CLI_LINES,
-)
-EXECPLANS_REQUIRED_LINES = (
-    EXECPLANS_GUIDANCE_LINE,
-    EXECPLANS_MILESTONES_HEADING,
-    EXECPLANS_MILESTONES_LINE,
-    EXECPLANS_CLI_HEADING,
-    *EXECPLANS_CLI_LINES,
-)
 
 
-def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
-    if all(line in content for line in EXECPLANS_REQUIRED_LINES):
+def _execplans_guidance_block(layout: ExecPlanLayout) -> tuple[str, ...]:
+    return (
+        EXECPLANS_HEADING,
+        "- When writing complex features or refactors, use an ExecPlan "
+        f"(as described in `{layout.plans_guide_path.as_posix()}`) from design to implementation.",
+        "",
+        EXECPLANS_MILESTONES_HEADING,
+        "- When the feature or refactor your writing is significantly complex, "
+        "disaggregate the ExecPlan into milestones "
+        f"(as described in `{layout.milestone_guide_path.as_posix()}`)",
+        "",
+        EXECPLANS_CLI_HEADING,
+        *EXECPLANS_CLI_LINES,
+    )
+
+
+def _inject_execplans_guidance(content: str, layout: ExecPlanLayout) -> tuple[str, bool, str]:
+    guidance_block = _execplans_guidance_block(layout)
+    required_lines = [line for line in guidance_block[1:] if line]
+    if all(line in content for line in required_lines):
         return content, False, "ExecPlans guidance already present."
 
     lines = content.splitlines()
@@ -86,7 +81,7 @@ def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
             [
                 "# Development Principles",
                 "",
-                *EXECPLANS_GUIDANCE_BLOCK,
+                *guidance_block,
             ]
         )
         return "\n".join(lines) + "\n", True, "Added missing Development Principles section with ExecPlans guidance."
@@ -124,7 +119,7 @@ def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
                 execplans_block_end = index
                 break
 
-        replacement_lines = list(EXECPLANS_GUIDANCE_BLOCK)
+        replacement_lines = list(guidance_block)
         updated_lines = lines[:execplans_heading_index] + replacement_lines + lines[execplans_block_end:]
         return (
             "\n".join(updated_lines) + "\n",
@@ -136,7 +131,7 @@ def _inject_execplans_guidance(content: str) -> tuple[str, bool, str]:
     while insert_at > heading_index and not lines[insert_at - 1].strip():
         insert_at -= 1
 
-    insertion_lines = ["", *EXECPLANS_GUIDANCE_BLOCK, ""]
+    insertion_lines = ["", *guidance_block, ""]
     updated_lines = lines[:insert_at] + insertion_lines + lines[section_end:]
     return "\n".join(updated_lines) + "\n", True, "Added ExecPlans guidance under Development Principles."
 
@@ -208,7 +203,12 @@ def clean_agentrules(directory: str | None = None, *, filename: str | None = Non
 
 
 def ensure_execplans_guidance(directory: str | None = None, *, filename: str | None = None) -> tuple[bool, str]:
-    """Ensure AGENTS rules include ExecPlans guidance under Development Principles."""
+    """Ensure AGENTS rules include ExecPlans guidance under Development Principles.
+
+    Guide paths in the block follow the workspace layout detected under
+    ``directory``, so legacy ``.agent/`` repositories keep their existing
+    guidance until they migrate.
+    """
     target_filename = filename or DEFAULT_RULES_FILENAME
     if directory:
         agentrules_path = os.path.join(directory, target_filename)
@@ -219,13 +219,13 @@ def ensure_execplans_guidance(directory: str | None = None, *, filename: str | N
         if not os.path.isfile(agentrules_path):
             return False, f"File not found: {agentrules_path}"
 
+        layout = detect_execplan_layout(Path(directory or "."))
         with open(agentrules_path, encoding="utf-8") as file_handle:
             content = file_handle.read()
 
-        updated_content, changed, message = _inject_execplans_guidance(content)
+        updated_content, changed, message = _inject_execplans_guidance(content, layout)
         if changed:
-            with open(agentrules_path, "w", encoding="utf-8") as file_handle:
-                file_handle.write(updated_content)
+            atomic_write_text(Path(agentrules_path), updated_content)
         return True, message
     except Exception as error:
         return False, f"Failed to ensure ExecPlans guidance in {agentrules_path}: {error}"
