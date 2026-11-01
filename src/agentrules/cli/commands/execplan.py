@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 import typer
+from rich.console import Console
 
+from agentrules.core.configuration import get_config_manager
 from agentrules.core.execplan.creator import complete_execplan, create_execplan
+from agentrules.core.execplan.layout import LEGACY_LAYOUT, MIGRATE_COMMAND
+from agentrules.core.execplan.migration import migrate_execplan_workspace
 from agentrules.core.execplan.milestones import (
     complete_execplan_milestone,
     create_execplan_milestone,
     list_execplan_milestones,
 )
 from agentrules.core.execplan.registry import (
+    RegistryIssue,
     collect_execplan_registry,
     list_active_execplan_summaries,
     summarize_registry_activity,
@@ -122,6 +128,20 @@ MILESTONE_REMAINING_INCLUDE_PATH_OPTION = typer.Option(
     "--path/--no-path",
     help="Include milestone file path in remaining output.",
 )
+MIGRATE_DRY_RUN_OPTION = typer.Option(
+    False,
+    "--dry-run",
+    help="Show the planned moves without changing any files.",
+)
+
+
+def _print_registry_issues(console: Console, issues: Iterable[RegistryIssue]) -> None:
+    for issue in issues:
+        prefix = "[yellow]WARNING[/]" if issue.severity == "warning" else "[red]ERROR[/]"
+        if issue.path:
+            console.print(f"{prefix} {issue.path}: {issue.message}")
+        else:
+            console.print(f"{prefix} {issue.message}")
 
 
 def _count_active_execplans(
@@ -209,12 +229,7 @@ def register(app: typer.Typer) -> None:
         if not update_registry or registry_result is None:
             raise typer.Exit(0)
 
-        for issue in registry_result.issues:
-            prefix = "[yellow]WARNING[/]" if issue.severity == "warning" else "[red]ERROR[/]"
-            if issue.path:
-                console.print(f"{prefix} {issue.path}: {issue.message}")
-            else:
-                console.print(f"{prefix} {issue.message}")
+        _print_registry_issues(console, registry_result.issues)
 
         if registry_result.wrote_registry and registry_result.output_path is not None:
             console.print(f"[green]Updated registry:[/] {registry_result.output_path.as_posix()}")
@@ -291,12 +306,7 @@ def register(app: typer.Typer) -> None:
         if not update_registry or registry_result is None:
             raise typer.Exit(0)
 
-        for issue in registry_result.issues:
-            prefix = "[yellow]WARNING[/]" if issue.severity == "warning" else "[red]ERROR[/]"
-            if issue.path:
-                console.print(f"{prefix} {issue.path}: {issue.message}")
-            else:
-                console.print(f"{prefix} {issue.message}")
+        _print_registry_issues(console, registry_result.issues)
 
         if registry_result.wrote_registry and registry_result.output_path is not None:
             console.print(f"[green]Updated registry:[/] {registry_result.output_path.as_posix()}")
@@ -405,6 +415,72 @@ def register(app: typer.Typer) -> None:
             if include_path:
                 line += f" -> {summary.path}"
             console.print(line, markup=False, soft_wrap=True)
+        raise typer.Exit(0)
+
+    @execplan_app.command("migrate")
+    def migrate_legacy_workspace(  # type: ignore[func-returns-value]
+        root: Path | None = ROOT_OPTION,
+        dry_run: bool = MIGRATE_DRY_RUN_OPTION,
+    ) -> None:
+        """Move a legacy .agent/ ExecPlan workspace to .exec_plans/."""
+        context = bootstrap_runtime()
+        console = context.console
+
+        resolved_root = (root or Path.cwd()).resolve()
+        rules_filename = get_config_manager().resolve_rules_filename()
+        try:
+            result = migrate_execplan_workspace(resolved_root, rules_filename=rules_filename, dry_run=dry_run)
+        except ValueError as error:
+            console.print(f"[red]{error}[/]")
+            raise typer.Exit(2) from error
+        except OSError as error:
+            console.print(
+                f"[red]ExecPlan migration failed due to filesystem error: {error}[/] "
+                f"Rerun `{MIGRATE_COMMAND}` to finish."
+            )
+            raise typer.Exit(2) from error
+
+        if result.is_noop:
+            console.print("[green]Nothing to migrate.[/]")
+            raise typer.Exit(0)
+
+        def relative(path: Path) -> str:
+            return path.relative_to(resolved_root).as_posix()
+
+        move_verb = "Would move" if result.dry_run else "Moved"
+        for move in result.moves:
+            console.print(
+                f"{move_verb} {relative(move.source)} -> {relative(move.destination)}",
+                markup=False,
+                soft_wrap=True,
+            )
+        if result.dry_run:
+            console.print("[yellow]Dry run: no files changed.[/]")
+            raise typer.Exit(0)
+
+        for guide in result.rewritten_guides:
+            console.print(f"Updated paths in {relative(guide)}", markup=False)
+        for directory in result.removed_directories:
+            console.print(f"Removed empty {relative(directory)}/", markup=False)
+        if result.rules_message:
+            console.print(f"[green]{rules_filename}:[/] {result.rules_message}")
+        if (resolved_root / LEGACY_LAYOUT.workspace_dir).is_dir():
+            console.print(
+                f"[yellow]Kept {LEGACY_LAYOUT.workspace_dir.as_posix()}/ because it contains other files.[/]"
+            )
+
+        registry_result = result.registry_result
+        if registry_result is not None:
+            _print_registry_issues(console, registry_result.issues)
+            if registry_result.output_path is None:
+                console.print(
+                    "[red]Registry rebuild failed.[/] "
+                    f"errors={registry_result.error_count}, warnings={registry_result.warning_count}"
+                )
+                raise typer.Exit(1)
+            console.print(f"[green]Updated registry:[/] {relative(registry_result.output_path)}")
+
+        console.print("[green]Migration complete.[/]")
         raise typer.Exit(0)
 
     @milestone_app.command("new")

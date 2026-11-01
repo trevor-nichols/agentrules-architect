@@ -2,18 +2,21 @@
 id: EP-20261101-001/MS003
 execplan_id: EP-20261101-001
 ms: 3
-title: "Add execplan migrate command"
-status: planned
+title: Add execplan migrate command
+status: completed
 domain: cross-cutting
-owner: "@claude"
+owner: '@claude'
 created: 2026-11-01
-updated: 2026-11-01
-tags: [execplan, migration, cli]
+updated: '2026-11-01'
+tags:
+- execplan
+- migration
+- cli
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Add execplan migrate command
@@ -34,7 +37,7 @@ A user with a legacy `.agent/` workspace runs `agentrules execplan migrate` once
 ## Scope
 
 ### In Scope
-- `src/agentrules/core/execplan/migration.py` (new), export from `src/agentrules/core/execplan/__init__.py`.
+- `src/agentrules/core/execplan/migration.py` (new), imported directly by the CLI (not re-exported; see the parent plan's import-cycle note).
 - `migrate` command in `src/agentrules/cli/commands/execplan.py`, using `get_config_manager().resolve_rules_filename()`.
 - `tests/unit/test_execplan_migration.py` (new) and a CLI case in `tests/unit/test_execplan_cli.py`.
 
@@ -63,3 +66,4 @@ A user with a legacy `.agent/` workspace runs `agentrules execplan migrate` once
 ## Changelog
 
 - 2026-11-01: Milestone created and scoped.
+- 2026-11-01: Implemented the migration module, the `migrate` command, 7 migration tests, and 2 CLI tests (happy path plus no-op rerun; exit codes 2 and 1). Extracted `_print_registry_issues` in the command module so `new`, `complete`, and `migrate` share one issue printer. Full suite 1,176 passed with the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean.

@@ -78,6 +78,64 @@ class ExecPlanCLITests(unittest.TestCase):
         self.assertEqual(result.exit_code, 2, msg=result.output)
         self.assertIn("Run `agentrules execplan migrate`", " ".join(result.output.split()))
 
+    def test_migrate_moves_legacy_workspace_and_second_run_is_noop(self) -> None:
+        from agentrules import cli
+
+        (self.root / ".agent" / "exec_plans").mkdir(parents=True)
+        created = self.runner.invoke(
+            cli.app,
+            ["execplan", "new", "Old Plan", "--root", str(self.root), "--date", "20261101"],
+        )
+        self.assertEqual(created.exit_code, 0, msg=created.output)
+
+        migrated = self.runner.invoke(cli.app, ["execplan", "migrate", "--root", str(self.root)])
+
+        self.assertEqual(migrated.exit_code, 0, msg=migrated.output)
+        migrated_output = " ".join(migrated.output.split())
+        self.assertIn("Moved .agent/exec_plans/active -> .exec_plans/active", migrated_output)
+        self.assertIn("Updated registry: .exec_plans/registry.json", migrated_output)
+        self.assertIn("Migration complete.", migrated_output)
+
+        listed = self.runner.invoke(cli.app, ["execplan", "list", "--root", str(self.root), "--path"])
+        self.assertEqual(listed.exit_code, 0, msg=listed.output)
+        self.assertIn("-> .exec_plans/active/old-plan/EP-20261101-001_old-plan.md", listed.output)
+        self.assertNotIn("agentrules execplan migrate", " ".join(listed.output.split()))
+
+        rerun = self.runner.invoke(cli.app, ["execplan", "migrate", "--root", str(self.root)])
+        self.assertEqual(rerun.exit_code, 0, msg=rerun.output)
+        self.assertIn("Nothing to migrate.", rerun.output)
+
+    def test_migrate_exit_codes_for_refusal_and_registry_errors(self) -> None:
+        from agentrules import cli
+
+        def colliding_guides(root: Path) -> None:
+            (root / ".agent").mkdir()
+            (root / ".agent" / "PLANS.md").write_text("legacy guide\n", encoding="utf-8")
+            (root / ".exec_plans").mkdir()
+            (root / ".exec_plans" / "PLANS.md").write_text("current guide\n", encoding="utf-8")
+
+        def invalid_legacy_plan(root: Path) -> None:
+            plan_dir = root / ".agent" / "exec_plans" / "active" / "broken"
+            plan_dir.mkdir(parents=True)
+            (plan_dir / "EP-20261101-001_broken.md").write_text("no front matter\n", encoding="utf-8")
+            (root / ".agent" / "exec_plans" / "registry.json").write_text(
+                '{"schema_version": 1, "plans": []}\n', encoding="utf-8"
+            )
+
+        cases = (
+            ("destination exists", colliding_guides, 2, ".exec_plans/PLANS.md already exists"),
+            ("registry rebuild errors", invalid_legacy_plan, 1, "Registry rebuild failed."),
+        )
+        for label, arrange, expected_exit_code, expected_message in cases:
+            with self.subTest(label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                arrange(root)
+
+                result = self.runner.invoke(cli.app, ["execplan", "migrate", "--root", str(root)])
+
+                self.assertEqual(result.exit_code, expected_exit_code, msg=result.output)
+                self.assertIn(expected_message, " ".join(result.output.split()))
+
     def test_new_supports_no_update_registry(self) -> None:
         from agentrules import cli
 

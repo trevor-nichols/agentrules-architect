@@ -44,7 +44,7 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
 - [x] (2026-11-01 15:10Z) User chose detection plus explicit migrate, migrate updates the rules file, and ExecPlan-first delivery. Plan and milestones created via CLI on branch `feat/exec-plans-directory`.
 - [x] (2026-11-01 15:45Z) Milestone 1: added `core/execplan/layout.py` and `cli/services/execplan_paths.py`; core and CLI defaults now resolve through `resolve_execplan_paths`; five private `_resolve_path` copies removed. Full suite 1,164 passed (6 new), with only the 2 pre-existing picker failures; ruff, pyright, import smoke, diff check clean. The two new CLI tests fail on the pre-change source and pass after.
 - [x] (2026-11-01 16:20Z) Milestone 2: scaffold writes only `.exec_plans/` and refuses legacy repositories with a migrate hint; packaged guides and the ExecPlan body template follow the layout; rules guidance is built from the detected layout and written atomically; `.exec_plans` excluded from analysis; labels say "ExecPlan scaffold". Full suite 1,167 passed (3 new), plus the 2 pre-existing failures; new-layout assertions fail on the pre-change source.
-- [ ] Milestone 3: `agentrules execplan migrate`.
+- [x] (2026-11-01 17:05Z) Milestone 3: added `core/execplan/migration.py` and `agentrules execplan migrate [--root] [--dry-run]`. Full suite 1,176 passed (9 new), plus the 2 pre-existing failures. Disabling the registry staleness check, conflict check, empty-directory cleanup, or guide rewrite at runtime each fails at least one migration test. The end-to-end transcript in Concrete Steps matches.
 - [ ] Milestone 4: migrate this repository, update documentation, full validation, complete this plan.
 
 ## Surprises & Discoveries
@@ -57,6 +57,8 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
   Evidence: `src/agentrules/cli/commands/execplan.py` passes the static `DEFAULT_REGISTRY_PATH` default regardless of `--execplans-dir`.
 - Observation: The base branch already has 2 failing tests in `tests/unit/test_cli_model_picker_ui.py`. Rich wraps the console message at 80 columns, so the asserted substring "Saved replacement" spans a line break. They are unrelated to this plan and fail identically before and after each milestone. New CLI tests here normalize whitespace before asserting to avoid the same trap.
   Evidence: `2 failed, 1158 passed` on the untouched base; the same two failures after Milestone 1 with `1164 passed`.
+- Observation: `migration.py` cannot be re-exported from `agentrules.core.execplan`. `clean_agentrules.py` imports `agentrules.core.execplan.layout`, which initializes the package `__init__`; if `__init__` imported `migration`, that would import `clean_agentrules` while it is still half-initialized.
+  Evidence: Import graph: `formatters/clean_agentrules -> core/execplan/__init__ -> migration -> formatters/clean_agentrules`. The CLI imports `agentrules.core.execplan.migration` directly, as it already does for `creator` and `milestones`.
 - Observation: `.agent/exec_plans/.locks/` in `.gitignore` is stale. `src/agentrules/core/execplan/locks.py` now locks the ExecPlan file itself and never creates a `.locks` directory.
 
 ## Decision Log
@@ -87,6 +89,15 @@ Out of scope: rewriting the text of existing ExecPlans and milestones (they are 
   Date/Author: 2026-11-01 / @claude
 - Decision: Stack the branch on `codex/provider-model-api-audit-2026-10` (open PR #42) instead of `main`.
   Rationale: PR #42 adds a completed ExecPlan under `.agent/exec_plans/` and edits `README.md`, `AGENTS.md`, and `agent_scaffold.py`; branching from `main` would conflict with the directory move once #42 merges.
+  Date/Author: 2026-11-01 / @claude
+- Decision: Migration also refuses when `.agent`, `.agent/exec_plans`, `.agent/templates`, `.exec_plans`, or `.exec_plans/templates` is a symlink.
+  Rationale: `os.replace` through a symlinked directory would move plans outside the repository, or fail partway across devices. This matches the scaffold's existing symlink refusal.
+  Date/Author: 2026-11-01 / @claude
+- Decision: Rebuild the registry when entries moved or when any registry plan `path` still starts with `.agent/exec_plans/` (an unparsable registry counts as stale).
+  Rationale: `build_execplan_registry` always rewrites the file, so rebuilding unconditionally would make every run report work and break the "nothing to migrate" no-op. Checking the plan paths rather than the raw text avoids false positives from titles that mention the old directory.
+  Date/Author: 2026-11-01 / @claude
+- Decision: Migrated ExecPlan bodies keep their generated sentence "If `.agent/PLANS.md` exists in this repository...".
+  Rationale: Plan bodies stay untouched by design. The rules file, which agents read first, is updated. The README migration notes tell users to adjust active plans if they want.
   Date/Author: 2026-11-01 / @claude
 - Decision: Rules-file guidance follows the detected layout and keeps its exact wording, including the existing "your writing" typo.
   Rationale: Changing any required line rewrites the block in every rules file on the next analysis. Keeping the legacy text byte-identical means unmigrated repositories see no churn; only the path changes once a repository is on `.exec_plans/`.
@@ -250,14 +261,19 @@ In `src/agentrules/core/execplan/migration.py`, define:
         rules_message: str | None
         registry_result: RegistryBuildResult | None
         dry_run: bool
+        is_noop: bool  # property: no moves, rewrites, removals, rules update, or registry rebuild
 
     def migrate_execplan_workspace(root: Path, *, rules_filename: str | None, dry_run: bool = False) -> ExecPlanMigrationResult: ...
+
+`migration.py` is imported directly (`agentrules.core.execplan.migration`), not re-exported from the package, because of the import cycle recorded in Surprises & Discoveries.
 
 In `src/agentrules/cli/services/execplan_paths.py`, define `resolve_cli_execplan_paths(context: CliContext, *, root: Path, execplans_dir: Path | None, registry_path: Path | None = None) -> ResolvedExecPlanPaths`. It takes the `CliContext` like other CLI services and raises `typer.Exit(2)` on ambiguity, so each command stays a single call.
 
 ---
 
 Revision note (2026-11-01): Initial plan written after investigation and user decisions.
+
+Revision note (2026-11-01): Milestone 3 complete. Added symlink refusal and path-based registry staleness, and recorded why `migration.py` is not re-exported and why plan bodies keep their old guide sentence.
 
 Revision note (2026-11-01): Milestone 2 complete. Dropped the planned `layout` keyword on `ensure_execplans_guidance`: after migrate moves the files, detection already yields the current layout, so the override had no caller.
 
