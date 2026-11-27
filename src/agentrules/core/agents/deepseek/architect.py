@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
@@ -26,7 +27,7 @@ from .prompting import default_prompt_template
 from .prompting import format_prompt as format_analysis_prompt
 from .request_builder import PreparedRequest, prepare_request
 from .response_parser import parse_response
-from .tooling import resolve_tool_config
+from .tooling import DEEPSEEK_TOOL_HISTORY_KEY, resolve_tool_config
 
 logger = logging.getLogger("project_extractor")
 
@@ -111,8 +112,12 @@ class DeepSeekArchitect(BaseArchitect):
 
     async def analyze(self, context: dict[str, Any], tools: list[Any] | None = None) -> dict[str, Any]:
         try:
+            message_history: list[dict[str, Any]] | None = None
+            if DEEPSEEK_TOOL_HISTORY_KEY in context:
+                context = context.copy()
+                message_history = context.pop(DEEPSEEK_TOOL_HISTORY_KEY)
             phase_name = context.get("_structured_output_phase")
-            content = context.get("formatted_prompt") or self.format_prompt(context)
+            content = "" if message_history else context.get("formatted_prompt") or self.format_prompt(context)
             system_prompt = self._resolve_system_prompt(context)
             force_unstructured = bool(context.get("_force_unstructured_output"))
             mode = (
@@ -164,6 +169,7 @@ class DeepSeekArchitect(BaseArchitect):
                 provider_tools,
                 system_prompt=system_prompt,
                 response_format=response_format,
+                message_history=message_history,
             )
             self._log_token_estimate(prepared)
 
@@ -188,19 +194,26 @@ class DeepSeekArchitect(BaseArchitect):
                 f"(Config: {model_config_name}){detail_suffix}"
             )
 
-            response = self._execute(prepared)
+            response = await asyncio.to_thread(self._execute, prepared)
 
             logger.info(
                 f"[bold green]{agent_name}:[/bold green] Received response from {self.model_name}"
             )
 
-            parsed = parse_response(response)
+            parsed = parse_response(
+                response,
+                native_tool_history=message_history is not None,
+                thinking_enabled=thinking.get("type") == "enabled",
+            )
             results: dict[str, Any] = {
                 "agent": agent_name,
                 "findings": parsed.findings,
                 "reasoning": parsed.reasoning,
                 "tool_calls": parsed.tool_calls,
             }
+
+            if parsed.assistant_tool_turn is not None:
+                results[DEEPSEEK_TOOL_HISTORY_KEY] = [*prepared.payload["messages"], parsed.assistant_tool_turn]
 
             if parsed.tool_calls:
                 logger.info(
@@ -353,6 +366,7 @@ class DeepSeekArchitect(BaseArchitect):
         *,
         system_prompt: str | None = None,
         response_format: dict[str, Any] | None = None,
+        message_history: list[dict[str, Any]] | None = None,
     ) -> PreparedRequest:
         return prepare_request(
             model_name=self.model_name,
@@ -363,6 +377,7 @@ class DeepSeekArchitect(BaseArchitect):
             tools=tools,
             temperature=self.temperature,
             response_format=response_format,
+            message_history=message_history,
         )
 
     def _log_token_estimate(self, prepared: PreparedRequest) -> None:

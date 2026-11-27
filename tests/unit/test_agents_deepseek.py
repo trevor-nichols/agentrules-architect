@@ -1,8 +1,11 @@
 import types
 from typing import Any, cast
 
+import pytest
+
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.deepseek import DeepSeekArchitect
+from agentrules.core.agents.deepseek.tooling import DEEPSEEK_TOOL_HISTORY_KEY
 
 
 class _FakeMessage:
@@ -31,9 +34,6 @@ class _FakeDeepseekClient:
 
         completions = types.SimpleNamespace(create=create)
         self.chat = types.SimpleNamespace(completions=completions)
-
-
-import pytest
 
 
 @pytest.mark.asyncio
@@ -179,3 +179,48 @@ async def test_deepseek_tool_calls_clear_findings(monkeypatch):
     res = await arch.analyze({"formatted_prompt": "x"})
     assert isinstance(res["tool_calls"], list) and res["tool_calls"][0]["function"]["name"] == "t"
     assert res["findings"] is None
+    assert DEEPSEEK_TOOL_HISTORY_KEY not in res
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("wire_calls", "reasoning", "error"),
+    [
+        ((("", "lookup", "{}"),), "Plan before using the tool.", "DeepSeek tool call is missing its ID"),
+        ((("same", "lookup", "{}"),) * 2, "Plan to use tools.", "DeepSeek tool turn has duplicate call IDs"),
+        ((("call-1", "lookup", "{}"),), None, "DeepSeek thinking tool turn is missing reasoning_content"),
+        (
+            (("call-1", "lookup", "{}"), ("call-2", "", "{}")),
+            "Plan to use tools.",
+            "DeepSeek tool call is missing its function name",
+        ),
+        (
+            (("call-1", "lookup", "{}"), ("call-2", "lookup", None)),
+            "Plan to use tools.",
+            "DeepSeek tool call arguments must be a string",
+        ),
+    ],
+)
+async def test_deepseek_rejects_invalid_native_tool_turns(
+    wire_calls: tuple[tuple[str, str, str | None], ...], reasoning: str | None, error: str,
+) -> None:
+    architect = DeepSeekArchitect(model_name="deepseek-flash", reasoning=ReasoningMode.HIGH)
+    calls = [
+        {"id": call_id, "type": "function", "function": {"name": name, "arguments": arguments}}
+        for call_id, name, arguments in wire_calls
+    ]
+    message = _FakeMessage(content=None, reasoning_content=reasoning, tool_calls=calls)
+    architect.client = types.SimpleNamespace(
+        chat=types.SimpleNamespace(
+            completions=types.SimpleNamespace(create=lambda **_: _FakeResponse(message)),
+        ),
+    )
+
+    result = await architect.analyze(
+        {"formatted_prompt": "Check dependency versions.", DEEPSEEK_TOOL_HISTORY_KEY: []},
+        tools=[{"type": "function", "function": {"name": "lookup", "parameters": {"type": "object"}}}],
+    )
+
+    assert result["error"] == error
+    assert "tool_calls" not in result
+    assert DEEPSEEK_TOOL_HISTORY_KEY not in result

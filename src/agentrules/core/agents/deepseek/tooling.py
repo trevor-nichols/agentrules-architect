@@ -7,6 +7,8 @@ from typing import Any
 from agentrules.core.agent_tools.tool_manager import ToolManager
 from agentrules.core.agents.base import ModelProvider
 
+DEEPSEEK_TOOL_HISTORY_KEY = "_deepseek_messages"
+
 
 def resolve_tool_config(
     tools: list[Any] | None,

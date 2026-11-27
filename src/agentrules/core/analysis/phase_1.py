@@ -26,10 +26,12 @@ from agentrules.config.prompts.phase_1_prompts import (  # Prompts used for conf
     get_specialized_phase1_agent_prompts,
 )
 from agentrules.config.tools import TOOL_SETS
+from agentrules.core.agents.base import ModelProvider
+from agentrules.core.agents.deepseek.tooling import DEEPSEEK_TOOL_HISTORY_KEY
 from agentrules.core.agents.factory.factory import get_architect_for_phase, get_researcher_architect
 from agentrules.core.agents.gemini.tooling import build_function_response_contents
 from agentrules.core.types.tool_config import Tool
-from agentrules.core.utils.provider_capabilities import requires_external_research_tool_loop
+from agentrules.core.utils.provider_capabilities import requires_external_research_tool_loop, resolve_provider
 from agentrules.core.utils.system_prompt import normalize_responsibilities
 
 try:
@@ -290,6 +292,8 @@ class Phase1Analysis:
         tool_succeeded = False
 
         context_payload: dict[str, Any] = dict(base_context)
+        if resolve_provider(self.researcher_architect) is ModelProvider.DEEPSEEK:
+            context_payload[DEEPSEEK_TOOL_HISTORY_KEY] = []
         tools_for_agent: list[Tool] = list(researcher_tools) if researcher_tools else []
 
         for iteration in range(1, MAX_RESEARCHER_TOOL_ITERATIONS + 1):
@@ -298,19 +302,24 @@ class Phase1Analysis:
                 tools=tools_for_agent,
             )
 
-            # Collect and execute tool requests, if any
+            deepseek_messages = latest_response.pop(DEEPSEEK_TOOL_HISTORY_KEY, None)
             latest_tool_runs: list[dict[str, Any]] = []
             gemini_tool_runs: list[dict[str, Any]] = []
-            try:
-                latest_tool_runs.extend(
-                    await self._handle_anthropic_tool_calls(latest_response.get("tool_calls"))
-                )
-                gemini_tool_runs = await self._handle_gemini_function_calls(
-                    latest_response.get("function_calls")
-                )
-                latest_tool_runs.extend(gemini_tool_runs)
-            except Exception as tool_error:  # Fail fast but keep loop state visible
-                latest_tool_runs.append({"error": str(tool_error)})
+            if deepseek_messages is not None:
+                for call in latest_response["tool_calls"]:
+                    function = call["function"]
+                    latest_tool_runs.append(
+                        await self._execute_native_tool_call(call["id"], function["name"], function["arguments"])
+                    )
+            else:
+                try:
+                    latest_tool_runs.extend(
+                        await self._handle_anthropic_tool_calls(latest_response.get("tool_calls"))
+                    )
+                    gemini_tool_runs = await self._handle_gemini_function_calls(latest_response.get("function_calls"))
+                    latest_tool_runs.extend(gemini_tool_runs)
+                except Exception as tool_error:  # Fail fast but keep loop state visible
+                    latest_tool_runs.append({"error": str(tool_error)})
 
             if not latest_tool_runs:
                 # Ensure we don't surface stale tool call instructions downstream
@@ -323,28 +332,34 @@ class Phase1Analysis:
             if any(entry.get("success") for entry in latest_tool_runs):
                 tool_succeeded = True
 
-            # Prepare follow-up context for the agent; include all prior tool output
             context_payload = dict(base_context)
-            if "_gemini_request_contents" in latest_response:
-                context_payload["_gemini_contents"] = build_function_response_contents(
-                    latest_response["_gemini_request_contents"],
-                    latest_response.get("_gemini_model_content"),
-                    latest_response.get("function_calls", []),
-                    gemini_tool_runs,
-                    require_call_id=bool(latest_response.get("_gemini_requires_call_id")),
-                )
-            context_payload["tool_feedback"] = {
-                "executed_tools": executed_tools,
-                "latest_results": latest_tool_runs,
-                "previous_findings": latest_response.get("findings"),
-                "iteration": iteration,
-                "instructions": (
-                    "You requested external research tools. Incorporate the tool "
-                    "results above into your documentation research summary. If "
-                    "additional tools are required, request them explicitly; otherwise "
-                    "return your written findings."
-                )
-            }
+            if deepseek_messages is not None:
+                tool_messages = [
+                    {"role": "tool", "tool_call_id": run["call_id"], "content": run["result"]}
+                    for run in latest_tool_runs
+                ]
+                context_payload[DEEPSEEK_TOOL_HISTORY_KEY] = [*deepseek_messages, *tool_messages]
+            else:
+                if "_gemini_request_contents" in latest_response:
+                    context_payload["_gemini_contents"] = build_function_response_contents(
+                        latest_response["_gemini_request_contents"],
+                        latest_response.get("_gemini_model_content"),
+                        latest_response.get("function_calls", []),
+                        gemini_tool_runs,
+                        require_call_id=bool(latest_response.get("_gemini_requires_call_id")),
+                    )
+                context_payload["tool_feedback"] = {
+                    "executed_tools": executed_tools,
+                    "latest_results": latest_tool_runs,
+                    "previous_findings": latest_response.get("findings"),
+                    "iteration": iteration,
+                    "instructions": (
+                        "You requested external research tools. Incorporate the tool "
+                        "results above into your documentation research summary. If "
+                        "additional tools are required, request them explicitly; otherwise "
+                        "return your written findings."
+                    ),
+                }
 
             if iteration == MAX_RESEARCHER_TOOL_ITERATIONS:
                 # Guard against infinite loops: surface diagnostic info to caller
@@ -441,23 +456,33 @@ class Phase1Analysis:
         if not function_calls:
             return results
 
-        for fc in function_calls or []:
-            fn_name = fc.get("name")
-            args = fc.get("args", {}) or {}
-            try:
-                result = await self._execute_supported_tool(fn_name, args)
-            except Exception as tool_error:
-                error = str(tool_error)
-                result = {
-                    "name": fn_name,
-                    "args": args,
-                    "result": json.dumps({"error": error}),
-                    "error": error,
-                }
-            result["call_id"] = fc.get("id")
-            results.append(result)
-
+        for call in function_calls:
+            results.append(
+                await self._execute_native_tool_call(call.get("id"), call.get("name"), call.get("args") or {})
+            )
         return results
+
+    async def _execute_native_tool_call(
+        self, call_id: str | None, name: str | None, raw_args: Any,
+    ) -> dict[str, Any]:
+        """Keep each provider's call identity even when argument decoding or execution fails."""
+        args: dict[str, Any] = {}
+        try:
+            decoded = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+            if not isinstance(decoded, dict):
+                raise ValueError("Tool arguments must be a JSON object.")
+            args = decoded
+            result = await self._execute_supported_tool(name, args)
+        except Exception as tool_error:
+            error = str(tool_error)
+            result = {
+                "name": name,
+                "args": args,
+                "result": json.dumps({"error": error}),
+                "error": error,
+            }
+        result["call_id"] = call_id
+        return result
 
     async def _execute_supported_tool(self, fn_name: Any, args: dict[str, Any]) -> dict[str, Any]:
         """Run a supported tool and return a normalized execution record."""

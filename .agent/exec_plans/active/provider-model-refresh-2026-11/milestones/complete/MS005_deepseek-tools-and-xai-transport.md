@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS005
 execplan_id: EP-20261127-001
 ms: 5
-title: "Preserve DeepSeek tool turns and assess xAI transport"
-status: planned
+title: Preserve DeepSeek tool turns and assess xAI transport
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Preserve DeepSeek tool turns and assess xAI transport
@@ -66,6 +66,10 @@ Add a Phase 1 DeepSeek regression modeled on `tests/phase_1_test/test_phase1_gem
 ## Rollout / Ops Notes
 
 Treat xAI Responses as a separately approved change. The current Grok 4.7 model and compatibility routes remain deployable. If DeepSeek native replay needs correction, keep the model presets and disable the affected research capability or direct researchers to a known working choice until repaired. Preserve existing user profile settings.
+
+## Results
+
+Locked Python 3.11 checks passed (1,233 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review identified a malformed function wire shape. Added fail-before coverage and rejected incomplete turns before replay. Independent re-review passed with 103 focused tests and 5 subtests.
 
 ## Changelog
 

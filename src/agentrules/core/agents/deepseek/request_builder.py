@@ -27,6 +27,7 @@ def prepare_request(
     system_prompt: str | None = None,
     temperature: float | None = None,
     response_format: dict[str, Any] | None = None,
+    message_history: list[dict[str, Any]] | None = None,
 ) -> PreparedRequest:
     """
     Construct the request payload sent to the DeepSeek Chat Completions API.
@@ -34,20 +35,11 @@ def prepare_request(
     DeepSeek V4 exposes thinking and non-thinking modes on the same model ID.
     The OpenAI-compatible SDK carries the thinking toggle in ``extra_body``.
     """
-    messages: list[dict[str, Any]] = []
-    if system_prompt:
-        messages.append(
-            {
-                "role": "system",
-                "content": system_prompt,
-            }
-        )
-    messages.append(
-        {
-            "role": "user",
-            "content": content,
-        }
-    )
+    messages = list(message_history or [])
+    if not messages:
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": content})
 
     payload: dict[str, Any] = {
         "model": model_name,

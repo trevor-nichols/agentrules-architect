@@ -81,6 +81,15 @@ canonical non-thinking and high-thinking presets respectively. DeepSeek temporar
 Flash wire ID, but serves and bills it as V4.1 Flash; AgentRules sends `deepseek-flash` instead. V4 Pro
 remains available. These compatibility keys are not rollback endpoints.
 
+### Phase 1 researcher tool turns
+
+Phase 1 continues DeepSeek tool calls on Chat Completions. It sends the original system and user
+messages, then appends each assistant turn with its original content, `reasoning_content`, and tool
+calls. Each tool result uses the matching `tool_call_id`, even when two calls use the same tool or a
+tool fails. In thinking mode, DeepSeek expects the original reasoning on follow-up requests that
+include tools. AgentRules keeps this replay history in memory for the research run and leaves it out
+of phase artifacts. [DeepSeek thinking-mode tool calls](https://api-docs.deepseek.com/guides/thinking_mode/#tool-calls)
+
 DeepSeek Vision Experimental is not exposed. The current adapter has not established the required image
 input, prompt, token, and multimodal response contract.
 
@@ -318,19 +327,44 @@ configuration, authentication, version diagnostics, and runtime-specific live sm
 
 ## Direct API transport status
 
-As of October 31, 2026, AgentRules keeps its current direct transports. The MS007 offline contract
-review found no model requirement that forces a production migration. A future switch needs a separate
-review of request, tool, stream, parser, and retention behavior.
+AgentRules retains its current direct transports for this release. The October 31, 2026 offline
+contract review found no model requirement that forces a production migration. A future switch needs
+a separate review of request, tool, stream, parser, and retention behavior.
 
 | Provider | Current AgentRules path | Migration consideration |
 | --- | --- | --- |
-| xAI | Chat Completions for Grok 4.7 and fallback models | [Responses](https://docs.x.ai/developers/model-capabilities/text/comparison) carries encrypted reasoning and hosted tools, but changes typed output and defaults to 30-day storage. Keep the current stateless behavior unless a reviewed migration explicitly chooses storage or `store=false`. |
+| xAI | Chat Completions remains available for Grok 4.7 and fallback models. xAI marks it deprecated. | See the separate Responses proposal below. [xAI API comparison](https://docs.x.ai/developers/model-capabilities/text/comparison) |
 | Anthropic | Python SDK 0.83 and Messages API version `2023-06-01`; the dependency is bounded below 2.0 | [SDK 2.x / API `2026-10-21`](https://platform.claude.com/docs/en/api/migration-2026-10-21) changes API-key transport from `X-Api-Key` to `Authorization: Bearer`, affecting gateways; it also removes sampling parameters. Current 5.5/Fable request contracts are covered offline on the existing path. |
 | Gemini | GenerateContent with full signed model-turn replay for tools | [Interactions](https://ai.google.dev/gemini-api/docs/interactions-overview) introduces typed steps and optional server-side state. Its default stored requests have different retention; `store=false` cannot continue with `previous_interaction_id`. GenerateContent remains supported. |
 
 OpenAI direct models use Responses, and [DeepSeek Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/)
 remains a documented current endpoint. The dated source comparison, offline probes, rollback paths, and
 revisit triggers are recorded in the provider refresh ExecPlan.
+
+### Proposed xAI Responses migration
+
+This release keeps the xAI Chat Completions adapter and the shared OpenAI Python SDK. Evaluate
+`/v1/responses` in a separate review. xAI stores Responses API input and output for 30 days by
+default. Use `store=false` as the evaluation baseline to preserve client-managed history. Reassess
+retention explicitly before adopting server-managed history. [xAI migration guide](https://docs.x.ai/developers/model-capabilities/text/comparison)
+
+- Map `messages` to `input`, `max_tokens` to `max_output_tokens`, and supported reasoning controls to
+  their Responses fields. Translate function declarations to the Responses tool shape and structured
+  output schemas to `text.format`. Match each `function_call_output` to the original `call_id`.
+  [Request mapping](https://docs.x.ai/developers/model-capabilities/text/comparison)
+  · [Schemas and tools](https://docs.x.ai/developers/model-capabilities/text/structured-outputs)
+- Request `reasoning.encrypted_content` and replay the original typed output items in order before
+  appending tool results. Grok 4.7 includes encrypted reasoning by default, while earlier reasoning
+  models require an explicit request for it. Keep the history in the client when `store=false`.
+  Use `response.output_text.delta` for display and take completed output items from
+  `response.completed`. Handle `response.incomplete` as an incomplete result, and verify that partial
+  output cannot pass structured-output validation.
+  [Reasoning replay](https://docs.x.ai/developers/advanced-api-usage/troubleshooting-reasoning)
+  · [Streaming events](https://docs.x.ai/developers/model-capabilities/text/streaming)
+- Verify the provider endpoint and deployments using `XAI_API_BASE` or an explicit `base_url`.
+  Some custom gateways may implement only Chat Completions. Use the locked shared SDK for an
+  initial compatibility probe, and test the direct OpenAI, xAI, and DeepSeek adapters if an SDK
+  change is needed.
 
 ## Optional direct-provider live smoke
 
