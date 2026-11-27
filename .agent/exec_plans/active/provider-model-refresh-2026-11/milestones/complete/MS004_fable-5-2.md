@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS004
 execplan_id: EP-20261127-001
 ms: 4
-title: "Add Fable 5.2 across Anthropic and Claude Code"
-status: planned
+title: Add Fable 5.2 across Anthropic and Claude Code
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: high
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Add Fable 5.2 across Anthropic and Claude Code
@@ -70,6 +70,10 @@ When separately enabled, validate the pinned runtime with `AGENTRULES_RUN_CLAUDE
 ## Rollout / Ops Notes
 
 Keep direct Fable 5.2 and the runtime SDK upgrade in individually reviewable changes. A runtime rollback can remove the new pin and its SDK requirement together while retaining direct Fable 5.2. Return a clear version or provider refusal error, preserving the user's configured selection.
+
+## Results
+
+Locked Python 3.11 checks passed (1,227 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Native options used bundled CLI 2.1.332 on SDK 0.2.189 and CLI 2.1.321 on SDK 0.2.180. The SDK floor passed 59 focused tests. Independent review passed with no actionable findings.
 
 ## Changelog
 

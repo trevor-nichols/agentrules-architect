@@ -77,6 +77,7 @@ def test_latest_anthropic_thinking_modes(
     [
         ("claude-opus-5-5", ReasoningMode.DISABLED, "medium"),
         ("claude-fable-5-1", ReasoningMode.DISABLED, "high"),
+        ("claude-fable-5-2", ReasoningMode.DISABLED, "high"),
         ("claude-sonnet-5-5", ReasoningMode.DISABLED, "xhigh"),
         ("claude-haiku-5-5", ReasoningMode.DISABLED, "max"),
     ],
@@ -94,10 +95,11 @@ def test_latest_anthropic_rejects_unsupported_thinking_before_dispatch(
         )
 
 
-def test_latest_anthropic_rejects_output_over_model_limit() -> None:
+@pytest.mark.parametrize("model_name", ["claude-opus-5-5", "claude-fable-5-2"])
+def test_latest_anthropic_rejects_output_over_model_limit(model_name: str) -> None:
     with pytest.raises(ValueError, match="exceeds model"):
         prepare_request(
-            model_name="claude-opus-5-5",
+            model_name=model_name,
             prompt="Inspect the repository",
             reasoning=ReasoningMode.DYNAMIC,
             tools=None,
@@ -111,6 +113,42 @@ def test_direct_anthropic_default_uses_current_sonnet() -> None:
 
     assert prepared.payload["model"] == "claude-sonnet-5-5"
     assert prepared.payload["thinking"] == {"type": "between_tools"}
+
+
+@pytest.mark.asyncio
+async def test_direct_fable_52_defaults_to_high_with_native_structured_output_and_tools() -> None:
+    requests: list[dict[str, Any]] = []
+
+    class Messages:
+        def create(self, **kwargs: Any) -> dict[str, Any]:
+            requests.append(kwargs)
+            return {"content": [{"type": "text", "text": '{"analysis": "Inspected the repository"}'}]}
+
+    set_client(SimpleNamespace(messages=Messages()))
+    try:
+        architect = AnthropicArchitect(model_name="claude-fable-5-2")
+        result = await architect.analyze(
+            {"formatted_prompt": "Inspect the repository", "_structured_output_phase": "phase4"},
+            tools=[{
+                "type": "function",
+                "function": {
+                    "name": "inspect",
+                    "description": "Inspect a file",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }],
+        )
+    finally:
+        set_client(None)
+
+    assert result.get("findings") == '{"analysis": "Inspected the repository"}', result
+    request, = requests
+    assert request["model"] == "claude-fable-5-2"
+    assert request["tools"][0]["name"] == "inspect"
+    assert "tool_choice" not in request
+    assert "thinking" not in request
+    assert request["extra_body"]["output_config"]["effort"] == "high"
+    assert request["extra_body"]["output_config"]["format"]["type"] == "json_schema"
 
 
 def test_fable_retention_is_visible_in_picker_group() -> None:
@@ -167,7 +205,7 @@ def test_sonnet_45_picker_discloses_scheduled_replacement() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "model_name",
-    ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+    ["claude-fable-5-1", "claude-fable-5-2", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
 )
 async def test_latest_anthropic_refusal_never_returns_partial_findings(model_name: str) -> None:
     class Messages:

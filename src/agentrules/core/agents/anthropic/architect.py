@@ -20,7 +20,7 @@ from agentrules.core.utils.structured_outputs import (
 from agentrules.core.utils.system_prompt import build_agent_system_prompt, resolve_system_prompt
 from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
 
-from .capabilities import may_return_midstream_refusal
+from .capabilities import may_return_midstream_refusal, resolve_capability_profile
 from .client import execute_message_request, execute_message_stream, get_client
 from .prompting import default_prompt_template, format_prompt
 from .request_builder import PreparedRequest, prepare_request
@@ -46,7 +46,7 @@ class AnthropicArchitect(BaseArchitect):
     def __init__(
         self,
         model_name: str = "claude-sonnet-5-5",
-        reasoning: ReasoningMode = ReasoningMode.DISABLED,
+        reasoning: ReasoningMode | None = None,
         name: str | None = None,
         role: str | None = None,
         responsibilities: list[str] | None = None,
@@ -55,6 +55,8 @@ class AnthropicArchitect(BaseArchitect):
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
     ) -> None:
+        if reasoning is None:
+            reasoning = resolve_capability_profile(model_name).default_reasoning
         super().__init__(
             provider=ModelProvider.ANTHROPIC,
             model_name=model_name,

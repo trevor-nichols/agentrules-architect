@@ -8,7 +8,7 @@ the request builders.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import cast
 
@@ -41,6 +41,7 @@ class CapabilityProfile:
     may_return_midstream_refusal: bool = False
     max_input_tokens: int | None = None
     max_output_tokens: int | None = None
+    default_reasoning: ReasoningMode = ReasoningMode.DISABLED
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -57,19 +58,27 @@ _SUPPORTED_EFFORT_LEVELS: frozenset[AnthropicEffort] = frozenset(
 )
 _NEW_MODEL_INPUT_LIMIT = 1_000_000 - 128_000
 
+_FABLE_5_1_PROFILE = CapabilityProfile(
+    family_prefix="claude-fable-5-1",
+    display_name="Claude Fable 5.1",
+    supports_structured_output_format=True,
+    supports_adaptive_thinking=True,
+    supports_manual_thinking=False,
+    supported_effort_levels=_SUPPORTED_EFFORT_LEVELS,
+    thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
+    may_return_midstream_refusal=True,
+    max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
+    max_output_tokens=128_000,
+)
+
 _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
-    CapabilityProfile(
-        family_prefix="claude-fable-5-1",
-        display_name="Claude Fable 5.1",
-        supports_structured_output_format=True,
-        supports_adaptive_thinking=True,
-        supports_manual_thinking=False,
-        supported_effort_levels=_SUPPORTED_EFFORT_LEVELS,
-        thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
-        may_return_midstream_refusal=True,
-        max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
-        max_output_tokens=128_000,
+    replace(
+        _FABLE_5_1_PROFILE,
+        family_prefix="claude-fable-5-2",
+        display_name="Claude Fable 5.2",
+        default_reasoning=ReasoningMode.HIGH,
     ),
+    _FABLE_5_1_PROFILE,
     CapabilityProfile(
         family_prefix="claude-opus-5-5",
         display_name="Claude Opus 5.5",

@@ -189,6 +189,7 @@ def test_claude_code_picker_filters_pins_by_exact_runtime_version(monkeypatch) -
     keys = (
         "claude-code-haiku-alias",
         "claude-code-fable-5.1",
+        "claude-code-fable-5.2",
         "claude-code-opus-5.5",
         "claude-code-sonnet-5.5",
         "claude-code-haiku-5.5",
@@ -196,10 +197,11 @@ def test_claude_code_picker_filters_pins_by_exact_runtime_version(monkeypatch) -
     presets = [model_presets.get_preset_info(key) for key in keys]
     assert all(preset is not None for preset in presets)
     available_presets = [preset for preset in presets if preset is not None]
+    runtime_version: ClaudeCodeVersion | None = ClaudeCodeVersion(2, 1, 280)
     monkeypatch.setattr(
         model_settings.configuration.CONFIG_MANAGER,
         "get_claude_code_runtime_version",
-        lambda: ClaudeCodeVersion(2, 1, 280),
+        lambda: runtime_version,
     )
 
     filtered = model_settings._filter_claude_code_presets_for_runtime(
@@ -212,17 +214,23 @@ def test_claude_code_picker_filters_pins_by_exact_runtime_version(monkeypatch) -
         "claude-code-opus-5.5",
     ]
 
-    monkeypatch.setattr(
-        model_settings.configuration.CONFIG_MANAGER,
-        "get_claude_code_runtime_version",
-        lambda: None,
-    )
+    fable_key = "claude-code-fable-5.2"
+    runtime_version = ClaudeCodeVersion(2, 1, 320)
+    filtered = model_settings._filter_claude_code_presets_for_runtime(available_presets, preserved_key=None)
+    assert fable_key not in [preset.key for preset in filtered]
+    runtime_version = ClaudeCodeVersion(2, 1, 321)
+    filtered = model_settings._filter_claude_code_presets_for_runtime(available_presets, preserved_key=None)
+    fable = next(preset for preset in filtered if preset.key == fable_key)
+    assert "30-day retention" in fable.label
+    assert "medium effort" in fable.label
+
+    runtime_version = None
     preserved = model_settings._filter_claude_code_presets_for_runtime(
         available_presets,
-        preserved_key="claude-code-haiku-5.5",
+        preserved_key=fable_key,
     )
-    assert [preset.key for preset in preserved] == ["claude-code-haiku-alias", "claude-code-haiku-5.5"]
-    assert "runtime version unverified; needs 2.1.293+" in preserved[-1].label
+    assert [preset.key for preset in preserved] == ["claude-code-haiku-alias", fable_key]
+    assert "runtime version unverified; needs 2.1.321+" in preserved[-1].label
 
 
 def test_configure_models_preserves_saved_deprecated_preset_in_picker(monkeypatch) -> None:

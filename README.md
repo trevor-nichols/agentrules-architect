@@ -308,11 +308,11 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 | --- | --- | --- |
 | OpenAI | GPT-5.6 Sol remains the phase default. GPT-6.2 Astra, GPT-6.2 Sol, and GPT-6.1 Terra are available through Responses. | Retired o4-mini presets use GPT-5.6 Terra. On December 11, 2026, saved GPT-5 and o3 presets switch to GPT-6.1 Sol, and GPT-5 Mini presets switch to GPT-6.1 Terra. |
 | DeepSeek | V4.1 Flash (`deepseek-flash`) or V4 Pro | Saved V4 Flash, `deepseek-chat`, and `deepseek-reasoner` keys resolve directly to matching V4.1 Flash modes. |
-| Anthropic | Claude Opus/Sonnet/Haiku 5.5 or Fable 5.1 | Fable 5.1 requires 30-day retention unless Anthropic authorizes ZDR. Saved Sonnet 4.5 presets route to Sonnet 5.5 on November 30, 2026. Saved Opus 4.5 presets route to Opus 5.5 with adaptive thinking on January 22, 2027. |
+| Anthropic | Claude Opus/Sonnet/Haiku 5.5 or Fable 5.2 | Fable 5.2 defaults to high effort and carries a 30-day retention requirement. Saved Sonnet 4.5 presets route to Sonnet 5.5 on November 30, 2026. Saved Opus 4.5 presets route to Opus 5.5 with adaptive thinking on January 22, 2027. |
 | xAI | Grok 4.7 is recommended. Grok 4.6, 4.5, 4.3, and pinned Grok 4.20 reasoning and non-reasoning variants remain selectable. | Saved Grok Build 0.1 and Grok Code Fast presets route to Grok 4.7 at high effort. Direct `XaiArchitect` construction still defaults to 4.6 pending evaluation. |
 | Google | Gemini 4 Carbon, Hydrogen, Neon, and Argon. Hydrogen is available on the free Gemini API tier. | Starting December 1, 2026, saved Gemini 2.5 Pro and Flash presets route to 3.8 Flash and 3.5 Flash-Lite respectively. `GeminiArchitect()` defaults to 3.5 Flash-Lite with minimal thinking. |
 | Codex | Runtime default or a model/effort discovered from app-server | Availability follows the installed runtime and account. AgentRules does not maintain a static Codex GPT-5.6 list. |
-| Claude Code | Runtime default/moving aliases or pinned Fable 5.1, Opus/Sonnet/Haiku 5.5 | Moving choices follow runtime/account policy; pinned choices require the exact resolved Claude Code version. The lockfile bundles CLI 2.1.309 through Claude Agent SDK 0.2.173. |
+| Claude Code | Runtime default, moving aliases, or pinned Fable 5.2 and Opus/Sonnet/Haiku 5.5 | The Fable 5.2 pin uses medium effort and requires Claude Code 2.1.321 or later. The lockfile bundles CLI 2.1.332 through Claude Agent SDK 0.2.189. |
 
 See [`docs/provider-model-lifecycle.md`](docs/provider-model-lifecycle.md) for reasoning contracts, retirements, data-retention caveats, safe live-smoke commands, and rollback choices.
 

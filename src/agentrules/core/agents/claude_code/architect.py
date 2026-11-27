@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable, Mapping
@@ -110,7 +111,8 @@ class ClaudeCodeArchitect(BaseArchitect):
         try:
             content = context.get("formatted_prompt") or self.format_prompt(context)
             system_prompt = self._resolve_system_prompt(context)
-            prepared = self._prepare_request(
+            prepared = await asyncio.to_thread(
+                self._prepare_request,
                 content,
                 system_prompt=system_prompt,
                 phase_name=effective_phase,

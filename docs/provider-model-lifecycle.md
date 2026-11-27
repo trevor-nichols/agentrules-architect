@@ -92,30 +92,33 @@ Official references:
 
 ## Direct Anthropic API
 
-### Claude 5.5 and Fable 5.1
+### Claude 5.5 and Fable 5.2
 
-Direct presets use `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`, and
-`claude-fable-5-1`. Each has a 1M-token context window and 128K maximum output. AgentRules
-reserves the full output capacity and packs at most 872K input tokens before its usual safety
-margin. A directly constructed `AnthropicArchitect` defaults to Sonnet 5.5 with no up-front
-thinking, preserving the old direct constructor's reasoning setting. Opus 5.5 and Haiku 5.5
-default to medium effort; Sonnet 5.5 and Fable 5.1 default to high. All four accept low,
-medium, high, xhigh, and max effort with adaptive thinking.
-Manual thinking budgets are rejected by Anthropic on these models.
+Direct presets use `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`,
+`claude-fable-5-2`, and `claude-fable-5-1`. Each has a 1M-token context window and 128K
+maximum output. AgentRules reserves the full output capacity and packs at most 872K input
+tokens before its usual safety margin. A directly constructed `AnthropicArchitect` defaults
+to Sonnet 5.5 with no up-front thinking. Opus 5.5 and Haiku 5.5 default to medium effort.
+Sonnet 5.5, Fable 5.2, and Fable 5.1 default to high. All five accept `low`, `medium`,
+`high`, `xhigh`, and `max` effort with adaptive thinking.
 
-Opus 5.5 and Fable 5.1 always use adaptive thinking. Sonnet 5.5 cannot use
-`thinking: {"type": "disabled"}`; its **No Upfront Thinking** preset sends
-`thinking: {"type": "between_tools"}` at high effort, and progress notes may still appear
-between tool calls. Haiku 5.5 can disable thinking at low, medium, or high effort only.
-The request builder rejects unsupported mode/effort combinations and output budgets above
-128K before dispatch. Structured JSON schemas use `output_config.format`.
+Opus 5.5 and both Fable releases always use adaptive thinking. Sonnet 5.5's **No Upfront
+Thinking** preset sends `thinking: {"type": "between_tools"}` at high effort, and progress
+notes may still appear between tool calls. Haiku 5.5 can disable thinking at low, medium, or
+high effort only. The request builder rejects unsupported thinking and effort combinations,
+manual budgets, and output budgets above 128K before dispatch. Fable 5.2 accepts `auto` and
+`none` for tool choice. Forcing a tool call returns an API error.
 
-Fable 5.1 requires 30-day data retention and is unavailable under zero data retention
-unless Anthropic expressly authorizes it. The picker displays this requirement. AgentRules
-does not change workspace retention settings. All four new models may return an HTTP 200
-response with `stop_reason="refusal"`; direct calls return an explicit refusal error, and
-streams hold content until the final message confirms success so partial refused content
-cannot be delivered. Automatic fallback is not configured.
+Fable 5.2 and 5.1 are Covered Models with a 30-day retention requirement. The picker displays
+that requirement. Organizations using legacy zero data retention need Anthropic's express
+authorization. Eligible organizations can use Enterprise Frontier Safeguards ZDR. Structured
+JSON schemas use `output_config.format`. Organizations using customer-managed encryption
+keys (CMEK) need another model for schema-backed phases or strict tools with either Fable
+release.
+
+Claude can return HTTP 200 with `stop_reason="refusal"` on any of these models. AgentRules
+reports the provider's refusal as a typed error with bounded details. Streams buffer output
+until the terminal stop reason is checked and discard buffered content on refusal.
 
 Claude Sonnet 4.5 is deprecated but remains live until **November 30, 2026**. Saved
 `claude-sonnet` and `claude-sonnet-reasoning` keys keep their Sonnet 4.5 wire model before
@@ -157,6 +160,7 @@ moving `claude-code-opus` alias remains runtime-owned and is not treated as a pi
 Official references:
 
 - [Current Claude model comparison](https://platform.claude.com/docs/en/models/overview)
+- [Fable 5.2 migration guide](https://platform.claude.com/docs/en/models/fable-5-2/migration-guide)
 - [Claude model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
 - [Thinking modes](https://platform.claude.com/docs/en/build-with-claude/thinking)
 - [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
@@ -303,13 +307,11 @@ efforts come from app-server `model/list`; the runtime default follows the insta
 AgentRules preserves new short lowercase effort values reported by that catalog, including values newer
 than the application, but rejects malformed tokens. It does not add static Codex GPT-5.6 presets.
 
-Claude Code offers a runtime-owned default and moving `best`, `sonnet`, `opus`, `fable`, and `haiku` aliases as
-well as pinned model IDs. Moving selections intentionally have no static AgentRules context limit because
-the runtime owns concrete-model resolution. Pinned Claude 5 choices fail closed when AgentRules cannot
-prove that the exact resolved bundled or configured Claude Code executable meets the model's minimum
-version. Fable 5.1 needs Claude Code 2.1.257+, Opus 5.5 needs 2.1.280+, Sonnet 5.5 needs 2.1.284+,
-and Haiku 5.5 needs 2.1.293+. The lockfile resolves Claude Agent SDK 0.2.173, whose bundled CLI is
-2.1.309. A newer global binary does not upgrade the SDK-bundled runtime automatically.
+Claude Code resolves the runtime default and moving aliases such as `best` and `fable`.
+For pinned models, AgentRules verifies and launches the same bundled or configured executable.
+The Fable 5.2 pin uses medium effort and requires Claude Code 2.1.321 or later. The project
+requires Claude Agent SDK 0.2.180 or later. The lockfile resolves SDK 0.2.189, which bundles
+CLI 2.1.332.
 
 See [`codex-runtime.md`](codex-runtime.md) and [`claude-code-runtime.md`](claude-code-runtime.md) for
 configuration, authentication, version diagnostics, and runtime-specific live smokes.

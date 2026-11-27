@@ -19,6 +19,7 @@ from agentrules.core.types.models import (
     CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
     CLAUDE_FABLE_5,
     CLAUDE_FABLE_51,
+    CLAUDE_FABLE_52,
     CLAUDE_HAIKU,
     CLAUDE_HAIKU_55,
     CLAUDE_HAIKU_WITH_REASONING,
@@ -928,6 +929,13 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         default_effort="high",
         retention_notice=" [30-day retention; ZDR unavailable without Anthropic approval]",
     ),
+    **_claude_latest_presets(
+        key="claude-fable-5.2",
+        label="Claude Fable 5.2",
+        config=CLAUDE_FABLE_52,
+        default_effort="high",
+        retention_notice=" [30-day retention, ZDR for eligible accounts]",
+    ),
     "o3-low": _preset(
         config=O3_LOW,
         label="OpenAI o3 (low effort)",
@@ -1556,6 +1564,9 @@ def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
             model_name="haiku",
             label="Claude Code Haiku Alias (Moving)",
             description="Uses Claude Code's moving haiku alias rather than a reproducible model ID.",
+        ),
+        "claude-code-fable-5.2": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5.2-reasoning-medium"]
         ),
         "claude-code-fable-5.1": _derive_claude_code_runtime_preset(
             BASE_MODEL_PRESETS["claude-fable-5.1"]

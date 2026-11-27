@@ -99,6 +99,7 @@ CLAUDE_FABLE_5 = ModelConfig(
 )
 
 CLAUDE_FABLE_51 = CLAUDE_FABLE_5._replace(model_name="claude-fable-5-1")
+CLAUDE_FABLE_52 = CLAUDE_FABLE_5._replace(model_name="claude-fable-5-2")
 CLAUDE_OPUS_55 = CLAUDE_FABLE_5._replace(model_name="claude-opus-5-5")
 CLAUDE_SONNET_55 = CLAUDE_FABLE_5._replace(model_name="claude-sonnet-5-5")
 CLAUDE_HAIKU_55 = CLAUDE_FABLE_5._replace(model_name="claude-haiku-5-5")

@@ -57,7 +57,7 @@ LATEST_MODEL_CONTRACTS = (
             model_name,
             ReasoningMode.DYNAMIC,
             872_000,
-            (None if model_name in {"claude-opus-5-5", "claude-fable-5-1"} else "adaptive", effort),
+            (None if model_name in {"claude-opus-5-5", "claude-fable-5-1", "claude-fable-5-2"} else "adaptive", effort),
             effort,
         )
         for key, model_name, default_effort in (
@@ -65,6 +65,7 @@ LATEST_MODEL_CONTRACTS = (
             ("claude-sonnet-5.5", "claude-sonnet-5-5", "high"),
             ("claude-haiku-5.5", "claude-haiku-5-5", "medium"),
             ("claude-fable-5.1", "claude-fable-5-1", "high"),
+            ("claude-fable-5.2", "claude-fable-5-2", "high"),
         )
         for effort in ("low", "medium", "high", "xhigh", "max")
     ),
