@@ -75,8 +75,13 @@ Notes:
 - `Codex: <model>` options and their reasoning efforts come from live app-server `model/list` output and track runtime model availability directly
 - The `Codex runtime default` choice follows whichever catalog model the installed runtime and account mark as default
 - Known effort labels are ordered consistently; new short lowercase effort labels advertised by the runtime remain selectable instead of being silently dropped
-- Current Codex builds may expose GPT-5.6 Sol, Terra, and Luna plus efforts such as `max` or `ultra`, but AgentRules does not hard-code those moving choices
-- Model and effort availability are account- and runtime-dependent; update the installed Codex build when an expected choice is absent
+- GPT-6.2 Astra and Sol require Codex CLI 0.166.0 or later. Model and effort availability follows the runtime catalog for your account. [Codex model requirements](https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex)
+
+If a GPT-6.2 model is missing, check the executable shown in **Settings → Codex runtime**. Run
+`codex --version` when the configured executable comes from `PATH`. For a custom setting, run
+`"/path/to/configured/codex" --version` using that path. After updating the executable if needed, refresh
+runtime status with the same `CODEX_HOME` strategy and account. The model picker will offer the models
+and efforts returned by that runtime. [App-server model discovery](https://learn.chatgpt.com/docs/app-server#list-models-modellist)
 
 ## Optional live smoke
 
@@ -91,7 +96,8 @@ Run it only when:
 Command:
 
 ```bash
-PYTHONPATH=src pytest tests/live/test_codex_live_smoke.py -q --run-live
+AGENTRULES_RUN_CODEX_LIVE=1 uv run --locked --extra dev --python 3.11 \
+  pytest -q --run-live tests/live/test_codex_live_smoke.py
 ```
 
 Environment variables:
@@ -102,4 +108,4 @@ Environment variables:
 - `AGENTRULES_CODEX_MANAGED_HOME`: optional managed-home path when using managed mode
 - `AGENTRULES_CODEX_MODEL`: optional explicit live-smoke model override
 
-The live smoke skips itself if the runtime is unavailable or the active Codex home is not authenticated.
+To test a specific catalog choice, set `AGENTRULES_CODEX_MODEL` to its model ID, such as `gpt-6.2-sol`. The smoke skips when the active runtime or account is unavailable or when its catalog omits the selected model.

@@ -311,7 +311,7 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 | Anthropic | Claude Opus/Sonnet/Haiku 5.5 or Fable 5.2 | Fable 5.2 defaults to high effort and carries a 30-day retention requirement. Saved Sonnet 4.5 presets route to Sonnet 5.5 on November 30, 2026. Saved Opus 4.5 presets route to Opus 5.5 with adaptive thinking on January 22, 2027. |
 | xAI | Grok 4.7 is recommended. Grok 4.6, 4.5, 4.3, and pinned Grok 4.20 reasoning and non-reasoning variants remain selectable. | Saved Grok Build 0.1 and Grok Code Fast presets route to Grok 4.7 at high effort. Direct `XaiArchitect` construction still defaults to 4.6 pending evaluation. |
 | Google | Gemini 4 Carbon, Hydrogen, Neon, and Argon. Hydrogen is available on the free Gemini API tier. | Starting December 1, 2026, saved Gemini 2.5 Pro and Flash presets route to 3.8 Flash and 3.5 Flash-Lite respectively. `GeminiArchitect()` defaults to 3.5 Flash-Lite with minimal thinking. |
-| Codex | Runtime default or a model/effort discovered from app-server | Availability follows the installed runtime and account. AgentRules does not maintain a static Codex GPT-5.6 list. |
+| Codex | Runtime default or a model/effort discovered from app-server | GPT-6.2 Astra and Sol require Codex CLI 0.166.0 or later and appear when the runtime catalog offers them. |
 | Claude Code | Runtime default, moving aliases, or pinned Fable 5.2 and Opus/Sonnet/Haiku 5.5 | The Fable 5.2 pin uses medium effort and requires Claude Code 2.1.321 or later. The lockfile bundles CLI 2.1.332 through Claude Agent SDK 0.2.189. |
 
 See [`docs/provider-model-lifecycle.md`](docs/provider-model-lifecycle.md) for reasoning contracts, retirements, data-retention caveats, safe live-smoke commands, and rollback choices.

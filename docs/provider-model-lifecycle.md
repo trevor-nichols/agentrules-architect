@@ -313,6 +313,8 @@ Official references:
 
 Codex and Claude Code are runtime providers, not static API model catalogs. Codex choices and reasoning
 efforts come from app-server `model/list`; the runtime default follows the installed build and account.
+GPT-6.2 Astra and Sol require Codex CLI 0.166.0 or later. Check the exact configured executable and
+refresh its account-specific catalog using the [Codex runtime guide](codex-runtime.md).
 AgentRules preserves new short lowercase effort values reported by that catalog, including values newer
 than the application, but rejects malformed tokens. It does not add static Codex GPT-5.6 presets.
 

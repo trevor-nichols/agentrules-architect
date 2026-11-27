@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS006
 execplan_id: EP-20261127-001
 ms: 6
-title: "Verify Codex runtime discovery for GPT-6.2"
-status: planned
+title: Verify Codex runtime discovery for GPT-6.2
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: low
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Verify Codex runtime discovery for GPT-6.2
@@ -65,6 +65,10 @@ With separate opt-in and a signed-in runtime that advertises the model, set `AGE
 ## Rollout / Ops Notes
 
 Ship the operator guide with the tests. The compatibility fallback remains the runtime default or another model the account advertises.
+
+## Results
+
+Locked Python 3.11 checks passed (1,234 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Codex CLI 0.172.0 generated the expected app-server schema. Independent review passed after verifying the corrected smoke command collects in a fresh locked install. Live model availability was not checked.
 
 ## Changelog
 
