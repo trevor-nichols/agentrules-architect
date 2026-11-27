@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from types import SimpleNamespace
+
 import questionary
 from rich.console import Console
 
@@ -156,7 +159,7 @@ def test_selection_filter_preserves_current_deprecated_preset_with_label() -> No
     assert filtered[0].label.endswith("[deprecated]")
 
 
-def test_gemini_picker_discloses_prior_user_access_and_upstream_aliases() -> None:
+def test_gemini_picker_discloses_scheduled_redirects_and_upstream_aliases() -> None:
     flash = model_presets.get_preset_info("gemini-flash")
     pro = model_presets.get_preset_info("gemini-pro")
     flash37 = model_presets.get_preset_info("gemini-3.7-flash")
@@ -175,8 +178,8 @@ def test_gemini_picker_discloses_prior_user_access_and_upstream_aliases() -> Non
     )
     rendered_titles = [str(choice.title) for choice in state.choices if hasattr(choice, "title")]
 
-    assert any("2.5 Flash (Existing-User Access)" in title for title in rendered_titles)
-    assert any("2.5 Pro (Existing-User Access)" in title for title in rendered_titles)
+    assert any("2.5 Flash [redirects 2026-12-01]" in title for title in rendered_titles)
+    assert any("2.5 Pro [redirects 2026-12-01]" in title for title in rendered_titles)
     assert any("3.7 Flash (API Alias → 3.8 Flash" in title for title in rendered_titles)
     assert any("3.5 Flash (API Alias → 3.6 Flash" in title for title in rendered_titles)
     assert all("2026-10-16" not in title for title in rendered_titles)
@@ -329,21 +332,25 @@ def test_general_phase_selection_warns_when_deprecated_preset_selected(monkeypat
 
     assert updated is True
     assert saved == [("phase3", "gemini-3.1-pro-preview")]
-    output = context.console.export_text()
+    output = " ".join(context.console.export_text().split())
     assert "Selected preset is deprecated." in output
-    assert "Saved replacement Gemini 3.1 Pro (Preview) [Google" in output
-    assert "Gemini]." in output
+    assert "Saved replacement Gemini 3.1 Pro (Preview) [Google Gemini]." in output
 
 
-def test_general_phase_selection_preserves_deprecated_live_preset(monkeypatch) -> None:
+def test_general_phase_selection_warns_before_scheduled_cutover(monkeypatch) -> None:
     context = CliContext(console=Console(record=True, width=120))
     saved: list[tuple[str, str | None]] = []
-    preset = model_presets.get_preset_info("o4-mini-low")
+    monkeypatch.setattr(
+        model_presets,
+        "datetime",
+        SimpleNamespace(now=lambda tz: datetime(2026, 11, 30, tzinfo=tz)),
+    )
+    preset = model_presets.get_preset_info("gemini-pro")
     assert preset is not None
 
     class _Prompt:
         def ask(self) -> str:
-            return "o4-mini-low"
+            return "gemini-pro"
 
     monkeypatch.setattr(model_settings.questionary, "select", lambda *_args, **_kwargs: _Prompt())
     monkeypatch.setattr(
@@ -357,22 +364,28 @@ def test_general_phase_selection_preserves_deprecated_live_preset(monkeypatch) -
         "phase3",
         "Phase 3 – Deep Analysis",
         [preset],
-        current_key="o4-mini-low",
+        current_key="gemini-pro",
         default_key=None,
     )
 
     assert updated is True
-    assert saved == [("phase3", "o4-mini-low")]
-    output = context.console.export_text()
+    assert saved == [("phase3", "gemini-pro")]
+    output = " ".join(context.console.export_text().split())
     assert "Selected preset is deprecated." in output
-    assert "has not retired it" in output
+    assert "December 1, 2026" in output
+    assert "Prefer Gemini 3.8 Flash" in output
     assert "Saved replacement" not in output
 
 
-def test_researcher_selection_warns_when_deprecated_preset_selected(monkeypatch) -> None:
+def test_researcher_selection_names_replacement_after_scheduled_cutover(monkeypatch) -> None:
     context = CliContext(console=Console(record=True, width=120))
     events: list[tuple[str, str | None]] = []
-    preset = model_presets.get_preset_info("gemini-3-pro-preview")
+    monkeypatch.setattr(
+        model_presets,
+        "datetime",
+        SimpleNamespace(now=lambda tz: datetime(2026, 12, 1, tzinfo=tz)),
+    )
+    preset = model_presets.get_preset_info("gemini-flash")
     assert preset is not None
 
     class _Prompt:
@@ -382,7 +395,7 @@ def test_researcher_selection_warns_when_deprecated_preset_selected(monkeypatch)
         def ask(self) -> str:
             return self._answer
 
-    selections = iter(("on", "gemini-3-pro-preview"))
+    selections = iter(("on", "gemini-flash"))
 
     monkeypatch.setattr(
         researcher_settings.questionary,
@@ -403,7 +416,7 @@ def test_researcher_selection_warns_when_deprecated_preset_selected(monkeypatch)
     updated = researcher_settings.configure_researcher_phase(
         context,
         [preset],
-        current_key=None,
+        current_key="gemini-flash",
         default_key=None,
         current_mode="off",
         tavily_available=True,
@@ -411,8 +424,8 @@ def test_researcher_selection_warns_when_deprecated_preset_selected(monkeypatch)
     )
 
     assert updated is True
-    assert events == [("researcher", "gemini-3.1-pro-preview"), ("researcher_mode", "on")]
-    output = context.console.export_text()
+    assert events == [("researcher", "gemini-3.5-flash-lite"), ("researcher_mode", "on")]
+    output = " ".join(context.console.export_text().split())
     assert "Selected preset is deprecated." in output
-    assert "Saved replacement Gemini 3.1 Pro (Preview) [Google" in output
-    assert "Gemini]." in output
+    assert "minimal thinking" in output
+    assert "Saved replacement Gemini 3.5 Flash-Lite (Minimal Thinking, Recommended for Throughput) [Google Gemini]." in output

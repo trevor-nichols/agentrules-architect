@@ -573,29 +573,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-flash": _preset(
         config=GEMINI_FLASH,
-        label="Gemini 2.5 Flash (Existing-User Access)",
-        description=(
-            "Not deprecated; no shutdown date announced. Google limits access to prior users "
-            "and recommends Gemini 3.8 Flash for new projects."
-        ),
+        label="Gemini 2.5 Flash [redirects 2026-12-01] (Thinking Disabled)",
+        description="Saved selections use Gemini 3.5 Flash-Lite with minimal thinking on December 1, 2026.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-flash-thinking": _preset(
         config=GEMINI_FLASH_DYNAMIC,
-        label="Gemini 2.5 Flash Thinking (Existing-User Access)",
-        description=(
-            "Not deprecated; no shutdown date announced. Google limits access to prior users "
-            "and recommends Gemini 3.8 Flash for new projects."
-        ),
+        label="Gemini 2.5 Flash [redirects 2026-12-01] (Dynamic Thinking)",
+        description="Saved selections use Gemini 3.5 Flash-Lite with medium thinking on December 1, 2026.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-pro": _preset(
         config=GEMINI_PRO,
-        label="Gemini 2.5 Pro (Existing-User Access)",
-        description=(
-            "Not deprecated; no shutdown date announced. Google limits access to prior users. "
-            "Choose a current model for new projects."
-        ),
+        label="Gemini 2.5 Pro [redirects 2026-12-01]",
+        description="Saved selections use Gemini 3.8 Flash with medium thinking on December 1, 2026.",
         provider=ModelProvider.GEMINI,
     ),
     "claude-sonnet": _preset(
@@ -768,14 +759,14 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-opus-4.5": _preset(
         config=CLAUDE_OPUS_45,
-        label="Claude Opus 4.5",
-        description="Newest Opus 4.5 release; improved reasoning depth and safety.",
+        label="Claude Opus 4.5 [retires 2027-01-22] (Thinking Disabled)",
+        description="Saved selections use Claude Opus 5.5 with low adaptive thinking on January 22, 2027.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.5-reasoning": _preset(
         config=CLAUDE_OPUS_45_WITH_REASONING,
-        label="Claude Opus 4.5 (Thinking)",
-        description="Opus 4.5 with extended thinking enabled for hardest tasks.",
+        label="Claude Opus 4.5 [retires 2027-01-22] (Extended Thinking)",
+        description="Saved selections use Claude Opus 5.5 with high adaptive thinking on January 22, 2027.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.6": _preset(
@@ -927,29 +918,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "o4-mini-low": _preset(
         config=O4_MINI_LOW,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Low)",
-        description=(
-            "Deprecated o4-mini endpoint at low reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5.6 Terra Low for new configurations."
-        ),
+        label="OpenAI o4-mini (Retired → GPT-5.6 Terra Low)",
+        description="Saved selections use GPT-5.6 Terra at low reasoning effort.",
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-medium": _preset(
         config=O4_MINI_MEDIUM,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Medium)",
-        description=(
-            "Deprecated o4-mini endpoint at medium reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5.6 Terra Medium for new configurations."
-        ),
+        label="OpenAI o4-mini (Retired → GPT-5.6 Terra Medium)",
+        description="Saved selections use GPT-5.6 Terra at medium reasoning effort.",
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-high": _preset(
         config=O4_MINI_HIGH,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra High)",
-        description=(
-            "Deprecated o4-mini endpoint at high reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5.6 Terra High for new configurations."
-        ),
+        label="OpenAI o4-mini (Retired → GPT-5.6 Terra High)",
+        description="Saved selections use GPT-5.6 Terra at high reasoning effort.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt4.1-default": _preset(
@@ -1473,17 +1455,14 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "grok-build-0.1": _preset(
         config=GROK_BUILD_0_1,
-        label="Grok Build 0.1",
-        description="Canonical xAI coding model for agentic coding workflows and web development.",
+        label="Grok Build 0.1 (Retired → Grok 4.7)",
+        description="Saved selections use Grok 4.7 at high reasoning effort.",
         provider=ModelProvider.XAI,
     ),
     "grok-code-fast": _preset(
         config=GROK_CODE_FAST,
-        label="Grok Code Fast (Legacy)",
-        description=(
-            "Retired Grok code slug preserved for backwards compatibility; "
-            "xAI routes requests to Grok Build 0.1."
-        ),
+        label="Grok Code Fast (Retired → Grok 4.7)",
+        description="Saved selections use Grok 4.7 at high reasoning effort.",
         provider=ModelProvider.XAI,
     ),
 }

@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS001
 execplan_id: EP-20261127-001
 ms: 1
-title: "Restore saved presets before provider cutovers"
-status: planned
+title: Restore saved presets before provider cutovers
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: high
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Restore saved presets before provider cutovers
@@ -72,6 +72,10 @@ Check the day before, day of, and day after each cutoff. Exercise both phase and
 ## Rollout / Ops Notes
 
 Make this an independently releasable commit or PR slice on the October refresh. If a cutoff passes first, publish the same dated route so current users resolve to a live model immediately. A rollback for later milestones must retain these routes. For a provider access problem, document another supported choice without changing the user's stored setting automatically.
+
+## Results
+
+Locked Python 3.11 checks passed (1,168 tests, 77 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review passed with no actionable findings.
 
 ## Changelog
 

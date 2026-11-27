@@ -9,7 +9,7 @@ from google.genai import types as genai_types
 from google.protobuf.struct_pb2 import Struct
 
 from agentrules.core.agents.base import ReasoningMode
-from agentrules.core.agents.gemini import GeminiArchitect
+from agentrules.core.agents.gemini import GeminiAgent, GeminiArchitect
 from tests.fakes.vendor_responses import GeminiGenerateContentResponseFake, _FunctionCallFake
 
 
@@ -98,16 +98,45 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fc["args"].get("query"), "flask")
         self.assertIsInstance(json.dumps(res), str)
 
-    async def test_reasoning_disabled_disables_thinking_budget(self):
+    async def test_default_entry_points_send_flash_lite_with_minimal_thinking(self):
+        for entry_point, build_agent in (
+            ("architect", lambda: GeminiArchitect(api_key="test-key")),
+            ("legacy", lambda: GeminiAgent("Legacy", "Analyze", [], api_key="test-key")),
+        ):
+            with self.subTest(entry_point=entry_point):
+                client = _GeminiFakeClient()
+                with patch("agentrules.core.agents.gemini.client.genai.Client", return_value=client):
+                    agent = build_agent()
+
+                await agent.analyze({"formatted_prompt": "Analyze the project"})
+
+                request = client.models.last_call
+                assert request is not None
+                self.assertEqual(request["model"], "gemini-3.5-flash-lite")
+                self.assertEqual(request["config"].thinking_config.thinking_level, genai_types.ThinkingLevel.MINIMAL)
+                self.assertIsNone(request["config"].thinking_config.thinking_budget)
+
+    async def test_default_model_rejects_explicit_disabled_reasoning(self):
         arch = GeminiArchitect(reasoning=ReasoningMode.DISABLED)
+        client = _GeminiFakeClient()
+        arch.client = client  # type: ignore
+
+        with self.assertRaisesRegex(ValueError, "gemini-3.5-flash-lite"):
+            await arch.analyze({})
+
+        self.assertIsNone(client.models.last_call)
+
+    async def test_explicit_gemini25_flash_with_no_reasoning_keeps_zero_budget(self):
+        arch = GeminiArchitect(model_name="gemini-2.5-flash")
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
-        config = arch.client.models.last_call["config"]  # type: ignore[index]
-        self.assertIsNotNone(config)
-        self.assertEqual(config.thinking_config.thinking_budget, 0)
+        request = arch.client.models.last_call  # type: ignore[union-attr]
+        self.assertEqual(request["model"], "gemini-2.5-flash")
+        self.assertEqual(request["config"].thinking_config.thinking_budget, 0)
+        self.assertIsNone(request["config"].thinking_config.thinking_level)
 
     async def test_reasoning_dynamic_sets_dynamic_budget(self):
-        arch = GeminiArchitect(reasoning=ReasoningMode.DYNAMIC)
+        arch = GeminiArchitect(model_name="gemini-2.5-flash", reasoning=ReasoningMode.DYNAMIC)
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]

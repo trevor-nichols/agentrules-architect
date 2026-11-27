@@ -19,17 +19,14 @@ GPT-5.4 Mini/Nano and GPT-5.3-Codex therefore use 272,000 input tokens, not thei
 window. GPT-5.5 uses 922,000 and GPT-4.1 uses 1,014,808 before the packing margin. Phase 3 file content
 is JSON-escaped and the packer counts its skeleton once plus each file once.
 
-GPT-5.6 Terra is OpenAI's supported replacement for o4-mini and accepts low, medium, and high reasoning,
-so AgentRules exposes matching presets for effort-preserving migrations. The saved keys `o4-mini-low`,
-`o4-mini-medium`, and `o4-mini-high` remain bound to their original model while that endpoint is deprecated
-but available. The picker hides these keys from new selections, preserves an existing selection with a
-deprecation warning, and recommends the matching Terra effort. AgentRules must not change a saved model's
-behavior or cost until the original endpoint retires.
+OpenAI retired o4-mini on October 23, 2026. The saved keys `o4-mini-low`, `o4-mini-medium`, and
+`o4-mini-high` now resolve to `gpt56-terra-low`, `gpt56-terra-default` (medium), and `gpt56-terra-high`
+respectively. The picker shows the replacement for an existing selection. Loading the configuration
+preserves the saved key and uses the matching Terra effort for requests.
 
-GPT-5 Mini's low, medium, and high direct presets follow the same deprecated-but-live policy. They remain
-bound to GPT-5 Mini for saved configurations, are hidden from new picker selections, and recommend the
-matching GPT-5.6 Terra effort. OpenAI schedules the pinned GPT-5 Mini snapshot to shut down on December 11,
-2026; a runtime redirect should only be introduced when that endpoint retires. Its 400,000-token total
+GPT-5 Mini's low, medium, and high direct presets still use GPT-5 Mini for saved configurations. The
+picker hides them from new selections and recommends the matching GPT-5.6 Terra effort. OpenAI lists
+December 11, 2026 as the retirement date for GPT-5 Mini and its pinned snapshot. Its 400,000-token total
 context and 128,000-token maximum output leave a 272,000-token maximum input before AgentRules' safety
 margin.
 
@@ -120,6 +117,11 @@ that date. From the retirement date, they resolve in one hop to the Sonnet 5.5 N
 Thinking and default adaptive profiles respectively. Other older model choices remain
 explicit rollback options where Anthropic still serves them.
 
+Anthropic retires **Claude Opus 4.5 on January 22, 2027**. Before then, `claude-opus-4.5` and
+`claude-opus-4.5-reasoning` continue to use Opus 4.5. On that date, the saved keys resolve to
+`claude-opus-5.5-reasoning-low` and `claude-opus-5.5-reasoning-high` respectively. The plain Opus
+4.5 preset previously disabled thinking. Its replacement uses adaptive thinking at low effort.
+
 ### Claude Sonnet 5
 
 `claude-sonnet-5` has a 1,000,000-token context and uses adaptive thinking by default. AgentRules offers an explicit non-thinking preset that sends `thinking: {"type": "disabled"}` plus adaptive presets at low, medium, high, xhigh, and max effort. Manual thinking budgets are not supported. Sonnet 5 remains compatible with zero-data-retention arrangements.
@@ -149,6 +151,7 @@ moving `claude-code-opus` alias remains runtime-owned and is not treated as a pi
 Official references:
 
 - [Current Claude model comparison](https://platform.claude.com/docs/en/models/overview)
+- [Claude model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
 - [Thinking modes](https://platform.claude.com/docs/en/build-with-claude/thinking)
 - [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
 - [Stop reasons](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons)
@@ -178,6 +181,10 @@ Grok 4.6 remains registered as the immediate direct-API fallback with low, mediu
 effort. Grok 4.5 is also retained with low, medium, and high effort. Grok 4.7 Fast is not exposed
 because xAI has not made it available on the public API.
 
+xAI retired Grok Build 0.1 on November 19, 2026. Saved `grok-build-0.1` and `grok-code-fast` presets
+both resolve directly to `grok-4.7` at high reasoning effort. The picker shows Grok 4.7 as the replacement
+for either saved key.
+
 ### Grok 4.20 pinned variants
 
 AgentRules exposes `grok-4.20-0309-reasoning` and `grok-4.20-0309-non-reasoning` as specialized,
@@ -192,6 +199,7 @@ remains Chat-Completions-only, so adding a Multi-Agent preset would guarantee a 
 Official references:
 
 - [Grok 4.7](https://docs.x.ai/developers/grok-4-7)
+- [xAI release notes](https://docs.x.ai/developers/release-notes)
 - [Grok 4.6](https://docs.x.ai/developers/models/grok-4.6)
 - [xAI reasoning controls](https://docs.x.ai/developers/model-capabilities/text/reasoning)
 - [xAI structured outputs](https://docs.x.ai/developers/model-capabilities/text/structured-outputs)
@@ -224,10 +232,21 @@ The older explicit `gemini-3.5-flash` key also remains registered; Google automa
 requests to that ID as 3.6 Flash. Saved keys and wire IDs stay unchanged, while picker labels disclose
 the provider-side effective model.
 
-Gemini 2.5 Flash and Pro are **not deprecated** and have no announced shutdown date. Google limits access
-to users who previously used them and recommends newer models for new projects. AgentRules keeps these
-explicit choices available for existing users without a premature redirect. Picker labels disclose the
-access condition rather than claiming an October 16, 2026 shutdown.
+Google deprecates Gemini 2.5 Flash and Pro and limits access to existing users. Starting **December 1,
+2026**, Google serves their API IDs with replacement models and charges the replacement rates. AgentRules
+uses the replacement IDs and their request profiles from that date so thinking and tool fields match the
+effective model.
+
+| Saved preset | Effective preset from December 1, 2026 |
+| --- | --- |
+| `gemini-pro` | `gemini-3.8-flash` with medium thinking |
+| `gemini-flash` | `gemini-3.5-flash-lite` with minimal thinking |
+| `gemini-flash-thinking` | `gemini-3.5-flash-lite-reasoning-medium` with medium thinking |
+
+The plain `gemini-flash` preset previously disabled thinking. Its replacement uses minimal thinking.
+Gemini 2.5 Flash-Lite remains available under Google's existing access policy. A `GeminiArchitect()` or
+legacy `GeminiAgent()` constructed without model or reasoning overrides uses `gemini-3.5-flash-lite`
+with minimal thinking.
 
 The saved keys `gemini-3-pro-preview` and `gemini-3.1-flash-lite-preview` remain loadable for backwards
 compatibility, but runtime resolution sends `gemini-3.1-pro-preview` and `gemini-3.1-flash-lite`. The
@@ -241,7 +260,7 @@ Official references:
 - [Argon GenerateContent and continuation guide](https://ai.google.dev/gemini-api/docs/generate-content/latest-model)
 - [Gemini 3.8 function-call migration rules](https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.8)
 - [Gemini thinking levels](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
-- [Gemini model deprecations](https://ai.google.dev/gemini-api/docs/deprecations)
+- [Gemini model deprecations](https://aistudio.google.com/docs/deprecations)
 - [Google Gen AI Python SDK changelog](https://github.com/googleapis/python-genai/blob/main/CHANGELOG.md#1560-2025-12-16)
 
 ## Local runtime providers
@@ -305,6 +324,6 @@ skip every provider and make no paid request.
 | DeepSeek | V4.1 Flash | Use `deepseek-flash`; old V4 Flash and Chat/Reasoner keys are compatibility selections. |
 | Anthropic | Claude Opus 4.8 | Keep explicit Opus 5 keys registered; do not auto-fallback from a Fable refusal. |
 | xAI | Grok 4.6, then 4.5 | Do not select Multi-Agent through the Chat Completions adapter. |
-| Google | Gemini 3.5 Flash API ID (served as 3.6 Flash) | Gemini 2.5 has no announced shutdown; preserve existing selections and check prior-user access. |
+| Google | Gemini 3.5 Flash API ID (served as 3.6 Flash) | Saved Gemini 2.5 Flash and Pro selections switch to their replacement request profiles on December 1, 2026. |
 | Codex | Runtime default | Let the authenticated runtime catalog choose; do not synthesize a static model ID. |
 | Claude Code | Runtime default | Use a pinned model only after the resolved runtime passes its minimum-version gate. |

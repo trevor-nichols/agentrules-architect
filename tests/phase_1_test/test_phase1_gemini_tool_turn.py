@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import patch
@@ -11,8 +12,10 @@ import pytest
 from google.genai import types
 
 from agentrules.core.agents.base import ReasoningMode
+from agentrules.core.agents.factory.factory import ArchitectFactory
 from agentrules.core.agents.gemini import GeminiArchitect
 from agentrules.core.analysis.phase_1 import Phase1Analysis
+from agentrules.core.configuration import model_presets
 
 
 class _TwoTurnModels:
@@ -45,9 +48,17 @@ class _TwoTurnModels:
 
 
 @pytest.mark.asyncio
-async def test_researcher_preserves_gemini_call_identity_and_thought_signature() -> None:
+async def test_researcher_preserves_signed_tool_turn_after_gemini_pro_cutover(monkeypatch) -> None:
+    monkeypatch.setattr(
+        model_presets,
+        "datetime",
+        SimpleNamespace(now=lambda tz: datetime(2026, 12, 1, tzinfo=tz)),
+    )
+    config = model_presets.get_model_config_for_preset_key("gemini-pro")
+    assert config is not None
     models = _TwoTurnModels()
-    architect = GeminiArchitect(model_name="gemini-3.8-flash", reasoning=ReasoningMode.MEDIUM)
+    architect = ArchitectFactory.create_architect(config, "Researcher", "Research dependencies", [], "{context}")
+    assert isinstance(architect, GeminiArchitect)
     architect.client = cast(Any, SimpleNamespace(models=models))
     analysis = Phase1Analysis(researcher_enabled=False)
     analysis.researcher_architect = architect
@@ -62,7 +73,11 @@ async def test_researcher_preserves_gemini_call_identity_and_thought_signature()
 
     assert result["findings"] == "Flask release verified"
     assert result["executed_tools"][0]["success"] is True
-    assert len(models.calls) == 2
+    assert [call["model"] for call in models.calls] == ["gemini-3.8-flash", "gemini-3.8-flash"]
+    for call in models.calls:
+        thinking = call["config"].thinking_config
+        assert thinking.thinking_level == types.ThinkingLevel.MEDIUM
+        assert thinking.thinking_budget is None
     history = models.calls[1]["contents"]
     assert isinstance(history, list)
     assert "flask" in history[0].parts[0].text
