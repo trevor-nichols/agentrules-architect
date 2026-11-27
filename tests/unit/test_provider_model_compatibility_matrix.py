@@ -524,9 +524,8 @@ DIRECT_MODEL_CONTRACTS = LATEST_MODEL_CONTRACTS + (
 
 @pytest.mark.parametrize("contract", DIRECT_MODEL_CONTRACTS, ids=lambda row: row.preset_key)
 def test_direct_provider_model_contract_matrix(contract: ModelContract) -> None:
-    config = model_presets.get_model_config_for_preset_key(contract.preset_key)
+    config = MODEL_PRESETS[contract.preset_key]["config"]
 
-    assert config is not None
     assert config.provider == contract.provider
     assert config.model_name == contract.model_name
     assert config.reasoning == contract.reasoning

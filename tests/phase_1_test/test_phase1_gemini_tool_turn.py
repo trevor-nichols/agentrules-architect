@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from google.genai import types
@@ -104,22 +104,32 @@ async def test_researcher_replays_signed_tool_turn_at_configured_thinking_level(
 
 
 @pytest.mark.asyncio
-async def test_researcher_rejects_gemini38_call_without_id_before_second_request() -> None:
+async def test_phase1_continues_when_gemini_researcher_call_has_no_id() -> None:
     models = _TwoTurnModels(call_id=None)
     architect = GeminiArchitect(model_name="gemini-3.8-flash", reasoning=ReasoningMode.MEDIUM)
     architect.client = cast(Any, SimpleNamespace(models=models))
-    analysis = Phase1Analysis(researcher_enabled=False)
-    analysis.researcher_architect = architect
+    findings = [
+        {"findings": "Dependency discovery complete"},
+        {"findings": "Structure discovery complete"},
+        {"findings": "Tech stack discovery complete"},
+    ]
+    required_agents = [SimpleNamespace(analyze=AsyncMock(return_value=result)) for result in findings]
 
-    async def search(_query: str, _depth: str, _max_results: int) -> str:
-        return json.dumps({"results": []})
+    with (
+        patch("agentrules.core.analysis.phase_1.get_architect_for_phase", side_effect=required_agents),
+        patch("agentrules.core.analysis.phase_1.get_researcher_architect", return_value=architect),
+        patch("agentrules.core.agents.gemini.architect.resolve_tool_config", return_value=[]),
+        patch("agentrules.core.analysis.phase_1._run_tavily_search", new=AsyncMock(return_value='{"results": []}')),
+    ):
+        result = await Phase1Analysis().run([], {})
 
-    with patch("agentrules.core.agents.gemini.architect.resolve_tool_config", return_value=[]), patch(
-        "agentrules.core.analysis.phase_1._run_tavily_search", side_effect=search
-    ), pytest.raises(ValueError, match="missing its required ID"):
-        await analysis._run_researcher_with_tools({}, [])
-
+    research = result["documentation_research"]
+    assert research["status"] == "skipped"
+    assert "missing its required ID" in research["error"]
     assert len(models.calls) == 1
+    assert result["initial_findings"] == findings
+    for agent in required_agents[1:]:
+        assert agent.analyze.await_args.args[0]["research_agent_error"] == research["error"]
 
 
 @pytest.mark.asyncio

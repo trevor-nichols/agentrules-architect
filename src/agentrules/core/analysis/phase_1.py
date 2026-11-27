@@ -341,13 +341,22 @@ class Phase1Analysis:
                 context_payload[DEEPSEEK_TOOL_HISTORY_KEY] = [*deepseek_messages, *tool_messages]
             else:
                 if "_gemini_request_contents" in latest_response:
-                    context_payload["_gemini_contents"] = build_function_response_contents(
-                        latest_response["_gemini_request_contents"],
-                        latest_response.get("_gemini_model_content"),
-                        latest_response.get("function_calls", []),
-                        gemini_tool_runs,
-                        require_call_id=bool(latest_response.get("_gemini_requires_call_id")),
-                    )
+                    try:
+                        context_payload["_gemini_contents"] = build_function_response_contents(
+                            latest_response["_gemini_request_contents"],
+                            latest_response.get("_gemini_model_content"),
+                            latest_response.get("function_calls", []),
+                            gemini_tool_runs,
+                            require_call_id=bool(latest_response.get("_gemini_requires_call_id")),
+                        )
+                    except ValueError as error:
+                        logging.warning("Skipping documentation research after an invalid Gemini tool turn. %s", error)
+                        return {
+                            "status": "skipped",
+                            "reason": "researcher-invalid-tool-turn",
+                            "error": str(error),
+                            "executed_tools": executed_tools,
+                        }
                 context_payload["tool_feedback"] = {
                     "executed_tools": executed_tools,
                     "latest_results": latest_tool_runs,
