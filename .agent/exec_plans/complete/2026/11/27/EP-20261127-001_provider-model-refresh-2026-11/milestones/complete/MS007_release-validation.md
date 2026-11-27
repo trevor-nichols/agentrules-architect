@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS007
 execplan_id: EP-20261127-001
 ms: 7
-title: "Validate the release and document rollout and recovery"
-status: planned
+title: Validate the release and document rollout and recovery
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Validate the release and document rollout and recovery
@@ -76,6 +76,19 @@ Confirm the PR workflow's import, prompt template, parser corpus, token-packer r
 ## Rollout / Ops Notes
 
 Publish compatibility routes with the October dependency available. Roll out each model or SDK slice with its matching capability tests and docs. If a dependency bump must be reverted, restore its previous lock and remove the corresponding new feature exposure while keeping compatible saved-key redirects. After each provider cutover, keep routes to current endpoints in the release branch. Refresh the registry after moving the final milestone and plan.
+
+## Release Evidence
+
+- On November 27, 2026, the remote October branch and the base of PR #43 were `261fbb5`. The branch also shares `e0194e8` with remote `main`. The November PR is stacked on [PR #42](https://github.com/trevor-nichols/agentrules-architect/pull/42).
+- Rechecked the o4-mini and Grok Build retirements and the scheduled Sonnet, Gemini, GPT-5/o3, and Opus cutovers against the provider references in the plan. Supported replacement profiles and their effective requests are covered by the offline suite.
+- A fresh locked install using Python 3.11.18 and CI's uv 0.9.17 passed import smoke, Ruff, Pyright, lock validation, and 1,234 tests and 69 subtests. The focused template, parser, and pipeline tests passed 16 cases, and the 100-file token-packer check passed separately.
+- Built the wheel and verified it imports from an isolated install, contains the packaged ExecPlan templates, declares both SDK floors, and exposes representative new model presets.
+- GitHub Actions passed the six Test jobs and the lockfile job on implementation head `835b725`. [Test workflow](https://github.com/trevor-nichols/agentrules-architect/actions/runs/46033016872) · [Lockfile workflow](https://github.com/trevor-nichols/agentrules-architect/actions/runs/46033016870)
+- All 12 live tests skipped without opt-in. No account entitlement, rate limit, or credentialed inference result is part of this release evidence.
+
+## Results
+
+Fresh Python 3.11 CI-uv install, 1,234 tests and 69 subtests, focused gates, Ruff, Pyright, lock, wheel, registry, and diff checks passed. All seven GitHub checks passed on the implementation head. Independent review passed. Live smoke tests stayed gated.
 
 ## Changelog
 

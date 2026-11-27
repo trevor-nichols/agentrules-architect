@@ -495,13 +495,14 @@
       "id": "EP-20261127-001",
       "kind": "feature",
       "links": {
-        "docs": "docs/provider-model-lifecycle.md"
+        "docs": "docs/provider-model-lifecycle.md",
+        "pr": "https://github.com/trevor-nichols/agentrules-architect/pull/43"
       },
       "migration": true,
       "owner": "@codex",
-      "path": ".agent/exec_plans/active/provider-model-refresh-2026-11/EP-20261127-001_provider-model-refresh-2026-11.md",
+      "path": ".agent/exec_plans/complete/2026/11/27/EP-20261127-001_provider-model-refresh-2026-11/EP-20261127-001_provider-model-refresh-2026-11.md",
       "risk": "high",
-      "status": "active",
+      "status": "done",
       "supersedes": [],
       "tags": [
         "providers",

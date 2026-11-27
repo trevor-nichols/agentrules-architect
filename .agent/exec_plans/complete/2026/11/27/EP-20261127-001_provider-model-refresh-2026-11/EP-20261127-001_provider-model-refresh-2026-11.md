@@ -1,20 +1,31 @@
 ---
 id: EP-20261127-001
-title: "Refresh provider models and runtimes for November 2026"
-status: active
+title: Refresh provider models and runtimes for November 2026
+status: done
 kind: feature
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
-tags: [providers, model-lifecycle, sdk, runtime]
-touches: [api, cli, agents, tests, docs]
+updated: '2026-11-27'
+tags:
+- providers
+- model-lifecycle
+- sdk
+- runtime
+touches:
+- api
+- cli
+- agents
+- tests
+- docs
 risk: high
 breaking: false
 migration: true
 links:
-  docs: "docs/provider-model-lifecycle.md"
-depends_on: [EP-20261023-001]
+  docs: docs/provider-model-lifecycle.md
+  pr: https://github.com/trevor-nichols/agentrules-architect/pull/43
+depends_on:
+- EP-20261023-001
 supersedes: []
 ---
 
@@ -46,7 +57,7 @@ This rollout uses OpenAI Responses, Anthropic Messages, Gemini GenerateContent, 
 - [x] (2026-11-27) MS004 adds direct and local-runtime Fable 5.2 with the Claude Agent SDK upgrade. Locked Python 3.11 checks passed (1,227 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Native options used bundled CLI 2.1.332 on SDK 0.2.189 and CLI 2.1.321 on SDK 0.2.180. The SDK floor passed 59 focused tests. Independent review passed with no actionable findings.
 - [x] (2026-11-27) MS005 preserves DeepSeek reasoning across tools and records the xAI transport follow-up. Locked Python 3.11 checks passed (1,233 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review identified a malformed function wire shape. Added fail-before coverage and rejected incomplete turns before replay. Independent re-review passed with 103 focused tests and 5 subtests.
 - [x] (2026-11-27) MS006 verifies Codex runtime discovery for GPT-6.2. Locked Python 3.11 checks passed (1,234 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Codex CLI 0.172.0 generated the expected app-server schema. Independent review passed after verifying the corrected smoke command collects in a fresh locked install. Live model availability was not checked.
-- [ ] MS007 verifies release readiness, records rollout and recovery instructions, and closes the plan.
+- [x] (2026-11-27) MS007 verifies release readiness, records rollout and recovery instructions, and closes the plan. Fresh Python 3.11 CI-uv install, 1,234 tests and 69 subtests, focused gates, Ruff, Pyright, lock, wheel, registry, and diff checks passed. All seven GitHub checks passed on the implementation head. Independent review passed. Live smoke tests stayed gated.
 
 ## Surprises & Discoveries
 
@@ -70,7 +81,11 @@ A previous local run on the October provider branch recorded two CLI picker asse
 
 ## Outcomes & Retrospective
 
-MS001 restored compatibility for retired presets and installed the scheduled Gemini and Opus routes. The current SDK lock still supports the full offline suite. Authenticated model availability, quota, and output behavior remain unverified.
+The November refresh restores saved provider presets through the announced cutovers, adds the new direct models, and keeps phase defaults at their existing values. Saved aliases keep their original configuration IDs. DeepSeek tool replies now preserve the provider's original reasoning and call IDs. Codex discovery required test and operator guide changes. The native runtime catalog still determines available Codex models and efforts.
+
+The lock contains GenAI 3.6.1 and Claude Agent SDK 0.2.189 with Claude Code 2.1.332. The minimum versions were also tested offline. The final clean Python 3.11 implementation suite passed 1,234 tests and 69 subtests. Ruff, Pyright, import smoke, lock, wheel packaging, and all seven GitHub checks passed on implementation head `835b725`.
+
+The draft PR targets the October provider refresh at `261fbb5`, which remains open against `main`. Merge that prerequisite before retargeting. If an urgent release is needed first, the compatibility slice in `5c0211a` can ship with the October SDK lock. Keep active replacements when rolling back later dependency or picker slices. Authenticated availability and inference remain subject to the opt-in provider smoke checks. The xAI Responses migration is documented as a separate follow-up.
 
 ## Context and Orientation
 
@@ -94,7 +109,7 @@ The October plan EP-20261023-001 records the dependency this branch was cut from
 
 **MS006 — Verify Codex runtime discovery for GPT-6.2.** Exercise app-server model and effort discovery, saved round trips, and supported output schemas with the fake server. Document the upstream CLI minimum and the exact configured executable check. Keep catalog and account eligibility runtime-owned. See [MS006](milestones/complete/MS006_codex-runtime-discovery.md).
 
-**MS007 — Validate the release and document rollout and recovery.** Run the clean locked checks and collect milestone evidence. Review against the real merge base and confirm the release includes the October prerequisites and all required date-based routes. Record skipped live checks and leave defaults at their existing values. See [MS007](milestones/active/MS007_release-validation.md).
+**MS007 — Validate the release and document rollout and recovery.** Run the clean locked checks and collect milestone evidence. Review against the real merge base and confirm the release includes the October prerequisites and all required date-based routes. Record skipped live checks and leave defaults at their existing values. See [MS007](milestones/complete/MS007_release-validation.md).
 
 ## Concrete Steps
 
@@ -144,3 +159,5 @@ Record the milestone-specific failing-before and passing-after results, Python a
 Use `resolve_runtime_preset_key(..., as_of=...)` for lifecycle policy and the existing provider capability helpers for request validation. Keep `ToolManager` tool definitions serializable and perform vendor-specific request conversion at dispatch. Retain `ConfigManager.build_codex_launch_config()` as the single entry point for Codex launch policy and the existing Claude Code service for exact executable version resolution. Keep structured-output schemas tied to supported provider capabilities. Claude Agent SDK and Gemini GenAI are the only planned direct Python dependency changes.
 
 Revision note (2026-11-27) — Created the implementation plan and milestone sequence for operator review.
+
+Revision note (2026-11-27) — Completed all seven milestones after validation and independent review. Recorded the stacked draft PR and release checks before archiving the plan.
