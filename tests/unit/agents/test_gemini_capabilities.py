@@ -130,12 +130,15 @@ def test_gemini37_rejects_unsupported_reasoning_modes(
         )
 
 
-def test_exact_profile_rejects_sdk_enum_without_required_level() -> None:
+@pytest.mark.parametrize("thinking_level_enum", [None, SimpleNamespace(LOW="low", MEDIUM="medium", HIGH="high")])
+def test_exact_profile_rejects_sdk_enum_without_required_level(
+    thinking_level_enum: SimpleNamespace | None,
+) -> None:
     with pytest.raises(ValueError, match="does not expose the required 'minimal'"):
         resolve_thinking_level(
             model_name="gemini-3.6-flash",
             reasoning_mode=ReasoningMode.MINIMAL,
-            thinking_level_enum=SimpleNamespace(LOW="low", MEDIUM="medium", HIGH="high"),
+            thinking_level_enum=thinking_level_enum,
         )
 
 
@@ -175,7 +178,10 @@ def test_new_gemini_models_reserve_the_documented_token_budget(
     assert model_requires_function_call_id(model_name)
 
 
-@pytest.mark.parametrize("model_name", ["gemini-3.8-flash", "gemini-4-argon"])
+@pytest.mark.parametrize(
+    "model_name",
+    ["gemini-3.8-flash", "gemini-4-argon", "gemini-4-carbon", "gemini-4-hydrogen", "gemini-4-neon"],
+)
 @pytest.mark.parametrize("reasoning_mode", [ReasoningMode.DISABLED, ReasoningMode.MINIMAL])
 def test_new_gemini_models_reject_disallowed_thinking(
     model_name: str, reasoning_mode: ReasoningMode
@@ -184,6 +190,26 @@ def test_new_gemini_models_reject_disallowed_thinking(
         resolve_thinking_level(
             model_name=model_name,
             reasoning_mode=reasoning_mode,
+            thinking_level_enum=_THINKING_LEVELS,
+        )
+
+
+@pytest.mark.parametrize("model_name", ["gemini-4-argon", "gemini-4-carbon"])
+def test_gemini4_rejects_xhigh_for_families_that_max_out_at_high(model_name: str) -> None:
+    with pytest.raises(ValueError, match="Reasoning mode 'xhigh' is not supported"):
+        resolve_thinking_level(
+            model_name=model_name,
+            reasoning_mode=ReasoningMode.XHIGH,
+            thinking_level_enum=SimpleNamespace(HIGH="high", XHIGH="xhigh"),
+        )
+
+
+@pytest.mark.parametrize("model_name", ["gemini-4-hydrogen", "gemini-4-neon"])
+def test_gemini4_requires_sdk_xhigh_member_when_requested(model_name: str) -> None:
+    with pytest.raises(ValueError, match="does not expose the required 'xhigh'"):
+        resolve_thinking_level(
+            model_name=model_name,
+            reasoning_mode=ReasoningMode.XHIGH,
             thinking_level_enum=_THINKING_LEVELS,
         )
 
@@ -199,6 +225,9 @@ def test_new_gemini_models_reject_disallowed_thinking(
         "gemini-3.7-flash",
         "gemini-3.8-flash",
         "gemini-4-argon",
+        "gemini-4-carbon",
+        "gemini-4-hydrogen",
+        "gemini-4-neon",
     ],
 )
 def test_gemini_3_and_4_function_calls_require_ids(model_name: str) -> None:

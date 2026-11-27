@@ -5,12 +5,118 @@ import unittest
 from typing import Any, cast
 from unittest.mock import patch
 
+import httpx2
+import pytest
 from google.genai import types as genai_types
 from google.protobuf.struct_pb2 import Struct
 
 from agentrules.core.agents.base import ReasoningMode
-from agentrules.core.agents.gemini import GeminiArchitect
+from agentrules.core.agents.gemini import GeminiAgent, GeminiArchitect
+from agentrules.core.agents.gemini.client import build_gemini_client, generate_content_async
 from tests.fakes.vendor_responses import GeminiGenerateContentResponseFake, _FunctionCallFake
+
+
+@pytest.fixture
+def gemini_wire_requests(monkeypatch: pytest.MonkeyPatch) -> list[httpx2.Request]:
+    requests: list[httpx2.Request] = []
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return httpx2.Response(
+            200,
+            json={
+                "candidates": [
+                    {"content": {"role": "model", "parts": [{"text": "Wire response"}]}, "finishReason": "STOP"},
+                ],
+            },
+        )
+
+    init_client = httpx2.Client.__init__
+
+    def init_with_mock_transport(client: httpx2.Client, **kwargs: Any) -> None:
+        init_client(client, **(kwargs | {"transport": httpx2.MockTransport(handle_request)}))
+
+    monkeypatch.setattr(httpx2.Client, "__init__", init_with_mock_transport)
+    for variable in (
+        "GEMINI_API_KEY",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_CLOUD_LOCATION",
+        "GOOGLE_GENAI_API_VERSION",
+        "GOOGLE_GENAI_USE_ENTERPRISE",
+        "GOOGLE_GENAI_USE_VERTEXAI",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("GOOGLE_API_KEY", "sdk-key")
+    monkeypatch.setenv("GOOGLE_API_USE_MTLS_ENDPOINT", "never")
+    monkeypatch.setenv("GOOGLE_GENAI_HTTP_CLIENT", "httpx2")
+    return requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("api_key", "managed_flag", "host", "path_prefix", "sent_key"),
+    [
+        ("direct-key", None, "generativelanguage.googleapis.com", "/v1beta/models", "direct-key"),
+        (None, None, "generativelanguage.googleapis.com", "/v1beta/models", "sdk-key"),
+        ("direct-key", "GOOGLE_GENAI_USE_VERTEXAI", "aiplatform.googleapis.com",
+         "/v1beta1/publishers/google/models", "direct-key"),
+        ("direct-key", "GOOGLE_GENAI_USE_ENTERPRISE", "aiplatform.googleapis.com",
+         "/v1beta1/publishers/google/models", "direct-key"),
+    ],
+    ids=["developer-configured-key", "developer-sdk-key", "vertex", "enterprise"],
+)
+async def test_preview_request_keeps_gemini_client_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    gemini_wire_requests: list[httpx2.Request],
+    api_key: str | None,
+    managed_flag: str | None,
+    host: str,
+    path_prefix: str,
+    sent_key: str,
+) -> None:
+    if managed_flag:
+        monkeypatch.setenv(managed_flag, "true")
+
+    client, error = build_gemini_client(api_key)
+    assert client is not None, error
+    try:
+        response = await generate_content_async(
+            client, model="gemini-3.1-pro-preview", contents="Analyze the project", config=None
+        )
+    finally:
+        client.close()
+
+    assert response.text == "Wire response"
+    request, = gemini_wire_requests
+    assert request.url.host == host
+    assert request.url.path == f"{path_prefix}/gemini-3.1-pro-preview:generateContent"
+    assert request.headers["x-goog-api-key"] == sent_key
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("api_version", "expected_version"), [(None, "v1beta"), ("v1", "v1")])
+async def test_gemini_sdk_applies_request_timeout_without_changing_api_version(
+    monkeypatch: pytest.MonkeyPatch,
+    gemini_wire_requests: list[httpx2.Request],
+    api_version: str | None,
+    expected_version: str,
+) -> None:
+    if api_version:
+        monkeypatch.setenv("GOOGLE_GENAI_API_VERSION", api_version)
+    client, error = build_gemini_client(None)
+    assert client is not None, error
+    config = genai_types.GenerateContentConfig(http_options=genai_types.HttpOptions(timeout=1_200_000))
+    try:
+        response = await generate_content_async(
+            client, model="gemini-4-argon", contents="Analyze the project", config=config
+        )
+    finally:
+        client.close()
+
+    assert response.text == "Wire response"
+    request, = gemini_wire_requests
+    assert request.url.path == f"/{expected_version}/models/gemini-4-argon:generateContent"
+    assert request.extensions["timeout"]["read"] == 1200
 
 
 class _GeminiFakeModelsService:
@@ -98,16 +204,60 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fc["args"].get("query"), "flask")
         self.assertIsInstance(json.dumps(res), str)
 
-    async def test_reasoning_disabled_disables_thinking_budget(self):
+    async def test_default_entry_points_send_flash_lite_with_minimal_thinking(self):
+        for entry_point, build_agent in (
+            ("architect", lambda: GeminiArchitect(api_key="test-key")),
+            ("legacy", lambda: GeminiAgent("Legacy", "Analyze", [], api_key="test-key")),
+        ):
+            with self.subTest(entry_point=entry_point):
+                client = _GeminiFakeClient()
+                with patch("agentrules.core.agents.gemini.client.genai.Client", return_value=client):
+                    agent = build_agent()
+
+                await agent.analyze({"formatted_prompt": "Analyze the project"})
+
+                request = client.models.last_call
+                assert request is not None
+                self.assertEqual(request["model"], "gemini-3.5-flash-lite")
+                self.assertEqual(request["config"].thinking_config.thinking_level, genai_types.ThinkingLevel.MINIMAL)
+                self.assertIsNone(request["config"].thinking_config.thinking_budget)
+
+    async def test_default_model_rejects_explicit_disabled_reasoning(self):
         arch = GeminiArchitect(reasoning=ReasoningMode.DISABLED)
+        client = _GeminiFakeClient()
+        arch.client = client  # type: ignore
+
+        with self.assertRaisesRegex(ValueError, "gemini-3.5-flash-lite"):
+            await arch.analyze({})
+
+        self.assertIsNone(client.models.last_call)
+
+    async def test_explicit_gemini25_flash_with_no_reasoning_keeps_zero_budget(self):
+        arch = GeminiArchitect(model_name="gemini-2.5-flash")
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
-        config = arch.client.models.last_call["config"]  # type: ignore[index]
-        self.assertIsNotNone(config)
-        self.assertEqual(config.thinking_config.thinking_budget, 0)
+        request = arch.client.models.last_call  # type: ignore[union-attr]
+        self.assertEqual(request["model"], "gemini-2.5-flash")
+        self.assertEqual(request["config"].thinking_config.thinking_budget, 0)
+        self.assertIsNone(request["config"].thinking_config.thinking_level)
+
+    async def test_flash_models_requiring_an_exact_level_default_to_medium(self):
+        for model_name in ("gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"):
+            with self.subTest(model=model_name):
+                client = _GeminiFakeClient()
+                with patch("agentrules.core.agents.gemini.client.genai.Client", return_value=client):
+                    arch = GeminiArchitect(model_name=model_name, api_key="test-key")
+
+                await arch.analyze({"formatted_prompt": "Analyze the project"})
+
+                request = client.models.last_call
+                assert request is not None
+                self.assertEqual(request["model"], model_name)
+                self.assertEqual(request["config"].thinking_config.thinking_level, genai_types.ThinkingLevel.MEDIUM)
+                self.assertIsNone(request["config"].thinking_config.thinking_budget)
 
     async def test_reasoning_dynamic_sets_dynamic_budget(self):
-        arch = GeminiArchitect(reasoning=ReasoningMode.DYNAMIC)
+        arch = GeminiArchitect(model_name="gemini-2.5-flash", reasoning=ReasoningMode.DYNAMIC)
         arch.client = _GeminiFakeClient()  # type: ignore
         await arch.analyze({})
         config = arch.client.models.last_call["config"]  # type: ignore[index]

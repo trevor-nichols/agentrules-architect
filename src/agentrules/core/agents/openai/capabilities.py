@@ -53,6 +53,13 @@ def _reasoning_model(
 # Wire IDs are exact. Direct API presets are reviewed here; moving Codex model
 # names remain owned by the local app-server catalog.
 OPENAI_MODEL_CAPABILITIES: Mapping[str, OpenAIModelCapabilities] = MappingProxyType({
+    "gpt-6.2-astra": _reasoning_model(
+        total=1_050_000, output=128_000, efforts=_GPT6_REASONING_EFFORTS
+    ),
+    "gpt-6.2-sol": _reasoning_model(
+        total=1_050_000, output=128_000, efforts=_GPT6_REASONING_EFFORTS
+    ),
+    "gpt-6.1-terra": _reasoning_model(total=1_050_000, output=128_000, efforts=_GPT6_ALL_EFFORTS),
     "gpt-6-astra": _reasoning_model(
         total=1_050_000, output=128_000, efforts=_GPT6_REASONING_EFFORTS
     ),

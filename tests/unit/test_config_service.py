@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import chdir
 from importlib import reload
 from pathlib import Path
 from unittest.mock import patch
@@ -528,11 +529,22 @@ class ConfigServiceTestCase(unittest.TestCase):
 
         self.assertEqual(resolved, str(executable.resolve()))
 
-    def test_claude_code_default_prefers_native_windows_executable_over_cmd_shim(self) -> None:
-        cmd_shim = Path(self.temp_dir.name) / "npm" / "claude.cmd"
-        native = Path(self.temp_dir.name) / "native" / "claude.exe"
+    def test_claude_code_windows_default_uses_native_executable_on_absolute_path(self) -> None:
+        root = Path(self.temp_dir.name).resolve()
+        project = root / "project"
+        relative_bin = project / "relative-bin"
+        cmd_shim = root / "npm" / "claude.cmd"
+        native = root / "native" / "claude.exe"
+        cwd_executable = project / "claude.exe"
+        for candidate in (cwd_executable, relative_bin / "claude.exe", cmd_shim, native):
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.touch()
+
+        path_entries = ("", ".", relative_bin.name, str(cmd_shim.parent), str(native.parent))
 
         with (
+            chdir(project),
+            patch.dict(os.environ, {"PATH": os.pathsep.join(path_entries)}),
             patch(
                 "agentrules.core.configuration.services.claude_code._resolve_sdk_bundled_executable",
                 return_value=None,
@@ -543,7 +555,7 @@ class ConfigServiceTestCase(unittest.TestCase):
             ),
             patch(
                 "agentrules.core.configuration.services.claude_code.shutil.which",
-                side_effect=lambda command: str(cmd_shim) if command == "claude" else str(native),
+                return_value=str(cwd_executable),
             ),
         ):
             resolved = self.config_manager.resolve_claude_code_executable()
@@ -552,8 +564,11 @@ class ConfigServiceTestCase(unittest.TestCase):
 
     def test_claude_code_default_rejects_windows_cmd_only_installation(self) -> None:
         cmd_shim = Path(self.temp_dir.name) / "npm" / "claude.cmd"
+        cmd_shim.parent.mkdir(parents=True)
+        cmd_shim.touch()
 
         with (
+            patch.dict(os.environ, {"PATH": str(cmd_shim.parent)}),
             patch(
                 "agentrules.core.configuration.services.claude_code._resolve_sdk_bundled_executable",
                 return_value=None,

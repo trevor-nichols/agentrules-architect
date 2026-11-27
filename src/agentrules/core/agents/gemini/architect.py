@@ -13,6 +13,7 @@ from google.genai import types as genai_types
 
 from agentrules.core.agents.base import BaseArchitect, ModelProvider, ReasoningMode
 from agentrules.core.streaming import StreamChunk, StreamEventType
+from agentrules.core.types.models import GEMINI_3_5_FLASH_LITE
 from agentrules.core.utils.async_stream import iterate_in_thread
 from agentrules.core.utils.structured_outputs import (
     build_gemini_response_schema,
@@ -59,8 +60,8 @@ class GeminiArchitect(BaseArchitect):
 
     def __init__(
         self,
-        model_name: str = "gemini-2.5-flash",
-        reasoning: ReasoningMode = ReasoningMode.DISABLED,
+        model_name: str = GEMINI_3_5_FLASH_LITE.model_name,
+        reasoning: ReasoningMode | None = None,
         name: str | None = None,
         role: str | None = None,
         responsibilities: list[str] | None = None,
@@ -70,6 +71,8 @@ class GeminiArchitect(BaseArchitect):
         tools_config: dict[str, Any] | None = None,
         model_config: Any | None = None,
     ):
+        if reasoning is None:
+            reasoning = resolve_capability_profile(model_name).default_reasoning
         super().__init__(
             provider=ModelProvider.GEMINI,
             model_name=model_name,

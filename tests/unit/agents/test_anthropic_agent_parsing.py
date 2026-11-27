@@ -81,7 +81,7 @@ class AnthropicArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
             messages = RefusalMessages()
 
         anthropic_client.set_client(RefusalClient())
-        arch = AnthropicArchitect(model_name="claude-fable-5", reasoning=ReasoningMode.DYNAMIC)
+        arch = AnthropicArchitect(model_name="claude-fable-5")
 
         result = await arch.analyze({"formatted_prompt": "hello"})
 

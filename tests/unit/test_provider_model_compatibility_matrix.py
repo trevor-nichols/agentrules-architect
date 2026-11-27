@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from types import SimpleNamespace
 
 import pytest
+from google.genai.types import ThinkingLevel
 
 from agentrules.config.agents import MODEL_PRESETS
 from agentrules.core.agents.anthropic.request_builder import prepare_request as prepare_anthropic
@@ -57,7 +57,7 @@ LATEST_MODEL_CONTRACTS = (
             model_name,
             ReasoningMode.DYNAMIC,
             872_000,
-            (None if model_name in {"claude-opus-5-5", "claude-fable-5-1"} else "adaptive", effort),
+            (None if model_name in {"claude-opus-5-5", "claude-fable-5-1", "claude-fable-5-2"} else "adaptive", effort),
             effort,
         )
         for key, model_name, default_effort in (
@@ -65,6 +65,7 @@ LATEST_MODEL_CONTRACTS = (
             ("claude-sonnet-5.5", "claude-sonnet-5-5", "high"),
             ("claude-haiku-5.5", "claude-haiku-5-5", "medium"),
             ("claude-fable-5.1", "claude-fable-5-1", "high"),
+            ("claude-fable-5.2", "claude-fable-5-2", "high"),
         )
         for effort in ("low", "medium", "high", "xhigh", "max")
     ),
@@ -102,18 +103,21 @@ LATEST_MODEL_CONTRACTS = (
     ),
     *(
         ModelContract(
-            key if effort == "medium" else f"{key}-reasoning-{effort}",
+            model_name if effort == default else f"{model_name}-reasoning-{effort}",
             ModelProvider.GEMINI,
             model_name,
             ReasoningMode(effort),
             max_input_tokens,
             effort,
         )
-        for key, model_name, max_input_tokens in (
-            ("gemini-3.8-flash", "gemini-3.8-flash", 1_048_576),
-            ("gemini-4-argon", "gemini-4-argon", 983_040),
+        for model_name, max_input_tokens, default, efforts in (
+            ("gemini-3.8-flash", 1_048_576, "medium", ("low", "medium", "high")),
+            ("gemini-4-argon", 983_040, "medium", ("low", "medium", "high")),
+            ("gemini-4-carbon", 983_040, "medium", ("low", "medium", "high")),
+            ("gemini-4-hydrogen", 983_040, "high", ("low", "medium", "high", "xhigh")),
+            ("gemini-4-neon", 983_040, "high", ("low", "medium", "high", "xhigh")),
         )
-        for effort in ("low", "medium", "high")
+        for effort in efforts
     ),
 )
 
@@ -520,9 +524,8 @@ DIRECT_MODEL_CONTRACTS = LATEST_MODEL_CONTRACTS + (
 
 @pytest.mark.parametrize("contract", DIRECT_MODEL_CONTRACTS, ids=lambda row: row.preset_key)
 def test_direct_provider_model_contract_matrix(contract: ModelContract) -> None:
-    config = model_presets.get_model_config_for_preset_key(contract.preset_key)
+    config = MODEL_PRESETS[contract.preset_key]["config"]
 
-    assert config is not None
     assert config.provider == contract.provider
     assert config.model_name == contract.model_name
     assert config.reasoning == contract.reasoning
@@ -630,16 +633,11 @@ def _resolve_wire_reasoning(config: ModelConfig) -> object:
         return prepared.payload.get("reasoning_effort")
 
     if provider == ModelProvider.GEMINI:
-        thinking_levels = SimpleNamespace(
-            MINIMAL="minimal",
-            LOW="low",
-            MEDIUM="medium",
-            HIGH="high",
-        )
-        return resolve_thinking_level(
+        level = resolve_thinking_level(
             model_name=config.model_name,
             reasoning_mode=config.reasoning,
-            thinking_level_enum=thinking_levels,
+            thinking_level_enum=ThinkingLevel,
         )
+        return level.lower() if isinstance(level, str) else level
 
     raise AssertionError(f"No direct request contract for provider {provider!r}")

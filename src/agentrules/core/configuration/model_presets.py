@@ -137,41 +137,27 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         retirement_replacement_key="claude-sonnet-5.5",
         reason="Claude Sonnet 4.5 retires November 30, 2026; saved key stays on 4.5 until then.",
     ),
+    "claude-opus-4.5": PresetDeprecationInfo(
+        retirement_date=date(2027, 1, 22),
+        retirement_replacement_key="claude-opus-5.5-reasoning-low",
+        reason="Claude Opus 4.5 retires January 22, 2027. Its replacement uses low adaptive thinking.",
+    ),
+    "claude-opus-4.5-reasoning": PresetDeprecationInfo(
+        retirement_date=date(2027, 1, 22),
+        retirement_replacement_key="claude-opus-5.5-reasoning-high",
+        reason="Claude Opus 4.5 retires January 22, 2027. Its replacement uses high adaptive thinking.",
+    ),
     "o4-mini-low": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated o4-mini but has not retired it; "
-            "choose GPT-5.6 Terra Low for new configurations."
-        ),
+        replacement_key="gpt56-terra-low",
+        reason="OpenAI retired o4-mini on October 23, 2026.",
     ),
     "o4-mini-medium": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated o4-mini but has not retired it; "
-            "choose GPT-5.6 Terra Medium for new configurations."
-        ),
+        replacement_key="gpt56-terra-default",
+        reason="OpenAI retired o4-mini on October 23, 2026.",
     ),
     "o4-mini-high": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated o4-mini but has not retired it; "
-            "choose GPT-5.6 Terra High for new configurations."
-        ),
-    ),
-    "gpt5-mini-low": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5 Mini but has not retired it; "
-            "choose GPT-5.6 Terra Low for new configurations."
-        ),
-    ),
-    "gpt5-mini-medium": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5 Mini but has not retired it; "
-            "choose GPT-5.6 Terra Medium for new configurations."
-        ),
-    ),
-    "gpt5-mini": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5 Mini but has not retired it; "
-            "choose GPT-5.6 Terra High for new configurations."
-        ),
+        replacement_key="gpt56-terra-high",
+        reason="OpenAI retired o4-mini on October 23, 2026.",
     ),
     "gpt-5.1-codex": PresetDeprecationInfo(
         replacement_key="gpt56-sol-default",
@@ -217,6 +203,27 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         replacement_key="deepseek-flash-non-reasoning",
         reason="DeepSeek retired V4 Flash; canonical deepseek-flash serves V4.1 Flash.",
     ),
+    "gemini-pro": PresetDeprecationInfo(
+        retirement_date=date(2026, 12, 1),
+        retirement_replacement_key="gemini-3.8-flash",
+        reason="Google redirects Gemini 2.5 Pro to Gemini 3.8 Flash on December 1, 2026.",
+    ),
+    "gemini-flash": PresetDeprecationInfo(
+        retirement_date=date(2026, 12, 1),
+        retirement_replacement_key="gemini-3.5-flash-lite",
+        reason=(
+            "Google redirects Gemini 2.5 Flash to Gemini 3.5 Flash-Lite on December 1, 2026. "
+            "The replacement uses minimal thinking."
+        ),
+    ),
+    "gemini-flash-thinking": PresetDeprecationInfo(
+        retirement_date=date(2026, 12, 1),
+        retirement_replacement_key="gemini-3.5-flash-lite-reasoning-medium",
+        reason=(
+            "Google redirects Gemini 2.5 Flash to Gemini 3.5 Flash-Lite on December 1, 2026. "
+            "The replacement uses medium thinking."
+        ),
+    ),
     "gemini-3-pro-preview": PresetDeprecationInfo(
         replacement_key="gemini-3.1-pro-preview",
         reason="Google retired this preview model.",
@@ -245,9 +252,13 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         replacement_key="grok-4.3-non-reasoning",
         reason="xAI retired this Grok 4.1 alias; use the canonical Grok 4.3 preset.",
     ),
+    "grok-build-0.1": PresetDeprecationInfo(
+        replacement_key="grok-4.7",
+        reason="xAI retired Grok Build 0.1 on November 19, 2026.",
+    ),
     "grok-code-fast": PresetDeprecationInfo(
-        replacement_key="grok-build-0.1",
-        reason="xAI retired this coding alias; use the canonical Grok Build 0.1 preset.",
+        replacement_key="grok-4.7",
+        reason="xAI retired this coding alias and its Grok Build 0.1 replacement.",
     ),
 }
 
@@ -257,12 +268,15 @@ def _add_scheduled_openai_retirements() -> None:
         (
             date(2026, 12, 11),
             {
-                "o3-low": "gpt56-sol-low",
-                "o3-medium": "gpt56-sol-default",
-                "o3-high": "gpt56-sol-high",
-                "gpt5-default": "gpt56-sol-default",
-                "gpt5-minimal": "gpt56-sol-none",
-                "gpt5-high": "gpt56-sol-high",
+                "o3-low": "gpt61-sol-low",
+                "o3-medium": "gpt61-sol-default",
+                "o3-high": "gpt61-sol-high",
+                "gpt5-default": "gpt61-sol-default",
+                "gpt5-minimal": "gpt61-sol-low",
+                "gpt5-high": "gpt61-sol-high",
+                "gpt5-mini-low": "gpt61-terra-low",
+                "gpt5-mini-medium": "gpt61-terra-default",
+                "gpt5-mini": "gpt61-terra-high",
             },
         ),
         (
@@ -292,12 +306,14 @@ def _add_scheduled_openai_retirements() -> None:
         for key, replacement in replacements.items():
             if key not in agent_settings.MODEL_PRESETS or replacement not in agent_settings.MODEL_PRESETS:
                 raise ValueError(f"OpenAI retirement mapping is not registered: {key} -> {replacement}")
+            reason = (
+                f"OpenAI retires this API model on {retirement_date.isoformat()}. "
+                f"Saved selections use {replacement} from that date."
+            )
+            if key == "gpt5-minimal":
+                reason += " GPT-6.1 Sol uses low reasoning for this selection because minimal is unsupported."
             DEPRECATED_PRESETS[key] = PresetDeprecationInfo(
-                reason=(
-                    f"OpenAI retires this API model on {retirement_date.isoformat()}; "
-                    "saved selections stay on their original endpoint until then "
-                    f"and use {replacement} after retirement."
-                ),
+                reason=reason,
                 retirement_date=retirement_date,
                 retirement_replacement_key=replacement,
             )

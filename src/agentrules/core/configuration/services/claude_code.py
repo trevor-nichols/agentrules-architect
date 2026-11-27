@@ -54,6 +54,7 @@ class ClaudeCodeVersionProbe:
 _CLAUDE_CODE_VERSION_PATTERN = re.compile(r"(?<!\d)(\d+)\.(\d+)\.(\d+)(?!\d)")
 CLAUDE_CODE_VERSION_PROBE_TIMEOUT_SECONDS = 10.0
 _MINIMUM_CLAUDE_CODE_VERSIONS: tuple[tuple[str, ClaudeCodeVersion], ...] = (
+    ("claude-fable-5-2", ClaudeCodeVersion(2, 1, 321)),
     ("claude-haiku-5-5", ClaudeCodeVersion(2, 1, 293)),
     ("claude-sonnet-5-5", ClaudeCodeVersion(2, 1, 284)),
     ("claude-opus-5-5", ClaudeCodeVersion(2, 1, 280)),
@@ -170,14 +171,14 @@ def _resolve_sdk_default_executable() -> str | None:
     if bundled is not None:
         return bundled
 
-    resolved = shutil.which("claude")
     if _running_on_windows():
-        if resolved is not None and _is_windows_native_executable(resolved):
-            return str(Path(resolved).resolve())
-        native = shutil.which("claude.exe")
-        if native is not None and _is_windows_native_executable(native):
-            return str(Path(native).resolve())
-    elif resolved is not None:
+        # Match SDK discovery without shutil.which's implicit working-directory search.
+        for entry in os.environ.get("PATH", "").split(os.pathsep):
+            directory = Path(entry)
+            candidate = directory / "claude.exe"
+            if directory.is_absolute() and os.path.isfile(candidate):
+                return str(candidate.resolve())
+    elif resolved := shutil.which("claude"):
         return str(Path(resolved).resolve())
 
     for candidate in _claude_code_default_locations():
@@ -188,11 +189,6 @@ def _resolve_sdk_default_executable() -> str | None:
 
 def _running_on_windows() -> bool:
     return os.name == "nt"
-
-
-def _is_windows_native_executable(path: str) -> bool:
-    name = path.replace("\\", "/").rsplit("/", 1)[-1]
-    return name.rstrip(". ").lower().endswith((".exe", ".com"))
 
 
 def _resolve_sdk_bundled_executable() -> str | None:
@@ -357,8 +353,13 @@ def _probe_claude_code_executable_version(
     ).version
 
 
-def get_claude_code_runtime_version(config: CLIConfig) -> ClaudeCodeVersion | None:
-    executable_path = resolve_claude_code_executable(config)
+def get_claude_code_runtime_version(
+    config: CLIConfig,
+    *,
+    executable_path: str | None = None,
+) -> ClaudeCodeVersion | None:
+    if executable_path is None:
+        executable_path = resolve_claude_code_executable(config)
     if executable_path is None:
         return None
     return _probe_claude_code_executable_version(
@@ -390,12 +391,17 @@ def minimum_claude_code_version_for_model(model_name: str) -> ClaudeCodeVersion 
     return None
 
 
-def claude_code_model_support_error(config: CLIConfig, model_name: str) -> str | None:
+def claude_code_model_support_error(
+    config: CLIConfig,
+    model_name: str,
+    *,
+    executable_path: str | None = None,
+) -> str | None:
     minimum_version = minimum_claude_code_version_for_model(model_name)
     if minimum_version is None:
         return None
 
-    runtime_version = get_claude_code_runtime_version(config)
+    runtime_version = get_claude_code_runtime_version(config, executable_path=executable_path)
     if runtime_version is None:
         return (
             f"Model '{model_name}' requires Claude Code {minimum_version} or later, but the resolved "

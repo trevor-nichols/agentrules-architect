@@ -484,6 +484,41 @@
         "tests"
       ],
       "updated": "2026-10-31"
+    },
+    {
+      "breaking": false,
+      "created": "2026-11-27",
+      "depends_on": [
+        "EP-20261023-001"
+      ],
+      "domain": "cross-cutting",
+      "id": "EP-20261127-001",
+      "kind": "feature",
+      "links": {
+        "docs": "docs/provider-model-lifecycle.md",
+        "pr": "https://github.com/trevor-nichols/agentrules-architect/pull/43"
+      },
+      "migration": true,
+      "owner": "@codex",
+      "path": ".agent/exec_plans/complete/2026/11/27/EP-20261127-001_provider-model-refresh-2026-11/EP-20261127-001_provider-model-refresh-2026-11.md",
+      "risk": "high",
+      "status": "done",
+      "supersedes": [],
+      "tags": [
+        "providers",
+        "model-lifecycle",
+        "sdk",
+        "runtime"
+      ],
+      "title": "Refresh provider models and runtimes for November 2026",
+      "touches": [
+        "api",
+        "cli",
+        "agents",
+        "tests",
+        "docs"
+      ],
+      "updated": "2026-11-27"
     }
   ],
   "schema_version": 1

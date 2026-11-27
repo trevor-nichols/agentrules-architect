@@ -5,6 +5,7 @@ class ThinkingLevel:
     LOW: ClassVar[str]
     MEDIUM: ClassVar[str]
     HIGH: ClassVar[str]
+    XHIGH: ClassVar[str]
 
 class ThinkingConfig:
     thinking_budget: int | None
@@ -14,8 +15,9 @@ class ThinkingConfig:
     ) -> None: ...
 
 class HttpOptions:
+    api_version: str | None
     timeout: int | None
-    def __init__(self, *, timeout: int | None = ...) -> None: ...
+    def __init__(self, *, api_version: str | None = ..., timeout: int | None = ...) -> None: ...
 
 class FunctionCall:
     id: str | None

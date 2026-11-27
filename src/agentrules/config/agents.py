@@ -19,6 +19,7 @@ from agentrules.core.types.models import (
     CLAUDE_CODE_RUNTIME_DEFAULT_MODEL,
     CLAUDE_FABLE_5,
     CLAUDE_FABLE_51,
+    CLAUDE_FABLE_52,
     CLAUDE_HAIKU,
     CLAUDE_HAIKU_55,
     CLAUDE_HAIKU_WITH_REASONING,
@@ -66,6 +67,9 @@ from agentrules.core.types.models import (
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
     GEMINI_4_ARGON,
+    GEMINI_4_CARBON,
+    GEMINI_4_HYDROGEN,
+    GEMINI_4_NEON,
     GEMINI_FLASH,
     GEMINI_FLASH_DYNAMIC,
     GEMINI_PRO,
@@ -115,6 +119,9 @@ from agentrules.core.types.models import (
     GPT5_MINI_MEDIUM,
     GPT5_MINIMAL,
     GPT6_1_SOL_DEFAULT,
+    GPT6_1_TERRA_DEFAULT,
+    GPT6_2_ASTRA_DEFAULT,
+    GPT6_2_SOL_DEFAULT,
     GPT6_ASTRA_DEFAULT,
     GPT6_LUNA_DEFAULT,
     GPT6_SOL_DEFAULT,
@@ -290,15 +297,42 @@ def _preset(
     )
 
 
+def _gemini_4_presets(base_config: ModelConfig, *, paid_only: bool = False) -> dict[str, PresetDefinition]:
+    profile = resolve_capability_profile(base_config.model_name)
+    access_label = " [Paid Tier]" if paid_only else ""
+    access_note = " Requires a paid Gemini API tier." if paid_only else ""
+    presets: dict[str, PresetDefinition] = {}
+    for effort in profile.supported_thinking_levels:
+        reasoning = ReasoningMode(effort)
+        # Keep the unsuffixed preset tied to its published effort if the API default changes.
+        suffix = "" if reasoning == base_config.reasoning else f"-reasoning-{effort}"
+        thinking_label = "Extra High" if reasoning == ReasoningMode.XHIGH else effort.title()
+        description = (
+            f"{profile.display_name} with {thinking_label.lower()} thinking and a shared token window.{access_note}"
+        )
+        presets[f"{base_config.model_name}{suffix}"] = _preset(
+            config=base_config._replace(reasoning=reasoning),
+            label=f"{profile.display_name}{access_label} ({thinking_label} Thinking)",
+            description=description,
+            provider=ModelProvider.GEMINI,
+        )
+    return presets
+
+
 def _gpt6_presets(
     *,
     key_prefix: str,
     family_label: str,
     base_config: ModelConfig,
-    efforts: tuple[str, ...],
 ) -> dict[str, PresetDefinition]:
+    capabilities = get_openai_model_capabilities(base_config.model_name)
+    if capabilities is None:
+        raise ValueError(f"Missing OpenAI capabilities for {base_config.model_name}")
+
     presets: dict[str, PresetDefinition] = {}
-    for effort in efforts:
+    for effort in ("none", "low", "medium", "high", "xhigh", "max"):
+        if effort not in capabilities.accepted_efforts:
+            continue
         reasoning = ReasoningMode.DISABLED if effort == "none" else ReasoningMode(effort)
         suffix = "default" if effort == "medium" else effort
         verbosity = "low" if effort in {"none", "low"} else "high" if effort in {"xhigh", "max"} else "medium"
@@ -401,28 +435,39 @@ def _claude_code_runtime_managed_preset(
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     **_gpt6_presets(
+        key_prefix="gpt62-astra",
+        family_label="GPT-6.2 Astra",
+        base_config=GPT6_2_ASTRA_DEFAULT,
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt62-sol",
+        family_label="GPT-6.2 Sol",
+        base_config=GPT6_2_SOL_DEFAULT,
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt61-terra",
+        family_label="GPT-6.1 Terra",
+        base_config=GPT6_1_TERRA_DEFAULT,
+    ),
+    **_gpt6_presets(
         key_prefix="gpt6-astra",
         family_label="GPT-6 Astra",
         base_config=GPT6_ASTRA_DEFAULT,
-        efforts=("low", "medium", "high", "xhigh", "max"),
     ),
     **_gpt6_presets(
         key_prefix="gpt61-sol",
         family_label="GPT-6.1 Sol",
         base_config=GPT6_1_SOL_DEFAULT,
-        efforts=("low", "medium", "high", "xhigh", "max"),
     ),
     **_gpt6_presets(
         key_prefix="gpt6-sol",
         family_label="GPT-6 Sol",
         base_config=GPT6_SOL_DEFAULT,
-        efforts=("none", "low", "medium", "high", "xhigh", "max"),
     ),
     **_gpt6_presets(
         key_prefix="gpt6-luna",
         family_label="GPT-6 Luna",
         base_config=GPT6_LUNA_DEFAULT,
-        efforts=("none", "low", "medium", "high", "xhigh", "max"),
     ),
     "gemini-3.8-flash": _preset(
         config=GEMINI_3_8_FLASH,
@@ -442,24 +487,10 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Gemini 3.8 Flash with high thinking.",
         provider=ModelProvider.GEMINI,
     ),
-    "gemini-4-argon": _preset(
-        config=GEMINI_4_ARGON,
-        label="Gemini 4 Argon (Medium Thinking)",
-        description="Gemini 4 Argon with medium thinking and a shared input, thinking, and output window.",
-        provider=ModelProvider.GEMINI,
-    ),
-    "gemini-4-argon-reasoning-low": _preset(
-        config=GEMINI_4_ARGON._replace(reasoning=ReasoningMode.LOW),
-        label="Gemini 4 Argon (Low Thinking)",
-        description="Gemini 4 Argon with low thinking and a shared token window.",
-        provider=ModelProvider.GEMINI,
-    ),
-    "gemini-4-argon-reasoning-high": _preset(
-        config=GEMINI_4_ARGON._replace(reasoning=ReasoningMode.HIGH),
-        label="Gemini 4 Argon (High Thinking)",
-        description="Gemini 4 Argon with high thinking and a shared token window.",
-        provider=ModelProvider.GEMINI,
-    ),
+    **_gemini_4_presets(GEMINI_4_ARGON, paid_only=True),
+    **_gemini_4_presets(GEMINI_4_CARBON, paid_only=True),
+    **_gemini_4_presets(GEMINI_4_HYDROGEN),
+    **_gemini_4_presets(GEMINI_4_NEON, paid_only=True),
     "gemini-3.7-flash": _preset(
         config=GEMINI_3_7_FLASH,
         label="Gemini 3.7 Flash (API Alias → 3.8 Flash, Medium Thinking)",
@@ -573,29 +604,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gemini-flash": _preset(
         config=GEMINI_FLASH,
-        label="Gemini 2.5 Flash (Existing-User Access)",
-        description=(
-            "Not deprecated; no shutdown date announced. Google limits access to prior users "
-            "and recommends Gemini 3.8 Flash for new projects."
-        ),
+        label="Gemini 2.5 Flash [redirects 2026-12-01] (Thinking Disabled)",
+        description="Saved selections use Gemini 3.5 Flash-Lite with minimal thinking on December 1, 2026.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-flash-thinking": _preset(
         config=GEMINI_FLASH_DYNAMIC,
-        label="Gemini 2.5 Flash Thinking (Existing-User Access)",
-        description=(
-            "Not deprecated; no shutdown date announced. Google limits access to prior users "
-            "and recommends Gemini 3.8 Flash for new projects."
-        ),
+        label="Gemini 2.5 Flash [redirects 2026-12-01] (Dynamic Thinking)",
+        description="Saved selections use Gemini 3.5 Flash-Lite with medium thinking on December 1, 2026.",
         provider=ModelProvider.GEMINI,
     ),
     "gemini-pro": _preset(
         config=GEMINI_PRO,
-        label="Gemini 2.5 Pro (Existing-User Access)",
-        description=(
-            "Not deprecated; no shutdown date announced. Google limits access to prior users. "
-            "Choose a current model for new projects."
-        ),
+        label="Gemini 2.5 Pro [redirects 2026-12-01]",
+        description="Saved selections use Gemini 3.8 Flash with medium thinking on December 1, 2026.",
         provider=ModelProvider.GEMINI,
     ),
     "claude-sonnet": _preset(
@@ -768,14 +790,14 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "claude-opus-4.5": _preset(
         config=CLAUDE_OPUS_45,
-        label="Claude Opus 4.5",
-        description="Newest Opus 4.5 release; improved reasoning depth and safety.",
+        label="Claude Opus 4.5 [retires 2027-01-22] (Thinking Disabled)",
+        description="Saved selections use Claude Opus 5.5 with low adaptive thinking on January 22, 2027.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.5-reasoning": _preset(
         config=CLAUDE_OPUS_45_WITH_REASONING,
-        label="Claude Opus 4.5 (Thinking)",
-        description="Opus 4.5 with extended thinking enabled for hardest tasks.",
+        label="Claude Opus 4.5 [retires 2027-01-22] (Extended Thinking)",
+        description="Saved selections use Claude Opus 5.5 with high adaptive thinking on January 22, 2027.",
         provider=ModelProvider.ANTHROPIC,
     ),
     "claude-opus-4.6": _preset(
@@ -907,6 +929,13 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         default_effort="high",
         retention_notice=" [30-day retention; ZDR unavailable without Anthropic approval]",
     ),
+    **_claude_latest_presets(
+        key="claude-fable-5.2",
+        label="Claude Fable 5.2",
+        config=CLAUDE_FABLE_52,
+        default_effort="high",
+        retention_notice=" [30-day retention, ZDR for eligible accounts]",
+    ),
     "o3-low": _preset(
         config=O3_LOW,
         label="OpenAI o3 (low effort)",
@@ -927,29 +956,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "o4-mini-low": _preset(
         config=O4_MINI_LOW,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Low)",
-        description=(
-            "Deprecated o4-mini endpoint at low reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5.6 Terra Low for new configurations."
-        ),
+        label="OpenAI o4-mini (Retired → GPT-5.6 Terra Low)",
+        description="Saved selections use GPT-5.6 Terra at low reasoning effort.",
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-medium": _preset(
         config=O4_MINI_MEDIUM,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra Medium)",
-        description=(
-            "Deprecated o4-mini endpoint at medium reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5.6 Terra Medium for new configurations."
-        ),
+        label="OpenAI o4-mini (Retired → GPT-5.6 Terra Medium)",
+        description="Saved selections use GPT-5.6 Terra at medium reasoning effort.",
         provider=ModelProvider.OPENAI,
     ),
     "o4-mini-high": _preset(
         config=O4_MINI_HIGH,
-        label="OpenAI o4-mini (Deprecated; successor: GPT-5.6 Terra High)",
-        description=(
-            "Deprecated o4-mini endpoint at high reasoning. Existing selections remain on o4-mini; "
-            "choose GPT-5.6 Terra High for new configurations."
-        ),
+        label="OpenAI o4-mini (Retired → GPT-5.6 Terra High)",
+        description="Saved selections use GPT-5.6 Terra at high reasoning effort.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt4.1-default": _preset(
@@ -978,29 +998,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt5-mini": _preset(
         config=GPT5_MINI,
-        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra High)",
-        description=(
-            "Deprecated GPT-5 Mini endpoint with 400K context and high reasoning. Existing selections "
-            "remain on GPT-5 Mini; choose GPT-5.6 Terra High for new configurations."
-        ),
+        label="GPT-5 Mini [retires 2026-12-11] (High Reasoning)",
+        description="Saved selections use GPT-6.1 Terra at high reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-mini-low": _preset(
         config=GPT5_MINI_LOW,
-        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Low)",
-        description=(
-            "Deprecated GPT-5 Mini endpoint with 400K context and low reasoning. Existing selections "
-            "remain on GPT-5 Mini; choose GPT-5.6 Terra Low for new configurations."
-        ),
+        label="GPT-5 Mini [retires 2026-12-11] (Low Reasoning)",
+        description="Saved selections use GPT-6.1 Terra at low reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-mini-medium": _preset(
         config=GPT5_MINI_MEDIUM,
-        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Medium)",
-        description=(
-            "Deprecated GPT-5 Mini endpoint with 400K context and medium reasoning. Existing selections "
-            "remain on GPT-5 Mini; choose GPT-5.6 Terra Medium for new configurations."
-        ),
+        label="GPT-5 Mini [retires 2026-12-11] (Medium Reasoning)",
+        description="Saved selections use GPT-6.1 Terra at medium reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt55-none": _preset(
@@ -1101,8 +1112,8 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt5-minimal": _preset(
         config=GPT5_MINIMAL,
-        label="GPT-5 (minimal reasoning)",
-        description="GPT-5 minimal reasoning and low verbosity for speed.",
+        label="GPT-5 [retires 2026-12-11] (Minimal Reasoning)",
+        description="Saved selections use GPT-6.1 Sol at low reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-high": _preset(
@@ -1473,17 +1484,14 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "grok-build-0.1": _preset(
         config=GROK_BUILD_0_1,
-        label="Grok Build 0.1",
-        description="Canonical xAI coding model for agentic coding workflows and web development.",
+        label="Grok Build 0.1 (Retired → Grok 4.7)",
+        description="Saved selections use Grok 4.7 at high reasoning effort.",
         provider=ModelProvider.XAI,
     ),
     "grok-code-fast": _preset(
         config=GROK_CODE_FAST,
-        label="Grok Code Fast (Legacy)",
-        description=(
-            "Retired Grok code slug preserved for backwards compatibility; "
-            "xAI routes requests to Grok Build 0.1."
-        ),
+        label="Grok Code Fast (Retired → Grok 4.7)",
+        description="Saved selections use Grok 4.7 at high reasoning effort.",
         provider=ModelProvider.XAI,
     ),
 }
@@ -1556,6 +1564,9 @@ def _build_claude_code_runtime_presets() -> dict[str, PresetDefinition]:
             model_name="haiku",
             label="Claude Code Haiku Alias (Moving)",
             description="Uses Claude Code's moving haiku alias rather than a reproducible model ID.",
+        ),
+        "claude-code-fable-5.2": _derive_claude_code_runtime_preset(
+            BASE_MODEL_PRESETS["claude-fable-5.2-reasoning-medium"]
         ),
         "claude-code-fable-5.1": _derive_claude_code_runtime_preset(
             BASE_MODEL_PRESETS["claude-fable-5.1"]

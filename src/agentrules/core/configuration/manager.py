@@ -218,9 +218,14 @@ class ConfigManager:
     def minimum_claude_code_version_for_model(self, model_name: str) -> claude_code.ClaudeCodeVersion | None:
         return claude_code.minimum_claude_code_version_for_model(model_name)
 
-    def claude_code_model_support_error(self, model_name: str) -> str | None:
+    def claude_code_model_support_error(
+        self,
+        model_name: str,
+        *,
+        executable_path: str | None = None,
+    ) -> str | None:
         config = self._repository.load()
-        return claude_code.claude_code_model_support_error(config, model_name)
+        return claude_code.claude_code_model_support_error(config, model_name, executable_path=executable_path)
 
     def is_claude_code_model_supported(self, model_name: str) -> bool:
         config = self._repository.load()

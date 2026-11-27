@@ -1,7 +1,9 @@
 import os
 import tempfile
 import unittest
+from datetime import UTC, date, datetime, time, timedelta
 from importlib import reload
+from unittest.mock import patch
 
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types import models as model_types
@@ -50,9 +52,9 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase1"], default_config)
 
         # Apply override
-        self.config_manager.set_phase_model("phase1", "claude-sonnet-reasoning")
+        self.config_manager.set_phase_model("phase1", "claude-sonnet-5.5")
         self.model_config.apply_user_overrides()
-        expected = self.agents_module.MODEL_PRESETS["claude-sonnet-reasoning"]["config"]
+        expected = self.agents_module.MODEL_PRESETS["claude-sonnet-5.5"]["config"]
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase1"], expected)
 
         # Remove override and ensure default restored
@@ -94,43 +96,121 @@ class ModelOverrideTestCase(unittest.TestCase):
             applied = self.model_config.apply_user_overrides()
 
         self.assertEqual(applied["phase3"], "grok-4.3-reasoning-medium")
-        self.assertEqual(applied["phase4"], "grok-build-0.1")
+        self.assertEqual(applied["phase4"], "grok-4.7")
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "grok-4.3")
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.MEDIUM)
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "grok-build-0.1")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.ENABLED)
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "grok-4.7")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.HIGH)
+        self.assertEqual(self.config_manager.get_model_overrides()["phase4"], "grok-code-fast")
 
     def test_apply_user_overrides_can_warn_for_legacy_xai_runtime_remap(self) -> None:
         self.config_manager.set_phase_model("phase3", "grok-4-fast-non-reasoning")
-        self.config_manager.set_phase_model("phase4", "grok-code-fast")
+        self.config_manager.set_phase_model("phase4", "grok-build-0.1")
 
         with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
             applied = self.model_config.apply_user_overrides(warn_deprecated=True)
 
         self.assertEqual(applied["phase3"], "grok-4.3-non-reasoning")
-        self.assertEqual(applied["phase4"], "grok-build-0.1")
+        self.assertEqual(applied["phase4"], "grok-4.7")
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "grok-4.3")
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].reasoning, ReasoningMode.DISABLED)
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "grok-build-0.1")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.ENABLED)
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "grok-4.7")
+        self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].reasoning, ReasoningMode.HIGH)
         self.assertTrue(any("grok-4-fast-non-reasoning" in message for message in captured.output))
-        self.assertTrue(any("grok-code-fast" in message for message in captured.output))
+        self.assertTrue(any("grok-build-0.1" in message and "grok-4.7" in message for message in captured.output))
+        self.assertEqual(self.config_manager.get_model_overrides()["phase4"], "grok-build-0.1")
 
-    def test_apply_user_overrides_warns_without_remapping_deprecated_live_openai_models(self) -> None:
-        self.config_manager.set_phase_model("phase3", "o4-mini-low")
-        self.config_manager.set_phase_model("phase4", "gpt5-mini-medium")
+    def test_saved_o4_mini_presets_redirect_to_the_matching_terra_effort(self) -> None:
+        cases = {
+            "phase2": ("o4-mini-low", "gpt56-terra-low", ReasoningMode.LOW),
+            "phase3": ("o4-mini-medium", "gpt56-terra-default", ReasoningMode.MEDIUM),
+            "phase4": ("o4-mini-high", "gpt56-terra-high", ReasoningMode.HIGH),
+        }
+        for phase, (saved_key, _, _) in cases.items():
+            self.config_manager.set_phase_model(phase, saved_key)
 
         with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
             applied = self.model_config.apply_user_overrides(warn_deprecated=True)
 
-        self.assertEqual(applied["phase3"], "o4-mini-low")
+        stored = self.config_manager.get_model_overrides()
+        for phase, (saved_key, effective_key, effort) in cases.items():
+            with self.subTest(saved_key=saved_key):
+                self.assertEqual(stored[phase], saved_key)
+                self.assertEqual(applied[phase], effective_key)
+                config = self.agents_module.MODEL_CONFIG[phase]
+                self.assertEqual((config.model_name, config.reasoning), ("gpt-5.6-terra", effort))
+                self.assertTrue(
+                    any(saved_key in message and effective_key in message for message in captured.output)
+                )
+
+    def test_apply_user_overrides_warns_without_remapping_deprecated_live_openai_model(self) -> None:
+        self.config_manager.set_phase_model("phase4", "gpt5-mini-medium")
+        with patch.object(self.model_config, "datetime") as clock:
+            clock.now.return_value = datetime(2026, 11, 27, tzinfo=UTC)
+            with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+                applied = self.model_config.apply_user_overrides(warn_deprecated=True)
+
         self.assertEqual(applied["phase4"], "gpt5-mini-medium")
-        self.assertEqual(self.agents_module.MODEL_CONFIG["phase3"].model_name, "o4-mini")
         self.assertEqual(self.agents_module.MODEL_CONFIG["phase4"].model_name, "gpt-5-mini")
-        self.assertTrue(any("o4-mini-low" in message and "remains bound" in message for message in captured.output))
         self.assertTrue(
             any("gpt5-mini-medium" in message and "remains bound" in message for message in captured.output)
         )
+
+    def test_saved_gemini_and_anthropic_presets_switch_at_cutover_without_rewriting_config(self) -> None:
+        # Each configuration tuple is the saved or effective key, wire model, reasoning mode, and Anthropic effort.
+        cutovers = (
+            (
+                date(2026, 11, 30),
+                ("claude-sonnet", "claude-sonnet-4-5", ReasoningMode.DISABLED, None),
+                ("claude-sonnet-5.5-between-tools", "claude-sonnet-5-5", ReasoningMode.DISABLED, "high"),
+            ),
+            (
+                date(2026, 11, 30),
+                ("claude-sonnet-reasoning", "claude-sonnet-4-5", ReasoningMode.ENABLED, None),
+                ("claude-sonnet-5.5", "claude-sonnet-5-5", ReasoningMode.DYNAMIC, "high"),
+            ),
+            (
+                date(2026, 12, 1),
+                ("gemini-pro", "gemini-2.5-pro", ReasoningMode.DYNAMIC, None),
+                ("gemini-3.8-flash", "gemini-3.8-flash", ReasoningMode.MEDIUM, None),
+            ),
+            (
+                date(2026, 12, 1),
+                ("gemini-flash", "gemini-2.5-flash", ReasoningMode.DISABLED, None),
+                ("gemini-3.5-flash-lite", "gemini-3.5-flash-lite", ReasoningMode.MINIMAL, None),
+            ),
+            (
+                date(2026, 12, 1),
+                ("gemini-flash-thinking", "gemini-2.5-flash", ReasoningMode.DYNAMIC, None),
+                ("gemini-3.5-flash-lite-reasoning-medium", "gemini-3.5-flash-lite", ReasoningMode.MEDIUM, None),
+            ),
+            (
+                date(2027, 1, 22),
+                ("claude-opus-4.5", "claude-opus-4-5-20251101", ReasoningMode.DISABLED, None),
+                ("claude-opus-5.5-reasoning-low", "claude-opus-5-5", ReasoningMode.DYNAMIC, "low"),
+            ),
+            (
+                date(2027, 1, 22),
+                ("claude-opus-4.5-reasoning", "claude-opus-4-5-20251101", ReasoningMode.ENABLED, None),
+                ("claude-opus-5.5-reasoning-high", "claude-opus-5-5", ReasoningMode.DYNAMIC, "high"),
+            ),
+        )
+        for cutover, original, replacement in cutovers:
+            saved_key = original[0]
+            self.config_manager.set_phase_model("phase3", saved_key)
+            for offset, expected in ((-1, original), (0, replacement), (1, replacement)):
+                as_of = cutover + timedelta(days=offset)
+                with self.subTest(saved_key=saved_key, as_of=as_of):
+                    with patch.object(self.model_config, "datetime") as clock:
+                        clock.now.return_value = datetime.combine(as_of, time.min, tzinfo=UTC)
+                        applied = self.model_config.apply_user_overrides()
+
+                    config = self.agents_module.MODEL_CONFIG["phase3"]
+                    self.assertEqual(
+                        (applied["phase3"], config.model_name, config.reasoning, config.anthropic_effort),
+                        expected,
+                    )
+                    self.assertEqual(self.config_manager.get_model_overrides()["phase3"], saved_key)
 
     def test_apply_user_overrides_redirects_retired_openai_codex_models(self) -> None:
         self.config_manager.set_phase_model("phase3", "gpt-5.1-codex")
@@ -200,7 +280,7 @@ class ModelOverrideTestCase(unittest.TestCase):
         )
 
         self.assertEqual(active["phase3"], "grok-4.3-reasoning-medium")
-        self.assertEqual(active["phase4"], "grok-build-0.1")
+        self.assertEqual(active["phase4"], "grok-4.7")
 
     def test_get_active_presets_respects_explicit_empty_overrides(self) -> None:
         self.config_manager.set_phase_model("phase3", "gemini-3-pro-preview")
@@ -253,7 +333,7 @@ class ModelOverrideTestCase(unittest.TestCase):
         )
         self.assertEqual(
             self.model_config.get_active_preset_key("phase4", {"phase4": "grok-code-fast"}),
-            "grok-build-0.1",
+            "grok-4.7",
         )
 
     def test_get_model_config_for_preset_key_remaps_legacy_gemini_preview_presets_for_runtime(self) -> None:
@@ -273,8 +353,8 @@ class ModelOverrideTestCase(unittest.TestCase):
         assert phase4_config is not None
         self.assertEqual(phase3_config.model_name, "grok-4.3")
         self.assertEqual(phase3_config.reasoning, ReasoningMode.DISABLED)
-        self.assertEqual(phase4_config.model_name, "grok-build-0.1")
-        self.assertEqual(phase4_config.reasoning, ReasoningMode.ENABLED)
+        self.assertEqual(phase4_config.model_name, "grok-4.7")
+        self.assertEqual(phase4_config.reasoning, ReasoningMode.HIGH)
 
     def test_apply_user_overrides_respects_explicit_empty_overrides(self) -> None:
         default_key = self.agents_module.MODEL_PRESET_DEFAULTS["phase3"]
@@ -645,14 +725,8 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertNotIn("gpt55-pro", self.agents_module.MODEL_PRESETS)
         self.assertNotIn("gpt56-pro", self.agents_module.MODEL_PRESETS)
 
-    def test_openai_deprecated_live_presets_remain_bound_to_their_models(self) -> None:
+    def test_deprecated_codex_pins_remain_bound_to_their_runtime_models(self) -> None:
         deprecated_live_keys = (
-            "o4-mini-low",
-            "o4-mini-medium",
-            "o4-mini-high",
-            "gpt5-mini-low",
-            "gpt5-mini-medium",
-            "gpt5-mini",
             "codex-gpt-5.1-codex",
             "codex-gpt-5.2-codex",
         )
@@ -670,34 +744,27 @@ class ModelOverrideTestCase(unittest.TestCase):
                 )
                 self.assertIn("Deprecated", self.agents_module.MODEL_PRESETS[preset_key]["label"])
 
-    def test_openai_lifecycle_guidance_uses_current_replacements(self) -> None:
-        terra_replacements = {
-            "o4-mini-low": "GPT-5.6 Terra Low",
-            "o4-mini-medium": "GPT-5.6 Terra Medium",
-            "o4-mini-high": "GPT-5.6 Terra High",
-            "gpt5-mini-low": "GPT-5.6 Terra Low",
-            "gpt5-mini-medium": "GPT-5.6 Terra Medium",
-            "gpt5-mini": "GPT-5.6 Terra High",
-        }
+    def test_december_openai_cutover_reports_effort_change_and_preserves_saved_keys(self) -> None:
+        self.config_manager.set_phase_model("phase3", "gpt5-minimal")
+        self.config_manager.set_phase_model("phase4", "gpt5-mini-medium")
 
-        for preset_key, replacement_label in terra_replacements.items():
-            with self.subTest(preset_key=preset_key):
-                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
-                self.assertIsNotNone(deprecation)
-                assert deprecation is not None
-                self.assertIsNone(deprecation.replacement_key)
-                self.assertIn(replacement_label, deprecation.reason or "")
+        with patch.object(self.model_config, "datetime") as clock:
+            clock.now.return_value = datetime(2026, 12, 11, tzinfo=UTC)
+            with self.assertLogs("agentrules.core.configuration.model_presets", level="WARNING") as captured:
+                applied = self.model_config.apply_user_overrides(warn_deprecated=True)
 
-        for preset_key in ("gpt-5.1-codex", "gpt-5.2-codex"):
-            with self.subTest(preset_key=preset_key):
-                deprecation = self.model_config.get_preset_deprecation_info(preset_key)
-                self.assertIsNotNone(deprecation)
-                assert deprecation is not None
-                self.assertEqual(deprecation.replacement_key, "gpt56-sol-default")
-                self.assertEqual(
-                    self.model_config.get_model_config_for_preset_key(preset_key),
-                    self.agents_module.MODEL_PRESETS["gpt56-sol-default"]["config"],
-                )
+        self.assertEqual(applied["phase3"], "gpt61-sol-low")
+        self.assertEqual(applied["phase4"], "gpt61-terra-default")
+        sol = self.agents_module.MODEL_CONFIG["phase3"]
+        terra = self.agents_module.MODEL_CONFIG["phase4"]
+        self.assertEqual((sol.model_name, sol.reasoning), ("gpt-6.1-sol", ReasoningMode.LOW))
+        self.assertEqual((terra.model_name, terra.reasoning), ("gpt-6.1-terra", ReasoningMode.MEDIUM))
+        stored = self.config_manager.get_model_overrides()
+        self.assertEqual(stored["phase3"], "gpt5-minimal")
+        self.assertEqual(stored["phase4"], "gpt5-mini-medium")
+        self.assertTrue(
+            any("gpt5-minimal" in message and "uses low reasoning" in message for message in captured.output)
+        )
 
     def test_codex_registry_includes_derived_runtime_presets(self) -> None:
         self.assertIn("codex-gpt-5.1-codex", self.agents_module.MODEL_PRESETS)
@@ -899,7 +966,7 @@ class ModelOverrideTestCase(unittest.TestCase):
         self.assertIn("grok-4-1-fast-reasoning", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4-1-fast-non-reasoning", self.agents_module.MODEL_PRESETS)
 
-    def test_xai_registry_includes_canonical_grok43_and_build_presets(self) -> None:
+    def test_xai_registry_preserves_grok43_and_legacy_build_keys(self) -> None:
         self.assertIn("grok-4.3", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4.3-reasoning-medium", self.agents_module.MODEL_PRESETS)
         self.assertIn("grok-4.3-non-reasoning", self.agents_module.MODEL_PRESETS)

@@ -428,7 +428,9 @@ def test_anthropic_stream_releases_content_after_terminal_stop_reason(model_name
         set_client(None)
 
 
-def test_latest_anthropic_stream_waits_for_final_message_before_releasing_text() -> None:
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_name", ["claude-sonnet-5-5", "claude-fable-5-2"])
+async def test_latest_anthropic_stream_waits_for_final_message_before_releasing_text(model_name: str) -> None:
     text_event = SimpleNamespace(
         type="content_block_delta", index=0,
         delta=SimpleNamespace(type="text_delta", text="partial text"),
@@ -442,15 +444,10 @@ def test_latest_anthropic_stream_waits_for_final_message_before_releasing_text()
     message_stop = SimpleNamespace(type="message_stop", message=final_message)
     set_client(_EventClient(text_event, message_delta, message_stop))
     try:
-        architect = AnthropicArchitect(model_name="claude-sonnet-5-5", reasoning=ReasoningMode.DYNAMIC)
-        prepared = PreparedRequest(
-            payload={
-                "model": "claude-sonnet-5-5", "max_tokens": 1,
-                "messages": [{"role": "user", "content": "hi"}],
-            }
-        )
+        architect = AnthropicArchitect(model_name=model_name, reasoning=ReasoningMode.DYNAMIC)
+        stream = architect.stream_analyze({"formatted_prompt": "Inspect the repository"})
 
-        with pytest.raises(AnthropicRefusalError):
-            next(architect._stream_messages(prepared))
+        with pytest.raises(AnthropicRefusalError, match="category: policy"):
+            await anext(stream)
     finally:
         set_client(None)

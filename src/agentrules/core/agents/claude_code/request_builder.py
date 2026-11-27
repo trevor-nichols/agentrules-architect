@@ -72,7 +72,6 @@ def prepare_request(
         configured_cli_path=runtime_config.cli_path,
         model_name=model_name,
     )
-    _validate_runtime_model_support(config_manager, model_name)
 
     options: dict[str, Any] = {
         "allowed_tools": list(_resolve_allowed_tools(tools_config)),
@@ -180,24 +179,6 @@ def _build_thinking_config(model_name: str, reasoning: ReasoningMode) -> dict[st
     return None
 
 
-def _validate_runtime_model_support(config_manager: ConfigManager, model_name: str) -> None:
-    minimum_version = config_manager.minimum_claude_code_version_for_model(model_name)
-    if minimum_version is None:
-        return
-
-    runtime_version = config_manager.get_claude_code_runtime_version()
-    if runtime_version is None:
-        raise ValueError(
-            f"Model '{model_name}' requires Claude Code {minimum_version} or later, but the resolved "
-            "runtime version could not be verified."
-        )
-    if runtime_version < minimum_version:
-        raise ValueError(
-            f"Model '{model_name}' requires Claude Code {minimum_version} or later, "
-            f"but the resolved runtime reports {runtime_version}."
-        )
-
-
 def _resolve_sanitized_env_vars(
     *,
     auth_strategy: str,
@@ -214,10 +195,8 @@ def _resolve_cli_path(
     configured_cli_path: str | None,
     model_name: str,
 ) -> str | None:
-    if (
-        configured_cli_path is None
-        and config_manager.minimum_claude_code_version_for_model(model_name) is None
-    ):
+    version_gated = config_manager.minimum_claude_code_version_for_model(model_name) is not None
+    if configured_cli_path is None and not version_gated:
         return None
     resolved = config_manager.resolve_claude_code_executable()
     if resolved is None:
@@ -226,6 +205,10 @@ def _resolve_cli_path(
                 f"Configured Claude Code executable could not be resolved: {configured_cli_path!r}."
             )
         raise ValueError("Claude Code executable could not be resolved for a version-gated model.")
+    if version_gated:
+        error = config_manager.claude_code_model_support_error(model_name, executable_path=resolved)
+        if error is not None:
+            raise ValueError(error)
     return resolved
 
 

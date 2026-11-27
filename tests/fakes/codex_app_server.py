@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 MODELS = [
@@ -71,6 +73,30 @@ MODELS = [
         "inputModalities": ["text"],
         "supportsPersonality": False,
         "isDefault": False,
+    },
+]
+
+GPT62_MODELS = [
+    {
+        "id": "gpt-6.2-astra",
+        "model": "gpt-6.2-astra",
+        "displayName": "GPT-6.2 Astra",
+        "isDefault": True,
+        "defaultReasoningEffort": "high",
+        "supportedReasoningEfforts": [
+            {"reasoningEffort": "high", "description": "Deep analysis"},
+        ],
+    },
+    {
+        "id": "gpt-6.2-sol",
+        "model": "gpt-6.2-sol",
+        "displayName": "GPT-6.2 Sol",
+        "isDefault": False,
+        "defaultReasoningEffort": "medium",
+        "supportedReasoningEfforts": [
+            {"reasoningEffort": "medium", "description": "Balanced"},
+            {"reasoningEffort": "extreme", "description": "Future runtime effort"},
+        ],
     },
 ]
 
@@ -389,12 +415,22 @@ def handle_notification(message: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gpt62-catalog", action="store_true")
+    parser.add_argument("--request-log", type=Path)
+    args = parser.parse_args()
+    if args.gpt62_catalog:
+        MODELS[:] = GPT62_MODELS
+
     for raw_line in sys.stdin:
         line = raw_line.strip()
         if not line:
             continue
         message = json.loads(line)
         if "id" in message:
+            if args.request_log is not None and message.get("method") in {"thread/start", "turn/start"}:
+                with args.request_log.open("a", encoding="utf-8") as log:
+                    log.write(line + "\n")
             handle_request(message)
         else:
             handle_notification(message)

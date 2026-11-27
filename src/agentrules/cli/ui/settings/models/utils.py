@@ -121,27 +121,21 @@ def render_preset_deprecation_warning(
     if deprecation is None:
         return
 
-    replacement_label = None
-    replacement_provider = None
-    if deprecation.replacement_key:
-        replacement = model_presets.get_preset_info(deprecation.replacement_key)
-        if replacement is not None:
-            replacement_label = replacement.label
-            replacement_provider = replacement.provider_display
+    replacement_applied = effective_key is not None and effective_key != preset_key
+    replacement_key = (
+        effective_key if replacement_applied else deprecation.replacement_key or deprecation.retirement_replacement_key
+    )
+    replacement = model_presets.get_preset_info(replacement_key) if replacement_key else None
 
     message = "[yellow]Selected preset is deprecated.[/]"
     if deprecation.reason:
         message = f"{message} {deprecation.reason}"
-    replacement_applied = effective_key is not None and effective_key != preset_key
-    if replacement_label and replacement_provider and replacement_applied:
-        message = f"{message} Saved replacement {replacement_label} [{replacement_provider}]."
-    elif replacement_label and replacement_provider:
-        message = f"{message} Prefer {replacement_label} [{replacement_provider}] for new configurations."
-    elif replacement_label:
+    if replacement is not None:
+        label = f"{replacement.label} [{replacement.provider_display}]"
         if replacement_applied:
-            message = f"{message} Saved replacement {replacement_label}."
+            message = f"{message} Saved replacement {label}."
         else:
-            message = f"{message} Prefer {replacement_label} for new configurations."
+            message = f"{message} Prefer {label} for new configurations."
 
     printer(message)
 

@@ -2,7 +2,7 @@
 Token-aware packing helpers for Phase 3 file batches.
 
 Goals:
-- Respect provider/model input limits using existing estimators.
+- Respect provider/model input limits using local estimates.
 - Greedily pack file blocks until the next block would exceed the effective limit.
 - Summarize single-file oversize cases so nothing is skipped.
 """
@@ -19,7 +19,7 @@ from agentrules.config import agents as agent_config
 from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types.models import ModelConfig
-from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
+from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_model_text_tokens
 
 SummaryFn = Callable[[str], str]
 logger = logging.getLogger("project_extractor")
@@ -41,49 +41,6 @@ def _default_summary(text: str, max_chars: int = 2000) -> str:
     return f"{text[: max_chars]}...\n[truncated summary]"
 
 
-def _estimate_text_tokens(
-    *,
-    provider: ModelProvider,
-    model_name: str,
-    estimator_family: str | None,
-    text: str,
-) -> int:
-    payload: dict[str, object]
-    api: str | None = None
-
-    if provider == ModelProvider.ANTHROPIC:
-        payload = {
-            "model": model_name,
-            "messages": [{"role": "user", "content": text}],
-        }
-    elif provider == ModelProvider.GEMINI:
-        payload = {"contents": text}
-    elif provider == ModelProvider.OPENAI:
-        payload = {"input": text}
-        api = "responses"
-    else:
-        payload = {"input": text}
-
-    result = estimate_tokens(
-        provider=provider,
-        model_name=model_name,
-        payload=payload,
-        estimator_family=estimator_family,
-        api=api,
-    )
-    if result.estimated is not None:
-        if result.source == "heuristic":
-            return max(result.estimated, len(text.encode("utf-8")))
-        return result.estimated
-
-    conservative = max(len(text.encode("utf-8")), 1)
-    logger.warning(
-        "Token estimate unavailable; using conservative fallback",
-        extra={"provider": provider, "model": model_name, "estimate": conservative},
-    )
-    return conservative
-
-
 def pack_files_for_phase3(
     *,
     files_with_content: dict[str, str],
@@ -94,7 +51,7 @@ def pack_files_for_phase3(
     """
     Greedily pack file contents into batches that respect the model's effective limit.
 
-    - Uses estimate_tokens to approximate the final prompt size.
+    - Uses a local tokenizer to approximate the final prompt size.
     - Starts a new batch when the next file would exceed the effective limit.
     - If a single file is bigger than the effective limit, it is summarized locally first.
     """
@@ -124,46 +81,40 @@ def pack_files_for_phase3(
 
     provider = model_config.provider
     model_name = model_config.model_name
-    estimator_family = getattr(model_config, "estimator_family", None)
+    use_byte_counts = model_config.estimator_family == "heuristic"
+
+    def count_text(text: str) -> int:
+        nonlocal use_byte_counts
+        if not use_byte_counts:
+            estimate = estimate_model_text_tokens(model_name, text)
+            if estimate is not None:
+                return estimate
+
+            use_byte_counts = True
+            logger.warning(
+                "Compatible local tokenizer unavailable for Phase 3 packing; using UTF-8 byte counts",
+                extra={"provider": provider, "model": model_name},
+            )
+        return max(1, len(text.encode("utf-8")))
 
     tree_text = "\n".join(tree) if isinstance(tree, list) else (tree or "")
     skeleton = format_phase3_prompt(
         {"tree_structure": tree_text, "assigned_files": [], "file_contents": {}}
     )
-    skeleton_tokens = _estimate_text_tokens(
-        provider=provider,
-        model_name=model_name,
-        estimator_family=estimator_family,
-        text=skeleton,
-    )
+    skeleton_tokens = count_text(skeleton)
     if skeleton_tokens >= effective_limit:
         raise ValueError(f"Phase 3 prompt skeleton exceeds the input budget for {model_name}")
 
     content_token_cache: dict[tuple[str, str], int] = {}
+    summary_cache: dict[tuple[str, str], str] = {}
 
-    def content_tokens(content: str) -> int:
+    def estimate_content(content: str) -> tuple[tuple[str, str], int]:
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         key = (model_name, content_hash)
         if key not in content_token_cache:
             escaped_content = json.dumps(content, ensure_ascii=False)
-            content_token_cache[key] = _estimate_text_tokens(
-                provider=provider,
-                model_name=model_name,
-                estimator_family=estimator_family,
-                text=escaped_content,
-            )
-        return content_token_cache[key]
-
-    def file_tokens(path: str, content: str) -> int:
-        envelope = json.dumps({"path": path, "content": ""}, ensure_ascii=False)
-        envelope += f"\n\n- {path}\n"
-        overhead = _estimate_text_tokens(
-            provider=provider,
-            model_name=model_name,
-            estimator_family=estimator_family,
-            text=envelope,
-        )
-        return content_tokens(content) + overhead + 16
+            content_token_cache[key] = count_text(escaped_content)
+        return key, content_token_cache[key]
 
     batches: list[PackedBatch] = []
     current_files: list[str] = []
@@ -171,17 +122,24 @@ def pack_files_for_phase3(
     running_tokens = skeleton_tokens
 
     for path, original_content in files_with_content.items():
+        envelope = json.dumps({"path": path, "content": ""}, ensure_ascii=False)
+        envelope += f"\n\n- {path}\n"
+        overhead = count_text(envelope) + 16
+        file_budget = effective_limit - skeleton_tokens - overhead
         content = original_content
-        estimated_tokens = file_tokens(path, content)
-        if skeleton_tokens + estimated_tokens > effective_limit:
-            content = summarizer(content)
-            estimated_tokens = file_tokens(path, content)
-            while skeleton_tokens + estimated_tokens > effective_limit and len(content) > 1:
+        original_key, tokens = estimate_content(original_content)
+        if tokens > file_budget:
+            if original_key not in summary_cache:
+                summary_cache[original_key] = summarizer(original_content)
+            content = summary_cache[original_key]
+            _, tokens = estimate_content(content)
+            while tokens > file_budget and len(content) > 1:
                 content = content[: max(1, len(content) // 2)]
-                estimated_tokens = file_tokens(path, content)
-            if skeleton_tokens + estimated_tokens > effective_limit:
+                _, tokens = estimate_content(content)
+            if tokens > file_budget:
                 raise ValueError(f"File {path} cannot fit the input budget for {model_name}")
 
+        estimated_tokens = overhead + tokens
         if running_tokens + estimated_tokens > effective_limit:
             batches.append(PackedBatch(assigned_files=current_files, file_contents=current_contents))
             current_files = []

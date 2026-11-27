@@ -99,6 +99,7 @@ CLAUDE_FABLE_5 = ModelConfig(
 )
 
 CLAUDE_FABLE_51 = CLAUDE_FABLE_5._replace(model_name="claude-fable-5-1")
+CLAUDE_FABLE_52 = CLAUDE_FABLE_5._replace(model_name="claude-fable-5-2")
 CLAUDE_OPUS_55 = CLAUDE_FABLE_5._replace(model_name="claude-opus-5-5")
 CLAUDE_SONNET_55 = CLAUDE_FABLE_5._replace(model_name="claude-sonnet-5-5")
 CLAUDE_HAIKU_55 = CLAUDE_FABLE_5._replace(model_name="claude-haiku-5-5")
@@ -508,6 +509,19 @@ GEMINI_4_ARGON = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+GEMINI_4_CARBON = GEMINI_4_ARGON._replace(
+    model_name="gemini-4-carbon",
+    reasoning=ReasoningMode.MEDIUM,
+)
+GEMINI_4_HYDROGEN = GEMINI_4_ARGON._replace(
+    model_name="gemini-4-hydrogen",
+    reasoning=ReasoningMode.HIGH,
+)
+GEMINI_4_NEON = GEMINI_4_ARGON._replace(
+    model_name="gemini-4-neon",
+    reasoning=ReasoningMode.HIGH,
+)
+
 GEMINI_3_5_FLASH = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3.5-flash",
@@ -590,6 +604,21 @@ def _gpt5_responses_model(
     )
 
 
+GPT6_2_ASTRA_DEFAULT = _gpt5_responses_model(
+    "gpt-6.2-astra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_2_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-6.2-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_1_TERRA_DEFAULT = _gpt5_responses_model(
+    "gpt-6.1-terra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
 GPT6_ASTRA_DEFAULT = _gpt5_responses_model(
     "gpt-6-astra",
     reasoning=ReasoningMode.MEDIUM,

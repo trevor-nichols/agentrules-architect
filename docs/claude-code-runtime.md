@@ -4,7 +4,7 @@ AgentRules supports Claude Code as a local runtime provider through the Anthropi
 
 ## What this integration does
 
-- Requires `claude-agent-sdk` 0.2.165 or newer. The lockfile resolves 0.2.173, whose wheel bundles Claude Code 2.1.309 for the pinned 5.5/5.1 choices.
+- Requires `claude-agent-sdk` 0.2.180 or newer. The lockfile resolves 0.2.189, whose wheel bundles Claude Code 2.1.332.
 - Reuses Claude Code OAuth state instead of asking AgentRules for an Anthropic API key.
 - Adds `Claude Code ...` model presets that route AgentRules phases through `ModelProvider.CLAUDE_CODE`.
 - Keeps structured outputs enabled for schema-backed phases.
@@ -94,6 +94,9 @@ The SDK-bundled executable takes precedence when `cli_path` is unset. A newer gl
 does not replace that bundle. To use a global or separately managed installation deliberately, set
 `claude_code.cli_path`; diagnostics then report the executable source as `configured`.
 
+When the SDK bundle is absent on Windows, default discovery searches absolute `PATH` entries for
+`claude.exe` in order, then checks `~/.local/bin/claude.exe`.
+
 Version probing runs the exact resolved binary with `--version`, uses a bounded ten-second timeout, and
 caches the parsed result by executable path. Timeout, execution, nonzero-exit, and parse failures remain
 distinct diagnostics. A pinned model with a documented minimum is unavailable when its runtime version
@@ -112,19 +115,20 @@ Notes:
 
 - `Claude Code Runtime Default (Moving)` omits the SDK `model` option. Claude Code applies the account,
   organization, and runtime default rather than receiving a literal sentinel or pinned model.
-- `Best`, `Sonnet`, `Opus`, `Fable`, and `Haiku` alias presets pass those aliases verbatim. Aliases can move as
-  Claude Code and account policy evolve, so their model, price, and availability are not reproducible.
-- Moving defaults and aliases do not advertise a static context limit in AgentRules. Claude Code owns
-  concrete-model resolution; use a pinned model preset when local context-limit preflight is required.
-- Full model IDs are pinned and reproducible whether selected by a preset or supplied programmatically.
-  Pinned Fable 5.1 requires Claude Code 2.1.257+, Opus 5.5 requires 2.1.280+, Sonnet 5.5 requires
-  2.1.284+, and Haiku 5.5 requires 2.1.293+. The picker hides unavailable pins while preserving a
-  saved selection with an explicit minimum-version note. Fable 5.1 retains its 30-day retention label.
-  Pinned Fable 5 requires Claude Code 2.1.170 or newer, pinned Sonnet 5 requires 2.1.197 or newer, and
-  pinned Opus 5 requires 2.1.219 or newer. The `fable` alias is gated at its own introduction version,
-  while older aliases are not treated as if they always resolve to the newest full model.
-- Fable uses runtime-owned always-adaptive thinking. No non-thinking Fable preset exists. A headless
-  refusal is returned as an AgentRules error; AgentRules never assumes Claude Code silently switched to Opus.
+- `Best`, `Sonnet`, `Opus`, `Fable`, and `Haiku` presets pass their aliases through to Claude Code.
+  Alias resolution follows runtime version, provider, and account policy. Starting with Claude Code
+  2.1.321, `best` resolves to the same model as `opus`. By default, `fable` resolves to Fable 5.2
+  starting with that version. Claude apps gateway sessions resolve it to Fable 5 by default. To use
+  Fable 5.2 in a gateway session, select the pin and use a gateway that serves `claude-fable-5-2`.
+  `ANTHROPIC_DEFAULT_FABLE_MODEL` can override the alias. AgentRules continues to gate the `fable`
+  alias at its introduction version, 2.1.170. [Claude Code alias resolution](https://code.claude.com/docs/en/model-config)
+- Use a pinned model when local context-limit preflight is required. The picker hides unavailable
+  pins from new selections and keeps saved pins visible with a version note.
+- The Fable 5.2 pin uses medium effort and requires Claude Code 2.1.321 or later. Fable 5.1 requires
+  2.1.257 or later. Both pins show the 30-day retention requirement. The Opus 5.5, Sonnet 5.5,
+  and Haiku 5.5 pins require 2.1.280, 2.1.284, and 2.1.293 respectively. Fable 5, Sonnet 5, and Opus 5
+  require 2.1.170, 2.1.197, and 2.1.219 respectively.
+- Fable always uses adaptive thinking. AgentRules reports a headless model refusal as an error.
 - Claude Code-backed researchers do not require Tavily credentials.
 - Non-runtime researcher presets still require Tavily unless you are in offline mode.
 - Claude Code-backed Phase 3 agents inspect files from the repository directly instead of receiving embedded file contents.
@@ -164,7 +168,7 @@ Environment variables:
 
 - `AGENTRULES_RUN_CLAUDE_CODE_LIVE=1`: required to run the live smoke.
 - `AGENTRULES_CLAUDE_CODE_CLI`: optional override for the Claude executable path.
-- `AGENTRULES_CLAUDE_CODE_MODEL`: optional explicit live-smoke model override.
+- Set `AGENTRULES_CLAUDE_CODE_MODEL=claude-fable-5-2` to exercise the Fable 5.2 pin.
 - `CLAUDE_CODE_OAUTH_TOKEN`: optional token for automation environments.
 
 The live smoke records the resolved executable source, path, and parsed version. It skips itself if the
@@ -188,4 +192,6 @@ runtime or version probe is unavailable, or if Claude Code reports an authentica
 - [Claude Code model configuration](https://code.claude.com/docs/en/model-config)
 - [Claude Code changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
 - [Claude Agent SDK Python releases](https://github.com/anthropics/claude-agent-sdk-python/releases)
-- [Claude Agent SDK Python v0.2.173](https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.173)
+- [Claude Code v2.1.321 release](https://github.com/anthropics/claude-code/releases/tag/v2.1.321)
+- [Claude Agent SDK 0.2.180 bundled CLI version](https://github.com/anthropics/claude-agent-sdk-python/blob/v0.2.180/src/claude_agent_sdk/_cli_version.py)
+- [Claude Agent SDK 0.2.189 bundled CLI version](https://github.com/anthropics/claude-agent-sdk-python/blob/v0.2.189/src/claude_agent_sdk/_cli_version.py)
