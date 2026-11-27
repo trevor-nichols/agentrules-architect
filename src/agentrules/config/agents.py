@@ -66,6 +66,9 @@ from agentrules.core.types.models import (
     GEMINI_3_FLASH_PREVIEW,
     GEMINI_3_PRO_PREVIEW,
     GEMINI_4_ARGON,
+    GEMINI_4_CARBON,
+    GEMINI_4_HYDROGEN,
+    GEMINI_4_NEON,
     GEMINI_FLASH,
     GEMINI_FLASH_DYNAMIC,
     GEMINI_PRO,
@@ -293,6 +296,28 @@ def _preset(
     )
 
 
+def _gemini_4_presets(base_config: ModelConfig, *, paid_only: bool = False) -> dict[str, PresetDefinition]:
+    profile = resolve_capability_profile(base_config.model_name)
+    access_label = ", Paid Tier" if paid_only else ""
+    access_note = " Requires a paid Gemini API tier." if paid_only else ""
+    presets: dict[str, PresetDefinition] = {}
+    for effort in profile.supported_thinking_levels:
+        reasoning = ReasoningMode(effort)
+        # Keep the unsuffixed preset tied to its published effort if the API default changes.
+        suffix = "" if reasoning == base_config.reasoning else f"-reasoning-{effort}"
+        thinking_label = "Extra High" if reasoning == ReasoningMode.XHIGH else effort.title()
+        description = (
+            f"{profile.display_name} with {thinking_label.lower()} thinking and a shared token window.{access_note}"
+        )
+        presets[f"{base_config.model_name}{suffix}"] = _preset(
+            config=base_config._replace(reasoning=reasoning),
+            label=f"{profile.display_name} ({thinking_label} Thinking{access_label})",
+            description=description,
+            provider=ModelProvider.GEMINI,
+        )
+    return presets
+
+
 def _gpt6_presets(
     *,
     key_prefix: str,
@@ -461,24 +486,10 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Gemini 3.8 Flash with high thinking.",
         provider=ModelProvider.GEMINI,
     ),
-    "gemini-4-argon": _preset(
-        config=GEMINI_4_ARGON,
-        label="Gemini 4 Argon (Medium Thinking)",
-        description="Gemini 4 Argon with medium thinking and a shared input, thinking, and output window.",
-        provider=ModelProvider.GEMINI,
-    ),
-    "gemini-4-argon-reasoning-low": _preset(
-        config=GEMINI_4_ARGON._replace(reasoning=ReasoningMode.LOW),
-        label="Gemini 4 Argon (Low Thinking)",
-        description="Gemini 4 Argon with low thinking and a shared token window.",
-        provider=ModelProvider.GEMINI,
-    ),
-    "gemini-4-argon-reasoning-high": _preset(
-        config=GEMINI_4_ARGON._replace(reasoning=ReasoningMode.HIGH),
-        label="Gemini 4 Argon (High Thinking)",
-        description="Gemini 4 Argon with high thinking and a shared token window.",
-        provider=ModelProvider.GEMINI,
-    ),
+    **_gemini_4_presets(GEMINI_4_ARGON),
+    **_gemini_4_presets(GEMINI_4_CARBON, paid_only=True),
+    **_gemini_4_presets(GEMINI_4_HYDROGEN),
+    **_gemini_4_presets(GEMINI_4_NEON, paid_only=True),
     "gemini-3.7-flash": _preset(
         config=GEMINI_3_7_FLASH,
         label="Gemini 3.7 Flash (API Alias → 3.8 Flash, Medium Thinking)",

@@ -215,14 +215,36 @@ Official references:
 
 ## Google Gemini API
 
-Direct `gemini-3.8-flash` and `gemini-4-argon` presets expose low, medium, and high thinking.
-Minimal and disabled reasoning fail before dispatch. Flash accepts 1,048,576 input tokens and requests
-up to 65,536 output tokens. Argon's 1,048,576-token window includes input, thinking, and output, so
-AgentRules reserves 65,536 tokens for generation and limits packed input to 983,040 before its safety
-margin. Its SDK request uses automatic continuation, a 65,536-token generation limit, and a 20-minute
-timeout; a single non-streaming API hop is capped at 32,768 tokens. Researcher tool turns retain the
-complete model content (including thought signatures) and return matching function-call IDs and names.
-AgentRules requires `google-genai>=2.30.1` for this continuation behavior.
+Choose a Gemini 4 preset in `agentrules configure --models`.
+
+| Wire model | Supported thinking levels | Preset default | Gemini Developer API tier |
+| --- | --- | --- | --- |
+| `gemini-4-carbon` | `low`, `medium`, `high` | `medium` | Paid |
+| `gemini-4-hydrogen` | `low`, `medium`, `high`, `xhigh` | `high` | Free or paid |
+| `gemini-4-neon` | `low`, `medium`, `high`, `xhigh` | `high` | Paid |
+| `gemini-4-argon` | `low`, `medium`, `high` | `medium` | Paid |
+
+AgentRules requires `google-genai>=3.3.0` for the native `XHIGH` thinking level. The lockfile pins
+3.6.1. AgentRules validates the exact level before sending the request. Gemini 4 rejects minimal
+and disabled thinking.
+
+Gemini 4 shares a 1,048,576-token window across input, thinking, and output. AgentRules reserves
+65,536 tokens for generation and caps packed input at 983,040 tokens before the safety margin. The
+GenerateContent adapter requests up to 65,536 output tokens with SDK automatic continuation and a
+20-minute client timeout. Carbon and Argon cap each direct non-streaming REST response at 32,768
+tokens. Hydrogen and Neon support up to 65,536 tokens per request. Google's long decode can continue
+beyond 65,536 output tokens when a client requests a larger output budget within the shared window.
+
+Researcher tool turns keep the complete model content, including thought signatures, and send
+responses with matching function-call IDs and names. Google offers combined tool use and structured
+output on Gemini 4 as a preview feature.
+
+The Google Gen AI SDK 3 defaults the Gemini Developer API to `v1`. AgentRules chooses `v1beta` for
+Developer API clients to retain access to preview models. Set `GOOGLE_GENAI_API_VERSION` to select
+another API version. Managed Gemini Enterprise or Vertex AI clients use the SDK's version selection.
+
+The direct `gemini-3.8-flash` presets expose low, medium, and high thinking. The model accepts
+1,048,576 input tokens and AgentRules requests up to 65,536 output tokens.
 
 `gemini-3.7-flash` remains an AgentRules preset and API wire ID, but Google automatically serves it as
 3.8 Flash. It has a 1,048,576-token input context, defaults to medium thinking, and accepts exactly low,
@@ -260,14 +282,19 @@ picker labels disclose those redirects so operators do not mistake compatibility
 
 Official references:
 
-- [Gemini model catalog](https://ai.google.dev/gemini-api/docs/models)
-- [Gemini 3.8 Flash model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash)
-- [Gemini 4 Argon model card](https://ai.google.dev/gemini-api/docs/models/gemini-4-argon)
-- [Argon GenerateContent and continuation guide](https://ai.google.dev/gemini-api/docs/generate-content/latest-model)
+- [Gemini 4 model catalog](https://aistudio.google.com/docs/models#gemini-4)
+- Model cards for [Carbon](https://aistudio.google.com/docs/models/gemini-4-carbon),
+  [Hydrogen](https://aistudio.google.com/docs/models/gemini-4-hydrogen),
+  [Neon](https://aistudio.google.com/docs/models/gemini-4-neon), and
+  [Argon](https://aistudio.google.com/docs/models/gemini-4-argon)
+- [Gemini thinking levels](https://aistudio.google.com/docs/thinking#understanding-thinking-levels)
+- [GenerateContent long decode](https://aistudio.google.com/docs/long-decode?generate-content=true)
+- [GenerateContent structured output with tools](https://aistudio.google.com/docs/structured-output?generate-content=true#structured-outputs-with-tools)
+- [Gemini 3.8 Flash model card](https://aistudio.google.com/docs/models/gemini-3.8-flash)
 - [Gemini 3.8 function-call migration rules](https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.8)
-- [Gemini thinking levels](https://ai.google.dev/gemini-api/docs/generate-content/thinking)
 - [Gemini model deprecations](https://aistudio.google.com/docs/deprecations)
-- [Google Gen AI Python SDK changelog](https://github.com/googleapis/python-genai/blob/main/CHANGELOG.md#1560-2025-12-16)
+- [Google Gen AI Python SDK 3.0 migration notes](https://github.com/googleapis/python-genai/releases/tag/v3.0.0)
+- [SDK 3.3 native `XHIGH` support](https://github.com/googleapis/python-genai/releases/tag/v3.3.0)
 
 ## Local runtime providers
 

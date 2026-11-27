@@ -42,7 +42,7 @@ This rollout uses OpenAI Responses, Anthropic Messages, Gemini GenerateContent, 
 - [x] (2026-11-27) Operator approved the plan and authorized sequential implementation. Each milestone requires passing validation and independent review before completion, commit, and push.
 - [x] (2026-11-27) MS001 ships the independent compatibility slice for past and imminent provider cutovers. Locked Python 3.11 checks passed (1,168 tests, 77 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review passed with no actionable findings.
 - [x] (2026-11-27) MS002 adds OpenAI model contracts and finishes the December 11 routes. Locked Python 3.11 checks passed (1,176 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review passed with no actionable findings.
-- [ ] MS003 adds Gemini 4 model profiles and validates the GenAI SDK upgrade.
+- [x] (2026-11-27) MS003 adds Gemini 4 model profiles and validates the GenAI SDK upgrade. Locked GenAI 3.6.1 checks passed (1,213 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). The 3.3.0 SDK floor passed 95 focused tests and 2 subtests. CI uv 0.9.17 accepted the lock. Independent review passed, including an SDK-backed Neon schema and signed tool-turn probe.
 - [ ] MS004 adds direct and local-runtime Fable 5.2 with the Claude Agent SDK upgrade.
 - [ ] MS005 preserves DeepSeek reasoning across tools and records the xAI transport follow-up.
 - [ ] MS006 verifies Codex runtime discovery for GPT-6.2.
@@ -86,7 +86,7 @@ The October plan EP-20261023-001 records the dependency this branch was cut from
 
 **MS002 — Add OpenAI text models and December retirement routes.** Add GPT-6.2 Astra, GPT-6.2 Sol, and GPT-6.1 Terra to the direct registry with explicit reasoning and input budgets. Bind December 11 saved GPT-5 and o3 keys to GPT-6.1 Sol and GPT-5 Mini to GPT-6.1 Terra. Use low for the old GPT-5 minimal profile and label that change. Verify the real SDK's outbound payload with a mock transport and keep the existing OpenAI SDK major version. See [MS002](milestones/complete/MS002_openai-models.md).
 
-**MS003 — Add Gemini 4 models and validate the GenAI SDK upgrade.** Add Carbon, Hydrogen, and Neon to the existing GenerateContent transport. Reuse Argon's shared-window and signed-turn behavior. Add exact `XHIGH` only to Hydrogen and Neon, bump `google-genai` to at least 3.3.0, and verify endpoint selection, HTTP client behavior, and stubs. Record the resolved version in the lockfile. See [MS003](milestones/active/MS003_gemini-4-and-sdk.md).
+**MS003 — Add Gemini 4 models and validate the GenAI SDK upgrade.** Add Carbon, Hydrogen, and Neon to the existing GenerateContent transport. Reuse Argon's shared-window and signed-turn behavior. Add exact `XHIGH` only to Hydrogen and Neon, bump `google-genai` to at least 3.3.0, and verify endpoint selection, HTTP client behavior, and stubs. Record the resolved version in the lockfile. See [MS003](milestones/complete/MS003_gemini-4-and-sdk.md).
 
 **MS004 — Add Fable 5.2 across Anthropic and Claude Code.** Add the direct model and validate its adaptive thinking, retention label, and refusal boundary. Add the pinned runtime choice in a separate change with the SDK bump to at least 0.2.180. Verify that both the picker and request use the exact resolved executable and reject old or unversionable binaries. See [MS004](milestones/active/MS004_fable-5-2.md).
 
@@ -110,7 +110,7 @@ After approval, run these commands from the repository root on the November bran
     uv lock --check --python 3.11
     git diff --check
 
-The planning baseline used a temporary directory via `UV_PROJECT_ENVIRONMENT` because the existing local virtual environment pointed to an unavailable Python interpreter. Use a fresh project environment for the approved work. Run the milestone's focused tests before and after each edit. For dependency changes, use package-scoped `uv lock --upgrade-package`, then inspect the resolver's transitive changes and repeat the locked sync. Keep the dependency declaration, regenerated lock, request changes, and affected stubs together.
+The planning baseline used a temporary directory via `UV_PROJECT_ENVIRONMENT` because the existing local virtual environment pointed to an unavailable Python interpreter. Use a fresh project environment for the approved work. For a temporary environment, point `pyright --venvpath` at a directory whose `.venv` resolves to that environment, because the repository config declares a local `.venv`. Run the milestone's focused tests before and after each edit. For dependency changes, use package-scoped `uv lock --upgrade-package`, then inspect the resolver's transitive changes and repeat the locked sync. Keep the dependency declaration, regenerated lock, request changes, and affected stubs together.
 
 After each milestone passes its acceptance checks, move its record with `agentrules execplan milestone complete EP-20261127-001 --ms N` and update this progress log, including the link to the milestone's new location. Complete the parent plan with `agentrules execplan complete EP-20261127-001` only after MS007. Refresh the registry and check it. Use `agentrules snapshot sync` when tracked paths are added, removed, or moved and inspect its diff for unrelated drift.
 

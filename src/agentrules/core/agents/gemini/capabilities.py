@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from agentrules.core.agents.base import ReasoningMode
 
-GeminiThinkingLevelName = Literal["minimal", "low", "medium", "high"]
+GeminiThinkingLevelName = Literal["minimal", "low", "medium", "high", "xhigh"]
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ class GeminiCapabilityProfile:
     max_output_tokens: int | None = None
     automatic_continuation: bool = False
     request_timeout_ms: int | None = None
+    default_reasoning: ReasoningMode = ReasoningMode.DISABLED
 
     def matches(self, model_name: str) -> bool:
         normalized = normalize_model_name(model_name)
@@ -43,21 +44,59 @@ _DEFAULT_PROFILE = GeminiCapabilityProfile(
     display_name="Unknown Gemini family",
 )
 
-_CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
-    GeminiCapabilityProfile(
-        family_prefix="gemini-4-argon",
-        stable_name="gemini-4-argon",
-        display_name="Gemini 4 Argon",
+_GEMINI_4_STANDARD_LEVELS: tuple[GeminiThinkingLevelName, ...] = ("low", "medium", "high")
+_GEMINI_4_EXTENDED_LEVELS: tuple[GeminiThinkingLevelName, ...] = (*_GEMINI_4_STANDARD_LEVELS, "xhigh")
+
+
+def _gemini_4_profile(
+    model_name: str,
+    display_name: str,
+    *,
+    levels: tuple[GeminiThinkingLevelName, ...],
+    default_reasoning: ReasoningMode,
+) -> GeminiCapabilityProfile:
+    return GeminiCapabilityProfile(
+        family_prefix=model_name,
+        stable_name=model_name,
+        display_name=display_name,
         uses_thinking_level=True,
         supports_structured_output_with_tools=True,
         supports_disabling_thinking=False,
-        supported_thinking_levels=("low", "medium", "high"),
+        supported_thinking_levels=levels,
         requires_exact_thinking_level=True,
         requires_function_call_id=True,
         max_input_tokens=1_048_576 - 65_536,
         max_output_tokens=65_536,
         automatic_continuation=True,
         request_timeout_ms=1_200_000,
+        default_reasoning=default_reasoning,
+    )
+
+
+_CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
+    _gemini_4_profile(
+        "gemini-4-argon",
+        "Gemini 4 Argon",
+        levels=_GEMINI_4_STANDARD_LEVELS,
+        default_reasoning=ReasoningMode.MEDIUM,
+    ),
+    _gemini_4_profile(
+        "gemini-4-carbon",
+        "Gemini 4 Carbon",
+        levels=_GEMINI_4_STANDARD_LEVELS,
+        default_reasoning=ReasoningMode.MEDIUM,
+    ),
+    _gemini_4_profile(
+        "gemini-4-hydrogen",
+        "Gemini 4 Hydrogen",
+        levels=_GEMINI_4_EXTENDED_LEVELS,
+        default_reasoning=ReasoningMode.HIGH,
+    ),
+    _gemini_4_profile(
+        "gemini-4-neon",
+        "Gemini 4 Neon",
+        levels=_GEMINI_4_EXTENDED_LEVELS,
+        default_reasoning=ReasoningMode.HIGH,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.8-flash",
@@ -144,6 +183,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supported_thinking_levels=("minimal", "low", "medium", "high"),
         requires_exact_thinking_level=True,
         requires_function_call_id=True,
+        default_reasoning=ReasoningMode.MINIMAL,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.5-flash",
@@ -231,7 +271,7 @@ def resolve_thinking_level(
     """Map a generic reasoning mode according to the model family's level policy."""
 
     profile = resolve_capability_profile(model_name)
-    if not profile.supported_thinking_levels or thinking_level_enum is None:
+    if not profile.supported_thinking_levels:
         return None
 
     target_level = _resolve_target_level(profile, model_name, reasoning_mode)
@@ -246,6 +286,9 @@ def resolve_thinking_level(
                 f"for model '{model_name}'."
             )
         return value
+
+    if thinking_level_enum is None:
+        return None
 
     for candidate in _enum_lookup_order(target_level):
         if candidate not in profile.supported_thinking_levels:
@@ -286,6 +329,8 @@ def _exact_level_for_reasoning_mode(
         return "medium"
     if reasoning_mode == ReasoningMode.HIGH:
         return "high"
+    if reasoning_mode == ReasoningMode.XHIGH:
+        return "xhigh"
     return None
 
 

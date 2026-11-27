@@ -1,3 +1,5 @@
+import pytest
+
 from agentrules.config.agents import MODEL_PRESETS
 from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
@@ -108,14 +110,19 @@ def test_openai_preset_input_budgets_reserve_output_and_margin():
         assert effective is not None and effective < expected
 
 
-def test_272k_input_boundary_is_enforced_in_rendered_batches(monkeypatch):
+@pytest.mark.parametrize(
+    ("preset_key", "input_limit"),
+    [("gpt54-mini-none", 272_000), ("gemini-4-neon", 983_040)],
+)
+def test_model_input_boundary_is_enforced_in_rendered_batches(monkeypatch, preset_key, input_limit):
     def character_count(provider, model_name, payload, estimator_family=None, api=None):
         text = payload.get("input") or payload.get("contents") or payload["messages"][0]["content"]
         return TokenEstimateResult(len(text), "fixture")
 
     monkeypatch.setattr("agentrules.core.utils.token_packer.estimate_tokens", character_count)
-    config = MODEL_PRESETS["gpt54-mini-none"]["config"]._replace(safety_margin_tokens=0)
-    files = {"a.py": "a" * 150_000, "b.py": "b" * 150_000}
+    config = MODEL_PRESETS[preset_key]["config"]._replace(safety_margin_tokens=0)
+    file_size = input_limit // 2 + 1
+    files = {"a.py": "a" * file_size, "b.py": "b" * file_size}
     batches = pack_files_for_phase3(files_with_content=files, tree=[], model_config=config)
 
     assert len(batches) == 2
@@ -124,12 +131,12 @@ def test_272k_input_boundary_is_enforced_in_rendered_batches(monkeypatch):
         prompt = format_phase3_prompt(
             {"tree_structure": [], "assigned_files": batch.assigned_files, "file_contents": batch.file_contents}
         )
-        assert len(prompt) <= 272_000
+        assert len(prompt) <= input_limit
 
     oversized = pack_files_for_phase3(
-        files_with_content={"large.py": "x" * 272_001}, tree=[], model_config=config
+        files_with_content={"large.py": "x" * (input_limit + 1)}, tree=[], model_config=config
     )
-    assert len(oversized[0].file_contents["large.py"]) < 272_001
+    assert len(oversized[0].file_contents["large.py"]) <= input_limit
 
 
 def test_packing_counts_each_file_once_for_100_files(monkeypatch):

@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS003
 execplan_id: EP-20261127-001
 ms: 3
-title: "Add Gemini 4 models and validate the GenAI SDK upgrade"
-status: planned
+title: Add Gemini 4 models and validate the GenAI SDK upgrade
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: high
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Add Gemini 4 models and validate the GenAI SDK upgrade
@@ -70,6 +70,10 @@ The mocked request should demonstrate exact `XHIGH` for Hydrogen and Neon, rejec
 ## Rollout / Ops Notes
 
 Ship the SDK floor, lockfile, stubs, and new picker capabilities together after validation. If the SDK or model slice must roll back, preserve the December 1 routes and the existing signed-turn adapter. Record the version pinned and preview-mode choice in the plan.
+
+## Results
+
+Locked GenAI 3.6.1 checks passed (1,213 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). The 3.3.0 SDK floor passed 95 focused tests and 2 subtests. CI uv 0.9.17 accepted the lock. Independent review passed, including an SDK-backed Neon schema and signed tool-turn probe.
 
 ## Changelog
 

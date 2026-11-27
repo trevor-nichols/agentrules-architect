@@ -48,13 +48,22 @@ class _TwoTurnModels:
 
 
 @pytest.mark.asyncio
-async def test_researcher_preserves_signed_tool_turn_after_gemini_pro_cutover(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    ("preset_key", "wire_model", "thinking_level"),
+    [
+        ("gemini-pro", "gemini-3.8-flash", "MEDIUM"),
+        ("gemini-4-neon-reasoning-xhigh", "gemini-4-neon", "XHIGH"),
+    ],
+)
+async def test_researcher_replays_signed_tool_turn_at_configured_thinking_level(
+    monkeypatch, preset_key: str, wire_model: str, thinking_level: str,
+) -> None:
     monkeypatch.setattr(
         model_presets,
         "datetime",
         SimpleNamespace(now=lambda tz: datetime(2026, 12, 1, tzinfo=tz)),
     )
-    config = model_presets.get_model_config_for_preset_key("gemini-pro")
+    config = model_presets.get_model_config_for_preset_key(preset_key)
     assert config is not None
     models = _TwoTurnModels()
     architect = ArchitectFactory.create_architect(config, "Researcher", "Research dependencies", [], "{context}")
@@ -73,10 +82,10 @@ async def test_researcher_preserves_signed_tool_turn_after_gemini_pro_cutover(mo
 
     assert result["findings"] == "Flask release verified"
     assert result["executed_tools"][0]["success"] is True
-    assert [call["model"] for call in models.calls] == ["gemini-3.8-flash", "gemini-3.8-flash"]
+    assert [call["model"] for call in models.calls] == [wire_model, wire_model]
     for call in models.calls:
         thinking = call["config"].thinking_config
-        assert thinking.thinking_level == types.ThinkingLevel.MEDIUM
+        assert thinking.thinking_level == thinking_level
         assert thinking.thinking_budget is None
     history = models.calls[1]["contents"]
     assert isinstance(history, list)

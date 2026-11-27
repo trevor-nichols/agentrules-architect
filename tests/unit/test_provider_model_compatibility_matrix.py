@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from types import SimpleNamespace
 
 import pytest
+from google.genai.types import ThinkingLevel
 
 from agentrules.config.agents import MODEL_PRESETS
 from agentrules.core.agents.anthropic.request_builder import prepare_request as prepare_anthropic
@@ -102,18 +102,21 @@ LATEST_MODEL_CONTRACTS = (
     ),
     *(
         ModelContract(
-            key if effort == "medium" else f"{key}-reasoning-{effort}",
+            model_name if effort == default else f"{model_name}-reasoning-{effort}",
             ModelProvider.GEMINI,
             model_name,
             ReasoningMode(effort),
             max_input_tokens,
             effort,
         )
-        for key, model_name, max_input_tokens in (
-            ("gemini-3.8-flash", "gemini-3.8-flash", 1_048_576),
-            ("gemini-4-argon", "gemini-4-argon", 983_040),
+        for model_name, max_input_tokens, default, efforts in (
+            ("gemini-3.8-flash", 1_048_576, "medium", ("low", "medium", "high")),
+            ("gemini-4-argon", 983_040, "medium", ("low", "medium", "high")),
+            ("gemini-4-carbon", 983_040, "medium", ("low", "medium", "high")),
+            ("gemini-4-hydrogen", 983_040, "high", ("low", "medium", "high", "xhigh")),
+            ("gemini-4-neon", 983_040, "high", ("low", "medium", "high", "xhigh")),
         )
-        for effort in ("low", "medium", "high")
+        for effort in efforts
     ),
 )
 
@@ -630,16 +633,11 @@ def _resolve_wire_reasoning(config: ModelConfig) -> object:
         return prepared.payload.get("reasoning_effort")
 
     if provider == ModelProvider.GEMINI:
-        thinking_levels = SimpleNamespace(
-            MINIMAL="minimal",
-            LOW="low",
-            MEDIUM="medium",
-            HIGH="high",
-        )
-        return resolve_thinking_level(
+        level = resolve_thinking_level(
             model_name=config.model_name,
             reasoning_mode=config.reasoning,
-            thinking_level_enum=thinking_levels,
+            thinking_level_enum=ThinkingLevel,
         )
+        return level.lower() if isinstance(level, str) else level
 
     raise AssertionError(f"No direct request contract for provider {provider!r}")

@@ -5,12 +5,118 @@ import unittest
 from typing import Any, cast
 from unittest.mock import patch
 
+import httpx2
+import pytest
 from google.genai import types as genai_types
 from google.protobuf.struct_pb2 import Struct
 
 from agentrules.core.agents.base import ReasoningMode
 from agentrules.core.agents.gemini import GeminiAgent, GeminiArchitect
+from agentrules.core.agents.gemini.client import build_gemini_client, generate_content_async
 from tests.fakes.vendor_responses import GeminiGenerateContentResponseFake, _FunctionCallFake
+
+
+@pytest.fixture
+def gemini_wire_requests(monkeypatch: pytest.MonkeyPatch) -> list[httpx2.Request]:
+    requests: list[httpx2.Request] = []
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return httpx2.Response(
+            200,
+            json={
+                "candidates": [
+                    {"content": {"role": "model", "parts": [{"text": "Wire response"}]}, "finishReason": "STOP"},
+                ],
+            },
+        )
+
+    init_client = httpx2.Client.__init__
+
+    def init_with_mock_transport(client: httpx2.Client, **kwargs: Any) -> None:
+        init_client(client, **(kwargs | {"transport": httpx2.MockTransport(handle_request)}))
+
+    monkeypatch.setattr(httpx2.Client, "__init__", init_with_mock_transport)
+    for variable in (
+        "GEMINI_API_KEY",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_CLOUD_LOCATION",
+        "GOOGLE_GENAI_API_VERSION",
+        "GOOGLE_GENAI_USE_ENTERPRISE",
+        "GOOGLE_GENAI_USE_VERTEXAI",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("GOOGLE_API_KEY", "sdk-key")
+    monkeypatch.setenv("GOOGLE_API_USE_MTLS_ENDPOINT", "never")
+    monkeypatch.setenv("GOOGLE_GENAI_HTTP_CLIENT", "httpx2")
+    return requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("api_key", "managed_flag", "host", "path_prefix", "sent_key"),
+    [
+        ("direct-key", None, "generativelanguage.googleapis.com", "/v1beta/models", "direct-key"),
+        (None, None, "generativelanguage.googleapis.com", "/v1beta/models", "sdk-key"),
+        ("direct-key", "GOOGLE_GENAI_USE_VERTEXAI", "aiplatform.googleapis.com",
+         "/v1beta1/publishers/google/models", "direct-key"),
+        ("direct-key", "GOOGLE_GENAI_USE_ENTERPRISE", "aiplatform.googleapis.com",
+         "/v1beta1/publishers/google/models", "direct-key"),
+    ],
+    ids=["developer-configured-key", "developer-sdk-key", "vertex", "enterprise"],
+)
+async def test_preview_request_keeps_gemini_client_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    gemini_wire_requests: list[httpx2.Request],
+    api_key: str | None,
+    managed_flag: str | None,
+    host: str,
+    path_prefix: str,
+    sent_key: str,
+) -> None:
+    if managed_flag:
+        monkeypatch.setenv(managed_flag, "true")
+
+    client, error = build_gemini_client(api_key)
+    assert client is not None, error
+    try:
+        response = await generate_content_async(
+            client, model="gemini-3.1-pro-preview", contents="Analyze the project", config=None
+        )
+    finally:
+        client.close()
+
+    assert response.text == "Wire response"
+    request, = gemini_wire_requests
+    assert request.url.host == host
+    assert request.url.path == f"{path_prefix}/gemini-3.1-pro-preview:generateContent"
+    assert request.headers["x-goog-api-key"] == sent_key
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("api_version", "expected_version"), [(None, "v1beta"), ("v1", "v1")])
+async def test_gemini_sdk_applies_request_timeout_without_changing_api_version(
+    monkeypatch: pytest.MonkeyPatch,
+    gemini_wire_requests: list[httpx2.Request],
+    api_version: str | None,
+    expected_version: str,
+) -> None:
+    if api_version:
+        monkeypatch.setenv("GOOGLE_GENAI_API_VERSION", api_version)
+    client, error = build_gemini_client(None)
+    assert client is not None, error
+    config = genai_types.GenerateContentConfig(http_options=genai_types.HttpOptions(timeout=1_200_000))
+    try:
+        response = await generate_content_async(
+            client, model="gemini-4-argon", contents="Analyze the project", config=config
+        )
+    finally:
+        client.close()
+
+    assert response.text == "Wire response"
+    request, = gemini_wire_requests
+    assert request.url.path == f"/{expected_version}/models/gemini-4-argon:generateContent"
+    assert request.extensions["timeout"]["read"] == 1200
 
 
 class _GeminiFakeModelsService:

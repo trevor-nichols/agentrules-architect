@@ -72,11 +72,7 @@ class GeminiArchitect(BaseArchitect):
         model_config: Any | None = None,
     ):
         if reasoning is None:
-            reasoning = (
-                GEMINI_3_5_FLASH_LITE.reasoning
-                if stable_model_name(model_name) == GEMINI_3_5_FLASH_LITE.model_name
-                else ReasoningMode.DISABLED
-            )
+            reasoning = resolve_capability_profile(model_name).default_reasoning
         super().__init__(
             provider=ModelProvider.GEMINI,
             model_name=model_name,

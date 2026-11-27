@@ -508,6 +508,19 @@ GEMINI_4_ARGON = ModelConfig(
     tools_config={"enabled": False, "tools": None},
 )
 
+GEMINI_4_CARBON = GEMINI_4_ARGON._replace(
+    model_name="gemini-4-carbon",
+    reasoning=ReasoningMode.MEDIUM,
+)
+GEMINI_4_HYDROGEN = GEMINI_4_ARGON._replace(
+    model_name="gemini-4-hydrogen",
+    reasoning=ReasoningMode.HIGH,
+)
+GEMINI_4_NEON = GEMINI_4_ARGON._replace(
+    model_name="gemini-4-neon",
+    reasoning=ReasoningMode.HIGH,
+)
+
 GEMINI_3_5_FLASH = ModelConfig(
     provider=ModelProvider.GEMINI,
     model_name="gemini-3.5-flash",
