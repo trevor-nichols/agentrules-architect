@@ -4,11 +4,15 @@ This guide records model-selection and lifecycle constraints that affect AgentRu
 
 ## Direct OpenAI API
 
-GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, and GPT-6 Luna are reviewed direct-API choices. All use the Responses
-API with a 1,050,000-token total context and 128,000-token maximum output, leaving 922,000 tokens for
-input before the local packing margin. Astra and 6.1 Sol accept `low`, `medium`, `high`, `xhigh`, and `max`
-reasoning; Sol and Luna additionally accept `none`. `minimal` is unsupported for all four. AgentRules
-rejects unsupported effort or transport combinations before dispatch and does not silently lower effort.
+The direct API presets include GPT-6.2 Astra, GPT-6.2 Sol, GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Astra,
+GPT-6 Sol, and GPT-6 Luna. AgentRules uses the Responses API with function calling and structured
+outputs on the existing OpenAI Python SDK requirement (`openai>=2.45.0`). These models have a
+1,050,000-token context and a 128,000-token output limit. AgentRules budgets 922,000 input tokens
+before its packing margin.
+
+All seven models accept `low`, `medium`, `high`, `xhigh`, and `max` reasoning. GPT-6.1 Terra,
+GPT-6 Sol, and GPT-6 Luna also accept `none`. AgentRules rejects unsupported effort or transport
+combinations before dispatch.
 
 GPT-5.6 Sol remains the AgentRules phase default pending representative project evaluation. Its Terra and
 Luna tiers, plus GPT-5.5, remain explicit rollback choices. GPT-5.6 tiers also have a 922,000-token input
@@ -24,18 +28,17 @@ OpenAI retired o4-mini on October 23, 2026. The saved keys `o4-mini-low`, `o4-mi
 respectively. The picker shows the replacement for an existing selection. Loading the configuration
 preserves the saved key and uses the matching Terra effort for requests.
 
-GPT-5 Mini's low, medium, and high direct presets still use GPT-5 Mini for saved configurations. The
-picker hides them from new selections and recommends the matching GPT-5.6 Terra effort. OpenAI lists
-December 11, 2026 as the retirement date for GPT-5 Mini and its pinned snapshot. Its 400,000-token total
-context and 128,000-token maximum output leave a 272,000-token maximum input before AgentRules' safety
-margin.
+Scheduled retirement mappings keep the original API model until the documented shutdown date, then
+resolve the saved key directly to an active preset. The picker shows the effective replacement for a
+deprecated saved selection and hides deprecated presets from new choices.
 
-Scheduled OpenAI retirement mappings preserve saved wire models until the documented shutdown date, then
-resolve each saved key directly to an active preset. GPT-5/o3 route to matching GPT-5.6 Sol efforts on
-December 11, 2026; GPT-4.1 routes to GPT-6 Luna on January 14, 2027; GPT-5.1 and GPT-5.3-Codex route to
-GPT-6 Sol, and GPT-5.4 Nano routes to GPT-6 Luna, on April 1, 2027. GPT-4.1's temperature variants share
-the recommended Luna default after retirement. Picker warnings show deprecated saved selections while
-excluding them from new choices.
+On December 11, 2026, saved GPT-5 and o3 presets switch to GPT-6.1 Sol, and GPT-5 Mini presets switch
+to GPT-6.1 Terra. The replacement keeps the saved effort where supported. The `gpt5-minimal` preset
+switches to `low` because GPT-6.1 Sol requires at least low reasoning. Before the cutover, GPT-5 Mini
+uses a 272,000-token input ceiling before the packing margin.
+
+GPT-4.1 temperature presets switch to the GPT-6 Luna default on January 14, 2027. On April 1, 2027,
+GPT-5.1 and GPT-5.3-Codex switch to GPT-6 Sol, and GPT-5.4 Nano switches to GPT-6 Luna.
 
 The direct saved keys `gpt-5.1-codex` and `gpt-5.2-codex` are retired compatibility IDs. They resolve to
 the medium-reasoning GPT-5.6 Sol preset before dispatch, preserving the original effort while following
@@ -47,6 +50,9 @@ excluded because their transport or execution-mode contracts are not represented
 Official references:
 
 - [OpenAI latest model guide](https://developers.openai.com/api/docs/guides/latest-model)
+- [GPT-6.2 Astra](https://developers.openai.com/api/docs/models/gpt-6.2-astra)
+- [GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol)
+- [GPT-6.1 Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra)
 - [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra)
 - [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
 - [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol)

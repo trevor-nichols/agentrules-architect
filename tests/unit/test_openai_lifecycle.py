@@ -15,12 +15,15 @@ from agentrules.core.configuration.model_presets import (
         (
             date(2026, 12, 11),
             {
-                "o3-low": "gpt56-sol-low",
-                "o3-medium": "gpt56-sol-default",
-                "o3-high": "gpt56-sol-high",
-                "gpt5-default": "gpt56-sol-default",
-                "gpt5-minimal": "gpt56-sol-none",
-                "gpt5-high": "gpt56-sol-high",
+                "o3-low": "gpt61-sol-low",
+                "o3-medium": "gpt61-sol-default",
+                "o3-high": "gpt61-sol-high",
+                "gpt5-default": "gpt61-sol-default",
+                "gpt5-minimal": "gpt61-sol-low",
+                "gpt5-high": "gpt61-sol-high",
+                "gpt5-mini-low": "gpt61-terra-low",
+                "gpt5-mini-medium": "gpt61-terra-default",
+                "gpt5-mini": "gpt61-terra-high",
             },
         ),
         (
@@ -57,5 +60,6 @@ def test_live_openai_presets_keep_wire_model_until_retirement_then_redirect_once
         assert deprecation.retirement_replacement_key == replacement
         assert resolve_runtime_preset_key(saved_key, as_of=retirement_date - timedelta(days=1)) == saved_key
         assert resolve_runtime_preset_key(saved_key, as_of=retirement_date) == replacement
+        assert resolve_runtime_preset_key(saved_key, as_of=retirement_date + timedelta(days=1)) == replacement
         assert replacement in MODEL_PRESETS
         assert resolve_runtime_preset_key(replacement, as_of=retirement_date) == replacement

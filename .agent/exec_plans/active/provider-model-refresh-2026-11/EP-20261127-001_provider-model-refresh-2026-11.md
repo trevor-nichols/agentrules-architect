@@ -41,7 +41,7 @@ This rollout uses OpenAI Responses, Anthropic Messages, Gemini GenerateContent, 
 - [x] (2026-11-27) Verify planning artifacts and establish the locked Python 3.11 baseline. The import smoke, 1,160 tests and 57 subtests, Ruff, Pyright, and lock check passed. The registry lists the plan and all seven milestones.
 - [x] (2026-11-27) Operator approved the plan and authorized sequential implementation. Each milestone requires passing validation and independent review before completion, commit, and push.
 - [x] (2026-11-27) MS001 ships the independent compatibility slice for past and imminent provider cutovers. Locked Python 3.11 checks passed (1,168 tests, 77 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review passed with no actionable findings.
-- [ ] MS002 adds OpenAI model contracts and finishes the December 11 routes.
+- [x] (2026-11-27) MS002 adds OpenAI model contracts and finishes the December 11 routes. Locked Python 3.11 checks passed (1,176 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review passed with no actionable findings.
 - [ ] MS003 adds Gemini 4 model profiles and validates the GenAI SDK upgrade.
 - [ ] MS004 adds direct and local-runtime Fable 5.2 with the Claude Agent SDK upgrade.
 - [ ] MS005 preserves DeepSeek reasoning across tools and records the xAI transport follow-up.
@@ -84,7 +84,7 @@ The October plan EP-20261023-001 records the dependency this branch was cut from
 
 **MS001 — Restore saved presets before provider cutovers.** Add centralized one-hop routes for retired o4-mini and Grok Build selections immediately. Schedule the Gemini 2.5 replacements on December 1 and the direct Anthropic Opus 4.5 replacement on January 22. Verify the existing Sonnet 4.5 November 30 routes on the branch that will ship. Update the Gemini constructor and compatibility entry points to emit current requests, and validate saved settings, warnings, and actual wire IDs with the current lock. See [MS001](milestones/complete/MS001_provider-cutovers.md).
 
-**MS002 — Add OpenAI text models and December retirement routes.** Add GPT-6.2 Astra, GPT-6.2 Sol, and GPT-6.1 Terra to the direct registry with explicit reasoning and input budgets. Bind December 11 saved GPT-5 and o3 keys to GPT-6.1 Sol and GPT-5 Mini to GPT-6.1 Terra. Use low for the old GPT-5 minimal profile and label that change. Verify the real SDK's outbound payload with a mock transport and keep the existing OpenAI SDK major version. See [MS002](milestones/active/MS002_openai-models.md).
+**MS002 — Add OpenAI text models and December retirement routes.** Add GPT-6.2 Astra, GPT-6.2 Sol, and GPT-6.1 Terra to the direct registry with explicit reasoning and input budgets. Bind December 11 saved GPT-5 and o3 keys to GPT-6.1 Sol and GPT-5 Mini to GPT-6.1 Terra. Use low for the old GPT-5 minimal profile and label that change. Verify the real SDK's outbound payload with a mock transport and keep the existing OpenAI SDK major version. See [MS002](milestones/complete/MS002_openai-models.md).
 
 **MS003 — Add Gemini 4 models and validate the GenAI SDK upgrade.** Add Carbon, Hydrogen, and Neon to the existing GenerateContent transport. Reuse Argon's shared-window and signed-turn behavior. Add exact `XHIGH` only to Hydrogen and Neon, bump `google-genai` to at least 3.3.0, and verify endpoint selection, HTTP client behavior, and stubs. Record the resolved version in the lockfile. See [MS003](milestones/active/MS003_gemini-4-and-sdk.md).
 

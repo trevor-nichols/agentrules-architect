@@ -590,6 +590,21 @@ def _gpt5_responses_model(
     )
 
 
+GPT6_2_ASTRA_DEFAULT = _gpt5_responses_model(
+    "gpt-6.2-astra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_2_SOL_DEFAULT = _gpt5_responses_model(
+    "gpt-6.2-sol",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
+GPT6_1_TERRA_DEFAULT = _gpt5_responses_model(
+    "gpt-6.1-terra",
+    reasoning=ReasoningMode.MEDIUM,
+    text_verbosity="medium",
+)
 GPT6_ASTRA_DEFAULT = _gpt5_responses_model(
     "gpt-6-astra",
     reasoning=ReasoningMode.MEDIUM,

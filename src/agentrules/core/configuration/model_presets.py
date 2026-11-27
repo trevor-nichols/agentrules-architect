@@ -159,24 +159,6 @@ DEPRECATED_PRESETS: dict[str, PresetDeprecationInfo] = {
         replacement_key="gpt56-terra-high",
         reason="OpenAI retired o4-mini on October 23, 2026.",
     ),
-    "gpt5-mini-low": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5 Mini but has not retired it; "
-            "choose GPT-5.6 Terra Low for new configurations."
-        ),
-    ),
-    "gpt5-mini-medium": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5 Mini but has not retired it; "
-            "choose GPT-5.6 Terra Medium for new configurations."
-        ),
-    ),
-    "gpt5-mini": PresetDeprecationInfo(
-        reason=(
-            "OpenAI deprecated GPT-5 Mini but has not retired it; "
-            "choose GPT-5.6 Terra High for new configurations."
-        ),
-    ),
     "gpt-5.1-codex": PresetDeprecationInfo(
         replacement_key="gpt56-sol-default",
         reason="OpenAI retired GPT-5.1 Codex; saved selections resolve to GPT-5.6 Sol.",
@@ -286,12 +268,15 @@ def _add_scheduled_openai_retirements() -> None:
         (
             date(2026, 12, 11),
             {
-                "o3-low": "gpt56-sol-low",
-                "o3-medium": "gpt56-sol-default",
-                "o3-high": "gpt56-sol-high",
-                "gpt5-default": "gpt56-sol-default",
-                "gpt5-minimal": "gpt56-sol-none",
-                "gpt5-high": "gpt56-sol-high",
+                "o3-low": "gpt61-sol-low",
+                "o3-medium": "gpt61-sol-default",
+                "o3-high": "gpt61-sol-high",
+                "gpt5-default": "gpt61-sol-default",
+                "gpt5-minimal": "gpt61-sol-low",
+                "gpt5-high": "gpt61-sol-high",
+                "gpt5-mini-low": "gpt61-terra-low",
+                "gpt5-mini-medium": "gpt61-terra-default",
+                "gpt5-mini": "gpt61-terra-high",
             },
         ),
         (
@@ -321,12 +306,14 @@ def _add_scheduled_openai_retirements() -> None:
         for key, replacement in replacements.items():
             if key not in agent_settings.MODEL_PRESETS or replacement not in agent_settings.MODEL_PRESETS:
                 raise ValueError(f"OpenAI retirement mapping is not registered: {key} -> {replacement}")
+            reason = (
+                f"OpenAI retires this API model on {retirement_date.isoformat()}. "
+                f"Saved selections use {replacement} from that date."
+            )
+            if key == "gpt5-minimal":
+                reason += " GPT-6.1 Sol uses low reasoning for this selection because minimal is unsupported."
             DEPRECATED_PRESETS[key] = PresetDeprecationInfo(
-                reason=(
-                    f"OpenAI retires this API model on {retirement_date.isoformat()}; "
-                    "saved selections stay on their original endpoint until then "
-                    f"and use {replacement} after retirement."
-                ),
+                reason=reason,
                 retirement_date=retirement_date,
                 retirement_replacement_key=replacement,
             )

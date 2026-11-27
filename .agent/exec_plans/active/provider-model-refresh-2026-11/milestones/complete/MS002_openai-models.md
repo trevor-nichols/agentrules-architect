@@ -2,18 +2,18 @@
 id: EP-20261127-001/MS002
 execplan_id: EP-20261127-001
 ms: 2
-title: "Add OpenAI text models and December retirement routes"
-status: planned
+title: Add OpenAI text models and December retirement routes
+status: completed
 domain: cross-cutting
-owner: "@codex"
+owner: '@codex'
 created: 2026-11-27
-updated: 2026-11-27
+updated: '2026-11-27'
 tags: []
 risk: med
 links:
-  issue: ""
-  docs: ""
-  pr: ""
+  issue: ''
+  docs: ''
+  pr: ''
 ---
 
 # Add OpenAI text models and December retirement routes
@@ -66,6 +66,10 @@ Add an SDK-backed HTTP mock for the new IDs and exact efforts if the existing fa
 ## Rollout / Ops Notes
 
 Ship the dated mappings with the new direct profiles they reference. After the cutoff, retain compatible redirects even if newer GPT-6.2 picker choices need to be disabled. Keep the locked SDK and new-model default evaluation independent.
+
+## Results
+
+Locked Python 3.11 checks passed (1,176 tests, 69 subtests, Ruff, Pyright, import smoke, lock check, and diff check). Independent review passed with no actionable findings.
 
 ## Changelog
 

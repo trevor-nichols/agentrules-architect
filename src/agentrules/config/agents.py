@@ -115,6 +115,9 @@ from agentrules.core.types.models import (
     GPT5_MINI_MEDIUM,
     GPT5_MINIMAL,
     GPT6_1_SOL_DEFAULT,
+    GPT6_1_TERRA_DEFAULT,
+    GPT6_2_ASTRA_DEFAULT,
+    GPT6_2_SOL_DEFAULT,
     GPT6_ASTRA_DEFAULT,
     GPT6_LUNA_DEFAULT,
     GPT6_SOL_DEFAULT,
@@ -295,10 +298,15 @@ def _gpt6_presets(
     key_prefix: str,
     family_label: str,
     base_config: ModelConfig,
-    efforts: tuple[str, ...],
 ) -> dict[str, PresetDefinition]:
+    capabilities = get_openai_model_capabilities(base_config.model_name)
+    if capabilities is None:
+        raise ValueError(f"Missing OpenAI capabilities for {base_config.model_name}")
+
     presets: dict[str, PresetDefinition] = {}
-    for effort in efforts:
+    for effort in ("none", "low", "medium", "high", "xhigh", "max"):
+        if effort not in capabilities.accepted_efforts:
+            continue
         reasoning = ReasoningMode.DISABLED if effort == "none" else ReasoningMode(effort)
         suffix = "default" if effort == "medium" else effort
         verbosity = "low" if effort in {"none", "low"} else "high" if effort in {"xhigh", "max"} else "medium"
@@ -401,28 +409,39 @@ def _claude_code_runtime_managed_preset(
 
 BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     **_gpt6_presets(
+        key_prefix="gpt62-astra",
+        family_label="GPT-6.2 Astra",
+        base_config=GPT6_2_ASTRA_DEFAULT,
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt62-sol",
+        family_label="GPT-6.2 Sol",
+        base_config=GPT6_2_SOL_DEFAULT,
+    ),
+    **_gpt6_presets(
+        key_prefix="gpt61-terra",
+        family_label="GPT-6.1 Terra",
+        base_config=GPT6_1_TERRA_DEFAULT,
+    ),
+    **_gpt6_presets(
         key_prefix="gpt6-astra",
         family_label="GPT-6 Astra",
         base_config=GPT6_ASTRA_DEFAULT,
-        efforts=("low", "medium", "high", "xhigh", "max"),
     ),
     **_gpt6_presets(
         key_prefix="gpt61-sol",
         family_label="GPT-6.1 Sol",
         base_config=GPT6_1_SOL_DEFAULT,
-        efforts=("low", "medium", "high", "xhigh", "max"),
     ),
     **_gpt6_presets(
         key_prefix="gpt6-sol",
         family_label="GPT-6 Sol",
         base_config=GPT6_SOL_DEFAULT,
-        efforts=("none", "low", "medium", "high", "xhigh", "max"),
     ),
     **_gpt6_presets(
         key_prefix="gpt6-luna",
         family_label="GPT-6 Luna",
         base_config=GPT6_LUNA_DEFAULT,
-        efforts=("none", "low", "medium", "high", "xhigh", "max"),
     ),
     "gemini-3.8-flash": _preset(
         config=GEMINI_3_8_FLASH,
@@ -960,29 +979,20 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt5-mini": _preset(
         config=GPT5_MINI,
-        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra High)",
-        description=(
-            "Deprecated GPT-5 Mini endpoint with 400K context and high reasoning. Existing selections "
-            "remain on GPT-5 Mini; choose GPT-5.6 Terra High for new configurations."
-        ),
+        label="GPT-5 Mini [retires 2026-12-11] (High Reasoning)",
+        description="Saved selections use GPT-6.1 Terra at high reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-mini-low": _preset(
         config=GPT5_MINI_LOW,
-        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Low)",
-        description=(
-            "Deprecated GPT-5 Mini endpoint with 400K context and low reasoning. Existing selections "
-            "remain on GPT-5 Mini; choose GPT-5.6 Terra Low for new configurations."
-        ),
+        label="GPT-5 Mini [retires 2026-12-11] (Low Reasoning)",
+        description="Saved selections use GPT-6.1 Terra at low reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-mini-medium": _preset(
         config=GPT5_MINI_MEDIUM,
-        label="GPT-5 Mini (Deprecated; successor: GPT-5.6 Terra Medium)",
-        description=(
-            "Deprecated GPT-5 Mini endpoint with 400K context and medium reasoning. Existing selections "
-            "remain on GPT-5 Mini; choose GPT-5.6 Terra Medium for new configurations."
-        ),
+        label="GPT-5 Mini [retires 2026-12-11] (Medium Reasoning)",
+        description="Saved selections use GPT-6.1 Terra at medium reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt55-none": _preset(
@@ -1083,8 +1093,8 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
     ),
     "gpt5-minimal": _preset(
         config=GPT5_MINIMAL,
-        label="GPT-5 (minimal reasoning)",
-        description="GPT-5 minimal reasoning and low verbosity for speed.",
+        label="GPT-5 [retires 2026-12-11] (Minimal Reasoning)",
+        description="Saved selections use GPT-6.1 Sol at low reasoning effort on December 11, 2026.",
         provider=ModelProvider.OPENAI,
     ),
     "gpt5-high": _preset(

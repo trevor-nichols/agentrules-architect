@@ -306,7 +306,7 @@ Choose any available preset per phase through the CLI (`agentrules configure --m
 
 | Provider | Current or recommended selection | Compatibility and fallback |
 | --- | --- | --- |
-| OpenAI | GPT-5.6 Sol remains the phase default. Direct GPT-6 Astra, 6.1 Sol, Sol, and Luna are available. | Retired o4-mini presets route to GPT-5.6 Terra at the saved effort. GPT-5.6 tiers and GPT-5.5 remain rollback choices. GPT-6 options use Responses with validated effort and a 922K input ceiling before the packing margin. |
+| OpenAI | GPT-5.6 Sol remains the phase default. GPT-6.2 Astra, GPT-6.2 Sol, and GPT-6.1 Terra are available through Responses. | Retired o4-mini presets use GPT-5.6 Terra. On December 11, 2026, saved GPT-5 and o3 presets switch to GPT-6.1 Sol, and GPT-5 Mini presets switch to GPT-6.1 Terra. |
 | DeepSeek | V4.1 Flash (`deepseek-flash`) or V4 Pro | Saved V4 Flash, `deepseek-chat`, and `deepseek-reasoner` keys resolve directly to matching V4.1 Flash modes. |
 | Anthropic | Claude Opus/Sonnet/Haiku 5.5 or Fable 5.1 | Fable 5.1 requires 30-day retention unless Anthropic authorizes ZDR. Saved Sonnet 4.5 presets route to Sonnet 5.5 on November 30, 2026. Saved Opus 4.5 presets route to Opus 5.5 with adaptive thinking on January 22, 2027. |
 | xAI | Grok 4.7 is recommended. Grok 4.6, 4.5, 4.3, and pinned Grok 4.20 reasoning and non-reasoning variants remain selectable. | Saved Grok Build 0.1 and Grok Code Fast presets route to Grok 4.7 at high effort. Direct `XaiArchitect` construction still defaults to 4.6 pending evaluation. |
