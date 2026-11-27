@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+import tiktoken
 
 from agentrules.config.agents import MODEL_PRESETS
 from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
@@ -84,7 +85,7 @@ def test_pack_reuses_summary_and_fits_duplicate_files_to_their_own_paths():
 def local_encode(monkeypatch):
     encode = Mock(side_effect=lambda text: range(len(text)))
     encoder = SimpleNamespace(encode_ordinary=encode)
-    monkeypatch.setattr(token_estimator, "_encoding_for_model", lambda _model: encoder)
+    monkeypatch.setattr(token_estimator, "_encoding_for_model", lambda _model, *, allow_generic: encoder)
     return encode
 
 
@@ -166,6 +167,11 @@ def test_packing_counts_each_file_once_for_100_files(monkeypatch, local_encode, 
     assert batch.file_contents == files
     assert (anthropic_count.call_count, gemini_count.call_count) == (0, 0)
     assert 0 < local_encode.call_count <= 1 + 2 * len(files)
+    rendered = format_phase3_prompt(
+        {"tree_structure": "", "assigned_files": batch.assigned_files, "file_contents": batch.file_contents}
+    )
+    encoded_text_length = sum(len(call.args[0]) for call in local_encode.call_args_list)
+    assert encoded_text_length <= 2 * len(rendered)
 
 
 def test_unavailable_local_encoder_uses_byte_budget_for_the_rest_of_the_run(monkeypatch):
@@ -177,7 +183,24 @@ def test_unavailable_local_encoder_uses_byte_budget_for_the_rest_of_the_run(monk
     batches = pack_files_for_phase3(files_with_content=files, tree=[], model_config=config)
 
     assert [batch.file_contents for batch in batches] == [{"a.py": files["a.py"]}, {"b.py": files["b.py"]}]
-    load_encoder.assert_called_once_with(config.model_name)
+    load_encoder.assert_called_once_with(config.model_name, allow_generic=False)
+
+
+def test_unmapped_model_uses_byte_budget_without_loading_the_generic_encoder(monkeypatch):
+    model_lookup = Mock(side_effect=KeyError("no compatible tokenizer"))
+    generic = Mock(return_value=SimpleNamespace(encode_ordinary=lambda text: range(len(text) // 4)))
+    monkeypatch.setattr(tiktoken, "encoding_for_model", model_lookup)
+    monkeypatch.setattr(tiktoken, "get_encoding", generic)
+    files = {"a.py": "🙂" * 150, "b.py": "🙂" * 150}
+    config = _cfg(limit=1400)._replace(
+        model_name="test-unmapped-packing-model", estimator_family="tiktoken",
+    )
+
+    batches = pack_files_for_phase3(files_with_content=files, tree=[], model_config=config)
+
+    assert [batch.file_contents for batch in batches] == [{"a.py": files["a.py"]}, {"b.py": files["b.py"]}]
+    model_lookup.assert_called_once_with(config.model_name)
+    generic.assert_not_called()
 
 
 def test_phase3_file_content_is_json_escaped():

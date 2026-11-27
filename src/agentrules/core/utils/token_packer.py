@@ -19,7 +19,7 @@ from agentrules.config import agents as agent_config
 from agentrules.config.prompts.phase_3_prompts import format_phase3_prompt
 from agentrules.core.agents.base import ModelProvider, ReasoningMode
 from agentrules.core.types.models import ModelConfig
-from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_tokens
+from agentrules.core.utils.token_estimator import compute_effective_limits, estimate_model_text_tokens
 
 SummaryFn = Callable[[str], str]
 logger = logging.getLogger("project_extractor")
@@ -86,18 +86,13 @@ def pack_files_for_phase3(
     def count_text(text: str) -> int:
         nonlocal use_byte_counts
         if not use_byte_counts:
-            result = estimate_tokens(
-                provider=provider,
-                model_name=model_name,
-                payload={"input": text},
-                estimator_family="tiktoken",
-            )
-            if result.estimated is not None:
-                return result.estimated
+            estimate = estimate_model_text_tokens(model_name, text)
+            if estimate is not None:
+                return estimate
 
             use_byte_counts = True
             logger.warning(
-                "Local tokenizer unavailable for Phase 3 packing; using UTF-8 byte counts",
+                "Compatible local tokenizer unavailable for Phase 3 packing; using UTF-8 byte counts",
                 extra={"provider": provider, "model": model_name},
             )
         return max(1, len(text.encode("utf-8")))

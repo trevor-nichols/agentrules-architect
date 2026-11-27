@@ -1,4 +1,5 @@
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -106,6 +107,28 @@ def test_tiktoken_encoding_load_error_falls_back_to_error_result(monkeypatch):
     assert result.estimated is None
     assert result.source == "tiktoken_error"
     assert "encoding data unavailable" in (result.error or "")
+
+
+def test_request_estimator_can_use_generic_encoding_for_an_unmapped_model(monkeypatch):
+    def missing_model(_name):
+        raise KeyError("no compatible tokenizer")
+
+    def generic_encoder(_name):
+        return SimpleNamespace(encode_ordinary=lambda text: range(len(text)))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "tiktoken",
+        SimpleNamespace(encoding_for_model=missing_model, get_encoding=generic_encoder),
+    )
+    result = estimate_tokens(
+        provider=ModelProvider.OPENAI,
+        model_name="test-unmapped-diagnostic-model",
+        payload={"input": "hello"},
+        estimator_family="tiktoken",
+    )
+
+    assert result.estimated == 5
 
 
 def test_anthropic_estimator_strips_output_config() -> None:

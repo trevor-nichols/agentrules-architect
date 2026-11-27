@@ -64,6 +64,11 @@ def estimate_tokens(
     return _estimate_heuristic(payload)
 
 
+def estimate_model_text_tokens(model_name: str, text: str) -> int | None:
+    """Count raw text using the local encoder registered for the model."""
+    return _estimate_tiktoken(model_name, text, allow_generic=False).estimated
+
+
 def compute_effective_limits(
     max_input_tokens: int | None,
     safety_margin_tokens: int | None,
@@ -143,19 +148,27 @@ def _estimate_gemini(model_name: str, payload: dict[str, Any], client: Any | Non
 
 
 @lru_cache(maxsize=64)
-def _encoding_for_model(model_name: str) -> Any:
+def _encoding_for_model(model_name: str, *, allow_generic: bool = True) -> Any:
     import tiktoken  # type: ignore
 
     try:
         return tiktoken.encoding_for_model(model_name)
     except Exception:
+        if not allow_generic:
+            raise
         return tiktoken.get_encoding("cl100k_base")
 
 
-def _estimate_tiktoken(model_name: str, payload: dict[str, Any], api: str | None) -> TokenEstimateResult:
+def _estimate_tiktoken(
+    model_name: str,
+    payload: dict[str, Any] | str,
+    api: str | None = None,
+    *,
+    allow_generic: bool = True,
+) -> TokenEstimateResult:
     try:
-        encoding = _encoding_for_model(model_name)
-        text = _extract_text(payload, api)
+        encoding = _encoding_for_model(model_name, allow_generic=allow_generic)
+        text = payload if isinstance(payload, str) else _extract_text(payload, api)
         tokens = len(encoding.encode_ordinary(text))
         return TokenEstimateResult(tokens, "tiktoken")
     except ImportError:

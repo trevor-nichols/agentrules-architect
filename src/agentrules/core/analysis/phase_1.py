@@ -29,7 +29,10 @@ from agentrules.config.tools import TOOL_SETS
 from agentrules.core.agents.base import ModelProvider
 from agentrules.core.agents.deepseek.tooling import DEEPSEEK_TOOL_HISTORY_KEY
 from agentrules.core.agents.factory.factory import get_architect_for_phase, get_researcher_architect
-from agentrules.core.agents.gemini.tooling import build_function_response_contents
+from agentrules.core.agents.gemini.tooling import (
+    build_function_response_contents,
+    prepare_function_response_history,
+)
 from agentrules.core.types.tool_config import Tool
 from agentrules.core.utils.provider_capabilities import requires_external_research_tool_loop, resolve_provider
 from agentrules.core.utils.system_prompt import normalize_responsibilities
@@ -304,20 +307,40 @@ class Phase1Analysis:
 
             deepseek_messages = latest_response.pop(DEEPSEEK_TOOL_HISTORY_KEY, None)
             latest_tool_runs: list[dict[str, Any]] = []
-            gemini_tool_runs: list[dict[str, Any]] = []
+            gemini_contents: list[Any] | None = None
             if deepseek_messages is not None:
                 for call in latest_response["tool_calls"]:
                     function = call["function"]
                     latest_tool_runs.append(
                         await self._execute_native_tool_call(call["id"], function["name"], function["arguments"])
                     )
+            elif "_gemini_request_contents" in latest_response:
+                try:
+                    function_calls = latest_response["function_calls"]
+                    history = prepare_function_response_history(
+                        latest_response["_gemini_request_contents"],
+                        latest_response.get("_gemini_model_content"),
+                        function_calls,
+                        require_call_id=bool(latest_response.get("_gemini_requires_call_id")),
+                    )
+                    latest_tool_runs = await self._handle_gemini_function_calls(function_calls)
+                    gemini_contents = build_function_response_contents(history, function_calls, latest_tool_runs)
+                except ValueError as error:
+                    logging.warning("Skipping documentation research after an invalid Gemini tool turn. %s", error)
+                    return {
+                        "status": "skipped",
+                        "reason": "researcher-invalid-tool-turn",
+                        "error": str(error),
+                        "executed_tools": [*executed_tools, *latest_tool_runs],
+                    }
             else:
                 try:
                     latest_tool_runs.extend(
                         await self._handle_anthropic_tool_calls(latest_response.get("tool_calls"))
                     )
-                    gemini_tool_runs = await self._handle_gemini_function_calls(latest_response.get("function_calls"))
-                    latest_tool_runs.extend(gemini_tool_runs)
+                    latest_tool_runs.extend(
+                        await self._handle_gemini_function_calls(latest_response.get("function_calls"))
+                    )
                 except Exception as tool_error:  # Fail fast but keep loop state visible
                     latest_tool_runs.append({"error": str(tool_error)})
 
@@ -340,23 +363,8 @@ class Phase1Analysis:
                 ]
                 context_payload[DEEPSEEK_TOOL_HISTORY_KEY] = [*deepseek_messages, *tool_messages]
             else:
-                if "_gemini_request_contents" in latest_response:
-                    try:
-                        context_payload["_gemini_contents"] = build_function_response_contents(
-                            latest_response["_gemini_request_contents"],
-                            latest_response.get("_gemini_model_content"),
-                            latest_response.get("function_calls", []),
-                            gemini_tool_runs,
-                            require_call_id=bool(latest_response.get("_gemini_requires_call_id")),
-                        )
-                    except ValueError as error:
-                        logging.warning("Skipping documentation research after an invalid Gemini tool turn. %s", error)
-                        return {
-                            "status": "skipped",
-                            "reason": "researcher-invalid-tool-turn",
-                            "error": str(error),
-                            "executed_tools": executed_tools,
-                        }
+                if gemini_contents is not None:
+                    context_payload["_gemini_contents"] = gemini_contents
                 context_payload["tool_feedback"] = {
                     "executed_tools": executed_tools,
                     "latest_results": latest_tool_runs,

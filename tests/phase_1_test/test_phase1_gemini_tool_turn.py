@@ -21,7 +21,7 @@ from agentrules.core.configuration import model_presets
 class _TwoTurnModels:
     def __init__(
         self,
-        call_id: str | None = "research-call-1",
+        call_ids: tuple[str | None, ...] = ("research-call-1",),
         function_args: dict[str, Any] | None = None,
     ) -> None:
         self.calls: list[dict[str, Any]] = []
@@ -36,6 +36,7 @@ class _TwoTurnModels:
                     ),
                     thought_signature=b"signed-thinking-state",
                 )
+                for call_id in call_ids
             ],
         )
 
@@ -104,8 +105,18 @@ async def test_researcher_replays_signed_tool_turn_at_configured_thinking_level(
 
 
 @pytest.mark.asyncio
-async def test_phase1_continues_when_gemini_researcher_call_has_no_id() -> None:
-    models = _TwoTurnModels(call_id=None)
+@pytest.mark.parametrize(
+    ("call_ids", "error_detail"),
+    [
+        (("research-call-1", None), "missing its required ID"),
+        (("research-call-1", "research-call-1"), "duplicate call ID"),
+    ],
+    ids=["missing-id", "duplicate-id"],
+)
+async def test_phase1_skips_invalid_gemini_tool_turn_before_search(
+    call_ids: tuple[str | None, ...], error_detail: str,
+) -> None:
+    models = _TwoTurnModels(call_ids=call_ids)
     architect = GeminiArchitect(model_name="gemini-3.8-flash", reasoning=ReasoningMode.MEDIUM)
     architect.client = cast(Any, SimpleNamespace(models=models))
     findings = [
@@ -114,18 +125,21 @@ async def test_phase1_continues_when_gemini_researcher_call_has_no_id() -> None:
         {"findings": "Tech stack discovery complete"},
     ]
     required_agents = [SimpleNamespace(analyze=AsyncMock(return_value=result)) for result in findings]
+    search = AsyncMock(return_value='{"results": []}')
 
     with (
         patch("agentrules.core.analysis.phase_1.get_architect_for_phase", side_effect=required_agents),
         patch("agentrules.core.analysis.phase_1.get_researcher_architect", return_value=architect),
         patch("agentrules.core.agents.gemini.architect.resolve_tool_config", return_value=[]),
-        patch("agentrules.core.analysis.phase_1._run_tavily_search", new=AsyncMock(return_value='{"results": []}')),
+        patch("agentrules.core.analysis.phase_1._run_tavily_search", new=search),
     ):
         result = await Phase1Analysis().run([], {})
 
     research = result["documentation_research"]
     assert research["status"] == "skipped"
-    assert "missing its required ID" in research["error"]
+    assert error_detail in research["error"]
+    search.assert_not_awaited()
+    assert research["executed_tools"] == []
     assert len(models.calls) == 1
     assert result["initial_findings"] == findings
     for agent in required_agents[1:]:
