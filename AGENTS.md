@@ -119,7 +119,7 @@ It is 2026 and you are developing using Python 3.11+ with modern provider SDKs (
 - Require a resolved system prompt for every agent request (no optional mode).
 
 # Token Estimation & Packing
-- Use local token encoder objects memoized per model. Avoid repetitive encoder creation.
+- Use local token encoders memoized per model for Phase 3 packing. Use UTF-8 byte counts if the local tokenizer is unavailable. Reserve provider token-count endpoints for request-level diagnostics.
 - Cache per-file token counts keyed by (model_name, sha256(content)).
 - Packing algorithm (greedy):
   1. Compute skeleton tokens once.

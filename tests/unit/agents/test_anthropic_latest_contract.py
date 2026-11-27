@@ -116,7 +116,13 @@ def test_direct_anthropic_default_uses_current_sonnet() -> None:
 
 
 @pytest.mark.asyncio
-async def test_direct_fable_52_defaults_to_high_with_native_structured_output_and_tools() -> None:
+@pytest.mark.parametrize(
+    ("model_name", "effort"),
+    [("claude-fable-5-2", "high"), ("claude-fable-5-1", "high"), ("claude-opus-5-5", "medium")],
+)
+async def test_direct_always_adaptive_models_default_to_valid_effort_with_schema_and_tools(
+    model_name: str, effort: str
+) -> None:
     requests: list[dict[str, Any]] = []
 
     class Messages:
@@ -126,7 +132,7 @@ async def test_direct_fable_52_defaults_to_high_with_native_structured_output_an
 
     set_client(SimpleNamespace(messages=Messages()))
     try:
-        architect = AnthropicArchitect(model_name="claude-fable-5-2")
+        architect = AnthropicArchitect(model_name=model_name)
         result = await architect.analyze(
             {"formatted_prompt": "Inspect the repository", "_structured_output_phase": "phase4"},
             tools=[{
@@ -143,11 +149,11 @@ async def test_direct_fable_52_defaults_to_high_with_native_structured_output_an
 
     assert result.get("findings") == '{"analysis": "Inspected the repository"}', result
     request, = requests
-    assert request["model"] == "claude-fable-5-2"
+    assert request["model"] == model_name
     assert request["tools"][0]["name"] == "inspect"
     assert "tool_choice" not in request
     assert "thinking" not in request
-    assert request["extra_body"]["output_config"]["effort"] == "high"
+    assert request["extra_body"]["output_config"]["effort"] == effort
     assert request["extra_body"]["output_config"]["format"]["type"] == "json_schema"
 
 

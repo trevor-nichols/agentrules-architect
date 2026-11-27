@@ -2,7 +2,7 @@
 Token-aware packing helpers for Phase 3 file batches.
 
 Goals:
-- Respect provider/model input limits using existing estimators.
+- Respect provider/model input limits using local estimates.
 - Greedily pack file blocks until the next block would exceed the effective limit.
 - Summarize single-file oversize cases so nothing is skipped.
 """
@@ -41,49 +41,6 @@ def _default_summary(text: str, max_chars: int = 2000) -> str:
     return f"{text[: max_chars]}...\n[truncated summary]"
 
 
-def _estimate_text_tokens(
-    *,
-    provider: ModelProvider,
-    model_name: str,
-    estimator_family: str | None,
-    text: str,
-) -> int:
-    payload: dict[str, object]
-    api: str | None = None
-
-    if provider == ModelProvider.ANTHROPIC:
-        payload = {
-            "model": model_name,
-            "messages": [{"role": "user", "content": text}],
-        }
-    elif provider == ModelProvider.GEMINI:
-        payload = {"contents": text}
-    elif provider == ModelProvider.OPENAI:
-        payload = {"input": text}
-        api = "responses"
-    else:
-        payload = {"input": text}
-
-    result = estimate_tokens(
-        provider=provider,
-        model_name=model_name,
-        payload=payload,
-        estimator_family=estimator_family,
-        api=api,
-    )
-    if result.estimated is not None:
-        if result.source == "heuristic":
-            return max(result.estimated, len(text.encode("utf-8")))
-        return result.estimated
-
-    conservative = max(len(text.encode("utf-8")), 1)
-    logger.warning(
-        "Token estimate unavailable; using conservative fallback",
-        extra={"provider": provider, "model": model_name, "estimate": conservative},
-    )
-    return conservative
-
-
 def pack_files_for_phase3(
     *,
     files_with_content: dict[str, str],
@@ -94,7 +51,7 @@ def pack_files_for_phase3(
     """
     Greedily pack file contents into batches that respect the model's effective limit.
 
-    - Uses estimate_tokens to approximate the final prompt size.
+    - Uses a local tokenizer to approximate the final prompt size.
     - Starts a new batch when the next file would exceed the effective limit.
     - If a single file is bigger than the effective limit, it is summarized locally first.
     """
@@ -124,18 +81,32 @@ def pack_files_for_phase3(
 
     provider = model_config.provider
     model_name = model_config.model_name
-    estimator_family = getattr(model_config, "estimator_family", None)
+    use_byte_counts = model_config.estimator_family == "heuristic"
+
+    def count_text(text: str) -> int:
+        nonlocal use_byte_counts
+        if not use_byte_counts:
+            result = estimate_tokens(
+                provider=provider,
+                model_name=model_name,
+                payload={"input": text},
+                estimator_family="tiktoken",
+            )
+            if result.estimated is not None:
+                return result.estimated
+
+            use_byte_counts = True
+            logger.warning(
+                "Local tokenizer unavailable for Phase 3 packing; using UTF-8 byte counts",
+                extra={"provider": provider, "model": model_name},
+            )
+        return max(1, len(text.encode("utf-8")))
 
     tree_text = "\n".join(tree) if isinstance(tree, list) else (tree or "")
     skeleton = format_phase3_prompt(
         {"tree_structure": tree_text, "assigned_files": [], "file_contents": {}}
     )
-    skeleton_tokens = _estimate_text_tokens(
-        provider=provider,
-        model_name=model_name,
-        estimator_family=estimator_family,
-        text=skeleton,
-    )
+    skeleton_tokens = count_text(skeleton)
     if skeleton_tokens >= effective_limit:
         raise ValueError(f"Phase 3 prompt skeleton exceeds the input budget for {model_name}")
 
@@ -146,24 +117,8 @@ def pack_files_for_phase3(
         key = (model_name, content_hash)
         if key not in content_token_cache:
             escaped_content = json.dumps(content, ensure_ascii=False)
-            content_token_cache[key] = _estimate_text_tokens(
-                provider=provider,
-                model_name=model_name,
-                estimator_family=estimator_family,
-                text=escaped_content,
-            )
+            content_token_cache[key] = count_text(escaped_content)
         return content_token_cache[key]
-
-    def file_tokens(path: str, content: str) -> int:
-        envelope = json.dumps({"path": path, "content": ""}, ensure_ascii=False)
-        envelope += f"\n\n- {path}\n"
-        overhead = _estimate_text_tokens(
-            provider=provider,
-            model_name=model_name,
-            estimator_family=estimator_family,
-            text=envelope,
-        )
-        return content_tokens(content) + overhead + 16
 
     batches: list[PackedBatch] = []
     current_files: list[str] = []
@@ -171,14 +126,17 @@ def pack_files_for_phase3(
     running_tokens = skeleton_tokens
 
     for path, original_content in files_with_content.items():
+        envelope = json.dumps({"path": path, "content": ""}, ensure_ascii=False)
+        envelope += f"\n\n- {path}\n"
+        overhead = count_text(envelope) + 16
         content = original_content
-        estimated_tokens = file_tokens(path, content)
+        estimated_tokens = overhead + content_tokens(content)
         if skeleton_tokens + estimated_tokens > effective_limit:
             content = summarizer(content)
-            estimated_tokens = file_tokens(path, content)
+            estimated_tokens = overhead + content_tokens(content)
             while skeleton_tokens + estimated_tokens > effective_limit and len(content) > 1:
                 content = content[: max(1, len(content) // 2)]
-                estimated_tokens = file_tokens(path, content)
+                estimated_tokens = overhead + content_tokens(content)
             if skeleton_tokens + estimated_tokens > effective_limit:
                 raise ValueError(f"File {path} cannot fit the input budget for {model_name}")
 

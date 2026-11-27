@@ -241,6 +241,21 @@ class GeminiArchitectParsingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(request["config"].thinking_config.thinking_budget, 0)
         self.assertIsNone(request["config"].thinking_config.thinking_level)
 
+    async def test_flash_models_requiring_an_exact_level_default_to_medium(self):
+        for model_name in ("gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"):
+            with self.subTest(model=model_name):
+                client = _GeminiFakeClient()
+                with patch("agentrules.core.agents.gemini.client.genai.Client", return_value=client):
+                    arch = GeminiArchitect(model_name=model_name, api_key="test-key")
+
+                await arch.analyze({"formatted_prompt": "Analyze the project"})
+
+                request = client.models.last_call
+                assert request is not None
+                self.assertEqual(request["model"], model_name)
+                self.assertEqual(request["config"].thinking_config.thinking_level, genai_types.ThinkingLevel.MEDIUM)
+                self.assertIsNone(request["config"].thinking_config.thinking_budget)
+
     async def test_reasoning_dynamic_sets_dynamic_budget(self):
         arch = GeminiArchitect(model_name="gemini-2.5-flash", reasoning=ReasoningMode.DYNAMIC)
         arch.client = _GeminiFakeClient()  # type: ignore

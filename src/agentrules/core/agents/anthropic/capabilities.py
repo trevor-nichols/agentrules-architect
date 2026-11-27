@@ -69,6 +69,7 @@ _FABLE_5_1_PROFILE = CapabilityProfile(
     may_return_midstream_refusal=True,
     max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
     max_output_tokens=128_000,
+    default_reasoning=ReasoningMode.HIGH,
 )
 
 _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
@@ -76,7 +77,6 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         _FABLE_5_1_PROFILE,
         family_prefix="claude-fable-5-2",
         display_name="Claude Fable 5.2",
-        default_reasoning=ReasoningMode.HIGH,
     ),
     _FABLE_5_1_PROFILE,
     CapabilityProfile(
@@ -90,6 +90,7 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         may_return_midstream_refusal=True,
         max_input_tokens=_NEW_MODEL_INPUT_LIMIT,
         max_output_tokens=128_000,
+        default_reasoning=ReasoningMode.MEDIUM,
     ),
     CapabilityProfile(
         family_prefix="claude-sonnet-5-5",
@@ -126,6 +127,7 @@ _CAPABILITY_PROFILES: tuple[CapabilityProfile, ...] = (
         supported_effort_levels=frozenset({"low", "medium", "high", "xhigh", "max"}),
         thinking_policy=ThinkingPolicy.ALWAYS_ADAPTIVE,
         may_return_midstream_refusal=True,
+        default_reasoning=ReasoningMode.DYNAMIC,
     ),
     CapabilityProfile(
         family_prefix="claude-sonnet-5",

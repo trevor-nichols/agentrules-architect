@@ -110,6 +110,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         requires_function_call_id=True,
         max_input_tokens=1_048_576,
         max_output_tokens=65_536,
+        default_reasoning=ReasoningMode.MEDIUM,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.7-flash",
@@ -121,6 +122,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supported_thinking_levels=("low", "medium", "high"),
         requires_exact_thinking_level=True,
         requires_function_call_id=True,
+        default_reasoning=ReasoningMode.MEDIUM,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.6-flash",
@@ -132,6 +134,7 @@ _CAPABILITY_PROFILES: tuple[GeminiCapabilityProfile, ...] = (
         supported_thinking_levels=("minimal", "low", "medium", "high"),
         requires_exact_thinking_level=True,
         requires_function_call_id=True,
+        default_reasoning=ReasoningMode.MEDIUM,
     ),
     GeminiCapabilityProfile(
         family_prefix="gemini-3.1-pro",
