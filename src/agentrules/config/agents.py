@@ -299,7 +299,7 @@ def _preset(
 
 def _gemini_4_presets(base_config: ModelConfig, *, paid_only: bool = False) -> dict[str, PresetDefinition]:
     profile = resolve_capability_profile(base_config.model_name)
-    access_label = ", Paid Tier" if paid_only else ""
+    access_label = " [Paid Tier]" if paid_only else ""
     access_note = " Requires a paid Gemini API tier." if paid_only else ""
     presets: dict[str, PresetDefinition] = {}
     for effort in profile.supported_thinking_levels:
@@ -312,7 +312,7 @@ def _gemini_4_presets(base_config: ModelConfig, *, paid_only: bool = False) -> d
         )
         presets[f"{base_config.model_name}{suffix}"] = _preset(
             config=base_config._replace(reasoning=reasoning),
-            label=f"{profile.display_name} ({thinking_label} Thinking{access_label})",
+            label=f"{profile.display_name}{access_label} ({thinking_label} Thinking)",
             description=description,
             provider=ModelProvider.GEMINI,
         )
@@ -487,7 +487,7 @@ BASE_MODEL_PRESETS: dict[str, PresetDefinition] = {
         description="Gemini 3.8 Flash with high thinking.",
         provider=ModelProvider.GEMINI,
     ),
-    **_gemini_4_presets(GEMINI_4_ARGON),
+    **_gemini_4_presets(GEMINI_4_ARGON, paid_only=True),
     **_gemini_4_presets(GEMINI_4_CARBON, paid_only=True),
     **_gemini_4_presets(GEMINI_4_HYDROGEN),
     **_gemini_4_presets(GEMINI_4_NEON, paid_only=True),

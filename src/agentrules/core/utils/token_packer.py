@@ -111,14 +111,15 @@ def pack_files_for_phase3(
         raise ValueError(f"Phase 3 prompt skeleton exceeds the input budget for {model_name}")
 
     content_token_cache: dict[tuple[str, str], int] = {}
+    summary_cache: dict[tuple[str, str], str] = {}
 
-    def content_tokens(content: str) -> int:
+    def estimate_content(content: str) -> tuple[tuple[str, str], int]:
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         key = (model_name, content_hash)
         if key not in content_token_cache:
             escaped_content = json.dumps(content, ensure_ascii=False)
             content_token_cache[key] = count_text(escaped_content)
-        return content_token_cache[key]
+        return key, content_token_cache[key]
 
     batches: list[PackedBatch] = []
     current_files: list[str] = []
@@ -129,17 +130,21 @@ def pack_files_for_phase3(
         envelope = json.dumps({"path": path, "content": ""}, ensure_ascii=False)
         envelope += f"\n\n- {path}\n"
         overhead = count_text(envelope) + 16
+        file_budget = effective_limit - skeleton_tokens - overhead
         content = original_content
-        estimated_tokens = overhead + content_tokens(content)
-        if skeleton_tokens + estimated_tokens > effective_limit:
-            content = summarizer(content)
-            estimated_tokens = overhead + content_tokens(content)
-            while skeleton_tokens + estimated_tokens > effective_limit and len(content) > 1:
+        original_key, tokens = estimate_content(original_content)
+        if tokens > file_budget:
+            if original_key not in summary_cache:
+                summary_cache[original_key] = summarizer(original_content)
+            content = summary_cache[original_key]
+            _, tokens = estimate_content(content)
+            while tokens > file_budget and len(content) > 1:
                 content = content[: max(1, len(content) // 2)]
-                estimated_tokens = overhead + content_tokens(content)
-            if skeleton_tokens + estimated_tokens > effective_limit:
+                _, tokens = estimate_content(content)
+            if tokens > file_budget:
                 raise ValueError(f"File {path} cannot fit the input budget for {model_name}")
 
+        estimated_tokens = overhead + tokens
         if running_tokens + estimated_tokens > effective_limit:
             batches.append(PackedBatch(assigned_files=current_files, file_contents=current_contents))
             current_files = []

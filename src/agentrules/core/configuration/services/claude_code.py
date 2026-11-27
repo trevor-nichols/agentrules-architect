@@ -171,14 +171,14 @@ def _resolve_sdk_default_executable() -> str | None:
     if bundled is not None:
         return bundled
 
-    resolved = shutil.which("claude")
     if _running_on_windows():
-        if resolved is not None and _is_windows_native_executable(resolved):
-            return str(Path(resolved).resolve())
-        native = shutil.which("claude.exe")
-        if native is not None and _is_windows_native_executable(native):
-            return str(Path(native).resolve())
-    elif resolved is not None:
+        # Match SDK discovery without shutil.which's implicit working-directory search.
+        for entry in os.environ.get("PATH", "").split(os.pathsep):
+            directory = Path(entry)
+            candidate = directory / "claude.exe"
+            if directory.is_absolute() and os.path.isfile(candidate):
+                return str(candidate.resolve())
+    elif resolved := shutil.which("claude"):
         return str(Path(resolved).resolve())
 
     for candidate in _claude_code_default_locations():
@@ -189,11 +189,6 @@ def _resolve_sdk_default_executable() -> str | None:
 
 def _running_on_windows() -> bool:
     return os.name == "nt"
-
-
-def _is_windows_native_executable(path: str) -> bool:
-    name = path.replace("\\", "/").rsplit("/", 1)[-1]
-    return name.rstrip(". ").lower().endswith((".exe", ".com"))
 
 
 def _resolve_sdk_bundled_executable() -> str | None:

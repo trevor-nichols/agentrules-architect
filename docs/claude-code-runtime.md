@@ -94,6 +94,9 @@ The SDK-bundled executable takes precedence when `cli_path` is unset. A newer gl
 does not replace that bundle. To use a global or separately managed installation deliberately, set
 `claude_code.cli_path`; diagnostics then report the executable source as `configured`.
 
+When the SDK bundle is absent on Windows, default discovery searches absolute `PATH` entries for
+`claude.exe` in order, then checks `~/.local/bin/claude.exe`.
+
 Version probing runs the exact resolved binary with `--version`, uses a bounded ten-second timeout, and
 caches the parsed result by executable path. Timeout, execution, nonzero-exit, and parse failures remain
 distinct diagnostics. A pinned model with a documented minimum is unavailable when its runtime version

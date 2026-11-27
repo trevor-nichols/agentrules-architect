@@ -52,6 +52,34 @@ def test_pack_summarizes_oversize_single():
     assert len(batch.file_contents["big.py"]) < 10_000  # summarized/truncated
 
 
+def test_pack_reuses_summary_and_fits_duplicate_files_to_their_own_paths():
+    source = "x" * 1000
+    summary = "s" * 230
+    summarize = Mock(return_value=summary)
+    long_path = "a" * 80 + ".py"
+    short_path = "b.py"
+    limit = 500
+
+    batches = pack_files_for_phase3(
+        files_with_content={long_path: source, short_path: source},
+        tree=[],
+        model_config=_cfg(limit=limit),
+        summarizer=summarize,
+    )
+
+    assert [batch.assigned_files for batch in batches] == [[long_path], [short_path]]
+    shortened = batches[0].file_contents[long_path]
+    assert 0 < len(shortened) < len(summary)
+    assert summary.startswith(shortened)
+    assert batches[1].file_contents[short_path] == summary
+    for batch in batches:
+        prompt = format_phase3_prompt(
+            {"tree_structure": "", "assigned_files": batch.assigned_files, "file_contents": batch.file_contents}
+        )
+        assert len(prompt.encode("utf-8")) <= limit
+    summarize.assert_called_once_with(source)
+
+
 @pytest.fixture
 def local_encode(monkeypatch):
     encode = Mock(side_effect=lambda text: range(len(text)))

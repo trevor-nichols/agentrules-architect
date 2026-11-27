@@ -93,6 +93,24 @@ def test_model_picker_group_choice_shows_variant_summary_and_defaults_to_group()
     assert state.default_value == group_choice.value
 
 
+def test_gemini_argon_picker_discloses_paid_tier_on_model_group() -> None:
+    presets = [
+        model_presets.get_preset_info(key)
+        for key in ("gemini-4-argon", "gemini-4-argon-reasoning-low", "gemini-4-argon-reasoning-high")
+    ]
+    assert all(preset is not None for preset in presets)
+    state = build_model_choice_state(
+        [preset for preset in presets if preset is not None],
+        current_key=None,
+        default_key=None,
+        include_reset=False,
+        reset_title="Reset",
+    )
+
+    paid_group = next(choice for choice in state.choices if choice.value in state.group_selection_map)
+    assert "Gemini 4 Argon [Paid Tier]" in str(paid_group.title)
+
+
 def test_compact_model_label_removes_provider_prefixes() -> None:
     assert compact_model_label("OpenAI O3", "openai", "OpenAI") == "O3"
     assert compact_model_label("Codex: gpt-5.3-codex", "codex", "Codex App Server") == "gpt-5.3-codex"
